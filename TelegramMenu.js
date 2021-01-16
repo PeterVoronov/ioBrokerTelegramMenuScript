@@ -13,229 +13,59 @@ var options = {
     homeCmd:    'home',                  //Команда кнопки Домой
     width:      3,                      // Максимальное количество столбцов с кнопками
     users_id:   [123456789,234567891],            // id пользователей которые имеют доступ к меню
-    menucall:   ['меню', '/menu'],      // Команда для вызова меню
+    menucall:   ['Меню', 'меню', '/menu'],      // Команда для вызова меню
     menuPrefix: 'menu-',                // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
     showHome:   true,                   // Показывать кнопку Домой
     showMsg:    true,                   // Показывать вплывающие сообщения
-    debug:      true                    // Режим отладки, подробное логирование
+    language:   "ru",                   // Язык общения
+    locale:     "ru-RU",                // Язык общения    
+    debug:      false                    // Режим отладки, подробное логирование
 };
 
 /////////// МЕНЮ НАЧАЛО ////////////
-var menu = {
+const menu = {
     name: 'Главное меню',
     icon: '⚙️',
     submenu: [
-        { // Сценарии
-            name: 'Сценарии',
-            icon: '⚙️',
-            submenu: [
-                {
-                    name: 'ТВ',
-                    state: 'javascript.0.Scenes.TV',
-                    icons: {on: '📺', off: '✖️'},
-                    submenu: []
-                },
-                {
-                    name: 'Кино',
-                    state: 'javascript.0.Scenes.Moves',
-                    icons: {on: '📽', off: '✖️'},
-                    submenu: []
-                },
-                {
-                    name: 'Спать',
-                    state: 'javascript.0.Scenes.Sleep',
-                    icons: {on: '🛌', off: '✖️'},
-                    submenu: []
-                },
-                {
-                    name: 'Уборка',
-                    state: 'javascript.0.Scenes.Сleaning',
-                    icons: {on: '🤦', off: '✖️'},
-                    submenu: []
-                },
-                {
-                    name: 'Оповещение',
-                    state: 'javascript.0.Scenes.sayOff',
-                    icons: {on: '🔇', off: '🔊'},
-                    submenu: []
-                },
-                {
-                    name: 'Отпуск',
-                    state: 'javascript.0.Scenes.Otpusk',
-                    icons: {on: '📅', off: '✖️'},
-                    submenu: []
-                }
-                ]
+        { // Двери
+            name: 'Двери',
+            icon: '🚪',
+            type: 'door',
+            submenu: submenuGenerator
         },
         { // Освещение
             name: 'Освещение',
             icon: '💡',
             submenu: [
                 {
-                    name: 'Зал',
-                    icon: '💡',
-                    submenu: [
-                        {
-                            name: 'Основной 1',
-                            state: 'mqtt.0.myhome.lighting.GuestRoom_main',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        },
-                        {
-                            name: 'Основной 2',
-                            state: 'mqtt.0.myhome.lighting.GuestRoom_main2',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        },
-                        {
-                            name: 'Глазки',
-                            state: 'mqtt.0.myhome.lighting.GuestRoom_sec',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        }
-                    ]
-                },
-                {
-                    name: 'Кухня',
-                    icon: '💡',
-                    submenu: [
-                        {
-                            name: 'Основной',
-                            state: 'mqtt.0.myhome.lighting.Kitchen_main',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        },
-                        {
-                            name: 'Глазки',
-                            state: 'mqtt.0.myhome.lighting.Kitchen_sec',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        }
-                    ]
-                },
-                {
-                    name: 'Ванная',
-                    icon: '🛀',
-                    submenu: [
-                        {
-                            name: 'Основной',
-                            state: 'mqtt.0.myhome.lighting.BathRoom_main',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        },
-                        {
-                            name: 'Зеркало',
-                            state: 'mqtt.0.myhome.lighting.BathRoom_sec',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        }
-                    ]
-                },
-                {
-                    name: 'Коридор',
-                    icon: '💡',
-                    submenu: [
-                        {
-                            name: 'Основной',
-                            state: 'mqtt.0.myhome.lighting.Hall_main',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        }
-                    ]
-                },
-                {
-                    name: 'Спальня',
-                    icon: '💡',
-                    submenu: [
-                        {
-                            name: 'Основной',
-                            state: 'mqtt.0.myhome.lighting.BedRoom_main',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        },
-                        {
-                            name: 'Глазки',
-                            state: 'mqtt.0.myhome.lighting.BedRoom_sec',
-                            icons: {on: '💡', off: '✖️'},
-                            submenu: []
-                        }
-                    ]
+                    name: 'Прихожая',
+                    state: 'linkeddevices.0.switches.lonsonho.light.lobby.state',
+                    icons: {on: '💡', off: '✖️'},
+                    submenu: []
                 },
             ]
         },
-        { // Шторы
-            name: 'Шторы',
-            icon: '⚙️',
-            submenu: [
-                {
-                    name: 'Кухня',
-                    state: 'javascript.0.Rollet.Kitchen.Close',
-                    icons: {on: '🌚', off: '🌞'},
-                    submenu: []
-                },
-                {
-                    name: 'Спальня',
-                    state: 'javascript.0.Rollet.Bedroom.Close',
-                    icons: {on: '🌚', off: '🌞'},
-                    submenu: []
-                }
-            ]
-        },
-        { // Разное
-            name: 'Разное',
-            icon: '⚙️',
-            submenu: [
-                {
-                    name: 'Компьютер',
-                    state: 'javascript.0.GetAdmin.Power',
-                    icons: {on: '🖥️', off: '✖️'}, 
-                    submenu: []
-                },
-                {
-                    name: 'Кондиционер',
-                    state: 'haier.0.power',
-                    icons: {on: '☑️', off: '✖️'},
-                    submenu: []
-                },
-                {
-                    name: 'Вода',
-                    icon: '🚰',
-                    submenu: [
-                        {
-                            name: 'Открыть',
-                            state: 'mqtt.0.myhome.Aquastoroj.ButtonOpen',
-                            icons: {on: '🔄', off: '⏺'},
-                            submenu: []
-                        },
-                        {
-                            name: ' ',
-                            state: 'mqtt.0.myhome.Aquastoroj.open',
-                            icons: {on: 'Открыто', off: 'Закрыто'},
-                            submenu: []
-                        },
-                        {
-                            name: 'Закрыть',
-                            state: 'mqtt.0.myhome.Aquastoroj.ButtonClose',
-                            icons: {on: '🔄', off: '⏺'},
-                            submenu: []
-                        }
-                    ]
-                }
-            ]
-        },
+        { // Розетки
+            name: 'Розетки',
+            icon: '🔌',
+            type: 'plug',
+            submenu: submenuGenerator
+        },        
         { // Информация
             name: 'Информация',
             icon: 'ℹ️',
             submenu: [
                 {
                     name: 'Температура',
-                    state: Temperature,
+                    function: Environments,
+                    param: 'temperature',
                     icon: '🌡',
                     submenu: []
                 },
                 {
                     name: 'Влажность',
-                    state: Humidity, // А можно вызвать функцию вот так
+                    function: Environments,
+                    param: 'humidity', // А можно вызвать функцию вот так
                     icon: '💦',
                     submenu: []
                 }
@@ -247,45 +77,272 @@ var menu = {
 
 /////////// ПОЛЬЗОВАТЕЛЬСКИЕ ФУНКЦИИ НАЧАЛО /////////////
 
-function Environments(environmentRole) {
-    var maxLength = 0;
-    $('state[0_userdata.0.rooms.*.localNames](functions=localization)').each(function (id) {
-        //logs(id);
-        const currentLength = getState(id).val.split(',')[2].length;
-        //logs(" Max = " + maxLength + " current = " + currentLength);
-        maxLength = currentLength > maxLength ? currentLength : maxLength;
-    });
+const submenuParams = { 
+    'plug' : 
+        {
+            mask : 'linkeddevices.0.sockets.*.plug.*.state',
+            role : 'switch',
+            state : 'state',
+            rooms : true,
+            icons : {on: '✅', off: '❌'},
+            menuitems : 
+                {
+                    '.state' : 'Вкл/выкл', 
+                    '.auto_off' : 'Автовыключение', 
+                    '.led_disabled_night' : 'Выкл. индикатор', 
+                    '.power_outage_memory' : 'Запоминать состояние'
+                },
+            report: reportGenerator,
+            reportitems :
+                {
+                    '.consumer_connected'   : 'Нагрузка подключена', 
+                    '.consumer_overloaded'  : 'Превышена нагрузка', 
+                    '.current'              : 'Ток нагрузки', 
+                    '.voltage'              : 'Напряжение в сети', 
+                    '.temperature'          : 'Температура внутри', 
+                    '.load_power'           : 'Текущее потребление',
+                    '.consumption'          : 'Всего потреблено', 
+                    '.link_quality'         : 'Уровень сигнала'
+                },
+            statusitems :
+                {
+                }
+        },
+    'door' :
+        {
+            mask : 'linkeddevices.0.sensors.*.magnet.*.opened',
+            role : 'state',
+            state: 'opened',
+            icons : {on: '🔓', off: '🔐'},
+            report: reportGenerator,
+            menuitems : 
+                {
+                },
+            reportitems :
+                {
+                    
+                },
+            statusitems :
+                {
+                    'lc' : 'Не менялся с',
+                    'ack' : 'Потдвержден',
+                    'ts' : 'По состоянию на',
+                    'val' : {
+                        'prefix' : 'Статус',
+                        true : 'Открыта',
+                        false : 'Закрыта'
+                    }
+                }                
+        },
+};
+
+
+/*** submenuGenerator ***/
+function submenuGenerator(upperMenuItem) {
+    logs('ВЫЗОВ ФУНКЦИИ submenuGenerator(upperMenuItem) из ' + arguments.callee.caller.name);
+    logs('upperMenuItem = ' + JSON.stringify(upperMenuItem));
+    var upperMenuIndex = getIndex(upperMenuItem.name);
+    var subMenu = [];
+    var currId = 0;
+    var lastRoom = '';
+    var roomIndex = -1;
+    var roomMenuIndex = '';
+    var roomMenuItem;
+    var menuItemName = '';
+    processObjects(submenuParams[upperMenuItem.type]['mask'], submenuParams[upperMenuItem.type]['role'], upperMenuItem.type, function plugsCB (id, room) {
+        logs('ВЫЗОВ ФУНКЦИИ plugsCB(id, room) из ' + arguments.callee.caller.name);
+        logs('id = ' + JSON.stringify(id));
+        logs('room = ' + JSON.stringify(room));
+        logs('lastRoom = ' + JSON.stringify(lastRoom));
+        logs('roomIndex = ' + JSON.stringify(roomIndex));
+        logs('roomMenuIndex = ' + JSON.stringify(roomMenuIndex));
+        logs('roomMenuItem = ' + JSON.stringify(roomMenuItem));
+        logs('menuItemName = ' + JSON.stringify(menuItemName));
+        logs('subMenu = ' + JSON.stringify(subMenu));
+        const idPrefix = id.split('.').slice(0,-1).join('.');
+
+        if ((lastRoom === room.id)  || submenuParams[upperMenuItem.type]['rooms']) {
+            if ((roomIndex < 0) && (lastRoom === room.id)  && submenuParams[upperMenuItem.type]['rooms']) {
+                roomIndex++;
+                roomIndex++;
+                currId--; 
+            } else if (lastRoom !== room.id) {
+                roomIndex = -1;
+            }
+            if (roomIndex < 0) {
+                if (lastRoom === room.id) {
+                    currId--; 
+                }
+                roomMenuItem = {
+                                    name: upperMenuIndex + '.' + currId + '-' + getRoomName(room.id, room.name,'Main'),
+                                    icon: upperMenuItem.icon,
+                                    submenu: []
+                                };
+                roomIndex++;
+                if (lastRoom === room.id) {
+                    var tempItem = subMenu.pop();
+                    tempItem.name = upperMenuIndex + '.' + currId + '.' + roomIndex + '-' + getObject(tempItem.state.split('.').slice(0,-1).join('.')).common.name;
+                    for (var i = 0; i < tempItem.submenu.length; i++) {
+                        tempItem.submenu[i].name =  upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + i + '-' + skipIndex(tempItem.submenu[i].name);
+                    }
+                    roomMenuItem.submenu.push(tempItem);
+                    roomIndex++;
+                }
+                subMenu.push(roomMenuItem);
+            }
+            roomMenuIndex = '.' + roomIndex;
+            menuItemName = getObject(idPrefix).common.name;
+        }
+        else {
+            roomIndex = -1;
+            roomMenuIndex = '';
+            menuItemName = getRoomName(room.id, room.name,'Main');
+        }
+        const menuItem = {
+                            name: upperMenuIndex + '.' + currId + roomMenuIndex + '-' + menuItemName,
+                            state: id,
+                            type: upperMenuItem.type,
+                            icons: submenuParams[upperMenuItem.type]['icons'],
+                            submenu: []
+                        };
+        if (submenuParams[upperMenuItem.type]['report'] !== 'undefined' ){
+            menuItem.function = submenuParams[upperMenuItem.type]['report'];
+        }
+        var currSubId = 0;
+        for (const [state, name] of Object.entries(submenuParams[upperMenuItem.type]['menuitems'])) {
+            if (existsState(idPrefix + state)) {
+                menuItem.submenu.push({
+                                    name: upperMenuIndex + '.' + currId + roomMenuIndex + '.' + currSubId + '-' + name,
+                                    state: idPrefix + state,
+                                    icons: submenuParams[upperMenuItem.type]['icons'],
+                                    submenu: []
+                                })
+                currSubId++;
+            }
+        }        
+        if (lastRoom === room.id) {
+            roomMenuItem.submenu.push(menuItem)
+            roomIndex++;
+        }
+        else {
+            if (submenuParams[upperMenuItem.type]['rooms']) {
+                roomMenuItem.submenu.push(menuItem)
+                roomIndex = -1;
+                roomMenuIndex = '';
+            }
+            else {
+                subMenu.push(menuItem);
+            }
+            currId++;
+        }
+        lastRoom = room.id;
+    })
+    return subMenu;
+}
+
+
+/*** processObjects ***/
+function processObjects(objMask, objRole, objFunc, objCB) {
+    logs('ВЫЗОВ ФУНКЦИИ processObjects(objMask, objRole, objFunc, objCB) из ' + arguments.callee.caller.name);
+    logs('objMask = ' + JSON.stringify(objMask));    
+    logs('objRole = ' + JSON.stringify(objRole));    
+    logs('objFunc = ' + JSON.stringify(objFunc));    
+    logs('objCB = ' + JSON.stringify(objCB));  
+    const listRooms = getEnums('rooms');
+    for (let currRoom of listRooms) {
+        logs('currRoom = ' + JSON.stringify(currRoom)); 
+        $('state[id=' + objMask + '][role=' + objRole + '](functions=' + objFunc + ')(rooms=' + currRoom.id.split('.').pop() + ')').each( function (id) { 
+            objCB (id, currRoom);
+        } );
+    }      
+}
+
+
+/*** reportGenerator ***/
+function reportGenerator(menuObject) {
+    logs('ВЫЗОВ ФУНКЦИИ reportGenerator(menuObject) из ' + arguments.callee.caller.name);
+    logs('menuObject = ' + JSON.stringify(menuObject));
+    if ((typeof menuObject === 'object') && (menuObject.hasOwnProperty('state'))) {
+        var maxLeftLen = 15;
+        const maxRightLen = 8;
+        const idPrefix = menuObject.state.split('.').slice(0,-1).join('.');
+        var textStatus = '';
+        var text = '';
+        if (submenuParams[menuObject.type].hasOwnProperty('statusitems') && submenuParams[menuObject.type]['statusitems'].hasOwnProperty('val')) {
+            const currState = getState(menuObject.state);
+            textStatus += submenuParams[menuObject.type]['statusitems']['val']['prefix'].padEnd(maxLeftLen) + ' : ' + submenuParams[menuObject.type]['statusitems']['val'][currState.val];
+            if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ack')) {
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ack'].padEnd(maxLeftLen) + ' : ' + (currState.ack ? 'Да' : 'Нет');
+            } 
+            if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('lc')) {
+                const lastChanged = new Date(currState.lc);
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['lc'].padEnd(maxLeftLen) + ' : ' + lastChanged.toLocaleString(options.locale);
+            }
+            if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ts')) {
+                const timeStamp = new Date(currState.ts);
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ts'].padEnd(maxLeftLen) + ' : ' + timeStamp.toLocaleString(options.locale);
+            }
+        }
+        maxLeftLen = 20;
+        for (const [state, name] of Object.entries(submenuParams[menuObject.type]['reportitems'])) {
+            text += (text.length > 0 ? '\r\n' : '') + name.padEnd(maxLeftLen) + ' : ';
+            if (existsObject(idPrefix + state)) {
+                const currObject = getObject(idPrefix + state);
+                logs('currObject = ' + JSON.stringify(currObject));
+                if (existsState(idPrefix + state)) {
+                    const currState = getState(idPrefix + state);
+                    logs('currState = ' + JSON.stringify(currState));
+                    if (currObject.common.type === 'boolean') {
+                        text += currState.val ? submenuParams[menuObject.type]['icons']['on'].padStart(maxRightLen-1) : submenuParams[menuObject.type]['icons']['off'].padStart(maxRightLen-1);
+                    } 
+                    else if (currObject.common.type === 'number') {
+                        text += currState.val.toFixed(2).padStart(maxRightLen) + ' ' + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '');
+                    }
+                }
+                else {
+                    if (currObject.common.type === 'boolean') {
+                        text += submenuParams[menuObject.type]['icons']['off'].padStart(maxRightLen-1);
+                    } 
+                    else if (currObject.common.type === 'number') {
+                        text += (0).toFixed(2).padStart(maxRightLen)  + ' ' + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '');
+                    }
+                }
+            }
+        }
+        text = '<code>' + textStatus + (((textStatus.length > 0) && (text.length > 0)) ? '\r\n' : '') + text  + '</code>';
+    };
+    return text;
+}
+
+
+
+/*** Environments ***/
+function Environments(menuObject) {
+    logs('ВЫЗОВ ФУНКЦИИ Environments(menuObject) из ' + arguments.callee.caller.name);
+    logs('menuObject = ' + JSON.stringify(menuObject));
     var text = '';
-    const report = '- ';
-    $('[role=value.' + environmentRole + '](functions=environment)').each(function (id) {
-        //logs(id);
-        const object = getObject(id, 'rooms');
-        //logs('ОБЬЕКТ = ' + JSON.stringify(object))
-        const room = getObject(id, 'rooms')["enumIds"][0].split('.').pop();
-        //logs('ОБЬЕКТ = ' + JSON.stringify(getObject(id, 'rooms')["enumIds"][0].split('.').pop()));
-        text += text ? '\r\n' : '<code>'
-        text += report + ($('(rooms=' + room + ')(functions=localization)').getState().val.split(',')[2] + ':').padEnd(maxLength+1) + ' ';
-        //logs('ОБЬЕКТ = ' + JSON.stringify(getState(id).val)+ JSON.stringify(object.common.unit));
-        text += getState(id).val.toString().padEnd(5,'0') + ' ' + object.common.unit;
-        //logs(text);
-    });    
-    return text + '</code>';
-}
-
-function Temperature() {
-    //var text = '';
-    //text += '- Температура в спальне: ' + getState('mqtt.0.myhome.Bedroom.Temp_room').val + '';
-    //text += '\r\n- Температура на кухне: ' + getState('mqtt.0.myhome.Kitchen.Temp_room').val + '';
-    //return text;
-    return Environments('temperature')
-}
-
-function Humidity() {
-    //var text = '';
-    //text += '- Влажность в спальне: ' + getState('mqtt.0.myhome.Bedroom.Humidity_room').val + '%';
-    //text += '\r\n- Влажность на кухне: ' + getState('mqtt.0.myhome.Kitchen.Humidity_room').val + '%';
-    //return text;
-    return Environments('humidity')
+    if ((typeof menuObject === 'object') && (menuObject.hasOwnProperty('param'))) {
+        var maxLength = 0;
+        $('state[0_userdata.0.rooms.*.localNames](functions=localization)').each(function (id) {
+            //logs('id = ' + id);
+            const currentLength = getState(id).val.split(',')[getDeclIndex('inside')].length;
+            //logs("maxLength = " + maxLength + " currentLength = " + currentLength);
+            maxLength = currentLength > maxLength ? currentLength : maxLength;
+        });
+        const report = '- ';
+        $('[role=value.' + menuObject.param + '](functions=environment)').each(function (id) {
+            //logs('id = ' + id);
+            const currObject = getObject(id, 'rooms');
+            logs('currObject = ' + JSON.stringify(currObject))
+            text += text ? '\r\n' : '<code>'
+            text += report + (getRoomName(currObject['enumIds'][0], currObject['enumNames'][0],'inside') + ':').padEnd(maxLength+1) + ' ';
+            logs('getState(' + id + ') = ' + JSON.stringify(getState(id))+ JSON.stringify(currObject.common.unit));
+            text += getState(id).val.toFixed(2).padStart(6,' ') + ' ' + currObject.common.unit;
+            //logs('Text = ' + text);
+        });
+        text += '</code>'
+    }
+    return text;
 }
 
 /////////// ПОЛЬЗОВАТЕЛЬСКИЕ ФУНКЦИИ КОНЕЦ /////////////
@@ -294,6 +351,8 @@ function Humidity() {
 ////////////////////////////////////////////////////////////////
 ////////////////////////// МАГИЯ ///////////////////////////////
 ////////////////////////////////////////////////////////////////
+
+/*** doMenuItem ***/
 function doMenuItem(user, cmd) {
     logs('ВЫЗОВ ФУНКЦИИ doMenuItem(user, cmd) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
@@ -301,52 +360,61 @@ function doMenuItem(user, cmd) {
     var timer;
     var cmdPos = getItemPos(cmd);
     logs('cmdPos = ' + JSON.stringify(cmdPos));
-    const cmdItem = getMenuItem(cmdPos.concat(menu));
+    const cmdItem = getMenuItem(cmdPos.concat(addMenuIndex(menu)));
     logs('cmdItem = ' + JSON.stringify(cmdItem));
-    if(cmdItem.hasOwnProperty('state') && (typeof cmdItem.state !== 'function')){
+    if((cmdItem.submenu.length === 0) && cmdItem.hasOwnProperty('state') && ! cmdItem.hasOwnProperty('function')){
         logs('ОБЬЕКТ = ' + JSON.stringify(getObject(cmdItem.state)));
         var obj = getObject(cmdItem.state);
         var role = obj.common.role;
-        var type = obj.common.type;
-        clearTimeout(timer);
-        timer = setTimeout(function() {
-            showMsg('Ошибка! нет ответа', user);
-            cmdPos = cmdPos.slice(0, cmdPos.length-1);
-            showMenu(user, cmdPos);
-        }, 4000); 
-
-    } else {
-        return showMenu(user, cmdPos);
-    }
-    if(type === 'boolean'){
-        setState(cmdItem.state, !getState(cmdItem.state).val, function cb(){
+        if (obj.common.write) {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                showMsg('Ошибка! нет ответа', user);
+                cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                showMenu(user, cmdPos, cmdItem);
+            }, 4000); 
+            if(obj.common.type === 'boolean'){
+                setState(cmdItem.state, !getState(cmdItem.state).val, function cb(){
+                    clearTimeout(timer);
+                    cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                    showMsg('Успешно!', user);
+                    showMenu(user, cmdPos);
+                    logs('СОСТОЯНИЕ = ' + getState(cmdItem.state).val);
+                });
+            } else {
+                logs('НЕ ВЕРНЫЙ ТИП ОБЬЕКТА');
+                showMsg('Не верный тип обьекта', user);
+            }
+        }
+        else {
             clearTimeout(timer);
             cmdPos = cmdPos.slice(0, cmdPos.length-1);
-            showMsg('Успешно!', user);
-            showMenu(user, cmdPos);
-            logs('СОСТОЯНИЕ = ' + getState(cmdItem.state).val);
-        });
+            showMenu(user, cmdPos, cmdItem);
+            logs('Объект ' + cmdItem.state + ' только для чтения!');
+        }
     } else {
-        logs('НЕ ВЕРНЫЙ ТИП ОБЬЕКТА');
-        showMsg('Не верный тип обьекта', user);
+        return showMenu(user, cmdPos, cmdItem);
     }
+
 }
 
 /*** showMenu ***/
-function showMenu(user, itemPos) {  
-    logs('ВЫЗОВ ФУНКЦИИ showMenu(user, num) из ' + arguments.callee.caller.name);
+function showMenu(user, itemPos, menuItem) {  
+    logs('ВЫЗОВ ФУНКЦИИ showMenu(user, itemPos, menuItem) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('itemPos = ' + JSON.stringify(itemPos));    
+    logs('menuItem = ' + JSON.stringify(menuItem));
+    var menuBase = addMenuIndex(menu);
     var menuRows = {
-        menutext: (menu.icon ? menu.icon + ' ':'') + skipIndex(menu.name),
+        menutext: (menuBase.icon ? menuBase.icon + ' ':'') + skipIndex(menuBase.name),
         state: '',
-        backIndex: getIndex(menu.name),
+        backIndex: getIndex(menuBase.name),
         buttons: []
     };
     var subMenuPos = itemPos.concat([]);
     logs('itemPos = ' + JSON.stringify(itemPos));
     logs('subMenuPos = ' + JSON.stringify(subMenuPos));
-    menuRows = getMenuRow(menu.submenu, subMenuPos, menuRows);
+    menuRows = getMenuRow(Object.assign({}, menuBase), subMenuPos, menuRows);
     logs('menuRows = ' + JSON.stringify(menuRows));
     if(itemPos.length > 0){
         menuRows.buttons = splitMenu(menuRows.buttons);
@@ -357,8 +425,13 @@ function showMenu(user, itemPos) {
         lastRow.push({ text: options.closeText, callback_data: options.closeCmd });
         menuRows.buttons.push(lastRow);
         logs('menuRows.buttons = ' + JSON.stringify(menuRows.buttons));
-        if(typeof menuRows.state === "function"){
-            menuRows.menutext += '\r\n' + menuRows.state();
+        if (menuRows.hasOwnProperty('function') && (typeof menuRows.function === "function")) {
+            logs('itemPos = ' + JSON.stringify(itemPos));
+            if (menuItem === undefined) {
+                menuItem = getMenuItem(itemPos.concat(menu));
+            }
+            const resultText = menuRows.function(menuItem);
+            menuRows.menutext += resultText.length > 0 ? '\r\n' + resultText : '';
         }
         logs('menuRows 2 = ' + JSON.stringify(menuRows));
         sendTo(options.telegram, {
@@ -399,35 +472,53 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
     logs('subMenuPos = ' + JSON.stringify(subMenuPos));
     logs('menuRows = ' + JSON.stringify(menuRows));
     var n;
+    if (typeof subMenuRow.submenu === 'function') {
+        subMenuRow.submenu = subMenuRow.submenu(subMenuRow);
+    }
     if(subMenuPos.length > 0){
-        menuRows.menutext += ' > ' + (subMenuRow[subMenuPos[0]].icon ? subMenuRow[subMenuPos[0]].icon + ' ':'') + skipIndex(subMenuRow[subMenuPos[0]].name);
+        menuRows.menutext += ' > ' + getItemIcon(subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
         n = subMenuPos.shift();
-        if(typeof subMenuRow[n].state == 'function'){
-            menuRows.state = subMenuRow[n].state;
+        logs('(1) subMenuRow.submenu[' + n + '] = ' + JSON.stringify(subMenuRow.submenu[n]));
+        if(subMenuRow.submenu[n].hasOwnProperty('function')) {
+            menuRows.function = subMenuRow.submenu[n].function;
         }
+        if(subMenuRow.submenu[n].hasOwnProperty('state')) {
+            menuRows.state = subMenuRow.submenu[n].state;
+        }
+        if(subMenuRow.submenu[n].hasOwnProperty('type')) {
+            menuRows.type = subMenuRow.submenu[n].type;
+        }                
         if (subMenuPos.length > 0) { 
-            menuRows.backIndex = getIndex(subMenuRow[n].name);
+            menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
         }
-        return getMenuRow(subMenuRow[n].submenu, subMenuPos, menuRows);
+        return getMenuRow(subMenuRow.submenu[n], subMenuPos, menuRows);
     } else {
-        logs('subMenuRow[' + n + '] = ' + JSON.stringify(subMenuRow[n]));
-        for (var i = 0; i < subMenuRow.length; i++) {
-            var icon;
-            if(subMenuRow[i].state && typeof subMenuRow[i].state !== 'function' && getState(subMenuRow[i].state).val){
-                icon = subMenuRow[i].icons.on;
-            } else if (subMenuRow[i].state && typeof subMenuRow[i].state !== 'function'){
-                icon = subMenuRow[i].icons.off;
-            } else {
-                icon = subMenuRow[i].icon;
-            }
-            logs('** subMenuRow[' + i + '] = ' + JSON.stringify(subMenuRow[i]));
+        for (var i = 0; i < subMenuRow.submenu.length; i++) {
             menuRows.buttons.push({
-                text: icon + ' ' + skipIndex(subMenuRow[i].name),
-                callback_data: options.menuPrefix + subMenuRow[i].name
+                text: getItemIcon(subMenuRow.submenu[i]) + ' ' + skipIndex(subMenuRow.submenu[i].name),
+                callback_data: options.menuPrefix + subMenuRow.submenu[i].name
             });
         }
         return menuRows;
     }
+}
+
+/*** getItemIcon ***/
+function getItemIcon(subMenuRowItem) {  
+    logs('ВЫЗОВ ФУНКЦИИ getItemIcon(subMenuRowItem) из ' + arguments.callee.caller.name);
+    logs('subMenuRowItem = ' + JSON.stringify(subMenuRowItem));
+    var icon;
+    if ((typeof subMenuRowItem.icons === 'object')) {
+        if(subMenuRowItem.hasOwnProperty('state') && existsState(subMenuRowItem.state)) {
+            icon = getState(subMenuRowItem.state).val ? subMenuRowItem.icons.on : subMenuRowItem.icons.off;
+        } else {
+            icon = subMenuRowItem.icon;
+        }
+    }
+    else {
+        icon = subMenuRowItem.icon ? subMenuRowItem.icon : '' ;
+    }
+    return icon;
 }
 
 /*** getItemPos ***/
@@ -453,7 +544,13 @@ function getMenuItem(subMenuPos) {
     logs('subMenuPos = ' + JSON.stringify(subMenuPos));
     if (subMenuPos.length > 1) {
         if (subMenuPos[subMenuPos.length - 1] !== undefined) {
-            subMenuPos[subMenuPos.length - 1] = subMenuPos[subMenuPos.length - 1].submenu.length > subMenuPos[0] ? subMenuPos[subMenuPos.length - 1].submenu[subMenuPos[0]] : undefined;
+            if (typeof subMenuPos[subMenuPos.length - 1].submenu === 'function') {
+                const newSubMenu = subMenuPos[subMenuPos.length - 1].submenu(getIndex(subMenuPos[subMenuPos.length - 1].name));
+                subMenuPos[subMenuPos.length - 1] = newSubMenu.length > subMenuPos[0] ? newSubMenu[subMenuPos[0]] : undefined;
+            }
+            else {
+                subMenuPos[subMenuPos.length - 1] = subMenuPos[subMenuPos.length - 1].submenu.length > subMenuPos[0] ? subMenuPos[subMenuPos.length - 1].submenu[subMenuPos[0]] : undefined;
+            }
         }
         subMenuPos.shift();
         return getMenuItem(subMenuPos);
@@ -466,28 +563,10 @@ function getMenuItem(subMenuPos) {
     }
 }
 
-/*** callback ***/
-function callback(user, cmd) {  
-    logs('ВЫЗОВ ФУНКЦИИ callback(user, cmd) из ' + arguments.callee.caller.name);
-    logs('user = ' + JSON.stringify(user));    
-    logs('cmd = ' + cmd);
-    if(options.menucall.indexOf(cmd) >= 0){
-        showMenu(user, []);
-    } else {
-        if(cmd === options.closeCmd){
-            closeMenu(user);
-        } else if(cmd.indexOf(options.backCmd) === 0){
-            showMenu(user, getItemPos(cmd.replace(options.backCmd,'')));
-        } else if(cmd === options.homeCmd){
-            showMenu(user, []);
-        } else {
-            doMenuItem(user, cmd.replace(options.menuPrefix,''))
-        }
-    }
-}
-
 /*** closeMenu ***/
 function closeMenu(user) {  
+    logs('ВЫЗОВ ФУНКЦИИ closeMenu(user) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
     sendTo(options.telegram, {
         user: user,
         deleteMessage: {
@@ -500,7 +579,9 @@ function closeMenu(user) {
 }
 
 /*** splitMenu ***/
-function splitMenu(menuArr) {    
+function splitMenu(menuArr) { 
+    logs('ВЫЗОВ ФУНКЦИИ splitMenu(menuArr) из ' + arguments.callee.caller.name);
+    logs('menuArr = ' + JSON.stringify(menuArr));   
     var i, j, resultArr = [];
     for (i = 0, j = menuArr.length; i < j; i += options.width) {
         resultArr.push(menuArr.slice(i, i + options.width));
@@ -510,7 +591,11 @@ function splitMenu(menuArr) {
 
 /*** showMsg ***/
 function showMsg(text, user, showAlert) {
-    if(options.showMsg){
+    logs('ВЫЗОВ ФУНКЦИИ showMsg(text, user, showAlert) из ' + arguments.callee.caller.name);
+    logs('text = ' + JSON.stringify(text));     
+    logs('user = ' + JSON.stringify(user));
+    logs('showAlert = ' + JSON.stringify(showAlert));
+        if(options.showMsg){
         sendTo(options.telegram, {
             user: user,
             answerCallbackQuery: {
@@ -525,20 +610,51 @@ function showMsg(text, user, showAlert) {
 function addMenuIndex(menuRow, indexPrefix) {
     logs('ВЫЗОВ ФУНКЦИИ addMenuIndex(menuRow) из ' + arguments.callee.caller.name);
     logs('menuRow = ' + JSON.stringify(menuRow));    
+    logs('indexPrefix = ' + JSON.stringify(indexPrefix));
+    var newMenuRow; 
     if (Array.isArray(menuRow)) {
         indexPrefix = indexPrefix.length > 0 ? indexPrefix + '.' : '';
+        newMenuRow = [];
         for (const key of menuRow.keys()) {
-            menuRow[key].name = indexPrefix + key + '-' + menuRow[key].name;
-            if (Array.isArray(menuRow[key].submenu) && menuRow[key].submenu.length) {
-                menuRow[key].submenu = addMenuIndex(menuRow[key].submenu, indexPrefix + key);
+            var newMenuRowItem = {};
+            newMenuRowItem['name'] = indexPrefix + key + '-' + menuRow[key].name;
+            if (menuRow[key].hasOwnProperty('state') ) {
+                newMenuRowItem.state = menuRow[key].state;
             }
+            if (menuRow[key].hasOwnProperty('icon') ) {
+                newMenuRowItem.icon = menuRow[key].icon;
+            }
+            if (menuRow[key].hasOwnProperty('icons') ) {
+                newMenuRowItem.icons = menuRow[key].icons;
+            }
+            if (menuRow[key].hasOwnProperty('type') ) {
+                newMenuRowItem.type = menuRow[key].type;
+            }
+            if (menuRow[key].hasOwnProperty('function') ) {
+                newMenuRowItem.function = menuRow[key].function;
+            }       
+            if (menuRow[key].hasOwnProperty('param') ) {
+                newMenuRowItem.param = menuRow[key].param;
+            }      
+            if (Array.isArray(menuRow[key].submenu) && menuRow[key].submenu.length) {
+                newMenuRowItem.submenu = addMenuIndex(menuRow[key].submenu, indexPrefix + key);
+            }
+            else if (typeof menuRow[key].submenu === 'function') {
+                newMenuRowItem.submenu = menuRow[key].submenu(newMenuRowItem);
+            }
+            else {
+                newMenuRowItem.submenu = menuRow[key].submenu;
+            }
+            newMenuRow.push(newMenuRowItem);
         }
     }
     else if ((typeof menuRow === 'object') && menuRow.hasOwnProperty('submenu')) {
-        menuRow.name = '-' + menuRow.name;
-        menuRow.submenu = addMenuIndex(menuRow.submenu, '');
+        newMenuRow = {};
+        newMenuRow.name = '-' + menuRow.name;
+        newMenuRow.icon = menuRow.icon;        
+        newMenuRow.submenu = addMenuIndex(menuRow.submenu, '');
     }
-    return menuRow;
+    return newMenuRow;
 } 
 
 /*** skipIndex ***/
@@ -567,6 +683,50 @@ function getIndex(name) {
     }
 }
 
+/*** getDeclIndex ***/
+function getDeclIndex(strDecl) {
+    logs('ВЫЗОВ ФУНКЦИИ getDeclIndex(strDecl) из ' + arguments.callee.caller.name);
+    logs('strDecl = ' + JSON.stringify(strDecl));
+    if (strDecl === 'basic') {
+        return 1;
+    } 
+    else if(strDecl === 'inside') {
+        return 2;
+    } 
+    else if(strDecl === 'enter') {
+        return 3;
+    } 
+    else if(strDecl === 'exit') {
+        return 4;
+    }    
+    return 0;
+}
+
+/*** getRoomName ***/
+function getRoomName(roomEnum, roomNames, roomDecl) {
+    logs('ВЫЗОВ ФУНКЦИИ getRoomName(roomEnum) из ' + arguments.callee.caller.name);
+    logs('roomEnum = ' + JSON.stringify(roomEnum)); 
+    logs('roomNames = ' + JSON.stringify(roomNames)); 
+    logs('roomDecl = ' + JSON.stringify(roomDecl));   
+    roomEnum = roomEnum.split('.').pop();
+    const roomState = $('(rooms=' + roomEnum + ')(functions=localization)').getState();
+    logs('roomState = ' + JSON.stringify(roomState)); 
+    if ((roomState === undefined) || (roomState === null)) {
+        logs('options.language = ' + JSON.stringify(options.language) + ' ' + roomNames["ru"]); 
+        if (typeof roomNames === 'string') {
+            return roomNames;
+        } else if (roomNames[options.language] === undefined) {
+            return roomNames["en"];
+        }
+        else {
+            return roomNames[options.language] ;
+        }
+    }
+    else {
+        return roomState.val.split(',')[getDeclIndex(roomDecl)];
+    }
+}
+
 /*** logs ***/
 function logs(txt) {
     if(options.debug){
@@ -574,8 +734,25 @@ function logs(txt) {
     }
 }
 
-/*** indexing menu ***/
-menu = addMenuIndex(menu);
+/*** callback ***/
+function callback(user, cmd) {  
+    logs('ВЫЗОВ ФУНКЦИИ callback(user, cmd) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));    
+    logs('cmd = ' + cmd);
+    if(options.menucall.indexOf(cmd) >= 0){
+        showMenu(user, []);
+    } else {
+        if(cmd === options.closeCmd){
+            closeMenu(user);
+        } else if(cmd.indexOf(options.backCmd) === 0){
+            showMenu(user, getItemPos(cmd.replace(options.backCmd,'')));
+        } else if(cmd === options.homeCmd){
+            showMenu(user, []);
+        } else {
+            doMenuItem(user, cmd.replace(options.menuPrefix,''))
+        }
+    }
+}
 
 /*** subscribe on Telegram ***/
 on({id: options.telegram + '.communicate.request', change: 'any'}, function (obj) {   
