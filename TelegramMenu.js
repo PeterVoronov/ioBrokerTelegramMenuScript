@@ -22,6 +22,30 @@ var options = {
     debug:      false                    // Режим отладки, подробное логирование
 };
 
+//Telegram bot with inline menu, based on https://blog.instalator.ru/archives/1996 by Vladimir Vilisov aka instalator
+
+// https://www.emojicopy.com/ эмодзи
+
+//////////// Настройки ///////////
+var options = {
+    telegram:   'telegram.0',           // Инстанция драйвера
+    backText:   '🔙 Назад',             // Надпись на кнопке Назад
+    backCmd:    'back-',                 //Префикс команды кнопки Назад
+    closeText:  '❌ Закрыть',           // Надпись на кнопке Закрыть
+    closeCmd:   'close',                //Команда кнопки Закрыть
+    homeText:   '🏚 Главная',           // Надпись на кнопке Домой
+    homeCmd:    'home',                  //Команда кнопки Домой
+    width:      3,                      // Максимальное количество столбцов с кнопками
+    users_id:   [123456789,234567891],            // id пользователей которые имеют доступ к меню
+    menucall:   ['Меню', 'меню', '/menu'],      // Команда для вызова меню
+    menuPrefix: 'menu-',                // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
+    showHome:   true,                   // Показывать кнопку Домой
+    showMsg:    true,                   // Показывать вплывающие сообщения
+    language:   "ru",                   // Язык общения
+    locale:     "ru-RU",                // Язык общения    
+    debug:      false                    // Режим отладки, подробное логирование
+};
+
 /////////// МЕНЮ НАЧАЛО ////////////
 const menu = {
     name: 'Главное меню',
@@ -428,7 +452,7 @@ function showMenu(user, itemPos, menuItem) {
         if (menuRows.hasOwnProperty('function') && (typeof menuRows.function === "function")) {
             logs('itemPos = ' + JSON.stringify(itemPos));
             if (menuItem === undefined) {
-                menuItem = getMenuItem(itemPos.concat(menu));
+                menuItem = getMenuItem(itemPos.concat(menuBase));
             }
             const resultText = menuRows.function(menuItem);
             menuRows.menutext += resultText.length > 0 ? '\r\n' + resultText : '';
