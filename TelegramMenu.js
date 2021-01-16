@@ -22,30 +22,6 @@ var options = {
     debug:      false                    // Режим отладки, подробное логирование
 };
 
-//Telegram bot with inline menu, based on https://blog.instalator.ru/archives/1996 by Vladimir Vilisov aka instalator
-
-// https://www.emojicopy.com/ эмодзи
-
-//////////// Настройки ///////////
-var options = {
-    telegram:   'telegram.0',           // Инстанция драйвера
-    backText:   '🔙 Назад',             // Надпись на кнопке Назад
-    backCmd:    'back-',                 //Префикс команды кнопки Назад
-    closeText:  '❌ Закрыть',           // Надпись на кнопке Закрыть
-    closeCmd:   'close',                //Команда кнопки Закрыть
-    homeText:   '🏚 Главная',           // Надпись на кнопке Домой
-    homeCmd:    'home',                  //Команда кнопки Домой
-    width:      3,                      // Максимальное количество столбцов с кнопками
-    users_id:   [123456789,234567891],            // id пользователей которые имеют доступ к меню
-    menucall:   ['Меню', 'меню', '/menu'],      // Команда для вызова меню
-    menuPrefix: 'menu-',                // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
-    showHome:   true,                   // Показывать кнопку Домой
-    showMsg:    true,                   // Показывать вплывающие сообщения
-    language:   "ru",                   // Язык общения
-    locale:     "ru-RU",                // Язык общения    
-    debug:      false                    // Режим отладки, подробное логирование
-};
-
 /////////// МЕНЮ НАЧАЛО ////////////
 const menu = {
     name: 'Главное меню',
@@ -107,7 +83,7 @@ const submenuParams = {
             mask : 'linkeddevices.0.sockets.*.plug.*.state',
             role : 'switch',
             state : 'state',
-            rooms : true,
+            rooms : false,
             icons : {on: '✅', off: '❌'},
             menuitems : 
                 {
@@ -167,7 +143,7 @@ function submenuGenerator(upperMenuItem) {
     logs('upperMenuItem = ' + JSON.stringify(upperMenuItem));
     var upperMenuIndex = getIndex(upperMenuItem.name);
     var subMenu = [];
-    var currId = 0;
+    var currId = -1;
     var lastRoom = '';
     var roomIndex = -1;
     var roomMenuIndex = '';
@@ -179,51 +155,27 @@ function submenuGenerator(upperMenuItem) {
         logs('room = ' + JSON.stringify(room));
         logs('lastRoom = ' + JSON.stringify(lastRoom));
         logs('roomIndex = ' + JSON.stringify(roomIndex));
+        logs('currId = ' + JSON.stringify(currId));
         logs('roomMenuIndex = ' + JSON.stringify(roomMenuIndex));
         logs('roomMenuItem = ' + JSON.stringify(roomMenuItem));
         logs('menuItemName = ' + JSON.stringify(menuItemName));
         logs('subMenu = ' + JSON.stringify(subMenu));
         const idPrefix = id.split('.').slice(0,-1).join('.');
-
-        if ((lastRoom === room.id)  || submenuParams[upperMenuItem.type]['rooms']) {
-            if ((roomIndex < 0) && (lastRoom === room.id)  && submenuParams[upperMenuItem.type]['rooms']) {
-                roomIndex++;
-                roomIndex++;
-                currId--; 
-            } else if (lastRoom !== room.id) {
-                roomIndex = -1;
+        if (lastRoom != room.id) {
+            if ((! submenuParams[upperMenuItem.type]['rooms']) && (currId >= 0) && (subMenu[subMenu.length-1].submenu.length === 1)) {
+                subMenu = unRoom(subMenu);
             }
-            if (roomIndex < 0) {
-                if (lastRoom === room.id) {
-                    currId--; 
-                }
-                roomMenuItem = {
-                                    name: upperMenuIndex + '.' + currId + '-' + getRoomName(room.id, room.name,'Main'),
-                                    icon: upperMenuItem.icon,
-                                    submenu: []
-                                };
-                roomIndex++;
-                if (lastRoom === room.id) {
-                    var tempItem = subMenu.pop();
-                    tempItem.name = upperMenuIndex + '.' + currId + '.' + roomIndex + '-' + getObject(tempItem.state.split('.').slice(0,-1).join('.')).common.name;
-                    for (var i = 0; i < tempItem.submenu.length; i++) {
-                        tempItem.submenu[i].name =  upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + i + '-' + skipIndex(tempItem.submenu[i].name);
-                    }
-                    roomMenuItem.submenu.push(tempItem);
-                    roomIndex++;
-                }
-                subMenu.push(roomMenuItem);
-            }
-            roomMenuIndex = '.' + roomIndex;
-            menuItemName = getObject(idPrefix).common.name;
-        }
-        else {
-            roomIndex = -1;
-            roomMenuIndex = '';
-            menuItemName = getRoomName(room.id, room.name,'Main');
+            currId++;
+            roomMenuItem = {
+                                name: upperMenuIndex + '.' + currId + '-' + getRoomName(room.id, room.name,'Main'),
+                                icon: upperMenuItem.icon,
+                                submenu: []
+                            };
+            roomIndex = 0;
+            subMenu.push(roomMenuItem);
         }
         const menuItem = {
-                            name: upperMenuIndex + '.' + currId + roomMenuIndex + '-' + menuItemName,
+                            name: upperMenuIndex + '.' + currId + '.' + roomIndex + '-' + getObject(idPrefix).common.name,
                             state: id,
                             type: upperMenuItem.type,
                             icons: submenuParams[upperMenuItem.type]['icons'],
@@ -236,7 +188,7 @@ function submenuGenerator(upperMenuItem) {
         for (const [state, name] of Object.entries(submenuParams[upperMenuItem.type]['menuitems'])) {
             if (existsState(idPrefix + state)) {
                 menuItem.submenu.push({
-                                    name: upperMenuIndex + '.' + currId + roomMenuIndex + '.' + currSubId + '-' + name,
+                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + name,
                                     state: idPrefix + state,
                                     icons: submenuParams[upperMenuItem.type]['icons'],
                                     submenu: []
@@ -244,26 +196,27 @@ function submenuGenerator(upperMenuItem) {
                 currSubId++;
             }
         }        
-        if (lastRoom === room.id) {
-            roomMenuItem.submenu.push(menuItem)
-            roomIndex++;
-        }
-        else {
-            if (submenuParams[upperMenuItem.type]['rooms']) {
-                roomMenuItem.submenu.push(menuItem)
-                roomIndex = -1;
-                roomMenuIndex = '';
-            }
-            else {
-                subMenu.push(menuItem);
-            }
-            currId++;
-        }
+        roomMenuItem.submenu.push(menuItem)
+        roomIndex++;
         lastRoom = room.id;
     })
+    if ((! submenuParams[upperMenuItem.type]['rooms']) && (subMenu[subMenu.length-1].submenu.length === 1)) {
+        subMenu = unRoom(subMenu);
+    }
     return subMenu;
 }
 
+/*** unRoom ***/
+function unRoom(subMenu) {
+    logs('subMenu = ' + JSON.stringify(subMenu)); 
+    var roomMenuItem = subMenu.pop();
+    roomMenuItem.submenu[0].name = roomMenuItem.name;
+    for (var i = 0; i < roomMenuItem.submenu[0].submenu.length; i++) {
+        roomMenuItem.submenu[0].submenu[i].name =  getIndex(roomMenuItem.submenu[0].submenu[i].name).split('.').slice(0,-1).join('.') + '-' + skipIndex(roomMenuItem.submenu[0].submenu[i].name);
+    }
+    subMenu.push(roomMenuItem.submenu[0])
+    return subMenu;
+}
 
 /*** processObjects ***/
 function processObjects(objMask, objRole, objFunc, objCB) {
