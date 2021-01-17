@@ -190,7 +190,7 @@ const submenuParams = {
 #### mask
 ~В данном случае - маска поиска соответствующих объектов ioBroker, аналогичная той, что используется в [селекторе объектов](https://github.com/ioBroker/ioBroker.javascript/blob/master/docs/en/javascript.md#---selector).~ Не используется.
 #### role
-Собственно роль объекта в интерфейсе ioBroker. ![](docs/images/role_ru.png)![](docs/images/role_ru.png)
+Собственно роль объекта в интерфейсе ioBroker. ![](docs/images/role_ru.png)
 #### state
 Собственно "краткий" идентификатор объекта, его же вы видите в интерфейсе ioBroker. ![](docs/images/state_short_ru.png)
 #### icons
