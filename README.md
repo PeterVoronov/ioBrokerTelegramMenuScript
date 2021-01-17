@@ -1,8 +1,8 @@
 # ioBrokerTelegramMenuScript
 
-Telegram bot with inline menu, based on https://blog.instalator.ru/archives/1996 by Vladimir Vilisov aka instalator
-There is Russian language Readme.md
-English one will come later.
+Telegram bot with inline menu, based on https://blog.instalator.ru/archives/1996 by Vladimir Vilisov aka instalator.
+- There is Russian language Readme.md.
+- English one will come later.
 
 ## Отличия от оригинального скрипта
 Мне было интересно сделать возможность автоматически генерировать элементы меню телеграмма, как с кнопками, так и с информацией, на базе объектов в [ioBroker](https://www.iobroker.net/), делать их разнесение по комнатам, на базе [Категорий](https://www.iobroker.net/#en/documentation/admin/enums.md). 
