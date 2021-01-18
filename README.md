@@ -188,7 +188,7 @@ const submenuParams = {
 Каждый вложенный объект, описывающий соответствующий тип имеет некоторое количество обязательных свойств.
 ### Свойства типа генерируемого меню.
 #### mask
-~В данном случае - маска поиска соответствующих объектов ioBroker, аналогичная той, что используется в [селекторе объектов](https://github.com/ioBroker/ioBroker.javascript/blob/master/docs/en/javascript.md#---selector).~ Не используется.
+В данном случае - маска поиска соответствующих объектов ioBroker, аналогичная той, что используется в [селекторе объектов](https://github.com/ioBroker/ioBroker.javascript/blob/master/docs/en/javascript.md#---selector).
 #### role
 Собственно роль объекта в интерфейсе ioBroker. ![](docs/images/role_ru.png)
 #### state
