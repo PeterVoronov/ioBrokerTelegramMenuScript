@@ -13,7 +13,9 @@ var options = {
     homeCmd:    'home',                  //Команда кнопки Домой
     width:      3,                      // Максимальное количество столбцов с кнопками
     users_id:   [123456789,234567891],            // id пользователей которые имеют доступ к меню
-    menucall:   ['Меню', 'меню', '/menu'],      // Команда для вызова меню
+    username:   true,                   // использовать Имя Пользователя(UserName) телеграмм для общения
+    menucall:   ['Меню', 'меню', '/menu'],      // Команды для вызова меню
+    clearmenucall: true,                // Удалять команду пользователя, вызвавшую меню
     menuPrefix: 'menu-',                // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
     showHome:   true,                   // Показывать кнопку Домой
     showMsg:    true,                   // Показывать вплывающие сообщения
@@ -136,6 +138,52 @@ const submenuParams = {
         },
 };
 
+/*** statesCommonAttr ***/
+const statesCommonAttr = {
+    'botSendMessageId' : {name:"Message ID of last sent message by the bot", type: 'number', read: true, write: true, role: 'id'},
+    'messageId' : {name:"Message ID of last received request", type: 'number', read: true, write: true, role: 'id'},
+    'user': {name:"user data as json", type: "string", read: true, write: true, role: "text"},
+    'menuOn' : {name:"Is menu shown to the user", type: 'boolean', read: true, write: true, role: 'state'}
+};
+
+/*** statesCache ***/
+var statesCache = {};
+
+/*** getStateCached ***/
+function getStateCached(user, state) {
+    logs('ВЫЗОВ ФУНКЦИИ getStateCached(user, state, value) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('state = ' + JSON.stringify(state));
+    const id = 'automenu.' + options.telegram + '.' + user + '.' + state;
+    if (statesCache.hasOwnProperty(id)) {
+        return statesCache[id];
+    }
+    else {
+        if (existsState(id)) {
+            statesCache[id] = getState(id).val;
+            return statesCache[id];
+        }
+    }
+    return undefined;
+}
+
+/*** setStateCached ***/
+function setStateCached(user, state, value) {
+    logs('ВЫЗОВ ФУНКЦИИ setStateCached(user, state, value) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('state = ' + JSON.stringify(state));
+    logs('value = ' + JSON.stringify(value));
+    const id = 'automenu.' + options.telegram + '.' + user + '.' + state;
+    statesCache[id] = value;
+    if (existsState(id)) {
+        setState(id,value,true);
+    }
+    else {
+        if (statesCommonAttr.hasOwnProperty(state) ) {
+            createState(id, value, statesCommonAttr[state])
+        }
+    }
+}
 
 /*** submenuGenerator ***/
 function submenuGenerator(upperMenuItem) {
@@ -412,13 +460,13 @@ function showMenu(user, itemPos, menuItem) {
         }
         logs('menuRows 2 = ' + JSON.stringify(menuRows));
         sendTo(options.telegram, {
-            user: user,
+            user: getUser(user),
             text: menuRows.menutext,
             parse_mode: 'HTML',
             editMessageText: {
                 options: {
-                    chat_id: getState(options.telegram + ".communicate.requestChatId").val, 
-                    message_id: getState(options.telegram + ".communicate.requestMessageId").val,
+                    chat_id: user, 
+                    message_id: getStateCached(user, 'botSendMessageId'),
                     parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: menuRows.buttons,
@@ -427,18 +475,39 @@ function showMenu(user, itemPos, menuItem) {
             }
         });
     } else {
-        closeMenu(user);
         menuRows.buttons = splitMenu(menuRows.buttons);
         menuRows.buttons.push([{ text: options.closeText, callback_data: options.closeCmd }]);
-        logs('menuRows 4 ' + JSON.stringify(menuRows));
-        sendTo(options.telegram, {
-            user: user,
-            text: menuRows.menutext,
-            parse_mode: 'HTML',            
-            reply_markup: {
-                inline_keyboard: menuRows.buttons,
-            }
-        }); 
+        if (getStateCached(user, 'menuOn')) {
+            logs('menuRows 3 ' + JSON.stringify(menuRows));
+            sendTo(options.telegram, {
+                user: getUser(user),
+                text: menuRows.menutext,
+                parse_mode: 'HTML',
+                editMessageText: {
+                    options: {
+                        chat_id: user, 
+                        message_id: getStateCached(user, 'botSendMessageId'),
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: menuRows.buttons,
+                        }
+                    }
+                }
+            });
+        }
+        else {
+            //closeMenu(user);
+            logs('menuRows 4 ' + JSON.stringify(menuRows));
+            sendTo(options.telegram, {
+                user: getUser(user),
+                text: menuRows.menutext,
+                parse_mode: 'HTML',            
+                reply_markup: {
+                    inline_keyboard: menuRows.buttons,
+                }
+            });
+            setStateCached(user, 'menuOn', true);
+        }
     }
 }
 
@@ -540,19 +609,30 @@ function getMenuItem(subMenuPos) {
     }
 }
 
+
+/*** clearMessage ***/
+function clearMessage(user, isUserMessage) {  
+    logs('ВЫЗОВ ФУНКЦИИ clearMessage(user, isUserMessage) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('isUserMessage = ' + JSON.stringify(isUserMessage));    
+    logs('messageid = ' + isUserMessage ? getStateCached(user, 'messageId') : getStateCached(user, 'botSendMessageId'));
+    sendTo(options.telegram, {
+        user: getUser(user),
+        deleteMessage: {
+            options: {
+                chat_id: user, 
+                message_id: isUserMessage ? getStateCached(user, 'messageId') : getStateCached(user, 'botSendMessageId'),
+            }
+        }
+    });
+}
+
 /*** closeMenu ***/
 function closeMenu(user) {  
     logs('ВЫЗОВ ФУНКЦИИ closeMenu(user) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
-    sendTo(options.telegram, {
-        user: user,
-        deleteMessage: {
-            options: {
-                chat_id: getState(options.telegram + ".communicate.requestChatId").val, 
-                message_id: getState(options.telegram + ".communicate.requestMessageId").val,
-            }
-        }
-    });
+    clearMessage(user, false);
+    setStateCached(user, 'menuOn', false);
 }
 
 /*** splitMenu ***/
@@ -574,7 +654,7 @@ function showMsg(text, user, showAlert) {
     logs('showAlert = ' + JSON.stringify(showAlert));
         if(options.showMsg){
         sendTo(options.telegram, {
-            user: user,
+            user: getUser(user),
             answerCallbackQuery: {
                 text: text,
                 showAlert: showAlert ? true:false
@@ -679,6 +759,7 @@ function getDeclIndex(strDecl) {
     return 0;
 }
 
+
 /*** getRoomName ***/
 function getRoomName(roomEnum, roomNames, roomDecl) {
     logs('ВЫЗОВ ФУНКЦИИ getRoomName(roomEnum) из ' + arguments.callee.caller.name);
@@ -711,12 +792,37 @@ function logs(txt) {
     }
 }
 
+/*** getUser ***/
+function getUser(user) {  
+    logs('ВЫЗОВ ФУНКЦИИ getUser(user) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    var name = getStateCached(user, 'user');
+    if ((name === undefined) && (existsState(options.telegram + ".communicate.users"))) {
+        name = JSON.parse(getState(options.telegram + ".communicate.users").val);
+        if (name.hasOwnProperty(user)) {
+            name = name[user];
+        }
+    }
+    if (name !== undefined) {
+        if (name.hasOwnProperty('userName')) {
+            return name.userName;
+        }
+        else if (name.hasOwnProperty('firstName')) {
+            return name.firstName;
+        }
+    }
+    return '';
+}
+
 /*** callback ***/
 function callback(user, cmd) {  
     logs('ВЫЗОВ ФУНКЦИИ callback(user, cmd) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));    
     logs('cmd = ' + cmd);
     if(options.menucall.indexOf(cmd) >= 0){
+        if (options.clearmenucall) {
+            clearMessage(user, true);
+        }
         showMenu(user, []);
     } else {
         if(cmd === options.closeCmd){
@@ -725,29 +831,46 @@ function callback(user, cmd) {
             showMenu(user, getItemPos(cmd.replace(options.backCmd,'')));
         } else if(cmd === options.homeCmd){
             showMenu(user, []);
-        } else {
+        } else if (cmd.indexOf(options.menuPrefix) === 0) {
             doMenuItem(user, cmd.replace(options.menuPrefix,''))
         }
     }
 }
 
+
+
+
 /*** subscribe on Telegram ***/
-on({id: options.telegram + '.communicate.request', change: 'any'}, function (obj) {   
-    var cmd = (obj.state.val.substring(obj.state.val.indexOf(']')+1)).toLowerCase(); 
-    var userid = getState(options.telegram + ".communicate.requestChatId").val;
-    if (userid){
-        var name = getState(options.telegram + ".communicate.users").val;
-        try {
-            name = JSON.parse(name);
-        } catch (err) {
-            logs("Ошибка парсинга - " + JSON.stringify(err));
-        }
-        if (options.users_id.indexOf(userid) >= 0){
-            logs('Пользователь - ' + name[userid].firstName + '(' + name[userid].userName +') с id - ' + userid + '; Отправленная команда - ' + cmd);
-            callback(name[userid].userName, cmd);
-        }  else {
-            log('Доступ запрещен. Пользователя - ' + name[userid] + '(' + name[userid].userName +') с id - ' + userid + ' нет в списке доверенных.' );
+on({id: options.telegram + '.communicate.request', change: 'any'}, function  requestSubscribe(obj) {   
+    logs('ВЫЗОВ ФУНКЦИИ requestSubscribe(obj)');
+    logs('obj = ' + JSON.stringify(obj));    
+    var cmd = (obj.state.val.substring(obj.state.val.indexOf(']')+1)).toLowerCase();
+    if (cmd.length > 0) {
+        const userid = getState(options.telegram + ".communicate.requestChatId").val;
+        const messageId = getState(options.telegram + ".communicate.requestMessageId").val;
+        if (userid){
+            var name = getState(options.telegram + ".communicate.users").val;
+            try {
+                name = JSON.parse(name);
+            } catch (err) {
+                logs("Ошибка парсинга - " + JSON.stringify(err));
+            }
+            if (options.users_id.indexOf(userid) >= 0){
+                logs('Пользователь - ' + name[userid].firstName + '(' + name[userid].userName +') с id - ' + userid + '; Отправленная команда - ' + cmd + 'с ид = ' + messageId);
+                setStateCached(userid, 'user', JSON.stringify(name[userid]));
+                setStateCached(userid, 'messageId', messageId);
+                callback(userid, cmd);
+            }  else {
+                log('Доступ запрещен. Пользователя - ' + name[userid] + '(' + name[userid].userName +') с id - ' + userid + ' нет в списке доверенных.' );
+            }
         }
     }
 });
 
+/*** subscribe on Telegram bot activityes  ***/
+on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerSubscribe(obj) {   
+    logs('ВЫЗОВ ФУНКЦИИ answerSubscribe(obj)');
+    logs('obj = ' + JSON.stringify(obj));    
+    const userid = getState(options.telegram + ".communicate.botSendChatId").val;
+    setStateCached(userid, 'botSendMessageId', obj.state.val);
+});
