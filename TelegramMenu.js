@@ -32,7 +32,15 @@ const menu = {
         { // Двери
             name: 'Двери',
             icon: '🚪',
-            type: 'door',
+            funcEnum: 'door',
+            type: 'magnet',
+            submenu: submenuGenerator
+        },
+        { // Окна
+            name: 'Окна',
+            icon: '⬜',
+            funcEnum: 'window',
+            type: 'magnet',
             submenu: submenuGenerator
         },
         { // Освещение
@@ -50,6 +58,7 @@ const menu = {
         { // Розетки
             name: 'Розетки',
             icon: '🔌',
+            funcEnum: 'plug',
             type: 'plug',
             submenu: submenuGenerator
         },        
@@ -110,7 +119,7 @@ const submenuParams = {
                 {
                 }
         },
-    'door' :
+    'magnet' :
         {
             mask : 'linkeddevices.0.sensors.*.magnet.*.opened',
             role : 'state',
@@ -131,8 +140,8 @@ const submenuParams = {
                     'ts' : 'По состоянию на',
                     'val' : {
                         'prefix' : 'Статус',
-                        true : 'Открыта',
-                        false : 'Закрыта'
+                        true : 'Открыт(-а)(-о)',
+                        false : 'Закрыт(-а)(-о)'
                     }
                 }                
         },
@@ -197,7 +206,7 @@ function submenuGenerator(upperMenuItem) {
     var roomMenuIndex = '';
     var roomMenuItem;
     var menuItemName = '';
-    processObjects(submenuParams[upperMenuItem.type]['mask'], submenuParams[upperMenuItem.type]['role'], upperMenuItem.type, function plugsCB (id, room) {
+    processObjects(submenuParams[upperMenuItem.type]['mask'], submenuParams[upperMenuItem.type]['role'], upperMenuItem.funcEnum, function plugsCB (id, room) {
         logs('ВЫЗОВ ФУНКЦИИ plugsCB(id, room) из ' + arguments.callee.caller.name);
         logs('id = ' + JSON.stringify(id));
         logs('room = ' + JSON.stringify(room));
@@ -256,11 +265,17 @@ function submenuGenerator(upperMenuItem) {
 
 /*** unRoom ***/
 function unRoom(subMenu) {
+    logs('ВЫЗОВ ФУНКЦИИ unRoom(subMenu) из ' + arguments.callee.caller.name);
     logs('subMenu = ' + JSON.stringify(subMenu)); 
     var roomMenuItem = subMenu.pop();
     roomMenuItem.submenu[0].name = roomMenuItem.name;
     for (var i = 0; i < roomMenuItem.submenu[0].submenu.length; i++) {
-        roomMenuItem.submenu[0].submenu[i].name =  getIndex(roomMenuItem.submenu[0].submenu[i].name).split('.').slice(0,-1).join('.') + '-' + skipIndex(roomMenuItem.submenu[0].submenu[i].name);
+        logs('roomMenuItem.submenu[0].submenu[' + i + '].name = ' + JSON.stringify(roomMenuItem.submenu[0].submenu[i].name));
+        var newIndex = getIndex(roomMenuItem.submenu[0].submenu[i].name).split('.');
+        logs('oldIndex = ' + JSON.stringify(newIndex));
+        newIndex.splice(-2,1);
+        logs('newIndex = ' + JSON.stringify(newIndex));
+        roomMenuItem.submenu[0].submenu[i].name =  newIndex.join('.') + '-' + skipIndex(roomMenuItem.submenu[0].submenu[i].name);
     }
     subMenu.push(roomMenuItem.submenu[0])
     return subMenu;
@@ -533,7 +548,10 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
         }
         if(subMenuRow.submenu[n].hasOwnProperty('type')) {
             menuRows.type = subMenuRow.submenu[n].type;
-        }                
+        }        
+        if(subMenuRow.submenu[n].hasOwnProperty('funcEnum')) {
+            menuRows.funcEnum = subMenuRow.submenu[n].funcEnum;
+        }                 
         if (subMenuPos.length > 0) { 
             menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
         }
@@ -687,6 +705,9 @@ function addMenuIndex(menuRow, indexPrefix) {
             if (menuRow[key].hasOwnProperty('type') ) {
                 newMenuRowItem.type = menuRow[key].type;
             }
+            if (menuRow[key].hasOwnProperty('funcEnum') ) {
+                newMenuRowItem.funcEnum = menuRow[key].funcEnum;
+            }
             if (menuRow[key].hasOwnProperty('function') ) {
                 newMenuRowItem.function = menuRow[key].function;
             }       
@@ -786,8 +807,8 @@ function getRoomName(roomEnum, roomNames, roomDecl) {
 }
 
 /*** logs ***/
-function logs(txt) {
-    if(options.debug){
+function logs(txt, debug) {
+    if ((options.debug) || (debug !== undefined)){
         log(arguments.callee.caller.name + ': ' + txt);
     }
 }
