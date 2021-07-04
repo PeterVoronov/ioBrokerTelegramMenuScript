@@ -147,6 +147,8 @@ const submenuParams = {
         },
 };
 
+const mainDataPrefix = '0_userdata.0.telegram_automenu.';
+
 /*** statesCommonAttr ***/
 const statesCommonAttr = {
     'botSendMessageId' : {name:"Message ID of last sent message by the bot", type: 'number', read: true, write: true, role: 'id'},
@@ -166,14 +168,16 @@ function getStateCached(user, state) {
     logs('ВЫЗОВ ФУНКЦИИ getStateCached(user, state, value) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('state = ' + JSON.stringify(state));
-    const id = 'automenu.' + options.telegram + '.' + user + '.' + state;
+    const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
     if (statesCache.hasOwnProperty(id)) {
-        return statesCache[id];
+        logs('Cached = ' + JSON.stringify(statesCache[id]));
+        return JSON.parse(statesCache[id]);
     }
     else {
         if (existsState(id)) {
             statesCache[id] = getState(id).val;
-            return statesCache[id];
+            logs('Non cached = ' + JSON.stringify(statesCache[id]));
+            return JSON.parse(statesCache[id]);
         }
     }
     return undefined;
@@ -185,7 +189,7 @@ function setStateCached(user, state, value) {
     logs('user = ' + JSON.stringify(user));
     logs('state = ' + JSON.stringify(state));
     logs('value = ' + JSON.stringify(value));
-    const id = 'automenu.' + options.telegram + '.' + user + '.' + state;
+    const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
     statesCache[id] = value;
     if (existsState(id)) {
         setState(id,value,true);
@@ -196,6 +200,62 @@ function setStateCached(user, state, value) {
         }
     }
 }
+
+/*** delStateCached ***/
+function delStateCached(user, state) {
+    logs('ВЫЗОВ ФУНКЦИИ delStateCached(user, state) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('state = ' + JSON.stringify(state));
+    const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
+    if (existsState(id)) {
+        deleteState(id);
+    }
+    if (statesCache.hasOwnProperty(id)) {
+        delete statesCache[id];
+    } 
+}
+
+/*** initConfig ***/
+function initConfig() {
+    logs('ВЫЗОВ ФУНКЦИИ initConfig() из ' + arguments.callee.caller.name);
+    const configPrefix = '0_userdata.0.telegram_automenu.config.';
+    for (const [key, value] of Object.entries(options)) {
+        const id = configPrefix + key;
+        if (existsState(id)) {
+            options[key] = getState(id).val;
+            if (Array.isArray(value)) {
+                options[key] = options[key].split(',');
+            }
+            logs('option ' + JSON.stringify(key) + ' = ' + JSON.stringify(value) + ' is configured to ' + JSON.stringify(options[key]));
+            //options[key] = newVal;
+        }
+        else {
+            let stateVal = value;
+            let stateType = typeof stateVal;
+            if (Array.isArray(stateVal)) {
+                stateVal = stateVal.join(',');
+                stateType = 'string';
+            }
+            createState(id, stateVal, {name: key, type: stateType, read: true, write: true})
+            logs('state ' + JSON.stringify(id) + ' created for option ' + JSON.stringify(key) + ' = ' + JSON.stringify(stateVal));
+        }
+    }
+    on({id: /^0_userdata\.0\.telegram_automenu\.config\..*$/, change: 'ne'}, function optionsSubscribe(obj) {   
+        logs('ВЫЗОВ ФУНКЦИИ optionsSubscribe(obj)');
+        logs('obj = ' + JSON.stringify(obj));
+        const key = obj['id'].split('.').pop();
+        if (Array.isArray(options[key])) {
+            options[key] = obj['state']['val'].split(',');
+        }
+        else {
+            options[key] = obj['state']['val'];
+        }
+        setState(obj['id'], obj['state']['val'], true);
+        logs('options[' + key + '] is set to ' + JSON.stringify(options[key]));
+    });
+}
+
+
 
 /*** submenuGenerator ***/
 function submenuGenerator(upperMenuItem) {
@@ -276,7 +336,7 @@ function unRoom(subMenu) {
         logs('roomMenuItem.submenu[0].submenu[' + i + '].name = ' + JSON.stringify(roomMenuItem.submenu[0].submenu[i].name));
         var newIndex = getIndex(roomMenuItem.submenu[0].submenu[i].name).split('.');
         logs('oldIndex = ' + JSON.stringify(newIndex));
-        newIndex.splice(-2,1);
+        newIndex.splice(-2, 1);
         logs('newIndex = ' + JSON.stringify(newIndex));
         roomMenuItem.submenu[0].submenu[i].name =  newIndex.join('.') + '-' + skipIndex(roomMenuItem.submenu[0].submenu[i].name);
     }
@@ -543,10 +603,18 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
         menuRows.menutext += ' > ' + getItemIcon(subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
         n = subMenuPos.shift();
         logs('(1) subMenuRow.submenu[' + n + '] = ' + JSON.stringify(subMenuRow.submenu[n]));
-        menuRows.function = subMenuRow.submenu[n].hasOwnProperty('function') ? subMenuRow.submenu[n].function : undefined;
-        menuRows.state = subMenuRow.submenu[n].hasOwnProperty('state') ? subMenuRow.submenu[n].state : undefined;
-        menuRows.type = subMenuRow.submenu[n].hasOwnProperty('type') ? subMenuRow.submenu[n].type : undefined;
-        menuRows.funcEnum = subMenuRow.submenu[n].hasOwnProperty('funcEnum') ? subMenuRow.submenu[n].funcEnum : undefined;        
+        if(subMenuRow.submenu[n].hasOwnProperty('function')) {
+            menuRows.function = subMenuRow.submenu[n].function;
+        }
+        if(subMenuRow.submenu[n].hasOwnProperty('state')) {
+            menuRows.state = subMenuRow.submenu[n].state;
+        }
+        if(subMenuRow.submenu[n].hasOwnProperty('type')) {
+            menuRows.type = subMenuRow.submenu[n].type;
+        }        
+        if(subMenuRow.submenu[n].hasOwnProperty('funcEnum')) {
+            menuRows.funcEnum = subMenuRow.submenu[n].funcEnum;
+        }                 
         if (subMenuPos.length > 0) { 
             menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
         }
@@ -813,8 +881,11 @@ function getUser(user) {
     logs('ВЫЗОВ ФУНКЦИИ getUser(user) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     var name = getStateCached(user, 'user');
+    logs('name = ' + JSON.stringify(name));
+    logs('type = ' + typeof(name));
     if ((name === undefined) && (existsState(options.telegram + ".communicate.users"))) {
         name = JSON.parse(getState(options.telegram + ".communicate.users").val);
+        logs('communicate.users = ' + name);
         if (name.hasOwnProperty(user)) {
             name = name[user];
         }
@@ -839,6 +910,7 @@ function callback(user, cmd) {
         if (options.clearmenucall) {
             clearMessage(user, true);
         }
+        setStateCached(user, 'menuOn', false);
         showMenu(user, []);
     } else {
         if(cmd === options.closeCmd){
@@ -871,7 +943,7 @@ on({id: options.telegram + '.communicate.request', change: 'any'}, function  req
             } catch (err) {
                 logs("Ошибка парсинга - " + JSON.stringify(err));
             }
-            if (options.users_id.indexOf(userid) >= 0){
+            if ((options.users_id.indexOf(userid) >= 0) || (options.users_id.indexOf(userid.toString()) >= 0)){
                 logs('Пользователь - ' + name[userid].firstName + '(' + name[userid].userName +') с id - ' + userid + '; Отправленная команда - ' + cmd + 'с ид = ' + messageId);
                 setStateCached(userid, 'user', JSON.stringify(name[userid]));
                 setStateCached(userid, 'messageId', messageId);
@@ -884,9 +956,19 @@ on({id: options.telegram + '.communicate.request', change: 'any'}, function  req
 });
 
 /*** subscribe on Telegram bot activityes  ***/
-on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerSubscribe(obj) {   
-    logs('ВЫЗОВ ФУНКЦИИ answerSubscribe(obj)');
+on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerSubscribeMessage(obj) {   
+    logs('ВЫЗОВ ФУНКЦИИ answerSubscribeMessage(obj)');
     logs('obj = ' + JSON.stringify(obj));    
     const userid = getState(options.telegram + ".communicate.botSendChatId").val;
+    logs('userid = ' + JSON.stringify(userid)); 
     setStateCached(userid, 'botSendMessageId', obj.state.val);
 });
+on({id: options.telegram + '.communicate.botSendChatId', change: 'any'}, function answerSubscribeChat(obj) {   
+    logs('ВЫЗОВ ФУНКЦИИ answerSubscribeChat(obj)');
+    logs('obj = ' + JSON.stringify(obj));    
+    const messageid = getState(options.telegram + ".communicate.botSendMessageId").val;
+    logs('messageid = ' + JSON.stringify(messageid)); 
+    setStateCached(obj.state.val, 'botSendMessageId', messageid);
+});
+
+initConfig();
