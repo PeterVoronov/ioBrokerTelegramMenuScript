@@ -540,18 +540,10 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
         menuRows.menutext += ' > ' + getItemIcon(subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
         n = subMenuPos.shift();
         logs('(1) subMenuRow.submenu[' + n + '] = ' + JSON.stringify(subMenuRow.submenu[n]));
-        if(subMenuRow.submenu[n].hasOwnProperty('function')) {
-            menuRows.function = subMenuRow.submenu[n].function;
-        }
-        if(subMenuRow.submenu[n].hasOwnProperty('state')) {
-            menuRows.state = subMenuRow.submenu[n].state;
-        }
-        if(subMenuRow.submenu[n].hasOwnProperty('type')) {
-            menuRows.type = subMenuRow.submenu[n].type;
-        }        
-        if(subMenuRow.submenu[n].hasOwnProperty('funcEnum')) {
-            menuRows.funcEnum = subMenuRow.submenu[n].funcEnum;
-        }                 
+        menuRows.function = subMenuRow.submenu[n].hasOwnProperty('function') ? subMenuRow.submenu[n].function : undefined;
+        menuRows.state = subMenuRow.submenu[n].hasOwnProperty('state') ? subMenuRow.submenu[n].state : undefined;
+        menuRows.type = subMenuRow.submenu[n].hasOwnProperty('type') ? subMenuRow.submenu[n].type : undefined;
+        menuRows.funcEnum = subMenuRow.submenu[n].hasOwnProperty('funcEnum') ? subMenuRow.submenu[n].funcEnum : undefined;        
         if (subMenuPos.length > 0) { 
             menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
         }
