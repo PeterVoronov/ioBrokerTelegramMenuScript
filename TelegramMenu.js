@@ -158,6 +158,9 @@ const statesCommonAttr = {
 /*** statesCache ***/
 var statesCache = {};
 
+/*** Make functions be printable in JSON.stringify with names ***/
+Function.prototype.toJSON = function() { return `${this.name}` }
+
 /*** getStateCached ***/
 function getStateCached(user, state) {
     logs('ВЫЗОВ ФУНКЦИИ getStateCached(user, state, value) из ' + arguments.callee.caller.name);
