@@ -329,7 +329,7 @@ function submenuGenerator(upperMenuItem) {
                                 };
                             for (let iState = 0; iState < states.length; ++iState) {
                                 const [possibleValue, possibleName] = states[iState].split(':');
-                                logs('possibleValue = ' + JSON.stringify(possibleValue), 1 );
+                                logs('possibleValue = ' + JSON.stringify(possibleValue));
                                 logs('possibleName = ' + JSON.stringify(possibleName));
                                 subMenuItem.submenu.push({
                                     name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '.' + iState + '-' + (possibleName !== undefined ? possibleName : possibleValue),
