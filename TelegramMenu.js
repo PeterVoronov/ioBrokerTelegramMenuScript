@@ -439,11 +439,14 @@ function reportGenerator(menuObject) {
                 if (existsState(idPrefix + state)) {
                     const currState = getState(idPrefix + state);
                     logs('currState = ' + JSON.stringify(currState));
-                    if (currObject.common.type === 'boolean') {
+                    if ((currObject.common.type === 'boolean') && (typeof currState.val === 'boolean')) {
                         text += currState.val ? submenuParams[menuObject.type]['icons']['on'].padStart(maxRightLen-1) : submenuParams[menuObject.type]['icons']['off'].padStart(maxRightLen-1);
                     }
-                    else if (currObject.common.type === 'number') {
+                    else if ((currObject.common.type === 'number') && (typeof currState.val === 'number')) {
                         text += currState.val.toFixed(2).padStart(maxRightLen) + ' ' + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '');
+                    }
+                    else if (typeof currState.val === 'string') {
+                        text += currState.val.padStart(maxRightLen) + ' ' + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : ''); 
                     }
                 }
                 else {
@@ -460,8 +463,6 @@ function reportGenerator(menuObject) {
     };
     return text;
 }
-
-
 
 /*** Environments ***/
 function Environments(menuObject) {
