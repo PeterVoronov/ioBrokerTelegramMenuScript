@@ -374,15 +374,15 @@ function unRoomLevel(subMenu, level) {
     logs('ВЫЗОВ ФУНКЦИИ unRoomLevel(subMenu) из ' + arguments.callee.caller.name);
     logs('subMenu = ' + JSON.stringify(subMenu));
     logs('level = ' + JSON.stringify(level));
-    for (var i = 0; i < subMenu.length; i++) {
-        logs('subMenu[' + i + '].name = ' + JSON.stringify(subMenu[i].name));
-        var newIndex = getIndex(subMenu[i].name).split('.');
+    for (var subMenuItem of subMenu) {
+        logs('subMenuItem.name = ' + JSON.stringify(subMenuItem.name));
+        var newIndex = getIndex(subMenuItem.name).split('.');
         logs('oldIndex = ' + JSON.stringify(newIndex));
         newIndex.splice(-2 - level, 1);
         logs('newIndex = ' + JSON.stringify(newIndex));
-        subMenu[i].name =  newIndex.join('.') + '-' + skipIndex(subMenu[i].name);
-        if (subMenu[i].hasOwnProperty('submenu') && (subMenu[i].submenu.length > 0)) {
-            subMenu[i].submenu = unRoomLevel(subMenu[i].submenu, level + 1);
+        subMenuItem.name =  newIndex.join('.') + '-' + skipIndex(subMenuItem.name);
+        if (subMenuItem.hasOwnProperty('submenu') && (subMenuItem.submenu.length > 0)) {
+            subMenuItem.submenu = unRoomLevel(subMenuItem.submenu, level + 1);
         }
     }
     return subMenu;
@@ -463,6 +463,8 @@ function reportGenerator(menuObject) {
     };
     return text;
 }
+
+
 
 /*** Environments ***/
 function Environments(menuObject) {
@@ -676,10 +678,10 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
         }
         return getMenuRow(subMenuRow.submenu[n], subMenuPos, menuRows);
     } else {
-        for (var i = 0; i < subMenuRow.submenu.length; i++) {
+        for (const subMenuItem of subMenuRow.submenu) {
             menuRows.buttons.push({
-                text: getItemIcon(subMenuRow.submenu[i]) + ' ' + skipIndex(subMenuRow.submenu[i].name),
-                callback_data: options.menuPrefix + subMenuRow.submenu[i].name
+                text: getItemIcon(subMenuItem) + ' ' + skipIndex(subMenuItem.name),
+                callback_data: options.menuPrefix + subMenuItem.name
             });
         }
         return menuRows;
