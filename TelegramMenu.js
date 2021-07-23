@@ -6,21 +6,31 @@
 var options = {
     telegram:   'telegram.0',           // Инстанция драйвера
     backText:   '🔙 Назад',             // Надпись на кнопке Назад
-    backCmd:    'back-',                 //Префикс команды кнопки Назад
-    closeText:  '❌ Закрыть',           // Надпись на кнопке Закрыть
+    backCmd:    'back-',                //Префикс команды кнопки Назад
+    closeText:  '❌ Закрыть',          // Надпись на кнопке Закрыть
     closeCmd:   'close',                //Команда кнопки Закрыть
     homeText:   '🏚 Главная',           // Надпись на кнопке Домой
-    homeCmd:    'home',                  //Команда кнопки Домой
+    homeCmd:    'home',                 //Команда кнопки Домой
+    alertText:   'Уведомлять',              // Надпись на кнопке Уведомлять
+    alertIcons:  ['✅', '❌'],         //Префикс команды кнопки Уведомлять
+    acknowledgeText:   'Очистить',              // Надпись на кнопке Очистить
+    acknowledgeCmd:   ' acknowledge',              // Команда кнопки Очистить
+    acknowledgeAllText:   'Очистить все',              // Надпись на кнопке Очистить все    
+    acknowledgeAllCmd:   'acknowledgeall',              // Команда кнопки Очистить все
+    unsubscribeText:   'Отменить и очистить',              // Надпись на кнопке Отменить и очистить
+    unsubscribeCmd:   'unsubscribe',              // Команда кнопки Отменить и очистить
     width:      3,                      // Максимальное количество столбцов с кнопками
-    users_id:   [123456789,234567891],            // id пользователей которые имеют доступ к меню
+    users_id:   [123456789, 234567890],  // id пользователей которые имеют доступ к меню
     username:   true,                   // использовать Имя Пользователя(UserName) телеграмм для общения
     menucall:   ['Меню', 'меню', '/menu'],      // Команды для вызова меню
     clearmenucall: true,                // Удалять команду пользователя, вызвавшую меню
     menuPrefix: 'menu-',                // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
     showHome:   true,                   // Показывать кнопку Домой
     showMsg:    true,                   // Показывать вплывающие сообщения
+    updateInterval: 0,                  // Интервал обновления данных в "открытом" пункте меню, секунды
     language:   "ru",                   // Язык общения
-    locale:     "ru-RU",                // Язык общения    
+    locale:     "ru-RU",                // Язык общения
+    datetimeTemplate: "dd.mm HH:MM:ss", // форма отображения даты и времени
     debug:      false                    // Режим отладки, подробное логирование
 };
 
@@ -46,22 +56,17 @@ const menu = {
         { // Освещение
             name: 'Освещение',
             icon: '💡',
-            submenu: [
-                {
-                    name: 'Прихожая',
-                    state: 'linkeddevices.0.switches.lonsonho.light.lobby.state',
-                    icons: {on: '💡', off: '✖️'},
-                    submenu: []
-                },
-            ]
-        },
+            funcEnum: 'light',
+            type: 'switch',
+            submenu: submenuGenerator
+        },        
         { // Розетки
             name: 'Розетки',
             icon: '🔌',
             funcEnum: 'plug',
             type: 'plug',
             submenu: submenuGenerator
-        },        
+        },
         { // Информация
             name: 'Информация',
             icon: 'ℹ️',
@@ -78,6 +83,12 @@ const menu = {
                     function: Environments,
                     param: 'humidity', // А можно вызвать функцию вот так
                     icon: '💦',
+                    submenu: []
+                },
+                { // Блокировка сайтов в школьное время
+                    name: 'Игровые сайты',
+                    state: '0_userdata.0.network.mouse.school_time',
+                    icons: {on: '⛔', off: '🟢'},
                     submenu: []
                 }
             ]
@@ -106,17 +117,22 @@ const submenuParams = {
             report: reportGenerator,
             reportitems :
                 {
-                    '.consumer_connected'   : 'Нагрузка подключена',
-                    '.consumer_overload'    : 'Превышена нагрузка',
-                    '.current'              : 'Ток нагрузки',
-                    '.voltage'              : 'Напряжение в сети',
-                    '.temperature'          : 'Температура внутри',
-                    '.load_power'           : 'Текущее потребление',
+                    '.consumer_connected'   : 'Подключено',
+                    '.load_power'           : 'Текущая нагрузка',
                     '.energy'               : 'Всего потреблено',
+                    '.consumer_overload'    : 'Превышена нагрузка',
+                    '.voltage'              : 'Напряжение в сети',
+                    '.current'              : 'Ток нагрузки',
+                    '.temperature'          : 'Температура',
                     '.link_quality'         : 'Уровень сигнала'
                 },
             statusitems :
                 {
+                    'val' : {
+                        'prefix' : 'Статус',
+                        true : 'Включен(-о)',
+                        false : 'Выключен(-о)'
+                    }                    
                 }
         },
     'magnet' :
@@ -131,6 +147,7 @@ const submenuParams = {
                 },
             reportitems :
                 {
+                    '.link_quality'         : 'Уровень сигнала'                    
                 },
             statusitems :
                 {
@@ -144,6 +161,42 @@ const submenuParams = {
                     }
                 }
         },
+    'switch' :
+        {
+            mask : 'linkeddevices.0.switches.*.light.*.state',
+            role : 'switch',
+            state : 'state',
+            rooms : false,
+            icons : {on: '💡', off: '✖️'},
+            menuitems :
+                {
+                    '.state' : 'Вкл/выкл',
+                    '.power_outage_memory' : 'Запоминать состояние'
+                },
+            report: reportGenerator,
+            reportitems :
+                {
+                    '.consumer_connected'   : 'Подключено',
+                    '.load_power'           : 'Текущая нагрузка',
+                    '.energy'               : 'Всего потреблено',
+                    '.consumer_overload'    : 'Превышена нагрузка',
+                    '.voltage'              : 'Напряжение в сети',
+                    '.current'              : 'Ток нагрузки',
+                    '.temperature'          : 'Температура',
+                    '.link_quality'         : 'Уровень сигнала'
+                },
+            statusitems :
+                {
+                    'lc' : 'Не менялся с',
+                    'ack' : 'Потдвержден',
+                    'ts' : 'По состоянию на',
+                    'val' : {
+                        'prefix' : 'Статус',
+                        true : 'Включен(-о)',
+                        false : 'Выключен(-о)'
+                    }
+                }
+        },
 };
 
 const mainDataPrefix = '0_userdata.0.telegram_automenu.';
@@ -153,7 +206,12 @@ const statesCommonAttr = {
     'botSendMessageId' : {name:"Message ID of last sent message by the bot", type: 'number', read: true, write: true, role: 'id'},
     'messageId' : {name:"Message ID of last received request", type: 'number', read: true, write: true, role: 'id'},
     'user': {name:"user data as json", type: "string", read: true, write: true, role: "text"},
-    'menuOn' : {name:"Is menu shown to the user", type: 'boolean', read: true, write: true, role: 'state'}
+    'menuOn' : {name:"Is menu shown to the user", type: 'boolean', read: true, write: true, role: 'state'},
+    'menuItem' : {name:"Last menu item shown to the user", type: 'string', read: true, write: true, role: 'text'},
+    'lastMessage' : {name:"Last menu message sent to the user", type: 'string', read: true, write: true, role: 'text'},
+    'alerts' : {name:"List of states for alert subscription", type: 'string', read: true, write: true, role: 'text'},
+    'alertMessages' : {name:"List of alert messages from alert subscriptions", type: 'string', read: true, write: true, role: 'text'},
+    'currentState' : {name:"State currently processed in Menu", type: 'string', read: true, write: true, role: 'text'},
 };
 
 /*** statesCache ***/
@@ -169,14 +227,20 @@ function getStateCached(user, state) {
     logs('state = ' + JSON.stringify(state));
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
     if (statesCache.hasOwnProperty(id)) {
-        logs('Cached = ' + JSON.stringify(statesCache[id]));
-        return JSON.parse(statesCache[id]);
+        logs('Cached = ' + JSON.stringify(statesCache[id]) + ' type of ' + typeof(statesCache[id]));
+        return statesCache[id];
     }
-    else {
+    else if (statesCommonAttr.hasOwnProperty(state)) {
         if (existsState(id)) {
-            statesCache[id] = getState(id).val;
-            logs('Non cached = ' + JSON.stringify(statesCache[id]));
-            return JSON.parse(statesCache[id]);
+            const cachedVal = getState(id).val;
+            if ((statesCommonAttr[state].type === 'string') && (cachedVal.length > 0)) {
+                statesCache[id] = JSON.parse(cachedVal);
+            }
+            else { 
+                statesCache[id] = cachedVal;
+            }
+            logs('Non cached = ' + JSON.stringify(statesCache[id]) + ' type of ' + typeof(statesCache[id]));
+            return statesCache[id];
         }
     }
     return undefined;
@@ -189,16 +253,22 @@ function setStateCached(user, state, value) {
     logs('state = ' + JSON.stringify(state));
     logs('value = ' + JSON.stringify(value));
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
-    statesCache[id] = value;
-    if (existsState(id)) {
-        setState(id,value,true);
-    }
-    else {
-        if (statesCommonAttr.hasOwnProperty(state) ) {
-            createState(id, value, statesCommonAttr[state])
+    if (statesCache.hasOwnProperty(id) && (statesCache[id] !== value)) {
+        statesCache[id] = value;
+        if (statesCommonAttr.hasOwnProperty(state)) {
+            if ((statesCommonAttr[state].type === 'string') && (typeof value !== 'string')) {
+                value = JSON.stringify(value);
+            }
+            if (existsState(id)) {
+                setState(id,value,true);
+            }
+            else {
+                createState(id, value, statesCommonAttr[state])
+            }
         }
     }
 }
+
 
 /*** delStateCached ***/
 function delStateCached(user, state) {
@@ -219,26 +289,29 @@ function initConfig() {
     logs('ВЫЗОВ ФУНКЦИИ initConfig() из ' + arguments.callee.caller.name);
     const configPrefix = '0_userdata.0.telegram_automenu.config.';
     for (const [key, value] of Object.entries(options)) {
-        const id = configPrefix + key;
-        if (existsState(id)) {
-            options[key] = getState(id).val;
-            if (Array.isArray(value)) {
-                options[key] = options[key].split(',');
+        if (key.indexOf('_') !== 0 ){
+            const id = configPrefix + key;
+            if (existsState(id)) {
+                options[key] = getState(id).val;
+                if (Array.isArray(value)) {
+                    options[key] = options[key].split(',');
+                }
+                logs('option ' + JSON.stringify(key) + ' = ' + JSON.stringify(value) + ' is configured to ' + JSON.stringify(options[key]));
+                //options[key] = newVal;
             }
-            logs('option ' + JSON.stringify(key) + ' = ' + JSON.stringify(value) + ' is configured to ' + JSON.stringify(options[key]));
-            //options[key] = newVal;
-        }
-        else {
-            let stateVal = value;
-            let stateType = typeof stateVal;
-            if (Array.isArray(stateVal)) {
-                stateVal = stateVal.join(',');
-                stateType = 'string';
+            else {
+                let stateVal = value;
+                let stateType = typeof stateVal;
+                if (Array.isArray(stateVal)) {
+                    stateVal = stateVal.join(',');
+                    stateType = 'string';
+                }
+                createState(id, stateVal, {name: key, type: stateType, read: true, write: true})
+                logs('state ' + JSON.stringify(id) + ' created for option ' + JSON.stringify(key) + ' = ' + JSON.stringify(stateVal));
             }
-            createState(id, stateVal, {name: key, type: stateType, read: true, write: true})
-            logs('state ' + JSON.stringify(id) + ' created for option ' + JSON.stringify(key) + ' = ' + JSON.stringify(stateVal));
         }
     }
+    setScheduler();
     on({id: /^0_userdata\.0\.telegram_automenu\.config\..*$/, change: 'ne'}, function optionsSubscribe(obj) {
         logs('ВЫЗОВ ФУНКЦИИ optionsSubscribe(obj)');
         logs('obj = ' + JSON.stringify(obj));
@@ -249,9 +322,167 @@ function initConfig() {
         else {
             options[key] = obj['state']['val'];
         }
+        if (key === 'updateInterval') {
+            setScheduler();
+        }
         setState(obj['id'], obj['state']['val'], true);
         logs('options[' + key + '] is set to ' + JSON.stringify(options[key]));
     });
+    alertsInit();
+}
+
+/*** setScheduler ***/
+function setScheduler() {
+    logs('ВЫЗОВ ФУНКЦИИ setScheduler() из ' + arguments.callee.caller.name);
+    if (options.hasOwnProperty('_updateMenuSchedule')) {
+        logs('delete current schedule = ' + JSON.stringify(''));
+        clearSchedule(options['_updateMenuSchedule']);
+        delete options['_updateMenuSchedule'];
+    }
+    if (options.updateInterval > 0) {
+        const scheduleString = '*' + (options.updateInterval < 60 ? '/' + options.updateInterval : '') 
+            + ' *' + (options.updateInterval >= 60 ? '/' + Math.trunc(options.updateInterval / 60) : '') 
+            + ' * * * *';
+        logs('scheduleString = ' + JSON.stringify(scheduleString));
+        options['_updateMenuSchedule'] = schedule(scheduleString, function scheduledCurrentMenuUpdate() {
+            logs('ВЫЗОВ ФУНКЦИИ updateCurrentMenuSchedule()');
+            for (const user of options.users_id) {
+                logs('user = ' + JSON.stringify(user));
+                if (getStateCached(user, 'menuOn') === true) {
+                    const itemPos = getStateCached(user, 'menuItem');
+                    logs('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
+                    if (itemPos !== undefined) {
+                        logs('make an menu update for = ' + JSON.stringify(user));
+                        showMenu(user, itemPos);
+                    }
+                }
+                else {
+                    logs('for user = ' +JSON.stringify(user) + ' menu is closed');
+                }
+            }
+        });    
+    }
+}
+
+
+/*** setAlert ***/
+function setAlert(menuObject, user) {
+    logs('ВЫЗОВ ФУНКЦИИ setAlert(menuObject, user) из ' + arguments.callee.caller.name);
+    logs('menuObject = ' + JSON.stringify(menuObject));
+    logs('user = ' + JSON.stringify(user));
+    let alerts = getStateCached(user, 'alerts');
+    if (alerts === undefined) {
+        alerts = {};
+    }
+    if (alerts.hasOwnProperty(menuObject.param)) {
+        unsubscribe(alerts[menuObject.param]);
+        delete alerts[menuObject.param]
+    }
+    else {
+        alerts[menuObject.param] = on({id: menuObject.param, change: 'ne'}, alertCallback);
+    }
+    logs('alerts = ' + JSON.stringify(alerts));
+    setStateCached(user, 'alerts', alerts);
+    let itemPos = getIndex(menuObject.name).split('.');
+    logs('itemPos = ' + JSON.stringify(itemPos));
+    itemPos.pop();
+    logs('itemPos = ' + JSON.stringify(itemPos));
+    return itemPos;
+}
+
+/*** getAlertIcon ***/
+function getAlertIcon(menuObject, user) {
+    logs('ВЫЗОВ ФУНКЦИИ getAlertIcon(menuObject) из ' + arguments.callee.caller.name);
+    logs('menuObject = ' + JSON.stringify(menuObject));
+    logs('user = ' + JSON.stringify(user));
+    const alerts = getStateCached(user, 'alerts');
+    if (alerts === undefined) {
+        return options.alertIcons[1];
+    }
+    else if (alerts.hasOwnProperty(menuObject.param)) {
+        return options.alertIcons[0];
+    }
+    return options.alertIcons[1];
+}
+
+/*** alertsInit ***/
+function alertsInit() {
+    logs('ВЫЗОВ ФУНКЦИИ alertsInit()');
+    for (const user of options.users_id) {
+        let alerts = getStateCached(user, 'alerts');
+        logs('alerts = ' + JSON.stringify(alerts));
+        logs('alerts typeof = ' + JSON.stringify(typeof alerts));
+        if (alerts !== undefined) {
+            for (const alert of Object.keys(alerts)) {
+                alerts[alert] = on({id: alert, change: 'ne'}, alertCallback);
+            }
+            setStateCached(user, 'alerts', alerts)
+        }
+    }
+}
+
+/*** alertCallback ***/
+function alertCallback(obj) {
+    logs('ВЫЗОВ ФУНКЦИИ alertCallback(obj)');
+    logs('obj = ' + JSON.stringify(obj));
+    for (const user of options.users_id) {
+        logs('user = ' + JSON.stringify(user));
+        let currentState = getStateCached(user, 'currentState');
+        logs('currentState = ' + JSON.stringify(currentState));
+        if ((currentState === undefined) || (obj.id !== currentState)) {
+            if (getStateCached(user, 'menuOn') === true) {
+                const alerts = getStateCached(user, 'alerts');
+                if (alerts.hasOwnProperty(obj.id)) {
+                    const itemPos = getStateCached(user, 'menuItem');
+                    logs('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
+                    if (itemPos !== undefined) {
+                        logs('make an menu alert for = ' + JSON.stringify(user) + ' on state ' + JSON.stringify(obj.id));
+                        const alertObject = getObject(obj.id, 'rooms');
+                        const alertRoom = getRoomName(alertObject['enumIds'][0], alertObject['enumNames'][0],'inside')
+                        logs('alertRoom = ' + JSON.stringify(alertRoom));
+                        const alertName = getObject(obj.id.split('.').slice(0,-1).join('.')).common.name;
+                        logs('alertName = ' + JSON.stringify(alertName));
+                        let alertStatus = obj.state.val;
+                        if (typeof obj.state.val === 'boolean') {
+                            for (const [key, value] of Object.entries(submenuParams)) {
+                                let rule = new RegExp(value.mask,'i');
+                                if (rule.test(obj.id)) {
+                                    if (value.statusitems.hasOwnProperty('val')) {
+                                        alertStatus = value.statusitems.val[alertStatus];
+                                    }
+                                    else if (typeof value.icons === 'object') {
+                                        alertStatus = value.icons[alertStatus ? 'on' : 'off']
+                                    }
+                                }
+                            }
+                        }
+                        else if (typeof obj.state.val === 'number') {
+                            alertStatus = alertStatus.val.toFixed(2) + ' ' + (obj.common.hasOwnProperty('unit') ? obj.common.unit : '');
+                        }
+                        else if (typeof obj.state.val === 'string') {
+                            alertStatus += (obj.common.hasOwnProperty('unit') ? ' ' + obj.common.unit : ''); 
+                        }
+                        let alertText = alertName + ' ' + alertRoom + ' ' + alertStatus;
+                        logs('alertText = ' + JSON.stringify(alertText));
+                        let alertMessages = getStateCached(user, 'alertMessages');
+                        if (alertMessages === undefined) {
+                            alertMessages = [];
+                        }
+                        alertMessages.push( {
+                            id: obj.id,
+                            message: alertText,
+                            date: (new Date()).format(options.datetimeTemplate)
+                        });
+                        setStateCached(user, 'alertMessages', alertMessages);
+                        showMenu(user, itemPos, undefined, true);
+                    }
+                }
+            }
+            else {
+                logs('for user = ' +JSON.stringify(user) + ' menu is closed');
+            }
+        }
+    }
 }
 
 
@@ -344,8 +575,16 @@ function submenuGenerator(upperMenuItem) {
                         }
                     }
                 }
-            }
+            }          
         }
+        menuItem.submenu.push({
+            name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + options.alertText,
+            icons: getAlertIcon,
+            function: setAlert,
+            param: id,
+            submenu: []
+        });
+        logs('menuItem = ' + JSON.stringify(menuItem));
         roomMenuItem.submenu.push(menuItem)
         roomIndex++;
         lastRoom = room.id;
@@ -363,30 +602,32 @@ function unRoom(subMenu) {
     logs('subMenu = ' + JSON.stringify(subMenu));
     var roomMenuItem = subMenu.pop();
     roomMenuItem.submenu[0].name = roomMenuItem.name;
-    roomMenuItem.submenu[0].submenu = unRoomLevel(roomMenuItem.submenu[0].submenu, 0);
+    roomMenuItem.submenu[0].submenu = unRoomIterator(roomMenuItem.submenu[0].submenu, 0);
     logs('subMenu new = ' + JSON.stringify(roomMenuItem.submenu[0].submenu));
     subMenu.push(roomMenuItem.submenu[0])
     return subMenu;
 }
 
-/*** unRoomLevel ***/
-function unRoomLevel(subMenu, level) {
-    logs('ВЫЗОВ ФУНКЦИИ unRoomLevel(subMenu) из ' + arguments.callee.caller.name);
+/*** unRoomIterator ***/
+function unRoomIterator(subMenu, level) {
+    logs('ВЫЗОВ ФУНКЦИИ unRoomIterator(subMenu) из ' + arguments.callee.caller.name);
     logs('subMenu = ' + JSON.stringify(subMenu));
     logs('level = ' + JSON.stringify(level));
     for (var subMenuItem of subMenu) {
         logs('subMenuItem.name = ' + JSON.stringify(subMenuItem.name));
         var newIndex = getIndex(subMenuItem.name).split('.');
         logs('oldIndex = ' + JSON.stringify(newIndex));
-        newIndex.splice(-2 - level, 1);
+        newIndex.splice( -2 - level,  1);
         logs('newIndex = ' + JSON.stringify(newIndex));
         subMenuItem.name =  newIndex.join('.') + '-' + skipIndex(subMenuItem.name);
         if (subMenuItem.hasOwnProperty('submenu') && (subMenuItem.submenu.length > 0)) {
-            subMenuItem.submenu = unRoomLevel(subMenuItem.submenu, level + 1);
+            subMenuItem.submenu = unRoomIterator(subMenuItem.submenu, level + 1);
         }
     }
     return subMenu;
 }
+
+
 
 /*** processObjects ***/
 function processObjects(objMask, objRole, objFunc, objCB) {
@@ -410,37 +651,37 @@ function reportGenerator(menuObject) {
     logs('ВЫЗОВ ФУНКЦИИ reportGenerator(menuObject) из ' + arguments.callee.caller.name);
     logs('menuObject = ' + JSON.stringify(menuObject));
     if ((typeof menuObject === 'object') && (menuObject.hasOwnProperty('state'))) {
-        var maxLeftLen = 15;
+        var maxLeftLen = 19;
         const maxRightLen = 8;
         const idPrefix = menuObject.state.split('.').slice(0,-1).join('.');
         var textStatus = '';
         var text = '';
         if (submenuParams[menuObject.type].hasOwnProperty('statusitems') && submenuParams[menuObject.type]['statusitems'].hasOwnProperty('val')) {
             const currState = getState(menuObject.state);
-            textStatus += submenuParams[menuObject.type]['statusitems']['val']['prefix'].padEnd(maxLeftLen) + ' : ' + submenuParams[menuObject.type]['statusitems']['val'][currState.val];
+            textStatus += submenuParams[menuObject.type]['statusitems']['val']['prefix'].concat(':').padEnd(maxLeftLen) + ' ' + submenuParams[menuObject.type]['statusitems']['val'][currState.val].padStart(maxRightLen);
             if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ack')) {
-                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ack'].padEnd(maxLeftLen) + ' : ' + (currState.ack ? 'Да' : 'Нет');
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ack'].concat(':').padEnd(maxLeftLen) + ' ' + ((currState.ack ? 'Да' : 'Нет').padStart(maxRightLen));
             }
             if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('lc')) {
                 const lastChanged = new Date(currState.lc);
-                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['lc'].padEnd(maxLeftLen) + ' : ' + lastChanged.toLocaleString(options.locale);
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['lc'].concat(':').padEnd(maxLeftLen) + ' ' + lastChanged.format(options.datetimeTemplate).padStart(maxRightLen);
             }
             if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ts')) {
                 const timeStamp = new Date(currState.ts);
-                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ts'].padEnd(maxLeftLen) + ' : ' + timeStamp.toLocaleString(options.locale);
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ts'].concat(':').padEnd(maxLeftLen) + ' ' + timeStamp.format(options.datetimeTemplate).padStart(maxRightLen);
             }
         }
-        maxLeftLen = 20;
+        maxLeftLen = 19;
         for (const [state, name] of Object.entries(submenuParams[menuObject.type]['reportitems'])) {
             if (existsObject(idPrefix + state)) {
-                text += (text.length > 0 ? '\r\n' : '') + name.padEnd(maxLeftLen) + ' : ';
+                text += (text.length > 0 ? '\r\n' : '') + name.concat(':').padEnd(maxLeftLen) + ' ';
                 const currObject = getObject(idPrefix + state);
                 logs('currObject = ' + JSON.stringify(currObject));
                 if (existsState(idPrefix + state)) {
                     const currState = getState(idPrefix + state);
                     logs('currState = ' + JSON.stringify(currState));
                     if ((currObject.common.type === 'boolean') && (typeof currState.val === 'boolean')) {
-                        text += currState.val ? submenuParams[menuObject.type]['icons']['on'].padStart(maxRightLen-1) : submenuParams[menuObject.type]['icons']['off'].padStart(maxRightLen-1);
+                        text += currState.val ? submenuParams[menuObject.type]['icons']['on'].padStart(maxRightLen-2) : submenuParams[menuObject.type]['icons']['off'].padStart(maxRightLen-2);
                     }
                     else if ((currObject.common.type === 'number') && (typeof currState.val === 'number')) {
                         text += currState.val.toFixed(2).padStart(maxRightLen) + ' ' + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '');
@@ -524,9 +765,11 @@ function doMenuItem(user, cmd) {
                 cmdPos = cmdPos.slice(0, cmdPos.length-1);
                 showMenu(user, cmdPos, cmdItem);
             }, 4000);
+            setStateCached(user, 'currentState', currState);
             if(currObject.common.type === 'boolean'){
                 setState(currState, !getState(currState).val, function cb(){
                     clearTimeout(timer);
+                    setStateCached(user, 'currentState', '');
                     cmdPos = cmdPos.slice(0, cmdPos.length-1);
                     showMsg('Успешно!', user);
                     showMenu(user, cmdPos);
@@ -567,14 +810,25 @@ function doMenuItem(user, cmd) {
 }
 
 /*** showMenu ***/
-function showMenu(user, itemPos, menuItem) {
-    logs('ВЫЗОВ ФУНКЦИИ showMenu(user, itemPos, menuItem) из ' + arguments.callee.caller.name);
+function showMenu(user, itemPos, menuItem, isAlert) {
+    logs('ВЫЗОВ ФУНКЦИИ showMenu(user, itemPos, menuItem, isAlert) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('itemPos = ' + JSON.stringify(itemPos));
     logs('menuItem = ' + JSON.stringify(menuItem));
+    logs('isAlert = ' + JSON.stringify(isAlert));    
+    if (itemPos === undefined) {
+        itemPos = getStateCached(user, 'menuItem');
+    }
+    else {
+        setStateCached(user, 'menuItem', itemPos);
+    }
     var menuBase = addMenuIndex(menu);
+    if (menuItem === undefined) {
+        menuItem = getMenuItem(itemPos.concat(menuBase));
+    }
+    logs('menuItem = ' + JSON.stringify(menuItem));    
     var menuRows = {
-        menutext: (menuBase.icon ? menuBase.icon + ' ':'') + skipIndex(menuBase.name),
+        menutext: '', //(menuBase.icon ? menuBase.icon + ' ':'') + skipIndex(menuBase.name),
         state: '',
         backIndex: getIndex(menuBase.name),
         buttons: []
@@ -583,7 +837,7 @@ function showMenu(user, itemPos, menuItem) {
     logs('itemPos = ' + JSON.stringify(itemPos));
     logs('subMenuPos = ' + JSON.stringify(subMenuPos));
     logs('menuBase = ' + JSON.stringify(menuBase));
-    menuRows = getMenuRow(Object.assign({}, menuBase), subMenuPos, menuRows);
+    menuRows = getMenuRow(user, Object.assign({}, menuBase), subMenuPos, menuRows);
     logs('menuRows = ' + JSON.stringify(menuRows));
     if(itemPos.length > 0){
         menuRows.buttons = splitMenu(menuRows.buttons);
@@ -596,77 +850,151 @@ function showMenu(user, itemPos, menuItem) {
         logs('menuRows.buttons = ' + JSON.stringify(menuRows.buttons));
         if ( menuRows.hasOwnProperty('function') && (typeof menuRows.function === "function") ) {
             logs('itemPos = ' + JSON.stringify(itemPos));
-            if (menuItem === undefined) {
-                menuItem = getMenuItem(itemPos.concat(menuBase));
+            const functionResult = menuRows.function(menuItem, user);
+            if (typeof functionResult === 'string') {
+                menuRows.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
             }
-            const resultText = menuRows.function(menuItem);
-            menuRows.menutext += resultText.length > 0 ? '\r\n' + resultText : '';
+            else if (Array.isArray(functionResult) ) {
+                logs('functionResult = ' + JSON.stringify(functionResult));
+                return showMenu(user, functionResult);
+            }
         }
         logs('menuRows 2 = ' + JSON.stringify(menuRows));
-        sendTo(options.telegram, {
-            user: getUser(user),
-            text: menuRows.menutext,
-            parse_mode: 'HTML',
-            editMessageText: {
-                options: {
-                    chat_id: user,
-                    message_id: getStateCached(user, 'botSendMessageId'),
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: menuRows.buttons,
-                    }
-                }
-            }
-        });
+        sendMessage(user, menuRows, isAlert, false);
     } else {
         menuRows.buttons = splitMenu(menuRows.buttons);
         menuRows.buttons.push([{ text: options.closeText, callback_data: options.closeCmd }]);
-        if (getStateCached(user, 'menuOn')) {
-            logs('menuRows 3 ' + JSON.stringify(menuRows));
-            sendTo(options.telegram, {
-                user: getUser(user),
-                text: menuRows.menutext,
-                parse_mode: 'HTML',
-                editMessageText: {
-                    options: {
-                        chat_id: user,
-                        message_id: getStateCached(user, 'botSendMessageId'),
-                        parse_mode: 'HTML',
-                        reply_markup: {
-                            inline_keyboard: menuRows.buttons,
-                        }
-                    }
-                }
-            });
-        }
-        else {
-            //closeMenu(user);
-            logs('menuRows 4 ' + JSON.stringify(menuRows));
-            sendTo(options.telegram, {
-                user: getUser(user),
-                text: menuRows.menutext,
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: menuRows.buttons,
-                }
-            });
-            setStateCached(user, 'menuOn', true);
-        }
+        sendMessage(user, menuRows, isAlert, ! getStateCached(user, 'menuOn'));
     }
 }
 
+
+/*** sendMessage ***/
+function sendMessage(user, menuRows, isAlert, showMenu) {
+    logs('ВЫЗОВ ФУНКЦИИ sendMessage(user, menuRows, alertMessage, showMenu) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('menuRows = ' + JSON.stringify(menuRows));
+    logs('isAlert = ' + JSON.stringify(isAlert));    
+    logs('showMenu = ' + JSON.stringify(showMenu));
+    let alertMessages = getStateCached(user, 'alertMessages');
+    if (alertMessages === undefined) {
+        alertMessages = [];
+    }
+    logs('alertMessages = ' + JSON.stringify(alertMessages));
+    let alertMessage = '';
+    if (alertMessages.length) {
+        alertMessage = '<b><u>' + alertMessages[alertMessages.length - 1].date + ':</u> ' + alertMessages[alertMessages.length - 1].message  + '</b>' + '\r\n' + '\r\n';
+        logs('alertMessage = ' + JSON.stringify(alertMessages[alertMessages.length - 1].message));
+        let alertRow = [{ text: options.acknowledgeText, callback_data: options.acknowledgeCmd}];
+        let alerts = getStateCached(user, 'alerts');
+        if (alerts.hasOwnProperty(alertMessages[alertMessages.length - 1].id)) {
+            alertRow.push({ text: options.unsubscribeText, callback_data: options.unsubscribeCmd});
+        }
+        if (alertMessages.length > 1) {
+            alertRow.push({ text: '(' + alertMessages.length + ') ' + options.acknowledgeAllText, callback_data: options.acknowledgeAllCmd});
+        }
+        menuRows.buttons.push(alertRow);
+    }    
+    if (getStateCached(user, 'menuOn') || showMenu) {
+        const timeStamp = '<i>' + (new Date()).format(options.datetimeTemplate) + '</i> ';
+        const lastMessage = getStateCached(user, 'lastMessage');
+        if ((lastMessage !== JSON.stringify(menuRows)) || showMenu || isAlert) {
+            logs('lastMessage is not equal to menuRows, sendTo Telegram initiated');
+            logs('lastMessage = ' + JSON.stringify(lastMessage));
+            logs('menuRows = ' + JSON.stringify(menuRows));
+            setStateCached(user, 'lastMessage', JSON.stringify(menuRows));         
+            let telegramObject = {
+                    user: getUser(user),
+                    text: alertMessage + timeStamp + menuRows.menutext,
+                    parse_mode: 'HTML'
+                };
+            if (showMenu || isAlert ) {
+                telegramObject['reply_markup'] = {
+                        inline_keyboard: menuRows.buttons,
+                    }
+            }
+            else {
+                telegramObject['editMessageText'] = {
+                        options: {
+                            chat_id: user,
+                            message_id: getStateCached(user, 'botSendMessageId'),
+                            parse_mode: 'HTML',
+                            reply_markup: {
+                                inline_keyboard: menuRows.buttons,
+                            }
+                        }
+                    }
+            }              
+            menuRows.menutext += alertMessage;
+            if (isAlert) {
+                sendMessageQueued(user, [
+                    {
+                        user: getUser(user),
+                        deleteMessage: {
+                            options: {
+                                chat_id: user,
+                                message_id: getStateCached(user, 'botSendMessageId'),
+                            }
+                        }
+                    }, telegramObject]);
+            }
+            else {
+                sendMessageQueued(user, telegramObject);
+            }
+            if (showMenu || isAlert ) {
+                setStateCached(user, 'menuOn', true);
+            }
+        }
+        else {
+            logs('lastMessage is equal to menuRows, sendTo Telegram skipped');
+        }
+         
+    }
+
+}
+
+
+/*** sendMessageQueued ***/
+function sendMessageQueued(user, telegramObject) {
+    logs('ВЫЗОВ ФУНКЦИИ sendMessageQueued(user, telegramObject) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('telegramObject = ' + JSON.stringify(telegramObject));
+    const isLocked = user + '.isLocked';
+    const userMessageQueue = user + '.messageQueue';
+    logs('statesCache[' + isLocked + '] = ' + JSON.stringify(statesCache[isLocked]));
+    logs('statesCache[' + userMessageQueue + '].length = ' + JSON.stringify(statesCache.hasOwnProperty(userMessageQueue) ? statesCache[userMessageQueue].length : undefined));
+    if ((statesCache.hasOwnProperty(isLocked) && statesCache[isLocked]) ) {
+        if (! statesCache.hasOwnProperty(userMessageQueue)) {
+            statesCache[userMessageQueue] = [];
+        }
+        statesCache[userMessageQueue].push(telegramObject);
+    }
+    else {
+        statesCache[isLocked] = true;
+        if (Array.isArray(telegramObject)) {
+            sendTo(options.telegram, telegramObject[0], function (result) {sendTo(options.telegram, telegramObject[1])});
+        }
+        logs('statesCache[' + userMessageQueue + '] = ' + JSON.stringify(statesCache[userMessageQueue]));
+        sendTo(options.telegram, telegramObject);
+    }
+}
+
+
 /*** getMenuRow ***/
-function getMenuRow(subMenuRow, subMenuPos, menuRows) {
-    logs('ВЫЗОВ ФУНКЦИИ getMenuRow(subMenuRow, subMenuPos, menuRows) из ' + arguments.callee.caller.name);
+function getMenuRow(user, subMenuRow, subMenuPos, menuRows, currentTab) {
+    logs('ВЫЗОВ ФУНКЦИИ getMenuRow(user, subMenuRow, subMenuPos, menuRows) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
     logs('subMenuRow = ' + JSON.stringify(subMenuRow));
     logs('subMenuPos = ' + JSON.stringify(subMenuPos));
     logs('menuRows = ' + JSON.stringify(menuRows));
+    logs('currentTab = ' + JSON.stringify(currentTab));
     var n;
     if (typeof subMenuRow.submenu === 'function') {
         subMenuRow.submenu = subMenuRow.submenu(subMenuRow);
     }
+    currentTab = currentTab === undefined ? '' : '      ' + currentTab;
     if(subMenuPos.length > 0){
-        menuRows.menutext += ' > ' + getItemIcon(subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
+        menuRows.menutext += (currentTab.length > 0 ? ' > ' : '') + '\n\r ' + currentTab + getItemIcon(user, subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
         n = subMenuPos.shift();
         logs('(1) subMenuRow.submenu[' + n + '] = ' + JSON.stringify(subMenuRow.submenu[n]));
         menuRows.function = subMenuRow.submenu[n].hasOwnProperty('function') ? subMenuRow.submenu[n].function : undefined;
@@ -676,11 +1004,11 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
         if (subMenuPos.length > 0) {
             menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
         }
-        return getMenuRow(subMenuRow.submenu[n], subMenuPos, menuRows);
+        return getMenuRow(user, subMenuRow.submenu[n], subMenuPos, menuRows, currentTab);
     } else {
         for (const subMenuItem of subMenuRow.submenu) {
             menuRows.buttons.push({
-                text: getItemIcon(subMenuItem) + ' ' + skipIndex(subMenuItem.name),
+                text: getItemIcon(user, subMenuItem) + ' ' + skipIndex(subMenuItem.name),
                 callback_data: options.menuPrefix + subMenuItem.name
             });
         }
@@ -689,16 +1017,21 @@ function getMenuRow(subMenuRow, subMenuPos, menuRows) {
 }
 
 /*** getItemIcon ***/
-function getItemIcon(subMenuRowItem) {
-    logs('ВЫЗОВ ФУНКЦИИ getItemIcon(subMenuRowItem) из ' + arguments.callee.caller.name);
+function getItemIcon(user, subMenuRowItem) {
+    logs('ВЫЗОВ ФУНКЦИИ getItemIcon(user, subMenuRowItem) из ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
     logs('subMenuRowItem = ' + JSON.stringify(subMenuRowItem));
     var icon;
     if ((typeof subMenuRowItem.icons === 'object')) {
-        if(subMenuRowItem.hasOwnProperty('state') && existsState(subMenuRowItem.state)) {
+        if (subMenuRowItem.hasOwnProperty('state') && existsState(subMenuRowItem.state)) {
             icon = getState(subMenuRowItem.state).val ? subMenuRowItem.icons.on : subMenuRowItem.icons.off;
-        } else {
+        } 
+        else {
             icon = subMenuRowItem.icon;
         }
+    }
+    else if (typeof subMenuRowItem.icons === 'function') {
+            icon = subMenuRowItem.icons(subMenuRowItem, user);
     }
     else {
         icon = subMenuRowItem.icon ? subMenuRowItem.icon : '' ;
@@ -750,20 +1083,23 @@ function getMenuItem(subMenuPos) {
 
 
 /*** clearMessage ***/
-function clearMessage(user, isUserMessage) {
+function clearMessage(user, isUserMessage, callback) {
     logs('ВЫЗОВ ФУНКЦИИ clearMessage(user, isUserMessage) из ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('isUserMessage = ' + JSON.stringify(isUserMessage));
-    logs('messageid = ' + isUserMessage ? getStateCached(user, 'messageId') : getStateCached(user, 'botSendMessageId'));
+    logs('callback = ' + JSON.stringify(callback));
+    const messageid = isUserMessage ? getStateCached(user, 'messageId') : getStateCached(user, 'botSendMessageId');
+    logs('messageid = ' + messageid);
+    setStateCached(user, 'lastMessage', '');
     sendTo(options.telegram, {
         user: getUser(user),
         deleteMessage: {
             options: {
                 chat_id: user,
-                message_id: isUserMessage ? getStateCached(user, 'messageId') : getStateCached(user, 'botSendMessageId'),
+                message_id: messageid,
             }
         }
-    });
+    }, callback);
 }
 
 /*** closeMenu ***/
@@ -971,13 +1307,35 @@ function callback(user, cmd) {
         setStateCached(user, 'menuOn', false);
         showMenu(user, []);
     } else {
-        if(cmd === options.closeCmd){
+        if (cmd === options.closeCmd) {
             closeMenu(user);
-        } else if(cmd.indexOf(options.backCmd) === 0){
+        } 
+        else if (cmd.indexOf(options.backCmd) === 0) {
             showMenu(user, getItemPos(cmd.replace(options.backCmd,'')));
-        } else if(cmd === options.homeCmd){
+        } 
+        else if (cmd === options.homeCmd) {
             showMenu(user, []);
-        } else if (cmd.indexOf(options.menuPrefix) === 0) {
+        }
+        else if (cmd === options.acknowledgeCmd) {
+            let alertMessages = getStateCached(user, 'alertMessages');
+            alertMessages.pop();
+            setStateCached(user, 'alertMessages', alertMessages);
+            showMenu(user);
+        } 
+        else if (cmd === options.acknowledgeAllCmd) {
+            setStateCached(user, 'alertMessages', []);
+            showMenu(user);
+        } 
+        else if (cmd === options.unsubscribeCmd) {
+            let alertMessages = getStateCached(user, 'alertMessages');
+            let alertMessage = alertMessages.pop();
+            let alerts = getStateCached(user, 'alerts');
+            delete alerts[alertMessage.id]
+            setStateCached(user, 'alertMessages', alertMessages);
+            setStateCached(user, 'alerts', alerts);
+            showMenu(user);
+        } 
+        else if (cmd.indexOf(options.menuPrefix) === 0) {
             doMenuItem(user, cmd.replace(options.menuPrefix,''))
         }
     }
@@ -1003,7 +1361,7 @@ on({id: options.telegram + '.communicate.request', change: 'any'}, function  req
             }
             if ((options.users_id.indexOf(userid) >= 0) || (options.users_id.indexOf(userid.toString()) >= 0)){
                 logs('Пользователь - ' + name[userid].firstName + '(' + name[userid].userName +') с id - ' + userid + '; Отправленная команда - ' + cmd + 'с ид = ' + messageId);
-                setStateCached(userid, 'user', JSON.stringify(name[userid]));
+                setStateCached(userid, 'user', name[userid]);
                 setStateCached(userid, 'messageId', messageId);
                 callback(userid, cmd);
             }  else {
@@ -1017,10 +1375,39 @@ on({id: options.telegram + '.communicate.request', change: 'any'}, function  req
 on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerSubscribeMessage(obj) {
     logs('ВЫЗОВ ФУНКЦИИ answerSubscribeMessage(obj)');
     logs('obj = ' + JSON.stringify(obj));
-    const userid = getState(options.telegram + ".communicate.botSendChatId").val;
-    logs('userid = ' + JSON.stringify(userid));
-    setStateCached(userid, 'botSendMessageId', obj.state.val);
+    const user = getState(options.telegram + ".communicate.botSendChatId").val;
+    logs('user = ' + JSON.stringify(user) + ' botSendMessageId = ' + JSON.stringify(obj.state.val));
+    setStateCached(user, 'botSendMessageId', obj.state.val);
+    const isLocked = user + '.isLocked';
+    const userMessageQueue = user + '.messageQueue';
+    logs('statesCache[' + isLocked + '] = ' + JSON.stringify(statesCache[isLocked]));
+    logs('statesCache[' + userMessageQueue + '].length = ' + JSON.stringify(statesCache.hasOwnProperty(userMessageQueue) ? statesCache[userMessageQueue].length : undefined));
+    if ((statesCache.hasOwnProperty(isLocked) && statesCache[isLocked]) ) {
+        if (statesCache.hasOwnProperty(userMessageQueue) && statesCache[userMessageQueue].length ) {
+            let telegramObject = statesCache[userMessageQueue].shift();
+            logs('currentMessage = ' + JSON.stringify(telegramObject));
+            if (Array.isArray(telegramObject)) {
+                if (telegramObject[0].hasOwnProperty('deleteMessage')) {
+                    telegramObject[0]['deleteMessage'].options.message_id = obj.state.val;
+                }
+                sendTo(options.telegram, telegramObject[0], function (result) {sendTo(options.telegram, telegramObject[1])});
+            }
+            else {
+                for (let command of ['editMessageText', 'deleteMessage']) {
+                    if (telegramObject.hasOwnProperty(command)) {
+                        telegramObject[command].options.message_id = obj.state.val;
+                    }
+                }
+                sendTo(options.telegram, telegramObject);
+            }
+        }
+        else {
+            statesCache[isLocked] = false;
+        }
+    }
 });
+
+
 on({id: options.telegram + '.communicate.botSendChatId', change: 'any'}, function answerSubscribeChat(obj) {
     logs('ВЫЗОВ ФУНКЦИИ answerSubscribeChat(obj)');
     logs('obj = ' + JSON.stringify(obj));
@@ -1030,3 +1417,134 @@ on({id: options.telegram + '.communicate.botSendChatId', change: 'any'}, functio
 });
 
 initConfig();
+
+// For convenience...
+Date.prototype.format = function (mask, utc) {
+    return dateFormat(this, mask, utc);
+};
+
+
+/*
+* Date Format 1.2.3
+* (c) 2007-2009 Steven Levithan <stevenlevithan.com>
+* MIT license
+*
+* Includes enhancements by Scott Trenda <scott.trenda.net>
+* and Kris Kowal <cixar.com/~kris.kowal/>
+*
+* Accepts a date, a mask, or a date and a mask.
+* Returns a formatted version of the given date.
+* The date defaults to the current date/time.
+* The mask defaults to dateFormat.masks.default.
+*/
+
+var dateFormat = function () {
+    var token = /d{1,4}|m{1,4}|yy(?:yy)?|([HhMsTt])\1?|[LloSZ]|"[^"]*"|'[^']*'/g,
+		timezone = /\b(?:[PMCEA][SDP]T|(?:Pacific|Mountain|Central|Eastern|Atlantic) (?:Standard|Daylight|Prevailing) Time|(?:GMT|UTC)(?:[-+]\d{4})?)\b/g,
+		timezoneClip = /[^-+\dA-Z]/g,
+		pad = function (val, len) {
+		    val = String(val);
+		    len = len || 2;
+		    while (val.length < len) val = "0" + val;
+		    return val;
+		};
+
+    // Regexes and supporting functions are cached through closure
+    return function (date, mask, utc) {
+        var dF = dateFormat;
+
+        // You can't provide utc if you skip other args (use the "UTC:" mask prefix)
+        if (arguments.length == 1 && Object.prototype.toString.call(date) == "[object String]" && !/\d/.test(date)) {
+            mask = date;
+            date = undefined;
+        }
+
+        // Passing date through Date applies Date.parse, if necessary
+        date = date ? new Date(date) : new Date;
+        if (isNaN(date)) throw SyntaxError("invalid date");
+
+        mask = String(dF.masks[mask] || mask || dF.masks["default"]);
+
+        // Allow setting the utc argument via the mask
+        if (mask.slice(0, 4) == "UTC:") {
+            mask = mask.slice(4);
+            utc = true;
+        }
+
+        var _ = utc ? "getUTC" : "get",
+			d = date[_ + "Date"](),
+			D = date[_ + "Day"](),
+			m = date[_ + "Month"](),
+			y = date[_ + "FullYear"](),
+			H = date[_ + "Hours"](),
+			M = date[_ + "Minutes"](),
+			s = date[_ + "Seconds"](),
+			L = date[_ + "Milliseconds"](),
+			o = utc ? 0 : date.getTimezoneOffset(),
+			flags = {
+			    d: d,
+			    dd: pad(d),
+			    ddd: dF.i18n.dayNames[D],
+			    dddd: dF.i18n.dayNames[D + 7],
+			    m: m + 1,
+			    mm: pad(m + 1),
+			    mmm: dF.i18n.monthNames[m],
+			    mmmm: dF.i18n.monthNames[m + 12],
+			    yy: String(y).slice(2),
+			    yyyy: y,
+			    h: H % 12 || 12,
+			    hh: pad(H % 12 || 12),
+			    H: H,
+			    HH: pad(H),
+			    M: M,
+			    MM: pad(M),
+			    s: s,
+			    ss: pad(s),
+			    l: pad(L, 3),
+			    L: pad(L > 99 ? Math.round(L / 10) : L),
+			    t: H < 12 ? "a" : "p",
+			    tt: H < 12 ? "am" : "pm",
+			    T: H < 12 ? "A" : "P",
+			    TT: H < 12 ? "AM" : "PM",
+			    Z: utc ? "UTC" : (String(date).match(timezone) || [""]).pop().replace(timezoneClip, ""),
+			    o: (o > 0 ? "-" : "+") + pad(Math.floor(Math.abs(o) / 60) * 100 + Math.abs(o) % 60, 4),
+			    S: ["th", "st", "nd", "rd"][d % 10 > 3 ? 0 : (d % 100 - d % 10 != 10) * d % 10]
+			};
+
+        return mask.replace(token, function ($0) {
+            return $0 in flags ? flags[$0] : $0.slice(1, $0.length - 1);
+        });
+    };
+} ();
+
+// Some common format strings
+dateFormat.masks = {
+    "default": "ddd mmm dd yyyy HH:MM:ss",
+    shortDate: "m/d/yy",
+    mediumDate: "mmm d, yyyy",
+    longDate: "mmmm d, yyyy",
+    fullDate: "dddd, mmmm d, yyyy",
+    shortTime: "h:MM TT",
+    mediumTime: "h:MM:ss TT",
+    longTime: "h:MM:ss TT Z",
+    isoDate: "yyyy-mm-dd",
+    isoTime: "HH:MM:ss",
+    isoDateTime: "yyyy-mm-dd'T'HH:MM:ss",
+    isoUtcDateTime: "UTC:yyyy-mm-dd'T'HH:MM:ss'Z'"
+};
+
+// Internationalization strings
+dateFormat.i18n = {
+    dayNames: [
+		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
+		"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+	],
+    monthNames: [
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+		"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
+	]
+};
+
+
+
+
