@@ -253,7 +253,7 @@ function setStateCached(user, state, value) {
     logs('state = ' + JSON.stringify(state));
     logs('value = ' + JSON.stringify(value));
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
-    if (statesCache.hasOwnProperty(id) && (statesCache[id] !== value)) {
+    if (! statesCache.hasOwnProperty(id) || (! (statesCache[id] === value))) {
         statesCache[id] = value;
         if (statesCommonAttr.hasOwnProperty(state)) {
             if ((statesCommonAttr[state].type === 'string') && (typeof value !== 'string')) {
