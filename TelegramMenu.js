@@ -377,8 +377,16 @@ function setAlert(menuObject, user) {
     if (alerts.hasOwnProperty(menuObject.param)) {
         unsubscribe(alerts[menuObject.param]);
         delete alerts[menuObject.param]
+        setStateCached(user, 'alerts', alerts);
     }
-    else {
+    let isSet = false;
+    for (const user_id of options.users_id) {
+        if (getStateCached(user_id, 'alerts').hasOwnProperty(menuObject.param)) {
+            isSet = true;
+            break
+        }
+    }
+    if (! isSet ) {
         alerts[menuObject.param] = on({id: menuObject.param, change: 'ne'}, alertCallback);
     }
     logs('alerts = ' + JSON.stringify(alerts));
@@ -408,13 +416,17 @@ function getAlertIcon(menuObject, user) {
 /*** alertsInit ***/
 function alertsInit() {
     logs('ВЫЗОВ ФУНКЦИИ alertsInit()');
+    let isSet = {};
     for (const user of options.users_id) {
         let alerts = getStateCached(user, 'alerts');
         logs('alerts = ' + JSON.stringify(alerts));
         logs('alerts typeof = ' + JSON.stringify(typeof alerts));
         if (alerts !== undefined) {
             for (const alert of Object.keys(alerts)) {
-                alerts[alert] = on({id: alert, change: 'ne'}, alertCallback);
+                if (! isSet.hasOwnProperty(alert)) {
+                    alerts[alert] = on({id: alert, change: 'ne'}, alertCallback);
+                    isSet[alert] = true;
+                }
             }
             setStateCached(user, 'alerts', alerts)
         }
@@ -432,7 +444,7 @@ function alertCallback(obj) {
         if ((currentState === undefined) || (obj.id !== currentState)) {
             if (getStateCached(user, 'menuOn') === true) {
                 const alerts = getStateCached(user, 'alerts');
-                if (alerts.hasOwnProperty(obj.id)) {
+                if ((alerts !== undefined) && alerts.hasOwnProperty(obj.id)) {
                     const itemPos = getStateCached(user, 'menuItem');
                     logs('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
                     if (itemPos !== undefined) {
@@ -862,6 +874,7 @@ function showMenu(user, itemPos, menuItem, isAlert) {
         logs('menuRows 2 = ' + JSON.stringify(menuRows));
         sendMessage(user, menuRows, isAlert, false);
     } else {
+        logs('menuRows 3 = ' + JSON.stringify(menuRows));
         menuRows.buttons = splitMenu(menuRows.buttons);
         menuRows.buttons.push([{ text: options.closeText, callback_data: options.closeCmd }]);
         sendMessage(user, menuRows, isAlert, ! getStateCached(user, 'menuOn'));
@@ -974,8 +987,11 @@ function sendMessageQueued(user, telegramObject) {
         if (Array.isArray(telegramObject)) {
             sendTo(options.telegram, telegramObject[0], function (result) {sendTo(options.telegram, telegramObject[1])});
         }
+        else {
+            sendTo(options.telegram, telegramObject);            
+        }
         logs('statesCache[' + userMessageQueue + '] = ' + JSON.stringify(statesCache[userMessageQueue]));
-        sendTo(options.telegram, telegramObject);
+        logs('telegramObject = ' + JSON.stringify(telegramObject));
     }
 }
 
@@ -1318,8 +1334,11 @@ function callback(user, cmd) {
         }
         else if (cmd === options.acknowledgeCmd) {
             let alertMessages = getStateCached(user, 'alertMessages');
-            alertMessages.pop();
-            setStateCached(user, 'alertMessages', alertMessages);
+            logs('alertMessages = ' + JSON.stringify(alertMessages));
+            if ((alertMessages !== undefined) && alertMessages.length > 0) {
+                alertMessages.pop();
+                setStateCached(user, 'alertMessages', alertMessages);
+            }
             showMenu(user);
         } 
         else if (cmd === options.acknowledgeAllCmd) {
@@ -1328,11 +1347,14 @@ function callback(user, cmd) {
         } 
         else if (cmd === options.unsubscribeCmd) {
             let alertMessages = getStateCached(user, 'alertMessages');
-            let alertMessage = alertMessages.pop();
-            let alerts = getStateCached(user, 'alerts');
-            delete alerts[alertMessage.id]
-            setStateCached(user, 'alertMessages', alertMessages);
-            setStateCached(user, 'alerts', alerts);
+            logs('alertMessages = ' + JSON.stringify(alertMessages));
+            if ((alertMessages !== undefined) && alertMessages.length > 0) {
+                let alertMessage = alertMessages.pop();
+                let alerts = getStateCached(user, 'alerts');
+                delete alerts[alertMessage.id]
+                setStateCached(user, 'alertMessages', alertMessages);
+                setStateCached(user, 'alerts', alerts);
+            }
             showMenu(user);
         } 
         else if (cmd.indexOf(options.menuPrefix) === 0) {
@@ -1345,6 +1367,7 @@ function callback(user, cmd) {
 
 
 /*** subscribe on Telegram ***/
+/*
 on({id: options.telegram + '.communicate.request', change: 'any'}, function  requestSubscribe(obj) {
     logs('ВЫЗОВ ФУНКЦИИ requestSubscribe(obj)');
     logs('obj = ' + JSON.stringify(obj));
@@ -1370,14 +1393,28 @@ on({id: options.telegram + '.communicate.request', change: 'any'}, function  req
         }
     }
 });
+*/
 
 /*** subscribe on Telegram bot activityes  ***/
-on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerSubscribeMessage(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ answerSubscribeMessage(obj)');
+on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerMessageIdSubscribe(obj) {
+    logs('ВЫЗОВ ФУНКЦИИ answerMessageIdSubscribe(obj)');
     logs('obj = ' + JSON.stringify(obj));
-    const user = getState(options.telegram + ".communicate.botSendChatId").val;
-    logs('user = ' + JSON.stringify(user) + ' botSendMessageId = ' + JSON.stringify(obj.state.val));
-    setStateCached(user, 'botSendMessageId', obj.state.val);
+    //const user = getState(options.telegram + ".communicate.botSendChatId").val;
+});
+
+
+on({id: options.telegram + '.communicate.botSendChatId', change: 'any'}, function answerChatIdSubscribe(obj) {
+    logs('ВЫЗОВ ФУНКЦИИ answerChatIdSubscribe(obj)');
+    logs('obj = ' + JSON.stringify(obj));
+    /*const messageid = getState(options.telegram + ".communicate.botSendMessageId").val;
+    logs('messageid = ' + JSON.stringify(messageid));
+    setStateCached(obj.state.val, 'botSendMessageId', messageid);
+    */
+    logs('botSendChatId = ' + JSON.stringify(obj.state.val));
+    const user = obj.state.val;
+    const messageId = getState(options.telegram + ".communicate.botSendMessageId").val;
+    logs('user = ' + JSON.stringify(user) + ' botSendMessageId = ' + JSON.stringify(messageId));
+    setStateCached(user, 'botSendMessageId', messageId);
     const isLocked = user + '.isLocked';
     const userMessageQueue = user + '.messageQueue';
     logs('statesCache[' + isLocked + '] = ' + JSON.stringify(statesCache[isLocked]));
@@ -1388,14 +1425,14 @@ on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, func
             logs('currentMessage = ' + JSON.stringify(telegramObject));
             if (Array.isArray(telegramObject)) {
                 if (telegramObject[0].hasOwnProperty('deleteMessage')) {
-                    telegramObject[0]['deleteMessage'].options.message_id = obj.state.val;
+                    telegramObject[0]['deleteMessage'].options.message_id = messageId;
                 }
                 sendTo(options.telegram, telegramObject[0], function (result) {sendTo(options.telegram, telegramObject[1])});
             }
             else {
                 for (let command of ['editMessageText', 'deleteMessage']) {
                     if (telegramObject.hasOwnProperty(command)) {
-                        telegramObject[command].options.message_id = obj.state.val;
+                        telegramObject[command].options.message_id = messageId;
                     }
                 }
                 sendTo(options.telegram, telegramObject);
@@ -1405,15 +1442,60 @@ on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, func
             statesCache[isLocked] = false;
         }
     }
+
 });
 
 
-on({id: options.telegram + '.communicate.botSendChatId', change: 'any'}, function answerSubscribeChat(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ answerSubscribeChat(obj)');
+on({id: options.telegram + '.communicate.requestRaw', change: 'any'}, function requestRawSubscribe(obj) {
+    logs('ВЫЗОВ ФУНКЦИИ requestRawSubscribe(obj)');
     logs('obj = ' + JSON.stringify(obj));
-    const messageid = getState(options.telegram + ".communicate.botSendMessageId").val;
-    logs('messageid = ' + JSON.stringify(messageid));
-    setStateCached(obj.state.val, 'botSendMessageId', messageid);
+    let request = undefined;
+    try {
+        request = JSON.parse(obj.state.val);
+    } catch (err) {
+        logs("Ошибка парсинга - " + JSON.stringify(err));
+        return undefined;
+    }
+    logs('raw = ' + JSON.stringify(request,undefined,' '));
+    if (request.hasOwnProperty('from') && request.from.hasOwnProperty('id')) {
+        const user = request.from.id;
+        if ((options.users_id.indexOf(user) >= 0) || (options.users_id.indexOf(user.toString()) >= 0)) {
+            let messageId = undefined;
+            let chatId = undefined;
+            let command = undefined;
+            if (request.hasOwnProperty('message_id')) {
+                messageId = request.message_id;
+            }
+            else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('message_id')) {
+                messageId = request.message.message_id;
+            }
+            if (messageId !== undefined) {
+                if (request.hasOwnProperty('chat') && request.chat.hasOwnProperty('id')) {
+                    chatId = request.chat.id;
+                }
+                else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('chat') && request.message.chat.hasOwnProperty('id')) {
+                    chatId = request.message.chat.id;
+                }
+                if (chatId != undefined) {
+                    if (request.hasOwnProperty('text')) {
+                        command = request.text;
+                    }
+                    else if (request.hasOwnProperty('data')) {
+                        command = request.data;
+                    }
+                    logs('user = ' + JSON.stringify(user) + ' chatId = ' + JSON.stringify(chatId) + ' messageId = ' + JSON.stringify(messageId) + ' command = ' + JSON.stringify(command));
+                    if (command !== undefined) {
+                        setStateCached(user, 'user', {"firstName":request.from.first_name,"userName":request.from.username});
+                        setStateCached(user, 'messageId', messageId);
+                        callback(user, command);                        
+                    }
+                }
+            }
+        }
+        else {
+            log('Доступ запрещен. Пользователя - ' + JSON.stringify(request.from.first_name) + ' ' + JSON.stringify(request.from.last_name)  + '(' + JSON.stringify(request.from.username) +') с id - ' + user + ' нет в списке доверенных.' );
+        }
+    }
 });
 
 initConfig();
@@ -1544,7 +1626,3 @@ dateFormat.i18n = {
 		"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
 	]
 };
-
-
-
-
