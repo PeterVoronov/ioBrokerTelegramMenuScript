@@ -228,7 +228,7 @@ function getStateCached(user, state) {
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
     if (statesCache.hasOwnProperty(id)) {
         logs('Cached = ' + JSON.stringify(statesCache[id]) + ' type of ' + typeof(statesCache[id]));
-        return statesCache[id];
+        return Array.isArray(statesCache[id]) ? statesCache[id].slice() : (typeof(statesCache[id]) === 'object' ?  Object.assign({}, statesCache[id]) : statesCache[id]);
     }
     else if (statesCommonAttr.hasOwnProperty(state)) {
         if (existsState(id)) {
@@ -240,7 +240,7 @@ function getStateCached(user, state) {
                 statesCache[id] = cachedVal;
             }
             logs('Non cached = ' + JSON.stringify(statesCache[id]) + ' type of ' + typeof(statesCache[id]));
-            return statesCache[id];
+            return Array.isArray(statesCache[id]) ? statesCache[id].slice() : (typeof(statesCache[id]) === 'object' ?  Object.assign({}, statesCache[id]) : statesCache[id]);
         }
     }
     return undefined;
@@ -253,7 +253,8 @@ function setStateCached(user, state, value) {
     logs('state = ' + JSON.stringify(state));
     logs('value = ' + JSON.stringify(value));
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
-    if ( ! ( (statesCache.hasOwnProperty(id) && (statesCache[id] === value) ) ) ) {
+    logs( 'statesCache[id] = ' + (statesCache.hasOwnProperty(id) ? JSON.stringify(statesCache[id]) : undefined));
+    if ( ! ( (statesCache.hasOwnProperty(id) && (JSON.stringify(statesCache[id]) === JSON.stringify(value)) ) ) ) {
         statesCache[id] = value;
         if (statesCommonAttr.hasOwnProperty(state)) {
             if ((statesCommonAttr[state].type === 'string') && (typeof value !== 'string')) {
@@ -374,20 +375,35 @@ function setAlert(menuObject, user) {
     if (alerts === undefined) {
         alerts = {};
     }
+    let alertsList = getStateCached('common', 'alerts');
+    logs('alerts = ' + JSON.stringify(alerts));
     if (alerts.hasOwnProperty(menuObject.param)) {
-        unsubscribe(alerts[menuObject.param]);
-        delete alerts[menuObject.param]
+        delete alerts[menuObject.param];
         setStateCached(user, 'alerts', alerts);
-    }
-    let isSet = false;
-    for (const user_id of options.users_id) {
-        if (getStateCached(user_id, 'alerts').hasOwnProperty(menuObject.param)) {
-            isSet = true;
-            break
+        let count = 0;
+        for (const user_id of options.users_id) {
+            let currentAlerts = getStateCached(user_id, 'alerts');
+            if ((currentAlerts !== undefined) && currentAlerts.hasOwnProperty(menuObject.param)) {            
+                count++;
+            }
         }
+        if (count === 0) {
+            unsubscribe(menuObject.param);
+            delete alertsList[menuObject.param];
+        }    
     }
-    if (! isSet ) {
-        alerts[menuObject.param] = on({id: menuObject.param, change: 'ne'}, alertCallback);
+    else {
+        alerts[menuObject.param] = true;
+        let count = 0;
+        for (const user_id of options.users_id) {
+            let currentAlerts = getStateCached(user_id, 'alerts');
+            if ((currentAlerts !== undefined) && currentAlerts.hasOwnProperty(menuObject.param)) {            
+                count++;
+            }
+        }
+        if (count === 0) {
+            on({id: menuObject.param, change: 'ne'}, alertCallback);
+        }
     }
     logs('alerts = ' + JSON.stringify(alerts));
     setStateCached(user, 'alerts', alerts);
@@ -417,18 +433,16 @@ function getAlertIcon(menuObject, user) {
 function alertsInit() {
     logs('ВЫЗОВ ФУНКЦИИ alertsInit()');
     let isSet = {};
-    for (const user of options.users_id) {
-        let alerts = getStateCached(user, 'alerts');
+    for (const user_id of options.users_id) {
+        let alerts = getStateCached(user_id, 'alerts');
         logs('alerts = ' + JSON.stringify(alerts));
-        logs('alerts typeof = ' + JSON.stringify(typeof alerts));
         if (alerts !== undefined) {
             for (const alert of Object.keys(alerts)) {
                 if (! isSet.hasOwnProperty(alert)) {
-                    alerts[alert] = on({id: alert, change: 'ne'}, alertCallback);
+                    on({id: alert, change: 'ne'}, alertCallback);
                     isSet[alert] = true;
                 }
             }
-            setStateCached(user, 'alerts', alerts)
         }
     }
 }
@@ -1350,10 +1364,20 @@ function callback(user, cmd) {
             logs('alertMessages = ' + JSON.stringify(alertMessages));
             if ((alertMessages !== undefined) && alertMessages.length > 0) {
                 let alertMessage = alertMessages.pop();
-                let alerts = getStateCached(user, 'alerts');
+                let alerts = Object.assign({}, getStateCached(user, 'alerts'));
                 delete alerts[alertMessage.id]
-                setStateCached(user, 'alertMessages', alertMessages);
                 setStateCached(user, 'alerts', alerts);
+                let count = 0;
+                for (const user_id of options.users_id) {
+                    let currentAlerts = getStateCached(user_id, 'alerts');
+                    if ((currentAlerts !== undefined) && currentAlerts.hasOwnProperty(alertMessage.id)) {
+                        count++;
+                    }
+                }                
+                if (count === 0) {
+                    unsubscribe(alertMessage.id);
+                }
+                setStateCached(user, 'alertMessages', alertMessages);
             }
             showMenu(user);
         } 
