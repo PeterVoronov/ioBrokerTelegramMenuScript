@@ -21,17 +21,35 @@ var options = {
     unsubscribeCmd:   'unsubscribe',              // Команда кнопки Отменить и очистить
     width:      3,                      // Максимальное количество столбцов с кнопками
     users_id:   [123456789, 234567890],  // id пользователей которые имеют доступ к меню
-    username:   true,                   // использовать Имя Пользователя(UserName) телеграмм для общения
-    menucall:   ['Меню', 'меню', '/menu'],      // Команды для вызова меню
-    clearmenucall: true,                // Удалять команду пользователя, вызвавшую меню
-    menuPrefix: 'menu-',                // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
-    showHome:   true,                   // Показывать кнопку Домой
-    showMsg:    true,                   // Показывать вплывающие сообщения
-    updateInterval: 0,                  // Интервал обновления данных в "открытом" пункте меню, секунды
-    language:   "ru",                   // Язык общения
-    locale:     "ru-RU",                // Язык общения
-    datetimeTemplate: "dd.mm HH:MM:ss", // форма отображения даты и времени
-    debug:      false                    // Режим отладки, подробное логирование
+    admins_id:          [123456789],                // id пользовапользователей с правами администратора
+    adminItemCommands: {
+        'rename' : 'Переименовать',
+    },                                              // Команда кнопки переименовать
+    username:           true,                       // использовать Имя Пользователя(UserName) телеграмм для общения
+    menucall:           ['Меню', 'меню', '/menu'],  // Команды для вызова меню
+    clearmenucall:      true,                       // Удалять команду пользователя, вызвавшую меню
+    menuPrefix:         'menu-',                    // Префикс для отправляемых комманд при нажатии на кнопку, можно не менять
+    showHome:           true,                       // Показывать кнопку Домой
+    showMsg:            true,                       // Показывать вплывающие сообщения
+    updateInterval:     0,                          // Интервал обновления данных в "открытом" пункте меню, секунды
+    language:           "ru",                       // Язык общения
+    locale:             "ru-RU",                    // Язык общения
+    datetimeTemplate:   "dd.mm HH:MM:ss",           // форма отображения даты и времени
+    menuExtensions:     "script.js.Telegram.Auto_telegram_menu_Extensions", // Script name for any additional menus, which can't be auto generated
+    extensionsTimeout:  500, // timeout to wait an answer from extensions
+    hierarhicalCaption: false,                      // show caption of the current menu hierarhically
+    namesDictonary:     {
+        cmdRenameItem:              'Переименовать',
+        pleaseRename:               'Введите новое название:',
+        cmdBack:                    '🔙 Назад',
+        cmdClose:                   '❌ Закрыть',
+        cmdHome:                    '🏚 Главная',
+        cmdAlertSubcribe:           'Уведомлять',
+        cmdAcknowledgeAlert:        'Очистить',
+        cmdacknowledgeAllAlerts:    'Очистить все',
+        cmdUnsubscribeAlert:        'Отменить и очистить',
+    },                                              // Localisation dictonary
+    debug:              false                       // Режим отладки, подробное логирование
 };
 
 /////////// МЕНЮ НАЧАЛО ////////////
@@ -53,6 +71,13 @@ const menu = {
             type: 'magnet',
             submenu: submenuGenerator
         },
+        { // Движение/присутствие
+            name: 'Движение',
+            icon: '👀',
+            funcEnum: 'presence',
+            type: 'motion',
+            submenu: submenuGenerator
+        },      
         { // Освещение
             name: 'Освещение',
             icon: '💡',
@@ -65,6 +90,13 @@ const menu = {
             icon: '🔌',
             funcEnum: 'plug',
             type: 'plug',
+            submenu: submenuGenerator
+        },
+        { // Кондиционеры 
+            name: 'Кондиционеры',
+            icon: '🌀',
+            funcEnum: 'air-conditioner',
+            type: 'air-conditioner',
             submenu: submenuGenerator
         },
         { // Информация
@@ -147,7 +179,9 @@ const submenuParams = {
                 },
             reportitems :
                 {
+                    /*
                     '.link_quality'         : 'Уровень сигнала'                    
+                    */
                 },
             statusitems :
                 {
@@ -161,6 +195,36 @@ const submenuParams = {
                     }
                 }
         },
+    'motion' :
+        {
+            mask : 'linkeddevices.0.sensors.*.motion.*.occupancy',
+            role : 'sensor.motion',
+            state: 'occupancy',
+            icons : {on: '🚶', off: '⚪'},
+            report: reportGenerator,
+            menuitems :
+                {
+                },
+            reportitems :
+                {
+                    /*
+                    '.link_quality'         : 'Уровень сигнала',
+                    '.no_motion'            : 'Нет движения',
+                    '.occupancy_timeout'    : 'Задержка'
+                    */
+                },
+            statusitems :
+                {
+                    'lc' : 'Не менялся с',
+                    'ack' : 'Потдвержден',
+                    'ts' : 'По состоянию на',
+                    'val' : {
+                        'prefix' : 'Статус',
+                        true : 'Движение',
+                        false : 'Никого'
+                    }
+                }
+        },        
     'switch' :
         {
             mask : 'linkeddevices.0.switches.*.light.*.state',
@@ -197,9 +261,49 @@ const submenuParams = {
                     }
                 }
         },
+    'air-conditioner' :
+        {
+            
+            mask : 'alias.0.air-conditioners.*.*.POWER',
+            state : 'POWER',
+            /*
+            mask : 'linkeddevices.0.air-conditioners.*.*.power',
+            state : 'power',
+            */
+            role : 'switch.power',
+            rooms : false,
+            icons : {on: '🌀', off: '✖️'},
+            menuitems :
+                {
+                /*    '.power'    : 'Вкл/выкл',
+                    '.set'      : 'Цель',
+                    '.mode'     : 'Режим работы',
+                    '.speed'    : 'Скорость вентилятора',
+                */},
+            report: reportGenerator,
+            reportitems :
+                {
+                    /*
+                    '.ACTUAL'               : 'Температура',
+                    '.HUMIDITY'             : 'Влажность',
+                    */
+                },
+            statusitems :
+                {
+                    'lc' : 'Не менялся с',
+                    'ack' : 'Потдвержден',
+                    'ts' : 'По состоянию на',
+                    'val' : {
+                        'prefix' : 'Статус',
+                        true : 'Включен',
+                        false : 'Выключен'
+                    }
+                }
+        },        
 };
 
 const mainDataPrefix = '0_userdata.0.telegram_automenu.';
+const configPrefix = mainDataPrefix + 'config.';
 
 /*** statesCommonAttr ***/
 const statesCommonAttr = {
@@ -212,17 +316,40 @@ const statesCommonAttr = {
     'alerts' : {name:"List of states for alert subscription", type: 'string', read: true, write: true, role: 'text'},
     'alertMessages' : {name:"List of alert messages from alert subscriptions", type: 'string', read: true, write: true, role: 'text'},
     'currentState' : {name:"State currently processed in Menu", type: 'string', read: true, write: true, role: 'text'},
+    'mode' : {name:"Current user mode", type: 'number', read: true, write: true, role: 'number'},
 };
 
 /*** statesCache ***/
 var statesCache = {};
 
 /*** Make functions be printable in JSON.stringify with names ***/
-Function.prototype.toJSON = function() { return `${this.name}` }
+Function.prototype.toJSON = function() { return `function ${this.name}` }
+
+/*** getFromDict ***/
+function getFromDict(dictId) {
+    logs('getFromDict(dictId) from ' + arguments.callee.caller.name);
+    logs('dictId = ' + JSON.stringify(dictId));
+    if (options.namesDictonary.hasOwnProperty(dictId) && (options.namesDictonary[dictId] !== undefined)) {
+        logs('namesDictonary[dictId] = ' + JSON.stringify(options.namesDictonary[dictId]));
+        return options.namesDictonary[dictId];
+    }
+    else {
+        return dictId;
+    }
+}
+
+/*** putToDict ***/
+function putToDict(dictId, name) {
+    logs('putToDict(dictId, name) from ' + arguments.callee.caller.name);
+    logs('dictId = ' + JSON.stringify(dictId));
+    logs('name = ' + JSON.stringify(name));
+    options.namesDictonary[dictId] = name;
+    setState(configPrefix + 'namesDictonary', JSON.stringify(options.namesDictonary), true);
+}
 
 /*** getStateCached ***/
 function getStateCached(user, state) {
-    logs('ВЫЗОВ ФУНКЦИИ getStateCached(user, state, value) из ' + arguments.callee.caller.name);
+    logs('Function getStateCached(user, state, value) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('state = ' + JSON.stringify(state));
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
@@ -234,7 +361,12 @@ function getStateCached(user, state) {
         if (existsState(id)) {
             const cachedVal = getState(id).val;
             if ((statesCommonAttr[state].type === 'string') && (cachedVal.length > 0)) {
-                statesCache[id] = JSON.parse(cachedVal);
+                try {
+                    statesCache[id] = JSON.parse(cachedVal);
+                } catch (err) {
+                    statesCache[id] = cachedVal;
+                    logs("Ошибка парсинга - " + JSON.stringify(err));
+                } 
             }
             else { 
                 statesCache[id] = cachedVal;
@@ -248,7 +380,7 @@ function getStateCached(user, state) {
 
 /*** setStateCached ***/
 function setStateCached(user, state, value) {
-    logs('ВЫЗОВ ФУНКЦИИ setStateCached(user, state, value) из ' + arguments.callee.caller.name);
+    logs('Function setStateCached(user, state, value) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('state = ' + JSON.stringify(state));
     logs('value = ' + JSON.stringify(value));
@@ -273,7 +405,7 @@ function setStateCached(user, state, value) {
 
 /*** delStateCached ***/
 function delStateCached(user, state) {
-    logs('ВЫЗОВ ФУНКЦИИ delStateCached(user, state) из ' + arguments.callee.caller.name);
+    logs('Function delStateCached(user, state) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('state = ' + JSON.stringify(state));
     const id = mainDataPrefix + 'cache.' + options.telegram + '.' + user + '.' + state;
@@ -287,15 +419,27 @@ function delStateCached(user, state) {
 
 /*** initConfig ***/
 function initConfig() {
-    logs('ВЫЗОВ ФУНКЦИИ initConfig() из ' + arguments.callee.caller.name);
-    const configPrefix = '0_userdata.0.telegram_automenu.config.';
+    logs('Function initConfig() from ' + arguments.callee.caller.name); 
     for (const [key, value] of Object.entries(options)) {
         if (key.indexOf('_') !== 0 ){
             const id = configPrefix + key;
             if (existsState(id)) {
-                options[key] = getState(id).val;
+                let actualValue = getState(id).val;
                 if (Array.isArray(value)) {
-                    options[key] = options[key].split(',');
+                    options[key] = actualValue.split(',');
+                }
+                else if (typeof(value) === 'object') {
+                    try {
+                        actualValue = JSON.parse(actualValue);
+                    } catch (err) {
+                        logs("Ошибка парсинга options[${key}]- " + JSON.stringify(err), true);
+                    }
+                    if (typeof(actualValue) === 'object') {
+                        options[key] = Object.assign(options[key], actualValue);
+                    }
+                }
+                else {
+                    options[key] = actualValue;
                 }
                 logs('option ' + JSON.stringify(key) + ' = ' + JSON.stringify(value) + ' is configured to ' + JSON.stringify(options[key]));
                 //options[key] = newVal;
@@ -307,34 +451,66 @@ function initConfig() {
                     stateVal = stateVal.join(',');
                     stateType = 'string';
                 }
+                else if (typeof(stateVal) === 'object') {
+                    stateVal = JSON.stringify(stateVal);
+                    stateType = 'string';
+                }
                 createState(id, stateVal, {name: key, type: stateType, read: true, write: true})
                 logs('state ' + JSON.stringify(id) + ' created for option ' + JSON.stringify(key) + ' = ' + JSON.stringify(stateVal));
             }
         }
     }
     setScheduler();
-    on({id: /^0_userdata\.0\.telegram_automenu\.config\..*$/, change: 'ne'}, function optionsSubscribe(obj) {
-        logs('ВЫЗОВ ФУНКЦИИ optionsSubscribe(obj)');
-        logs('obj = ' + JSON.stringify(obj));
-        const key = obj['id'].split('.').pop();
+    $('state[id=' + configPrefix + '*' + ']').each(function checkOptionsItems(itemId, itemI) {
+        const itemKey = itemId.split('.').pop();
+        if (! options.hasOwnProperty(itemKey)) {
+            logs('Found obsolete options key = ' + JSON.stringify(itemKey));
+            deleteState(itemId, function deleteObsoleteOptions (error, result) {
+                if (error) {
+                    logs('Error during deletion of ' + itemId + ' : ' + JSON.stringify(error), true);
+                }
+                else {
+                    logs('Options key ' + JSON.stringify(itemId) + ' is deleted with result : ' + JSON.stringify(result));
+                }
+            });
+        }
+    });
+    on({id: new RegExp(configPrefix + '*'), change: 'ne'}, function optionsSubscribe(obj) {
+        logs('Function optionsSubscribe(obj)');
+        logs('obj = ' + JSON.stringify(obj, undefined, ' '));
+        const key = obj.id.split('.').pop();
         if (Array.isArray(options[key])) {
-            options[key] = obj['state']['val'].split(',');
+            options[key] = obj.state.val.split(',');
+        }
+        else if (typeof(options[key]) === 'object') {
+            try {
+                options[key] = JSON.parse(obj.state.val);
+            } catch (err) {
+                logs("Ошибка парсинга options[${key}]- " + JSON.stringify(err), true);
+                options[key] = obj.state.val;
+            }  
         }
         else {
-            options[key] = obj['state']['val'];
+            options[key] = obj.state.val;
         }
         if (key === 'updateInterval') {
             setScheduler();
         }
-        setState(obj['id'], obj['state']['val'], true);
+        setState(obj.id, obj.state.val, true);
         logs('options[' + key + '] is set to ' + JSON.stringify(options[key]));
     });
     alertsInit();
+
+    /*** subscribe on Telegram ***/
+    if (getState('system.adapter.' + options.telegram + '.connected').val) {
+        telegramConnected(true);
+    }
+    on({id: 'system.adapter.' + options.telegram + '.connected', change: 'ne'}, telegramConnected);
 }
 
 /*** setScheduler ***/
 function setScheduler() {
-    logs('ВЫЗОВ ФУНКЦИИ setScheduler() из ' + arguments.callee.caller.name);
+    logs('Function setScheduler() from ' + arguments.callee.caller.name);
     if (options.hasOwnProperty('_updateMenuSchedule')) {
         logs('delete current schedule = ' + JSON.stringify(''));
         clearSchedule(options['_updateMenuSchedule']);
@@ -346,15 +522,15 @@ function setScheduler() {
             + ' * * * *';
         logs('scheduleString = ' + JSON.stringify(scheduleString));
         options['_updateMenuSchedule'] = schedule(scheduleString, function scheduledCurrentMenuUpdate() {
-            logs('ВЫЗОВ ФУНКЦИИ updateCurrentMenuSchedule()');
+            logs('Function updateCurrentMenuSchedule()');
             for (const user of options.users_id) {
                 logs('user = ' + JSON.stringify(user));
                 if (getStateCached(user, 'menuOn') === true) {
                     const itemPos = getStateCached(user, 'menuItem');
                     logs('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
-                    if (itemPos !== undefined) {
+                    if ( (! getStateCached(user, 'isWaitForInput')) && (itemPos !== undefined)) {
                         logs('make an menu update for = ' + JSON.stringify(user));
-                        showMenu(user, itemPos);
+                        doMenuItem(user, undefined, itemPos);
                     }
                 }
                 else {
@@ -368,7 +544,7 @@ function setScheduler() {
 
 /*** setAlert ***/
 function setAlert(menuObject, user) {
-    logs('ВЫЗОВ ФУНКЦИИ setAlert(menuObject, user) из ' + arguments.callee.caller.name);
+    logs('Function setAlert(menuObject, user) from ' + arguments.callee.caller.name);
     logs('menuObject = ' + JSON.stringify(menuObject));
     logs('user = ' + JSON.stringify(user));
     let alerts = getStateCached(user, 'alerts');
@@ -416,22 +592,22 @@ function setAlert(menuObject, user) {
 
 /*** getAlertIcon ***/
 function getAlertIcon(menuObject, user) {
-    logs('ВЫЗОВ ФУНКЦИИ getAlertIcon(menuObject) из ' + arguments.callee.caller.name);
+    logs('Function getAlertIcon(menuObject) from ' + arguments.callee.caller.name);
     logs('menuObject = ' + JSON.stringify(menuObject));
     logs('user = ' + JSON.stringify(user));
     const alerts = getStateCached(user, 'alerts');
     if (alerts === undefined) {
-        return options.alertIcons[1];
+        return options.defaultOnOffIcons[1];
     }
     else if (alerts.hasOwnProperty(menuObject.param)) {
-        return options.alertIcons[0];
+        return options.defaultOnOffIcons[0];
     }
-    return options.alertIcons[1];
+    return options.defaultOnOffIcons[1];
 }
 
 /*** alertsInit ***/
 function alertsInit() {
-    logs('ВЫЗОВ ФУНКЦИИ alertsInit()');
+    logs('Function alertsInit()');
     let isSet = {};
     for (const user_id of options.users_id) {
         let alerts = getStateCached(user_id, 'alerts');
@@ -449,7 +625,7 @@ function alertsInit() {
 
 /*** alertCallback ***/
 function alertCallback(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ alertCallback(obj)');
+    logs('Function alertCallback(obj)');
     logs('obj = ' + JSON.stringify(obj));
     for (const user of options.users_id) {
         logs('user = ' + JSON.stringify(user));
@@ -500,7 +676,7 @@ function alertCallback(obj) {
                             date: (new Date()).format(options.datetimeTemplate)
                         });
                         setStateCached(user, 'alertMessages', alertMessages);
-                        showMenu(user, itemPos, undefined, true);
+                        doMenuItem(user, undefined, itemPos, true);
                     }
                 }
             }
@@ -512,10 +688,16 @@ function alertCallback(obj) {
 }
 
 
+/*** submenuExtensions ***/
+function submenuExtensions(upperMenuItem) {
+    logs('Function submenuExtensions(upperMenuItem) from ' + arguments.callee.caller.name);
+    logs('upperMenuItem = ' + JSON.stringify(upperMenuItem));
+    return [];
+}
 
 /*** submenuGenerator ***/
 function submenuGenerator(upperMenuItem) {
-    logs('ВЫЗОВ ФУНКЦИИ submenuGenerator(upperMenuItem) из ' + arguments.callee.caller.name);
+    logs('Function submenuGenerator(upperMenuItem) from ' + arguments.callee.caller.name);
     logs('upperMenuItem = ' + JSON.stringify(upperMenuItem));
     var upperMenuIndex = getIndex(upperMenuItem.name);
     var subMenu = [];
@@ -525,8 +707,11 @@ function submenuGenerator(upperMenuItem) {
     var roomMenuIndex = '';
     var roomMenuItem;
     var menuItemName = '';
+    logs('mask = ' + JSON.stringify(submenuParams[upperMenuItem.type]['mask']));
+    logs('role = ' + JSON.stringify(submenuParams[upperMenuItem.type]['role']));
+    logs('funcEnum = ' + JSON.stringify(upperMenuItem.funcEnum));
     processObjects(submenuParams[upperMenuItem.type]['mask'], submenuParams[upperMenuItem.type]['role'], upperMenuItem.funcEnum, function plugsCB (id, room) {
-        logs('ВЫЗОВ ФУНКЦИИ plugsCB(id, room) из ' + arguments.callee.caller.name);
+        logs('Function plugsCB(id, room) from ' + arguments.callee.caller.name);
         logs('id = ' + JSON.stringify(id));
         logs('room = ' + JSON.stringify(room));
         logs('lastRoom = ' + JSON.stringify(lastRoom));
@@ -536,6 +721,7 @@ function submenuGenerator(upperMenuItem) {
         logs('roomMenuItem = ' + JSON.stringify(roomMenuItem));
         logs('menuItemName = ' + JSON.stringify(menuItemName));
         logs('subMenu = ' + JSON.stringify(subMenu));
+        logs(`submenuParams[${upperMenuItem.type}] = ${JSON.stringify(submenuParams[upperMenuItem.type])}`);
         const idPrefix = id.split('.').slice(0,-1).join('.');
         if (lastRoom != room.id) {
             if ((! submenuParams[upperMenuItem.type]['rooms']) && (currId >= 0) && (subMenu[subMenu.length-1].submenu.length === 1)) {
@@ -545,6 +731,7 @@ function submenuGenerator(upperMenuItem) {
             roomMenuItem = {
                                 name: upperMenuIndex + '.' + currId + '-' + getRoomName(room.id, room.name,'Main'),
                                 icon: upperMenuItem.icon,
+                                'room': room.id.split('.').pop(),
                                 submenu: []
                             };
             roomIndex = 0;
@@ -554,6 +741,8 @@ function submenuGenerator(upperMenuItem) {
                             name: upperMenuIndex + '.' + currId + '.' + roomIndex + '-' + getObject(idPrefix).common.name,
                             state: id,
                             type: upperMenuItem.type,
+                            funcEnum: upperMenuItem.funcEnum,
+                            room: room.id.split('.').pop(),
                             icons: submenuParams[upperMenuItem.type]['icons'],
                             submenu: []
                         };
@@ -561,40 +750,127 @@ function submenuGenerator(upperMenuItem) {
             menuItem.function = submenuParams[upperMenuItem.type]['report'];
         }
         var currSubId = 0;
-        for (const [state, name] of Object.entries(submenuParams[upperMenuItem.type]['menuitems'])) {
-            if (existsState(idPrefix + state)) {
-                const currObject = getObject(idPrefix + state);
+        let menuItems = Object.assign({}, submenuParams[upperMenuItem.type]['menuitems']);
+        logs('room = ' + JSON.stringify(room.id.split('.').pop()));
+        logs('upperMenuItem.funcEnum = ' + JSON.stringify(upperMenuItem.funcEnum));
+        logs('menuItems = ' + JSON.stringify(menuItems));
+        if (Object.keys(menuItems).length === 0) {
+            //menuItems={};
+            const mainObject = getObject(id);
+            logs('id = ' + JSON.stringify(id));
+            logs('mainObject = ' + JSON.stringify(mainObject));
+            if (mainObject.common.write) {
+                const itemState = id.split('.').pop();
+                let itemName = getFromDict(upperMenuItem.funcEnum + '.' + itemState);
+                if ( itemName === (upperMenuItem.funcEnum + '.' + itemState) ) { 
+                    itemName = mainObject.common.name;
+                }                
+                menuItems['.' + itemState] = itemName;
+            }
+            logs('menuItems = ' + JSON.stringify(menuItems));
+            $('state[id=' + idPrefix + '.*' + '](functions=' + upperMenuItem.funcEnum + ')(rooms=' + room.id.split('.').pop() + ')').each(function prepareMenuItems(itemId, itemI) {
+                logs('itemId = ' + JSON.stringify(itemId));
+                const itemObject = getObject(itemId);
+                logs('itemObject.common = ' + JSON.stringify(itemObject.common));
+                if (itemObject.common.write) {
+                    const itemState = itemId.split('.').pop();
+                    //to change in future!
+                    let itemName = getFromDict(upperMenuItem.funcEnum + '.' + itemState);
+                    if ( itemName === (upperMenuItem.funcEnum + '.' + itemState) ) { 
+                        itemName = itemObject.common.name;
+                    }
+                    //
+                    if ((itemState !== 'device_query') && (itemName.length > 0)) {
+                        menuItems['.' + itemState] = itemName;
+                    }
+                }
+            });
+            logs('menuItems = ' + JSON.stringify(menuItems, undefined, ' '));
+        }
+        //menuItems = submenuParams[upperMenuItem.type]['menuitems'];
+        for (const [stateId, stateName] of Object.entries(menuItems)) {
+            if (existsState(idPrefix + stateId)) {
+                let currObject = getObject(idPrefix + stateId);
                 logs('currObject = ' + JSON.stringify(currObject));
+                if (currObject.common.hasOwnProperty('alias') && currObject.common.alias.hasOwnProperty('id')) {
+                    currObject = getObject(currObject.common.alias.id);
+                }
                 if (currObject.common.type === 'boolean') {
                     menuItem.submenu.push({
-                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + name,
-                                    state: idPrefix + state,
+                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + stateName,
+                                    state: idPrefix + stateId,
+                                    funcEnum: upperMenuItem.funcEnum,
+                                    dictId: upperMenuItem.funcEnum + stateId,
                                     icons: submenuParams[upperMenuItem.type]['icons'],
                                     submenu: []
                                 })
                     currSubId++;
                 }
                 else {
-                    if ((currObject.common.type === 'string') && (currObject.common.hasOwnProperty('states') )) {
-                        const currState = getState(idPrefix + state).val;
-                        const states = currObject.common.states.split(';');
-                        if (states.length > 0) {
-                            var subMenuItem = {
-                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + name,
-                                    icon: upperMenuItem.icon,
+                    if (currObject.common.hasOwnProperty('states') && (['string','number'].indexOf(currObject.common.type) >= 0 )) {
+                        const currState = getState(idPrefix + stateId).val;
+                        const states = getPossibleStates(currObject.common.states);
+                        logs('states = ' + JSON.stringify(states));
+                        if ((states !== undefined) && Object.keys(states).length > 0) {
+                            let subMenuItem = {
+                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + stateName,
+                                    funcEnum: upperMenuItem.funcEnum,
+                                    dictId: upperMenuItem.funcEnum + stateId,
+                                    icon: '',
                                     submenu: []
                                 };
-                            for (let iState = 0; iState < states.length; ++iState) {
-                                const [possibleValue, possibleName] = states[iState].split(':');
+                            let iState = 0;
+                            for (const [possibleValue, possibleName] of Object.entries(states)) {
                                 logs('possibleValue = ' + JSON.stringify(possibleValue));
                                 logs('possibleName = ' + JSON.stringify(possibleName));
                                 subMenuItem.submenu.push({
                                     name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '.' + iState + '-' + (possibleName !== undefined ? possibleName : possibleValue),
-                                    state: idPrefix + state + ':' + possibleValue,
-                                    icon: submenuParams[upperMenuItem.type]['icons'][currState == possibleValue ? 'on' : 'off'],
+                                    'state': idPrefix + stateId + ':' + possibleValue,
+                                    funcEnum: upperMenuItem.funcEnum,
+                                    icon: options.defaultOnOffIcons[currState == possibleValue ? '0' : '1'],
                                     submenu: []
                                 })
-
+                                if (currState == possibleValue) {
+                                    subMenuItem.name += ' (' + (possibleName !== undefined ? possibleName : possibleValue) + ')';
+                                }
+                                iState++;
+                            }
+                            logs('subMenuItem = ' + JSON.stringify(subMenuItem, undefined, ' '));
+                            menuItem.submenu.push(subMenuItem);
+                            currSubId++;
+                        }
+                    }
+                    else if ((currObject.common.type === 'number') /*&&  currObject.common.hasOwnProperty('min') && currObject.common.hasOwnProperty('max')*/) {
+                        const step = Number(currObject.common.hasOwnProperty('step') ? currObject.common.step : 1);
+                        const currState = Number(getState(idPrefix + stateId).val);
+                        let states = [];
+                        for(let steps = currState - 2 * step; steps <= currState + 2 * step; steps += step) {
+                            if ( ((! currObject.common.hasOwnProperty('min')) || (steps >=  Number(currObject.common.min))) && ((! currObject.common.hasOwnProperty('max')) || (steps <=  Number(currObject.common.max)))) {
+                                states.push(steps);                          
+                            }
+                        }
+                        if (states.length > 0) {
+                            let subMenuItem = {
+                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '-' + stateName,
+                                    funcEnum: upperMenuItem.funcEnum,
+                                    dictId: upperMenuItem.funcEnum + stateId,
+                                    icon: '',
+                                    submenu: []
+                                };
+                            let iState = 0;
+                            for (const possibleValue of states) {
+                                logs('possibleValue = ' + JSON.stringify(possibleValue));
+                                subMenuItem.submenu.push({
+                                    name: upperMenuIndex + '.' + currId + '.' + roomIndex + '.' + currSubId + '.' + iState + '-' +  possibleValue + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '' ),
+                                    state: idPrefix + stateId + ':' + possibleValue,
+                                    funcEnum: upperMenuItem.funcEnum,
+                                    icon: options.defaultOnOffIcons[currState == possibleValue ? '0' : '1'],
+                                    submenu: []
+                                })
+                                if (currState == possibleValue) {
+                                    subMenuItem.name += ' (' + possibleValue + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '' ) + ')';
+                                }
+                                iState++;
                             }
                             menuItem.submenu.push(subMenuItem);
                             currSubId++;
@@ -615,28 +891,53 @@ function submenuGenerator(upperMenuItem) {
         roomIndex++;
         lastRoom = room.id;
     })
-    if ((! submenuParams[upperMenuItem.type]['rooms']) && (subMenu[subMenu.length-1].submenu.length === 1)) {
+    if ((! submenuParams[upperMenuItem.type]['rooms']) && ((subMenu.length > 0) && (subMenu[subMenu.length-1].submenu.length === 1))) {
         subMenu = unRoom(subMenu);
     }
     logs('subMenu New = ' + JSON.stringify(subMenu));
     return subMenu;
 }
 
+/*** getPossibleStates ***/
+function getPossibleStates(inputStates) {
+    logs('Function getPossibleStates(inputStates) from ' + arguments.callee.caller.name);
+    logs('inputStates = ' + JSON.stringify(inputStates));
+    let states = {};
+    if (typeof(inputStates) === 'string') {
+        const statesArray = inputStates.indexOf(';') > 0 ? inputStates.split(';') : (inputStates.indexOf(',') > 0 ? inputStates.split(',') : []);
+        logs('statesArray = ' + JSON.stringify(statesArray));
+        for (let iState of statesArray.values()) {
+            const [possibleValue, possibleName] = iState.split(':');
+            states[possibleValue.trim()] = possibleName.trim();
+        }
+        logs('states = ' + JSON.stringify(states));
+        return states;
+    }
+    else if (Array.isArray(inputStates)) {
+        return undefined;
+    }
+    else if (typeof(inputStates) === 'object') {
+        return inputStates;
+    }
+}
+
+
 /*** unRoom ***/
 function unRoom(subMenu) {
-    logs('ВЫЗОВ ФУНКЦИИ unRoom(subMenu) из ' + arguments.callee.caller.name);
-    logs('subMenu = ' + JSON.stringify(subMenu));
+    logs('Function unRoom(subMenu) from ' + arguments.callee.caller.name);
+    logs('subMenu = ' + JSON.stringify(subMenu, undefined, ' '));
     var roomMenuItem = subMenu.pop();
     roomMenuItem.submenu[0].name = roomMenuItem.name;
+    roomMenuItem.submenu[0]['room'] = roomMenuItem.room;
     roomMenuItem.submenu[0].submenu = unRoomIterator(roomMenuItem.submenu[0].submenu, 0);
-    logs('subMenu new = ' + JSON.stringify(roomMenuItem.submenu[0].submenu));
-    subMenu.push(roomMenuItem.submenu[0])
+    subMenu.push(roomMenuItem.submenu[0]);
+    logs('subMenu new = ' + JSON.stringify(subMenu, undefined, ' '));
     return subMenu;
 }
 
 /*** unRoomIterator ***/
 function unRoomIterator(subMenu, level) {
-    logs('ВЫЗОВ ФУНКЦИИ unRoomIterator(subMenu) из ' + arguments.callee.caller.name);
+    logs('Function unRoomIterator(subMenu) from ' + arguments.callee.caller.name);
     logs('subMenu = ' + JSON.stringify(subMenu));
     logs('level = ' + JSON.stringify(level));
     for (var subMenuItem of subMenu) {
@@ -657,7 +958,7 @@ function unRoomIterator(subMenu, level) {
 
 /*** processObjects ***/
 function processObjects(objMask, objRole, objFunc, objCB) {
-    logs('ВЫЗОВ ФУНКЦИИ processObjects(objMask, objRole, objFunc, objCB) из ' + arguments.callee.caller.name);
+    logs('Function processObjects(objMask, objRole, objFunc, objCB) from ' + arguments.callee.caller.name);
     logs('objMask = ' + JSON.stringify(objMask));
     logs('objRole = ' + JSON.stringify(objRole));
     logs('objFunc = ' + JSON.stringify(objFunc));
@@ -665,7 +966,8 @@ function processObjects(objMask, objRole, objFunc, objCB) {
     const listRooms = getEnums('rooms');
     for (let currRoom of listRooms) {
         logs('currRoom = ' + JSON.stringify(currRoom));
-        $('state[id=' + objMask + '][role=' + objRole + '](functions=' + objFunc + ')(rooms=' + currRoom.id.split('.').pop() + ')').each( function (id) {
+        //$('state[id=' + objMask + '][role=' + objRole + '](functions=' + objFunc + ')(rooms=' + currRoom.id.split('.').pop() + ')').each( function (id) {
+        $('state[id=' + objMask + '](functions=' + objFunc + ')(rooms=' + currRoom.id.split('.').pop() + ')').each( function (id) {
             objCB (id, currRoom);
         } );
     }
@@ -673,9 +975,11 @@ function processObjects(objMask, objRole, objFunc, objCB) {
 
 
 /*** reportGenerator ***/
-function reportGenerator(menuObject) {
-    logs('ВЫЗОВ ФУНКЦИИ reportGenerator(menuObject) из ' + arguments.callee.caller.name);
-    logs('menuObject = ' + JSON.stringify(menuObject));
+function reportGenerator(menuObject, user, menuRows) {
+    logs('Function reportGenerator(menuObject, user, menuRows) from ' + arguments.callee.caller.name);
+    logs('menuObject = ' + JSON.stringify(menuObject, undefined, ' '));
+    logs('user = ' + JSON.stringify(user));
+    logs('menuRows = ' + JSON.stringify(menuRows, undefined, ' '));
     if ((typeof menuObject === 'object') && (menuObject.hasOwnProperty('state'))) {
         var maxLeftLen = 19;
         const maxRightLen = 8;
@@ -685,20 +989,46 @@ function reportGenerator(menuObject) {
         if (submenuParams[menuObject.type].hasOwnProperty('statusitems') && submenuParams[menuObject.type]['statusitems'].hasOwnProperty('val')) {
             const currState = getState(menuObject.state);
             textStatus += submenuParams[menuObject.type]['statusitems']['val']['prefix'].concat(':').padEnd(maxLeftLen) + ' ' + submenuParams[menuObject.type]['statusitems']['val'][currState.val].padStart(maxRightLen);
-            if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ack')) {
+            /*if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ack')) {
                 textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ack'].concat(':').padEnd(maxLeftLen) + ' ' + ((currState.ack ? 'Да' : 'Нет').padStart(maxRightLen));
+            }*/
+            if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ts')) {
+                const timeStamp = new Date(currState.ts);
+                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ts'].concat(':').padEnd(maxLeftLen) + ' ' + timeStamp.format(options.datetimeTemplate).padStart(maxRightLen);
             }
             if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('lc')) {
                 const lastChanged = new Date(currState.lc);
                 textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['lc'].concat(':').padEnd(maxLeftLen) + ' ' + lastChanged.format(options.datetimeTemplate).padStart(maxRightLen);
             }
-            if (submenuParams[menuObject.type]['statusitems'].hasOwnProperty('ts')) {
-                const timeStamp = new Date(currState.ts);
-                textStatus += '\r\n' + submenuParams[menuObject.type]['statusitems']['ts'].concat(':').padEnd(maxLeftLen) + ' ' + timeStamp.format(options.datetimeTemplate).padStart(maxRightLen);
-            }
         }
         maxLeftLen = 19;
-        for (const [state, name] of Object.entries(submenuParams[menuObject.type]['reportitems'])) {
+        let reportitems = {};       
+        if (submenuParams[menuObject.type].hasOwnProperty('reportitems') && (Object.keys(submenuParams[menuObject.type]['reportitems']).length > 0)) {
+            reportitems = submenuParams[menuObject.type]['reportitems'];
+        }
+        else if (menuObject.hasOwnProperty('funcEnum') && menuObject.hasOwnProperty('room')) {
+            $('state[id=' + idPrefix + '.*' + '](functions=' + menuObject.funcEnum + ')(rooms=' + menuObject.room + ')').each( function prepareReportItems(itemId, itemI) {
+                logs('itemId = ' + JSON.stringify(itemId));
+                if (itemId !== menuObject.state) {
+                    const itemObject = getObject(itemId);
+                    logs('itemObject.common = ' + JSON.stringify(itemObject.common));
+                    if (! itemObject.common.write) {
+                        const itemState = itemId.split('.').pop();
+                        //to change in future!
+                        let itemName = getFromDict(menuObject.funcEnum + '.' + itemState);
+                        if ( itemName === (menuObject.funcEnum + '.' + itemState) ) { 
+                            itemName = itemObject.common.name;
+                        }
+                        logs(`reportitems[.${itemState}] = ${JSON.stringify(itemName)}`);
+                        reportitems['.' + itemState] = itemName;
+                        if (menuRows.hasOwnProperty('toRename') && (menuRows.toRename !== undefined)) {
+                            menuRows.toRename[menuObject.funcEnum + '.' + itemState] = itemName;
+                        }
+                    }
+                }
+            });
+        }
+        for (const [state, name] of Object.entries(reportitems)) {
             if (existsObject(idPrefix + state)) {
                 text += (text.length > 0 ? '\r\n' : '') + name.concat(':').padEnd(maxLeftLen) + ' ';
                 const currObject = getObject(idPrefix + state);
@@ -707,7 +1037,7 @@ function reportGenerator(menuObject) {
                     const currState = getState(idPrefix + state);
                     logs('currState = ' + JSON.stringify(currState));
                     if ((currObject.common.type === 'boolean') && (typeof currState.val === 'boolean')) {
-                        text += currState.val ? submenuParams[menuObject.type]['icons']['on'].padStart(maxRightLen-2) : submenuParams[menuObject.type]['icons']['off'].padStart(maxRightLen-2);
+                        text += options.defaultOnOffIcons[currState.val ? 0 : 1].padStart(maxRightLen-2);
                     }
                     else if ((currObject.common.type === 'number') && (typeof currState.val === 'number')) {
                         text += currState.val.toFixed(2).padStart(maxRightLen) + ' ' + (currObject.common.hasOwnProperty('unit') ? currObject.common.unit : '');
@@ -735,7 +1065,7 @@ function reportGenerator(menuObject) {
 
 /*** Environments ***/
 function Environments(menuObject) {
-    logs('ВЫЗОВ ФУНКЦИИ Environments(menuObject) из ' + arguments.callee.caller.name);
+    logs('Function Environments(menuObject) from ' + arguments.callee.caller.name);
     logs('menuObject = ' + JSON.stringify(menuObject));
     var text = '';
     if ((typeof menuObject === 'object') && (menuObject.hasOwnProperty('param'))) {
@@ -769,76 +1099,160 @@ function Environments(menuObject) {
 ////////////////////////// МАГИЯ ///////////////////////////////
 ////////////////////////////////////////////////////////////////
 
+
 /*** doMenuItem ***/
-function doMenuItem(user, cmd) {
-    logs('ВЫЗОВ ФУНКЦИИ doMenuItem(user, cmd) из ' + arguments.callee.caller.name);
+function doMenuItem(user, cmd, cmdPos, isAlert) {
+    logs('Function doMenuItem(user, cmd) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('cmd = ' + JSON.stringify(cmd));
-    var timer;
-    var cmdPos = getItemPos(cmd);
     logs('cmdPos = ' + JSON.stringify(cmdPos));
-    const cmdItem = getMenuItem(cmdPos.concat(addMenuIndex(menu)));
-    logs('cmdItem = ' + JSON.stringify(cmdItem));
-    if((cmdItem.submenu.length === 0) && cmdItem.hasOwnProperty('state') && ! cmdItem.hasOwnProperty('function')){
-        const [currState, possibleValue] = cmdItem.state.split(':');
-        var currObject = getObject(currState);
-        logs('currObject = ' + JSON.stringify(currObject));
-        var role = currObject.common.role;
-        if (currObject.common.write) {
-            clearTimeout(timer);
-            timer = setTimeout(function() {
-                showMsg('Ошибка! нет ответа', user);
-                cmdPos = cmdPos.slice(0, cmdPos.length-1);
-                showMenu(user, cmdPos, cmdItem);
-            }, 4000);
-            setStateCached(user, 'currentState', currState);
-            if(currObject.common.type === 'boolean'){
-                setState(currState, !getState(currState).val, function cb(){
-                    clearTimeout(timer);
-                    setStateCached(user, 'currentState', '');
-                    cmdPos = cmdPos.slice(0, cmdPos.length-1);
-                    showMsg('Успешно!', user);
-                    showMenu(user, cmdPos);
-                    logs('currState.val = ' + getState(currState).val);
-                });
-            } else {
-                if ((currObject.common.type === 'string') && (currObject.common.hasOwnProperty('states')) && ! ( possibleValue === undefined) ) {
-                    logs('possibleValue = ' + JSON.stringify(possibleValue));
-                    if (getState(currState).val !== possibleValue) {
-                        setState(currState, possibleValue, function cb(){
-                            clearTimeout(timer);
-                            cmdPos = cmdPos.slice(0, cmdPos.length-1);
-                            showMsg('Успешно!', user);
-                            showMenu(user, cmdPos);
-                            logs('currState.val = ' + getState(currState).val);
-                        });
-                    }
-                    else {
-                        clearTimeout(timer);
-                    }
-                }
-                else {
-                    logs('НЕ ВЕРНЫЙ ТИП ОБЬЕКТА');
-                    showMsg('Не верный тип обьекта', user);
-                }
+    logs('isAlert = ' + JSON.stringify(isAlert));
+    var menuBase;
+    const extensionScriptState = 'javascript.' + instance + '.' + options.menuExtensions.replace('.js.', 'Enabled.');
+    logs(`scriptState = ${JSON.stringify(extensionScriptState)}`);
+    if ((options.menuExtensions.length  > 0) && existsState(extensionScriptState)) {
+        logs(`scriptState ${JSON.stringify(extensionScriptState)} exists`);
+        const started = startScript(options.menuExtensions, true);
+        logs(`Script ${options.menuExtensions} is ${started ? 'already ' : ''}started`);
+        messageTo('updateAutoTelegramMenu', menu, {timeout: options.extensionsTimeout}, function menuUpdated(menuAddOns){
+            logs('Function menuUpdated(menuAddOns)');
+            logs('menuAddOns = ' + JSON.stringify(menuAddOns));
+            if ( ! ((typeof(menuAddOns) === 'object') && ( menuAddOns.hasOwnProperty('error'))) && (Array.isArray(menuAddOns) && (menuAddOns.length > 0))) {
+                menuBase = Object.assign({}, menu);
+                menuBase.submenu = menuBase.submenu.concat(menuAddOns);
+                logs(`updatedMenu = ${JSON.stringify(menuBase, null, ' ')}`);
+                menuBase = addMenuIndex(menuBase);
             }
-        }
-        else {
-            clearTimeout(timer);
-            cmdPos = cmdPos.slice(0, cmdPos.length-1);
-            showMenu(user, cmdPos, cmdItem);
-            logs('Объект ' + cmdItem.state + ' только для чтения!');
-        }
-    } else {
-        return showMenu(user, cmdPos, cmdItem);
+            else {
+                if ((typeof(menuAddOns) === 'object') && menuAddOns.hasOwnProperty('error')) {
+                    logs(`Can't update menu from extension ${options.menuExtensions}! No result. Error is ${menuAddOns.error}`, true);
+                }
+                menuBase = addMenuIndex(menu);
+            }
+            doMenuExtended(user, menuBase, cmd, cmdPos, isAlert);
+        });
+    }
+    else {
+        menuBase = addMenuIndex(menu);
+        doMenuExtended(user, menuBase, cmd, cmdPos, isAlert);
     }
 
 }
 
-/*** showMenu ***/
-function showMenu(user, itemPos, menuItem, isAlert) {
-    logs('ВЫЗОВ ФУНКЦИИ showMenu(user, itemPos, menuItem, isAlert) из ' + arguments.callee.caller.name);
+/*** doMenu ***/
+function doMenuExtended(user, menuBase, cmd, cmdPos, isAlert) {
+    logs('Function doMenuExtended(user, menuBase, cmd, cmdPos, isAlert) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
+    logs('menuBase = ' + JSON.stringify(menuBase));
+    logs('cmd = ' + JSON.stringify(cmd));
+    logs('cmdPos = ' + JSON.stringify(cmdPos));
+    logs('isAlert = ' + JSON.stringify(isAlert));
+    var timer;
+    if (cmd !== undefined) {
+        cmdPos = getItemPos(cmd);
+    }
+    else {
+        if (cmdPos === undefined ) {
+            cmdPos = getStateCached(user, 'menuItem');
+        }
+    }
+    logs('cmdPos = ' + JSON.stringify(cmdPos));
+    //const cmdItem = getMenuItem(cmdPos.concat(addMenuIndex(menu)));
+    getMenuItem(cmdPos, addMenuIndex(menuBase), undefined, function doMenuTo (cmdItem){
+        logs('cmdItem = ' + JSON.stringify(cmdItem));
+        if( (cmd !== undefined) && (cmdItem !== undefined) && (cmdItem.submenu.length === 0) && cmdItem.hasOwnProperty('state') && ! cmdItem.hasOwnProperty('function')){
+            let [currState, possibleValue] = cmdItem.state.split(':');
+            var currObject = getObject(currState);
+            if (currObject.common.hasOwnProperty('alias') && currObject.common.alias.hasOwnProperty('id')) {
+                currObject = getObject(currObject.common.alias.id);
+            }        
+            logs('currObject = ' + JSON.stringify(currObject));
+            var role = currObject.common.role;
+            if (currObject.common.write) {
+                clearTimeout(timer);
+                timer = setTimeout(function() {
+                    showMsg('Ошибка! нет ответа', user);
+                    cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                    showMenu(user, menuBase, cmdPos, cmdItem);
+                }, 4000);
+                setStateCached(user, 'currentState', currState);
+                if(currObject.common.type === 'boolean'){
+                    setState(currState, !getState(currState).val, function cb(){
+                        clearTimeout(timer);
+                        setStateCached(user, 'currentState', '');
+                        cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                        showMsg('Успешно!', user);
+                        showMenu(user, menuBase, cmdPos);
+                        logs('currState.val = ' + getState(currState).val);
+                    });
+                } else {
+                    if (currObject.common.hasOwnProperty('states') && (['string','number'].indexOf(currObject.common.type) >= 0 ) && ! ( possibleValue === undefined) ) {
+                        if (currObject.common.type === 'number') {
+                            possibleValue = Number(possibleValue);
+                        }
+                        const states = getPossibleStates(currObject.common.states);
+                        logs('possibleValue = ' + JSON.stringify(possibleValue));
+                        logs('Object.keys(states). = ' + JSON.stringify(Object.keys(states)));
+                        if ((getState(currState).val !== possibleValue) && (Object.keys(states).indexOf('' + possibleValue) >= 0 )) {
+                            setState(currState, possibleValue, function cb(){
+                                clearTimeout(timer);
+                                cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                                showMsg('Успешно!', user);
+                                showMenu(user, menuBase, cmdPos);
+                                logs('currState.val = ' + getState(currState).val);
+                            });
+                        }
+                        else {
+                            logs('НЕВЕРНОЕ ЗНАЧЕНИЕ ОБЬЕКТА');
+                            showMsg('Неверное значение обьекта', user);
+                            clearTimeout(timer);
+                        }
+                    }
+                    else if ((currObject.common.type === 'number')) {
+                        possibleValue = Number(possibleValue);
+                        const step = Number(currObject.common.hasOwnProperty('step') ? currObject.common.step : 1);
+                        if (((! currObject.common.hasOwnProperty('min')) || (possibleValue >= Number(currObject.common.min))) && 
+                            ((! currObject.common.hasOwnProperty('max')) || (possibleValue <= Number(currObject.common.max))) && 
+                            ((possibleValue % step) == 0 )) {
+                            setState(currState, possibleValue, function cb(){
+                                clearTimeout(timer);
+                                cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                                showMsg('Успешно!', user);
+                                showMenu(user, menuBase, cmdPos);
+                                logs('currState.val = ' + getState(currState).val);
+                            });
+                        }
+                        else {
+                            logs('НЕВЕРНОЕ ЗНАЧЕНИЕ ОБЬЕКТА', true);
+                            showMsg('Неверное значение обьекта', user);
+                            clearTimeout(timer);
+                        }
+
+                    }
+                    else {
+                        clearTimeout(timer);
+                        logs('НЕВЕРНЫЙ ТИП ОБЬЕКТА');
+                        showMsg('Неверный тип обьекта', user);
+                    }
+                }
+            }
+            else {
+                clearTimeout(timer);
+                cmdPos = cmdPos.slice(0, cmdPos.length-1);
+                showMenu(user, menuBase, cmdPos, cmdItem);
+                logs('Объект ' + cmdItem.state + ' только для чтения!');
+            }
+        } else {
+            showMenu(user, menuBase, cmdPos, cmdItem, isAlert);
+        }
+    });
+}
+
+/*** showMenu ***/
+function showMenu(user, menuBase, itemPos, menuItem, isAlert) {
+    logs('Function showMenuToUser(user, itemPos, menuItem, isAlert) from ' + arguments.callee.caller.name);
+    logs('user = ' + JSON.stringify(user));
+    logs('menuBase = ' + JSON.stringify(menuBase));
     logs('itemPos = ' + JSON.stringify(itemPos));
     logs('menuItem = ' + JSON.stringify(menuItem));
     logs('isAlert = ' + JSON.stringify(isAlert));    
@@ -848,68 +1262,104 @@ function showMenu(user, itemPos, menuItem, isAlert) {
     else {
         setStateCached(user, 'menuItem', itemPos);
     }
-    var menuBase = addMenuIndex(menu);
-    if (menuItem === undefined) {
-        menuItem = getMenuItem(itemPos.concat(menuBase));
-    }
-    logs('menuItem = ' + JSON.stringify(menuItem));    
-    var menuRows = {
-        menutext: '', //(menuBase.icon ? menuBase.icon + ' ':'') + skipIndex(menuBase.name),
-        state: '',
-        backIndex: getIndex(menuBase.name),
-        buttons: []
-    };
-    var subMenuPos = itemPos.concat([]);
-    logs('itemPos = ' + JSON.stringify(itemPos));
-    logs('subMenuPos = ' + JSON.stringify(subMenuPos));
-    logs('menuBase = ' + JSON.stringify(menuBase));
-    menuRows = getMenuRow(user, Object.assign({}, menuBase), subMenuPos, menuRows);
-    logs('menuRows = ' + JSON.stringify(menuRows));
-    if(itemPos.length > 0){
+    getMenuItem(itemPos, menuBase, menuItem, function showMenuTo(subMenu){
+        logs('Function showMenuTo(subMenu)');
+        logs('subMenu = ' + JSON.stringify(subMenu));    
+        /*var menuRows*/var menuCaption = {
+            menutext: options.hierarhicalCaption ? '' : (menuBase.icon ? menuBase.icon + ' ':'') + skipIndex(menuBase.name),
+            state: '',
+            backIndex: getIndex(menuBase.name),
+            buttons: []
+        };
+        var subMenuPos = itemPos.concat([]);
+        logs('itemPos = ' + JSON.stringify(itemPos));
+        logs('subMenuPos = ' + JSON.stringify(subMenuPos));
+        logs('menuBase = ' + JSON.stringify(menuBase, undefined, ' '));
+        /*menuRows = */getMenuRow(user, Object.assign({}, menuBase), subMenuPos, menuCaption, undefined, function showMenuRows(menuRows) {
+        logs('Function showMenuRows(menuRows)');
+        logs('menuRows = ' + JSON.stringify(menuRows, undefined, ' '));
         menuRows.buttons = splitMenu(menuRows.buttons);
-        var lastRow = [{ text: options.backText, callback_data: options.backCmd + menuRows.backIndex + '-' }];
-        if (options.showHome) {
-            lastRow.push({ text: options.homeText, callback_data: options.homeCmd });
-        }
-        lastRow.push({ text: options.closeText, callback_data: options.closeCmd });
-        menuRows.buttons.push(lastRow);
-        logs('menuRows.buttons = ' + JSON.stringify(menuRows.buttons));
-        if ( menuRows.hasOwnProperty('function') && (typeof menuRows.function === "function") ) {
-            logs('itemPos = ' + JSON.stringify(itemPos));
-            const functionResult = menuRows.function(menuItem, user);
-            if (typeof functionResult === 'string') {
-                menuRows.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
+        if(itemPos.length > 0){
+            var lastRow = [{ text: options.backText, callback_data: options.backCmd + menuRows.backIndex + '-' }];
+            if (options.showHome) {
+                lastRow.push({ text: options.homeText, callback_data: options.homeCmd });
             }
-            else if (Array.isArray(functionResult) ) {
-                logs('functionResult = ' + JSON.stringify(functionResult));
-                return showMenu(user, functionResult);
+            lastRow.push({ text: options.closeText, callback_data: options.closeCmd });
+            menuRows.buttons.push(lastRow);
+            logs('menuRows.buttons = ' + JSON.stringify(menuRows.buttons));
+            if ( menuRows.hasOwnProperty('function') && (typeof menuRows.function === "function") ) {
+                logs('itemPos = ' + JSON.stringify(itemPos));
+                const functionResult = menuRows.function(subMenu, user, menuRows);
+                if (typeof functionResult === 'string') {
+                    menuRows.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
+                }
+                else if (Array.isArray(functionResult) ) {
+                    logs('functionResult = ' + JSON.stringify(functionResult));
+                    showMenu(user, menuBase, functionResult);
+                    return;
+                }
             }
+            else if (menuRows.hasOwnProperty('text') && (menuRows.text !== undefined)) {
+                menuRows.menutext += menuRows.text.length > 0 ? menuRows.text : '';
+            }
+            const userMode = getStateCached(user, 'mode');
+            const isAdmin = (options.admins_id.indexOf(user) >= 0) || (options.admins_id.indexOf(user.toString()) >= 0);
+            const isAdminEnabled = (userMode !== undefined) && (userMode === 1);
+            if ( isAdmin && isAdminEnabled) {
+                let adminRow = [];
+                if (menuRows.hasOwnProperty('room') && (menuRows.room !== undefined)) {
+                    //for future
+                }
+                if (menuRows.hasOwnProperty('dictId') && (menuRows.dictId !== undefined)) {
+                    adminRow.push(
+                        { 
+                            text: getFromDict('cmdRenameItem') + ' (' + menuRows.name.split(' (').shift() + ')', 
+                            callback_data: 'cmdRenameItem' + ':' + menuRows.dictId,
+                        });                
+                }
+                if (menuRows.hasOwnProperty('toRename') && (menuRows.toRename !== undefined)) {
+                    logs('menuRows.toRename = ' + JSON.stringify(menuRows.toRename));
+                    for (const[renameId, renameName] of Object.entries(menuRows.toRename)) {
+                        adminRow.push(
+                            { 
+                                text: getFromDict('cmdRenameItem') + ' (' + renameName.split(' (').shift() + ')', 
+                                callback_data: 'cmdRenameItem' + ':' + renameId
+                            });
+                    }
+                }
+                if (adminRow.length > 0) {
+                    adminRow = splitMenu(adminRow);
+                    for (const adminButtons of adminRow.values()) {
+                        menuRows.buttons.push(adminButtons);
+                    }                    
+                }
+            }        
+            logs('menuRows 2 = ' + JSON.stringify(menuRows));
+            sendMessage(user, menuRows, isAlert, false);
+        } else {
+            logs('menuRows 3 = ' + JSON.stringify(menuRows));
+            menuRows.buttons.push([{ text: options.closeText, callback_data: options.closeCmd }]);
+            sendMessage(user, menuRows, isAlert, ! getStateCached(user, 'menuOn'));
         }
-        logs('menuRows 2 = ' + JSON.stringify(menuRows));
-        sendMessage(user, menuRows, isAlert, false);
-    } else {
-        logs('menuRows 3 = ' + JSON.stringify(menuRows));
-        menuRows.buttons = splitMenu(menuRows.buttons);
-        menuRows.buttons.push([{ text: options.closeText, callback_data: options.closeCmd }]);
-        sendMessage(user, menuRows, isAlert, ! getStateCached(user, 'menuOn'));
-    }
+        });
+    });
 }
 
 
 /*** sendMessage ***/
-function sendMessage(user, menuRows, isAlert, showMenu) {
-    logs('ВЫЗОВ ФУНКЦИИ sendMessage(user, menuRows, alertMessage, showMenu) из ' + arguments.callee.caller.name);
+function sendMessage(user, menuRows, isAlert, toDisplayMenu) {
+    logs('Function sendMessage(user, menuRows, alertMessage, toDisplayMenu) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('menuRows = ' + JSON.stringify(menuRows));
     logs('isAlert = ' + JSON.stringify(isAlert));    
-    logs('showMenu = ' + JSON.stringify(showMenu));
+    logs('toDisplayMenu = ' + JSON.stringify(toDisplayMenu));
     let alertMessages = getStateCached(user, 'alertMessages');
     if (alertMessages === undefined) {
         alertMessages = [];
     }
     logs('alertMessages = ' + JSON.stringify(alertMessages));
     let alertMessage = '';
-    if (alertMessages.length) {
+    if (alertMessages.length && (menuRows.buttons !== undefined) ) {
         alertMessage = '<b><u>' + alertMessages[alertMessages.length - 1].date + ':</u> ' + alertMessages[alertMessages.length - 1].message  + '</b>' + '\r\n' + '\r\n';
         logs('alertMessage = ' + JSON.stringify(alertMessages[alertMessages.length - 1].message));
         let alertRow = [{ text: options.acknowledgeText, callback_data: options.acknowledgeCmd}];
@@ -920,37 +1370,48 @@ function sendMessage(user, menuRows, isAlert, showMenu) {
         if (alertMessages.length > 1) {
             alertRow.push({ text: '(' + alertMessages.length + ') ' + options.acknowledgeAllText, callback_data: options.acknowledgeAllCmd});
         }
-        menuRows.buttons.push(alertRow);
+        alertRow = splitMenu(alertRow);
+        for (const alertButtons of alertRow.values()) {
+            menuRows.buttons.push(alertButtons);
+        }
+        //menuRows.buttons.push(alertRow);
     }    
-    if (getStateCached(user, 'menuOn') || showMenu) {
+    if (getStateCached(user, 'menuOn') || toDisplayMenu) {
         const timeStamp = '<i>' + (new Date()).format(options.datetimeTemplate) + '</i> ';
         const lastMessage = getStateCached(user, 'lastMessage');
-        if ((lastMessage !== JSON.stringify(menuRows)) || showMenu || isAlert) {
+        if ((lastMessage != JSON.stringify(menuRows)) || toDisplayMenu || isAlert) {
             logs('lastMessage is not equal to menuRows, sendTo Telegram initiated');
             logs('lastMessage = ' + JSON.stringify(lastMessage));
             logs('menuRows = ' + JSON.stringify(menuRows));
             setStateCached(user, 'lastMessage', JSON.stringify(menuRows));         
             let telegramObject = {
                     user: getUser(user),
-                    text: alertMessage + timeStamp + menuRows.menutext,
+                    text: alertMessage + (menuRows.buttons === undefined ? '' : timeStamp) + menuRows.menutext,
                     parse_mode: 'HTML'
                 };
-            if (showMenu || isAlert ) {
-                telegramObject['reply_markup'] = {
-                        inline_keyboard: menuRows.buttons,
-                    }
+            if (toDisplayMenu || isAlert ) {
+                if (menuRows.buttons !== undefined) {
+                    telegramObject['reply_markup'] = {
+                            inline_keyboard: menuRows.buttons,
+                        }
+                }
             }
             else {
                 telegramObject['editMessageText'] = {
                         options: {
                             chat_id: user,
                             message_id: getStateCached(user, 'botSendMessageId'),
-                            parse_mode: 'HTML',
-                            reply_markup: {
+                            parse_mode: 'HTML', /*
+                            reply_markup:  {
                                 inline_keyboard: menuRows.buttons,
-                            }
+                            }*/
                         }
-                    }
+                    };
+                if (menuRows.buttons !== undefined) {
+                    telegramObject['editMessageText']['options']['reply_markup'] = {
+                            inline_keyboard: menuRows.buttons,
+                        }
+                }
             }              
             menuRows.menutext += alertMessage;
             if (isAlert) {
@@ -968,7 +1429,7 @@ function sendMessage(user, menuRows, isAlert, showMenu) {
             else {
                 sendMessageQueued(user, telegramObject);
             }
-            if (showMenu || isAlert ) {
+            if (toDisplayMenu || isAlert ) {
                 setStateCached(user, 'menuOn', true);
             }
         }
@@ -983,7 +1444,7 @@ function sendMessage(user, menuRows, isAlert, showMenu) {
 
 /*** sendMessageQueued ***/
 function sendMessageQueued(user, telegramObject) {
-    logs('ВЫЗОВ ФУНКЦИИ sendMessageQueued(user, telegramObject) из ' + arguments.callee.caller.name);
+    logs('Function sendMessageQueued(user, telegramObject) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('telegramObject = ' + JSON.stringify(telegramObject));
     const isLocked = user + '.isLocked';
@@ -1011,67 +1472,115 @@ function sendMessageQueued(user, telegramObject) {
 
 
 /*** getMenuRow ***/
-function getMenuRow(user, subMenuRow, subMenuPos, menuRows, currentTab) {
-    logs('ВЫЗОВ ФУНКЦИИ getMenuRow(user, subMenuRow, subMenuPos, menuRows) из ' + arguments.callee.caller.name);
+function getMenuRow(user, subMenuRow, subMenuPos, menuRows, currentTab, callback) {
+    logs('Function getMenuRow(user, subMenuRow, subMenuPos, menuRows, currentTab, callback) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('subMenuRow = ' + JSON.stringify(subMenuRow));
     logs('subMenuPos = ' + JSON.stringify(subMenuPos));
-    logs('menuRows = ' + JSON.stringify(menuRows));
+    logs('menuRows = ' + JSON.stringify(menuRows, undefined, ' '));
     logs('currentTab = ' + JSON.stringify(currentTab));
+    logs('callback = ' + JSON.stringify(callback));
     var n;
     if (typeof subMenuRow.submenu === 'function') {
+        logs('subMenuRow.submenu = ' + JSON.stringify(subMenuRow.submenu));
         subMenuRow.submenu = subMenuRow.submenu(subMenuRow);
+        getMenuRow(user, subMenuRow, subMenuPos, menuRows, currentTab, callback);
     }
-    currentTab = currentTab === undefined ? '' : '      ' + currentTab;
-    if(subMenuPos.length > 0){
-        menuRows.menutext += (currentTab.length > 0 ? ' > ' : '') + '\n\r ' + currentTab + getItemIcon(user, subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
-        n = subMenuPos.shift();
-        logs('(1) subMenuRow.submenu[' + n + '] = ' + JSON.stringify(subMenuRow.submenu[n]));
-        menuRows.function = subMenuRow.submenu[n].hasOwnProperty('function') ? subMenuRow.submenu[n].function : undefined;
-        menuRows.state = subMenuRow.submenu[n].hasOwnProperty('state') ? subMenuRow.submenu[n].state : undefined;
-        menuRows.type = subMenuRow.submenu[n].hasOwnProperty('type') ? subMenuRow.submenu[n].type : undefined;
-        menuRows.funcEnum = subMenuRow.submenu[n].hasOwnProperty('funcEnum') ? subMenuRow.submenu[n].funcEnum : undefined;
-        if (subMenuPos.length > 0) {
-            menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
-        }
-        return getMenuRow(user, subMenuRow.submenu[n], subMenuPos, menuRows, currentTab);
-    } else {
-        for (const subMenuItem of subMenuRow.submenu) {
-            menuRows.buttons.push({
-                text: getItemIcon(user, subMenuItem) + ' ' + skipIndex(subMenuItem.name),
-                callback_data: options.menuPrefix + subMenuItem.name
+    else if (subMenuRow.extension !== undefined) {
+        //const extensionScriptState = 'javascript.' + instance + '.' + options.menuExtensions.replace('.js.', 'Enabled.');
+        //logs(`scriptState = ${JSON.stringify(extensionScriptState)}`);
+        //if ((options.menuExtensions.length  > 0) && existsState(extensionScriptState)) {
+            //logs(`scriptState ${JSON.stringify(extensionScriptState)} exists`);
+            //const started = startScript(options.menuExtensions, true);
+            //logs(`Script ${options.menuExtensions} is ${started ? 'already ' : ''}started`);
+            messageTo(subMenuRow.extension, subMenuRow, {timeout: options.extensionsTimeout}, function subMenuUpdated(subMenu){
+                logs('Function subMenuUpdated(subMenu)');
+                logs('subMenu = ' + JSON.stringify(subMenu));
+                if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
+                    logs(`subMenu = ${JSON.stringify(subMenu, null, ' ')}`);
+                    subMenuRow = addMenuIndex(subMenu);
+                    logs(`subMenuRow = ${JSON.stringify(subMenuRow, null, ' ')}`);
+                }
+                else {
+                    if ((typeof(subMenu) === 'object') && subMenu.hasOwnProperty('error')) {
+                        logs(`Can't update subMenu from extension ${subMenuRow.extension}! No result. Error is ${subMenu.error}`, true);
+                    }
+                }
+                subMenuRow.extension = undefined;
+                getMenuRow(user, subMenuRow, subMenuPos, menuRows, currentTab, callback);
             });
-        }
-        return menuRows;
+        //}        
+    }
+    else {
+        options.hierarhicalCaption && (currentTab = currentTab === undefined ? '' : '      ' + currentTab);
+        //if (subMenuRow.submenu.length > 0) {
+            if ((subMenuRow.submenu.length > 0) && (subMenuPos.length > 0)) {
+                menuRows.menutext += (options.hierarhicalCaption ? (currentTab.length > 0 ? ' > ' : '') + '\n\r ' + currentTab : ' > ')  + getItemIcon(user, subMenuRow.submenu[subMenuPos[0]]) + skipIndex(subMenuRow.submenu[subMenuPos[0]].name);
+                menuRows.name = subMenuRow.submenu[subMenuPos[0]].hasOwnProperty('name') ? skipIndex(subMenuRow.submenu[subMenuPos[0]].name) : undefined;
+                //menuRows.text = subMenuRow.submenu[subMenuPos[0]].hasOwnProperty('text') ? subMenuRow.submenu[subMenuPos[0]].text : undefined;
+                n = subMenuPos.shift();
+                logs('(1) subMenuRow.submenu[' + n + '] = ' + JSON.stringify(subMenuRow.submenu[n]));
+                menuRows.function = subMenuRow.submenu[n].hasOwnProperty('function') ? subMenuRow.submenu[n].function : undefined;
+                menuRows.state = subMenuRow.submenu[n].hasOwnProperty('state') ? subMenuRow.submenu[n].state : undefined;
+                menuRows.type = subMenuRow.submenu[n].hasOwnProperty('type') ? subMenuRow.submenu[n].type : undefined;
+                menuRows.room = subMenuRow.submenu[n].hasOwnProperty('room') ? subMenuRow.submenu[n].room : undefined;
+                menuRows.funcEnum = subMenuRow.submenu[n].hasOwnProperty('funcEnum') ? subMenuRow.submenu[n].funcEnum : undefined;
+                menuRows.dictId = subMenuRow.submenu[n].hasOwnProperty('dictId') ? subMenuRow.submenu[n].dictId : undefined;
+                menuRows.toRename = {};
+                if (subMenuPos.length > 0) {
+                    menuRows.backIndex = getIndex(subMenuRow.submenu[n].name);
+                }
+                getMenuRow(user, subMenuRow.submenu[n], subMenuPos, menuRows, currentTab, callback);
+            } else {
+                logs(`subMenuRow 2 = ${JSON.stringify(subMenuRow, null, ' ')}`);
+                /*if (menuRows.text === undefined)*/ menuRows.text = subMenuRow.hasOwnProperty('text') ? subMenuRow.text : undefined;                
+                for (const subMenuItem of subMenuRow.submenu) {
+                    if (subMenuItem.hasOwnProperty('dictId') && (subMenuItem.dictId !== undefined) && 
+                        subMenuItem.hasOwnProperty('state') && (subMenuItem.state !== undefined) ) {
+                        menuRows.toRename[subMenuItem.dictId] = skipIndex(subMenuItem.name);
+                    }
+                    menuRows.buttons.push({
+                        text: getItemIcon(user, subMenuItem) + ' ' + skipIndex(subMenuItem.name),
+                        callback_data: options.menuPrefix + subMenuItem.name
+                    });
+                }
+                callback(menuRows);
+            }
+        /*}
+        else {
+            callback(menuRows);
+        }*/
     }
 }
 
 /*** getItemIcon ***/
 function getItemIcon(user, subMenuRowItem) {
-    logs('ВЫЗОВ ФУНКЦИИ getItemIcon(user, subMenuRowItem) из ' + arguments.callee.caller.name);
+    logs('Function getItemIcon(user, subMenuRowItem) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('subMenuRowItem = ' + JSON.stringify(subMenuRowItem));
-    var icon;
-    if ((typeof subMenuRowItem.icons === 'object')) {
-        if (subMenuRowItem.hasOwnProperty('state') && existsState(subMenuRowItem.state)) {
-            icon = getState(subMenuRowItem.state).val ? subMenuRowItem.icons.on : subMenuRowItem.icons.off;
-        } 
-        else {
-            icon = subMenuRowItem.icon;
+    var icon = '';
+    if (subMenuRowItem !== undefined) {
+        if ((typeof subMenuRowItem.icons === 'object')) {
+            if (subMenuRowItem.hasOwnProperty('state') && existsState(subMenuRowItem.state)) {
+                icon = getState(subMenuRowItem.state).val ? subMenuRowItem.icons.on : subMenuRowItem.icons.off;
+            } 
+            else {
+                icon = subMenuRowItem.icon;
+            }
         }
-    }
-    else if (typeof subMenuRowItem.icons === 'function') {
-            icon = subMenuRowItem.icons(subMenuRowItem, user);
-    }
-    else {
-        icon = subMenuRowItem.icon ? subMenuRowItem.icon : '' ;
+        else if (typeof subMenuRowItem.icons === 'function') {
+                icon = subMenuRowItem.icons(subMenuRowItem, user);
+        }
+        else {
+            icon = subMenuRowItem.icon ? subMenuRowItem.icon : '' ;
+        }
     }
     return icon;
 }
 
 /*** getItemPos ***/
 function getItemPos(cmd) {
-    logs('ВЫЗОВ ФУНКЦИИ getItemPos(cmd) из ' + arguments.callee.caller.name);
+    logs('Function getItemPos(cmd) from ' + arguments.callee.caller.name);
     logs('typeof cmd = ' + (typeof cmd));
     logs('cmd = ' + JSON.stringify(cmd));
     if (typeof cmd === 'string') {
@@ -1087,34 +1596,41 @@ function getItemPos(cmd) {
 }
 
 /*** getMenuItem ***/
-function getMenuItem(subMenuPos) {
-    logs('ВЫЗОВ ФУНКЦИИ getMenuItem(subMenuPos) из ' + arguments.callee.caller.name);
-    logs('subMenuPos = ' + JSON.stringify(subMenuPos));
-    if (subMenuPos.length > 1) {
-        if (subMenuPos[subMenuPos.length - 1] !== undefined) {
-            if (typeof subMenuPos[subMenuPos.length - 1].submenu === 'function') {
-                const newSubMenu = subMenuPos[subMenuPos.length - 1].submenu(getIndex(subMenuPos[subMenuPos.length - 1].name));
-                subMenuPos[subMenuPos.length - 1] = newSubMenu.length > subMenuPos[0] ? newSubMenu[subMenuPos[0]] : undefined;
+function getMenuItem(itemPos, subMenu, menuItem, callback) {
+    logs('Function getMenuItem(subMenuPos) from ' + arguments.callee.caller.name);
+    logs('itemPos = ' + JSON.stringify(itemPos));
+    logs('subMenu = ' + JSON.stringify(subMenu));
+    let newSubMenu = subMenu;
+    if (menuItem === undefined) {
+        if (itemPos.length > 0) {
+            if (subMenu !== undefined) {
+                if (typeof subMenu.submenu === 'function') {
+                    logs('subMenu.submenu = ' + JSON.stringify(subMenu.submenu));
+                    newSubMenu = subMenu.submenu(subMenu);
+                    logs('newSubMenu = ' + JSON.stringify(newSubMenu));
+                    newSubMenu = newSubMenu.length > itemPos[0] ? newSubMenu[itemPos[0]] : undefined;
+                }
+                else {
+                    newSubMenu = subMenu.submenu.length > itemPos[0] ? subMenu.submenu[itemPos[0]] : undefined;
+                }
             }
-            else {
-                subMenuPos[subMenuPos.length - 1] = subMenuPos[subMenuPos.length - 1].submenu.length > subMenuPos[0] ? subMenuPos[subMenuPos.length - 1].submenu[subMenuPos[0]] : undefined;
+            if (newSubMenu !== undefined) {
+                getMenuItem(itemPos.slice(1), newSubMenu, undefined, callback);
+                return
             }
         }
-        subMenuPos.shift();
-        return getMenuItem(subMenuPos);
-    }
-    else if (subMenuPos.length > 0) {
-        return subMenuPos[0];
     }
     else {
-        return undefined;
+        newSubMenu = menuItem;
     }
+    logs('newSubMenu = ' + JSON.stringify(newSubMenu));
+    callback(newSubMenu);
 }
 
 
 /*** clearMessage ***/
 function clearMessage(user, isUserMessage, callback) {
-    logs('ВЫЗОВ ФУНКЦИИ clearMessage(user, isUserMessage) из ' + arguments.callee.caller.name);
+    logs('Function clearMessage(user, isUserMessage) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('isUserMessage = ' + JSON.stringify(isUserMessage));
     logs('callback = ' + JSON.stringify(callback));
@@ -1134,7 +1650,7 @@ function clearMessage(user, isUserMessage, callback) {
 
 /*** closeMenu ***/
 function closeMenu(user) {
-    logs('ВЫЗОВ ФУНКЦИИ closeMenu(user) из ' + arguments.callee.caller.name);
+    logs('Function closeMenu(user) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     clearMessage(user, false);
     setStateCached(user, 'menuOn', false);
@@ -1142,18 +1658,44 @@ function closeMenu(user) {
 
 /*** splitMenu ***/
 function splitMenu(menuArr) {
-    logs('ВЫЗОВ ФУНКЦИИ splitMenu(menuArr) из ' + arguments.callee.caller.name);
+    logs('Function splitMenu(menuArr) from ' + arguments.callee.caller.name);
     logs('menuArr = ' + JSON.stringify(menuArr));
-    var i, j, resultArr = [];
-    for (i = 0, j = menuArr.length; i < j; i += options.width) {
-        resultArr.push(menuArr.slice(i, i + options.width));
+    let resultArr = [];
+    if (options.maxWidth === 0) {
+        var i, j;
+        for (i = 0, j = menuArr.length; i < j; i += options.width) {
+            resultArr.push(menuArr.slice(i, i + options.width));
+        }
+    }
+    else {
+        logs('options.maxWidth = ' + JSON.stringify(options.maxWidth));
+        let buttonsRow = [];
+        for (let i = 0; i < menuArr.length; i ++) {
+            buttonsRow = [];
+            logs('menuArr[ i = ' + i + ' ].length = ' + JSON.stringify(menuArr[i].text.length));
+            let countLength = 0;
+            for (let j = i; j < menuArr.length; j++) {
+                logs('countLength = ' + JSON.stringify(countLength));          
+                if ((countLength > 0) && (countLength + menuArr[j].text.length) > options.maxWidth) {
+                    break;
+                }
+                else {
+                    countLength += menuArr[j].text.length + (countLength === 0? 0 : 2);
+                    buttonsRow.push(menuArr[j]);
+                    i = j;
+                }
+            }
+            logs('i = ' + JSON.stringify(i));
+            logs('buttonsRow = ' + JSON.stringify(buttonsRow));
+            resultArr.push(buttonsRow);
+        }
     }
     return resultArr;
 }
 
 /*** showMsg ***/
 function showMsg(text, user, showAlert) {
-    logs('ВЫЗОВ ФУНКЦИИ showMsg(text, user, showAlert) из ' + arguments.callee.caller.name);
+    logs('Function showMsg(text, user, showAlert) from ' + arguments.callee.caller.name);
     logs('text = ' + JSON.stringify(text));
     logs('user = ' + JSON.stringify(user));
     logs('showAlert = ' + JSON.stringify(showAlert));
@@ -1170,7 +1712,7 @@ function showMsg(text, user, showAlert) {
 
 /*** addMenuIndex ***/
 function addMenuIndex(menuRow, indexPrefix) {
-    logs('ВЫЗОВ ФУНКЦИИ addMenuIndex(menuRow) из ' + arguments.callee.caller.name);
+    logs('Function addMenuIndex(menuRow) from ' + arguments.callee.caller.name);
     logs('menuRow = ' + JSON.stringify(menuRow));
     logs('indexPrefix = ' + JSON.stringify(indexPrefix));
     var newMenuRow;
@@ -1201,30 +1743,38 @@ function addMenuIndex(menuRow, indexPrefix) {
             if (menuRow[key].hasOwnProperty('param') ) {
                 newMenuRowItem.param = menuRow[key].param;
             }
-            if (Array.isArray(menuRow[key].submenu) && menuRow[key].submenu.length) {
-                newMenuRowItem.submenu = addMenuIndex(menuRow[key].submenu, indexPrefix + key);
+            if (menuRow[key].hasOwnProperty('text') ) {
+                newMenuRowItem.text = menuRow[key].text;
+            }            
+            if (menuRow[key].hasOwnProperty('extension') ) {
+                newMenuRowItem.extension = menuRow[key].extension;
+                newMenuRowItem.submenu = submenuExtensions;
             }
-            else if (typeof menuRow[key].submenu === 'function') {
-                newMenuRowItem.submenu = menuRow[key].submenu(newMenuRowItem);
-            }
-            else {
-                newMenuRowItem.submenu = menuRow[key].submenu;
+            if (newMenuRowItem.submenu === undefined) {
+                if (Array.isArray(menuRow[key].submenu) && menuRow[key].submenu.length ) {
+                    newMenuRowItem.submenu = addMenuIndex(menuRow[key].submenu, indexPrefix + key);
+                }
+                else {
+                    newMenuRowItem.submenu = menuRow[key].submenu;
+                }
             }
             newMenuRow.push(newMenuRowItem);
         }
     }
     else if ((typeof menuRow === 'object') && menuRow.hasOwnProperty('submenu')) {
         newMenuRow = {};
-        newMenuRow.name = '-' + menuRow.name;
         newMenuRow.icon = menuRow.icon;
-        newMenuRow.submenu = addMenuIndex(menuRow.submenu, '');
+        const existingIndex = getIndex(menuRow.name);
+        newMenuRow.name = (existingIndex === '' ?  '-' : '') + menuRow.name;
+        newMenuRow.submenu = addMenuIndex(menuRow.submenu, existingIndex);
+        if (menuRow.hasOwnProperty('text') ) newMenuRow.text = menuRow.text;
     }
     return newMenuRow;
 }
 
 /*** skipIndex ***/
 function skipIndex(name) {
-    logs('ВЫЗОВ ФУНКЦИИ skipIndex(name) из ' + arguments.callee.caller.name);
+    logs('Function skipIndex(name) from ' + arguments.callee.caller.name);
     logs('name = ' + JSON.stringify(name));
     const splitName = name.split('-',2);
     if (splitName.length === 1) {
@@ -1237,7 +1787,7 @@ function skipIndex(name) {
 
 /*** getIndex ***/
 function getIndex(name) {
-    logs('ВЫЗОВ ФУНКЦИИ getIndex(name) из ' + arguments.callee.caller.name);
+    logs('Function getIndex(name) from ' + arguments.callee.caller.name);
     logs('name = ' + JSON.stringify(name));
     const splitName = name.split('-',2);
     if (splitName.length === 1) {
@@ -1250,7 +1800,7 @@ function getIndex(name) {
 
 /*** getDeclIndex ***/
 function getDeclIndex(strDecl) {
-    logs('ВЫЗОВ ФУНКЦИИ getDeclIndex(strDecl) из ' + arguments.callee.caller.name);
+    logs('Function getDeclIndex(strDecl) from ' + arguments.callee.caller.name);
     logs('strDecl = ' + JSON.stringify(strDecl));
     if (strDecl === 'basic') {
         return 1;
@@ -1270,7 +1820,7 @@ function getDeclIndex(strDecl) {
 
 /*** getRoomName ***/
 function getRoomName(roomEnum, roomNames, roomDecl) {
-    logs('ВЫЗОВ ФУНКЦИИ getRoomName(roomEnum) из ' + arguments.callee.caller.name);
+    logs('Function getRoomName(roomEnum) from ' + arguments.callee.caller.name);
     logs('roomEnum = ' + JSON.stringify(roomEnum));
     logs('roomNames = ' + JSON.stringify(roomNames));
     logs('roomDecl = ' + JSON.stringify(roomDecl));
@@ -1302,7 +1852,7 @@ function logs(txt, debug) {
 
 /*** getUser ***/
 function getUser(user) {
-    logs('ВЫЗОВ ФУНКЦИИ getUser(user) из ' + arguments.callee.caller.name);
+    logs('Function getUser(user) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     var name = getStateCached(user, 'user');
     logs('name = ' + JSON.stringify(name));
@@ -1325,9 +1875,9 @@ function getUser(user) {
     return '';
 }
 
-/*** callback ***/
-function callback(user, cmd) {
-    logs('ВЫЗОВ ФУНКЦИИ callback(user, cmd) из ' + arguments.callee.caller.name);
+/*** userInputCallback ***/
+function userInputCallback(user, cmd) {
+    logs('Function callback(user, cmd) from ' + arguments.callee.caller.name);
     logs('user = ' + JSON.stringify(user));
     logs('cmd = ' + cmd);
     if(options.menucall.indexOf(cmd) >= 0){
@@ -1335,16 +1885,16 @@ function callback(user, cmd) {
             clearMessage(user, true);
         }
         setStateCached(user, 'menuOn', false);
-        showMenu(user, []);
+        doMenuItem(user, undefined, []);
     } else {
         if (cmd === options.closeCmd) {
             closeMenu(user);
         } 
         else if (cmd.indexOf(options.backCmd) === 0) {
-            showMenu(user, getItemPos(cmd.replace(options.backCmd,'')));
+            doMenuItem(user, undefined, getItemPos(cmd.replace(options.backCmd,'')));
         } 
         else if (cmd === options.homeCmd) {
-            showMenu(user, []);
+            doMenuItem(user, undefined, []);
         }
         else if (cmd === options.acknowledgeCmd) {
             let alertMessages = getStateCached(user, 'alertMessages');
@@ -1353,11 +1903,11 @@ function callback(user, cmd) {
                 alertMessages.pop();
                 setStateCached(user, 'alertMessages', alertMessages);
             }
-            showMenu(user);
+            doMenuItem(user);
         } 
         else if (cmd === options.acknowledgeAllCmd) {
             setStateCached(user, 'alertMessages', []);
-            showMenu(user);
+            doMenuItem(user);
         } 
         else if (cmd === options.unsubscribeCmd) {
             let alertMessages = getStateCached(user, 'alertMessages');
@@ -1379,10 +1929,26 @@ function callback(user, cmd) {
                 }
                 setStateCached(user, 'alertMessages', alertMessages);
             }
-            showMenu(user);
+            doMenuItem(user);
         } 
         else if (cmd.indexOf(options.menuPrefix) === 0) {
             doMenuItem(user, cmd.replace(options.menuPrefix,''))
+        }
+        else if (cmd.indexOf('cmdRenameItem:') === 0) {
+            const dictId = cmd.split(':').pop();
+            let menuRows = {
+                menutext: getFromDict('pleaseRename') + ' (' + dictId + '):',
+            };
+            setStateCached(user, 'isWaitForInput', dictId);
+            sendMessage(user, menuRows, false, false);
+        }        
+        else if (getStateCached(user, 'isWaitForInput')) {
+            const dictId = getStateCached(user, 'isWaitForInput');
+            putToDict(dictId, cmd);
+            setStateCached(user, 'isWaitForInput', false);
+            clearMessage(user, true);
+            logs('New values is set');
+            doMenuItem(user);
         }
     }
 }
@@ -1391,136 +1957,126 @@ function callback(user, cmd) {
 
 
 /*** subscribe on Telegram ***/
-/*
-on({id: options.telegram + '.communicate.request', change: 'any'}, function  requestSubscribe(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ requestSubscribe(obj)');
-    logs('obj = ' + JSON.stringify(obj));
-    var cmd = (obj.state.val.substring(obj.state.val.indexOf(']')+1)).toLowerCase();
-    if (cmd.length > 0) {
-        const userid = getState(options.telegram + ".communicate.requestChatId").val;
-        const messageId = getState(options.telegram + ".communicate.requestMessageId").val;
-        if (userid){
-            var name = getState(options.telegram + ".communicate.users").val;
+
+/*** telegramConnected ***/
+function telegramConnected(connected) {
+    logs('Function telegramConnected(connected)');
+    logs('connected = ' + JSON.stringify(connected));
+    if (typeof(connected) === 'object') {
+        if (connected.hasOwnProperty('state') && connected.state.hasOwnProperty('val')) {
+            connected = connected.state.val;
+        }
+    }
+    unsubscribe(options.telegram + '.communicate.botSendRaw');
+    unsubscribe(options.telegram + '.communicate.requestRaw');
+    if (connected) {
+        //answerRawSubscribe
+        on({id: options.telegram + '.communicate.botSendRaw', change: 'ne'}, function answerRawSubscribe(obj) {
+            logs('Function answerRawSubscribe(obj)');
+            logs('obj = ' + JSON.stringify(obj));
+            let sent = undefined;
             try {
-                name = JSON.parse(name);
+                sent = JSON.parse(obj.state.val);
             } catch (err) {
                 logs("Ошибка парсинга - " + JSON.stringify(err));
-            }
-            if ((options.users_id.indexOf(userid) >= 0) || (options.users_id.indexOf(userid.toString()) >= 0)){
-                logs('Пользователь - ' + name[userid].firstName + '(' + name[userid].userName +') с id - ' + userid + '; Отправленная команда - ' + cmd + 'с ид = ' + messageId);
-                setStateCached(userid, 'user', name[userid]);
-                setStateCached(userid, 'messageId', messageId);
-                callback(userid, cmd);
-            }  else {
-                log('Доступ запрещен. Пользователя - ' + name[userid] + '(' + name[userid].userName +') с id - ' + userid + ' нет в списке доверенных.' );
-            }
-        }
-    }
-});
-*/
-
-/*** subscribe on Telegram bot activityes  ***/
-on({id: options.telegram + '.communicate.botSendMessageId', change: 'any'}, function answerMessageIdSubscribe(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ answerMessageIdSubscribe(obj)');
-    logs('obj = ' + JSON.stringify(obj));
-    //const user = getState(options.telegram + ".communicate.botSendChatId").val;
-});
-
-
-on({id: options.telegram + '.communicate.botSendChatId', change: 'any'}, function answerChatIdSubscribe(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ answerChatIdSubscribe(obj)');
-    logs('obj = ' + JSON.stringify(obj));
-    /*const messageid = getState(options.telegram + ".communicate.botSendMessageId").val;
-    logs('messageid = ' + JSON.stringify(messageid));
-    setStateCached(obj.state.val, 'botSendMessageId', messageid);
-    */
-    logs('botSendChatId = ' + JSON.stringify(obj.state.val));
-    const user = obj.state.val;
-    const messageId = getState(options.telegram + ".communicate.botSendMessageId").val;
-    logs('user = ' + JSON.stringify(user) + ' botSendMessageId = ' + JSON.stringify(messageId));
-    setStateCached(user, 'botSendMessageId', messageId);
-    const isLocked = user + '.isLocked';
-    const userMessageQueue = user + '.messageQueue';
-    logs('statesCache[' + isLocked + '] = ' + JSON.stringify(statesCache[isLocked]));
-    logs('statesCache[' + userMessageQueue + '].length = ' + JSON.stringify(statesCache.hasOwnProperty(userMessageQueue) ? statesCache[userMessageQueue].length : undefined));
-    if ((statesCache.hasOwnProperty(isLocked) && statesCache[isLocked]) ) {
-        if (statesCache.hasOwnProperty(userMessageQueue) && statesCache[userMessageQueue].length ) {
-            let telegramObject = statesCache[userMessageQueue].shift();
-            logs('currentMessage = ' + JSON.stringify(telegramObject));
-            if (Array.isArray(telegramObject)) {
-                if (telegramObject[0].hasOwnProperty('deleteMessage')) {
-                    telegramObject[0]['deleteMessage'].options.message_id = messageId;
-                }
-                sendTo(options.telegram, telegramObject[0], function (result) {sendTo(options.telegram, telegramObject[1])});
-            }
-            else {
-                for (let command of ['editMessageText', 'deleteMessage']) {
-                    if (telegramObject.hasOwnProperty(command)) {
-                        telegramObject[command].options.message_id = messageId;
+                return undefined;
+            }    
+            logs('val = ' + JSON.stringify(sent, undefined, ' '));    
+            if ( typeof(sent) === 'object' ) {
+                const user = sent.chat.id;
+                const messageId = sent.message_id;
+                logs('user = ' + JSON.stringify(user) + ' botSendMessageId = ' + JSON.stringify(messageId));
+                if (sent.hasOwnProperty("reply_markup") && sent.reply_markup.hasOwnProperty("inline_keyboard") && (sent.reply_markup.inline_keyboard !== undefined) ) {
+                    const inline_keyboard = sent.reply_markup.inline_keyboard;
+                    logs('val = ' + JSON.stringify(inline_keyboard, undefined, ' '));
+                    const isBotMessage = sent.reply_markup.inline_keyboard[sent.reply_markup.inline_keyboard.length - 1].findIndex((element) => (element.hasOwnProperty("callback_data") && (element.callback_data === "close")));
+                    if (isBotMessage >= 0) {
+                        setStateCached(user, 'botSendMessageId', messageId);
                     }
                 }
-                sendTo(options.telegram, telegramObject);
-            }
-        }
-        else {
-            statesCache[isLocked] = false;
-        }
-    }
-
-});
-
-
-on({id: options.telegram + '.communicate.requestRaw', change: 'any'}, function requestRawSubscribe(obj) {
-    logs('ВЫЗОВ ФУНКЦИИ requestRawSubscribe(obj)');
-    logs('obj = ' + JSON.stringify(obj));
-    let request = undefined;
-    try {
-        request = JSON.parse(obj.state.val);
-    } catch (err) {
-        logs("Ошибка парсинга - " + JSON.stringify(err));
-        return undefined;
-    }
-    logs('raw = ' + JSON.stringify(request,undefined,' '));
-    if (request.hasOwnProperty('from') && request.from.hasOwnProperty('id')) {
-        const user = request.from.id;
-        if ((options.users_id.indexOf(user) >= 0) || (options.users_id.indexOf(user.toString()) >= 0)) {
-            let messageId = undefined;
-            let chatId = undefined;
-            let command = undefined;
-            if (request.hasOwnProperty('message_id')) {
-                messageId = request.message_id;
-            }
-            else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('message_id')) {
-                messageId = request.message.message_id;
-            }
-            if (messageId !== undefined) {
-                if (request.hasOwnProperty('chat') && request.chat.hasOwnProperty('id')) {
-                    chatId = request.chat.id;
-                }
-                else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('chat') && request.message.chat.hasOwnProperty('id')) {
-                    chatId = request.message.chat.id;
-                }
-                if (chatId != undefined) {
-                    if (request.hasOwnProperty('text')) {
-                        command = request.text;
+                const isLocked = user + '.isLocked';
+                const userMessageQueue = user + '.messageQueue';
+                logs('statesCache[' + isLocked + '] = ' + JSON.stringify(statesCache[isLocked]));
+                logs('statesCache[' + userMessageQueue + '].length = ' + JSON.stringify(statesCache.hasOwnProperty(userMessageQueue) ? statesCache[userMessageQueue].length : undefined));
+                if ((statesCache.hasOwnProperty(isLocked) && statesCache[isLocked]) ) {
+                    if (statesCache.hasOwnProperty(userMessageQueue) && statesCache[userMessageQueue].length ) {
+                        let telegramObject = statesCache[userMessageQueue].shift();
+                        logs('currentMessage = ' + JSON.stringify(telegramObject));
+                        if (Array.isArray(telegramObject)) {
+                            if (telegramObject[0].hasOwnProperty('deleteMessage')) {
+                                telegramObject[0]['deleteMessage'].options.message_id = messageId;
+                            }
+                            sendTo(options.telegram, telegramObject[0], function (result) {sendTo(options.telegram, telegramObject[1])});
+                        }
+                        else {
+                            for (let command of ['editMessageText', 'deleteMessage']) {
+                                if (telegramObject.hasOwnProperty(command)) {
+                                    telegramObject[command].options.message_id = messageId;
+                                }
+                            }
+                            sendTo(options.telegram, telegramObject);
+                        }
                     }
-                    else if (request.hasOwnProperty('data')) {
-                        command = request.data;
-                    }
-                    logs('user = ' + JSON.stringify(user) + ' chatId = ' + JSON.stringify(chatId) + ' messageId = ' + JSON.stringify(messageId) + ' command = ' + JSON.stringify(command));
-                    if (command !== undefined) {
-                        setStateCached(user, 'user', {"firstName":request.from.first_name,"userName":request.from.username});
-                        setStateCached(user, 'messageId', messageId);
-                        callback(user, command);                        
+                    else {
+                        statesCache[isLocked] = false;
                     }
                 }
             }
-        }
-        else {
-            log('Доступ запрещен. Пользователя - ' + JSON.stringify(request.from.first_name) + ' ' + JSON.stringify(request.from.last_name)  + '(' + JSON.stringify(request.from.username) +') с id - ' + user + ' нет в списке доверенных.' );
-        }
+        });
+        //requestRawSubscribe
+        on({id: options.telegram + '.communicate.requestRaw', change: 'ne'}, function requestRawSubscribe(obj) {
+            logs('Function requestRawSubscribe(obj)');
+            logs('obj = ' + JSON.stringify(obj));
+            let request = undefined;
+            try {
+                request = JSON.parse(obj.state.val);
+            } catch (err) {
+                logs("Ошибка парсинга - " + JSON.stringify(err));
+                return undefined;
+            }
+            logs('raw = ' + JSON.stringify(request,undefined,' '));
+            if (request.hasOwnProperty('from') && request.from.hasOwnProperty('id')) {
+                const user = request.from.id;
+                if ((options.users_id.indexOf(user) >= 0) || (options.users_id.indexOf(user.toString()) >= 0)) {
+                    let messageId = undefined;
+                    let chatId = undefined;
+                    let command = undefined;
+                    if (request.hasOwnProperty('message_id')) {
+                        messageId = request.message_id;
+                    }
+                    else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('message_id')) {
+                        messageId = request.message.message_id;
+                    }
+                    if (messageId !== undefined) {
+                        if (request.hasOwnProperty('chat') && request.chat.hasOwnProperty('id')) {
+                            chatId = request.chat.id;
+                        }
+                        else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('chat') && request.message.chat.hasOwnProperty('id')) {
+                            chatId = request.message.chat.id;
+                        }
+                        if (chatId != undefined) {
+                            if (request.hasOwnProperty('text')) {
+                                command = request.text;
+                            }
+                            else if (request.hasOwnProperty('data')) {
+                                command = request.data;
+                            }
+                            logs('user = ' + JSON.stringify(user) + ' chatId = ' + JSON.stringify(chatId) + ' messageId = ' + JSON.stringify(messageId) + ' command = ' + JSON.stringify(command));
+                            if (command !== undefined) {
+                                setStateCached(user, 'user', {"firstName":request.from.first_name,"userName":request.from.username});
+                                setStateCached(user, 'messageId', messageId);
+                                userInputCallback(user, command);                        
+                            }
+                        }
+                    }
+                }
+                else {
+                    log('Доступ запрещен. Пользователя - ' + JSON.stringify(request.from.first_name) + ' ' + JSON.stringify(request.from.last_name)  + '(' + JSON.stringify(request.from.username) +') с id - ' + user + ' нет в списке доверенных.' );
+                }
+            }
+        });
     }
-});
+}
 
 initConfig();
 
