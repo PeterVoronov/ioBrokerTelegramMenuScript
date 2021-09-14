@@ -1776,12 +1776,12 @@ function addMenuIndex(menuRow, indexPrefix) {
 function skipIndex(name) {
     logs('Function skipIndex(name) from ' + arguments.callee.caller.name);
     logs('name = ' + JSON.stringify(name));
-    const splitName = name.split('-',2);
-    if (splitName.length === 1) {
-        return splitName[0];
+    const indexOfDelimeter = name.indexOf('-');
+    if (indexOfDelimeter >= 0) {
+        return name.slice(indexOfDelimeter + 1);
     }
     else {
-        return splitName[1];
+        return name;
     }
 }
 
