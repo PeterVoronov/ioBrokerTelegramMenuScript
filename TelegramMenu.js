@@ -1989,7 +1989,15 @@ function telegramConnected(connected) {
                 if (sent.hasOwnProperty("reply_markup") && sent.reply_markup.hasOwnProperty("inline_keyboard") && (sent.reply_markup.inline_keyboard !== undefined) ) {
                     const inline_keyboard = sent.reply_markup.inline_keyboard;
                     logs('val = ' + JSON.stringify(inline_keyboard, undefined, ' '));
-                    const isBotMessage = sent.reply_markup.inline_keyboard[sent.reply_markup.inline_keyboard.length - 1].findIndex((element) => (element.hasOwnProperty("callback_data") && (element.callback_data === "close")));
+                    const isBotMessage = sent.reply_markup.inline_keyboard.findIndex(
+                        (keyboard) => (
+                            keyboard.findIndex(
+                                (element) => (
+                                    element.hasOwnProperty("callback_data") && (element.callback_data === "close")
+                                ) 
+                            ) >= 0 
+                        )
+                    );
                     if (isBotMessage >= 0) {
                         setStateCached(user, 'botSendMessageId', messageId);
                     }
