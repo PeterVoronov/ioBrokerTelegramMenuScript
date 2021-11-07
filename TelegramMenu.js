@@ -894,7 +894,7 @@ function submenuGenerator(upperMenuItem) {
     if ((! submenuParams[upperMenuItem.type]['rooms']) && ((subMenu.length > 0) && (subMenu[subMenu.length-1].submenu.length === 1))) {
         subMenu = unRoom(subMenu);
     }
-    logs('subMenu New = ' + JSON.stringify(subMenu));
+    logs('subMenu New = ' + JSON.stringify(subMenu, undefined, ' '));
     return subMenu;
 }
 
