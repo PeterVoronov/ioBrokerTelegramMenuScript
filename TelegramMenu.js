@@ -642,7 +642,7 @@ function alertCallback(obj) {
                         const alertObject = getObject(obj.id, 'rooms');
                         const alertRoom = getRoomName(alertObject['enumIds'][0], alertObject['enumNames'][0],'inside')
                         logs('alertRoom = ' + JSON.stringify(alertRoom));
-                        const alertName = getObject(obj.id.split('.').slice(0,-1).join('.')).common.name;
+                        const alertName = getObjectName(getObject(obj.id.split('.').slice(0,-1).join('.')).common.name);
                         logs('alertName = ' + JSON.stringify(alertName));
                         let alertStatus = obj.state.val;
                         if (typeof obj.state.val === 'boolean') {
@@ -738,7 +738,7 @@ function submenuGenerator(upperMenuItem) {
             subMenu.push(roomMenuItem);
         }
         var menuItem = {
-                            name: upperMenuIndex + '.' + currId + '.' + roomIndex + '-' + getObject(idPrefix).common.name,
+                            name: upperMenuIndex + '.' + currId + '.' + roomIndex + '-' + getObjectName(getObject(idPrefix).common.name),
                             state: id,
                             type: upperMenuItem.type,
                             funcEnum: upperMenuItem.funcEnum,
@@ -763,7 +763,7 @@ function submenuGenerator(upperMenuItem) {
                 const itemState = id.split('.').pop();
                 let itemName = getFromDict(upperMenuItem.funcEnum + '.' + itemState);
                 if ( itemName === (upperMenuItem.funcEnum + '.' + itemState) ) { 
-                    itemName = mainObject.common.name;
+                    itemName = getObjectName(mainObject.common.name);
                 }                
                 menuItems['.' + itemState] = itemName;
             }
@@ -777,7 +777,7 @@ function submenuGenerator(upperMenuItem) {
                     //to change in future!
                     let itemName = getFromDict(upperMenuItem.funcEnum + '.' + itemState);
                     if ( itemName === (upperMenuItem.funcEnum + '.' + itemState) ) { 
-                        itemName = itemObject.common.name;
+                        itemName = getObjectName(itemObject.common.name);
                     }
                     //
                     if ((itemState !== 'device_query') && (itemName.length > 0)) {
@@ -1017,7 +1017,7 @@ function reportGenerator(menuObject, user, menuRows) {
                         //to change in future!
                         let itemName = getFromDict(menuObject.funcEnum + '.' + itemState);
                         if ( itemName === (menuObject.funcEnum + '.' + itemState) ) { 
-                            itemName = itemObject.common.name;
+                            itemName = getObjectName(itemObject.common.name);
                         }
                         logs(`reportitems[.${itemState}] = ${JSON.stringify(itemName)}`);
                         reportitems['.' + itemState] = itemName;
@@ -1817,6 +1817,28 @@ function getDeclIndex(strDecl) {
     return 0;
 }
 
+/*** getObjectName ***/
+function getObjectName(objectCommonName) {
+    logs('Function getObjectName(objectCommonName) from ' + arguments.callee.caller.name);
+    logs('objectCommonName = ' + JSON.stringify(objectCommonName));
+    if (typeof objectCommonName === 'string') {
+        return objectCommonName;
+    } else if (typeof objectCommonName === 'object') {
+        if (objectCommonName.hasOwnProperty(options.language)) {
+            return objectCommonName[options.language];
+        }
+        else if (objectCommonName.hasOwnProperty("en")) {
+            return objectCommonName["en"];
+        }
+        else {
+            let objectCommonNames = objectCommonName.values();
+            if (objectCommonNames.length > 0) {
+                return objectCommonNames[0] ;
+            }
+        }
+    }
+    return 'Undefined';
+}
 
 /*** getRoomName ***/
 function getRoomName(roomEnum, roomNames, roomDecl) {
