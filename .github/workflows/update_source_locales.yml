@@ -1,0 +1,15 @@
+name: 'Update source locales from simplelocalize'
+on:
+ workflow_dispatch:  # click the button on Github repo!
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download translations
+        uses: simplelocalize/download@v2.1
+        with:
+          apiKey: ${{ secrets.SIMPLELOCALIZE_API_KEY }}
+          downloadPath: ./locales/source/core_{lang}.json
+          downloadFormat: single-language-json
