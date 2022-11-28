@@ -6,17 +6,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Download translations
+      - id: checkout
+        uses: actions/checkout@v3
+      - id: download
+        name: Download translations
         uses: simplelocalize/download@v2.1
         with:
           apiKey: ${{ secrets.SIMPLELOCALIZE_API_KEY }}
           downloadPath: ./locales/source/core_{lang}.json
           downloadFormat: single-language-json
-      - name: Transform and commit changes
+      - id: transform
+        name: Transform and commit changes
         uses: PeterVoronov/action-prepare-locales@main
         with:
           folder_with_simple_jsons: locales/source
           folder_with_core_translations: locales
           git_user_name: github-actions
           git_user_email: github-actions@github.com
+      - id: push
+        name: Push changes
+        if: steps.transform.outputs.is_commit_available == 'true'
+        run: |
+          git push
