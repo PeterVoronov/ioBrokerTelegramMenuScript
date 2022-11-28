@@ -14,7 +14,7 @@ jobs:
           downloadPath: ./locales/source/core_{lang}.json
           downloadFormat: single-language-json
       - name: Transform and commit changes
-      - uses: PeterVoronov/action-prepare-locales@main
+        uses: PeterVoronov/action-prepare-locales@main
         with:
           folder_with_simple_jsons: locales/source
           folder_with_core_translations: locales
