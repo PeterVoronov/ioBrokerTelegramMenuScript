@@ -13,10 +13,10 @@ jobs:
           apiKey: ${{ secrets.SIMPLELOCALIZE_API_KEY }}
           downloadPath: ./locales/source/core_{lang}.json
           downloadFormat: single-language-json
-      - name: Commit changes
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add .
-          git commit -m "Update source locales"
-          git push
+      - name: Transform and commit changes
+      - uses: PeterVoronov/action-prepare-locales@main
+        with:
+          folder_with_simple_jsons: locales/source
+          folder_with_core_translations: locales
+          git_user_name: github-actions
+          git_user_email: github-actions@github.com
