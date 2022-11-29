@@ -17,7 +17,7 @@ jobs:
           downloadFormat: single-language-json
       - id: transform
         name: Transform and commit changes
-        uses: PeterVoronov/action-prepare-locales@v0.9.1
+        uses: PeterVoronov/action-prepare-locales@v1.0.0
         with:
           folder_with_simple_jsons: locales/source
           folder_with_core_translations: locales
