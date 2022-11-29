@@ -1,4 +1,4 @@
-name: 'Update source locales from simplelocalize'
+name: 'Update core locales from simplelocalize.io translations'
 on:
  workflow_dispatch:  # click the button on Github repo!
  
