@@ -1,6 +1,9 @@
 name: 'Update core locales from simplelocalize.io translations'
 on:
- workflow_dispatch:  # click the button on Github repo!
+  schedule:
+    - cron:  '5 */6 * * *'
+    # scheduled to runs every 5th minute past the 0, 6, 12 and 18th hour. 
+  workflow_dispatch:  # click the button on Github repo!
  
 jobs:
   build:
