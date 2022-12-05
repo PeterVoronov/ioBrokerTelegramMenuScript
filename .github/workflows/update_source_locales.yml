@@ -18,6 +18,10 @@ jobs:
           upload_sources: false
           upload_translations: false
           download_translations: true
+          # Export options
+          skip_untranslated_strings: true
+          export_only_approved: true
+          # git options
           create_pull_request: false
           push_translations: false
           # Sources pattern
