@@ -28,7 +28,7 @@ jobs:
           token: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
       - id: transform
         name: Transform and commit changes
-        uses: PeterVoronov/action-prepare-locales@v1.0.0
+        uses: PeterVoronov/action-prepare-locales@v1.0.2
         with:
           folder_with_simple_jsons: locales/source
           folder_with_core_translations: locales
