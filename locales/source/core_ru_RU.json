@@ -119,9 +119,6 @@
   "textAddNewAttributeValue": "Добавить новое значение",
   "textCanBeDeleted": "Можно удалить",
   "textCurrentValue": "Текущее значение",
-  "textDestEnterTo": "Войти в ...",
-  "textDestExitFrom": "Выйти из ...",
-  "textDestInside": "Внутри ...",
   "textFixNewAttributeValue": "Исправить новое значение",
   "textFixReportId": "Исправить ID отчета",
   "textFixRoleId": "Исправить ID роли",
@@ -134,7 +131,6 @@
   "textForReportQuery": "запросов",
   "textForReps": "отчетов",
   "textForRole": "роли",
-  "textFuncsMany": "Множественное число",
   "textIn": "в",
   "textListIsAvailable": "Доступно",
   "textListItemId": "ID",
@@ -186,5 +182,9 @@
   "textUserLastName": "Фамилия",
   "textUserUserId": "ID",
   "textUserUserName": "Ник",
-  "textWrongValue": "Ошибочное значение!"
+  "textWrongValue": "Ошибочное значение!",
+  "textMany": "Множественное число",
+  "textEnterTo": "Войти в ...",
+  "textExitFrom": "Выйти из ...",
+  "textInside": "Внутри ..."
 }

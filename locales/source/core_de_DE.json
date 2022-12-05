@@ -119,9 +119,6 @@
   "textAddNewAttributeValue": "Neuen Wert für Attribut hinzufügen",
   "textCanBeDeleted": "Kann gelöscht werden",
   "textCurrentValue": "Aktueller Wert",
-  "textDestEnterTo": "Betreten des ...",
-  "textDestExitFrom": "Verlassen von ...",
-  "textDestInside": "Innerhalb von ...",
   "textFixNewAttributeValue": "Wert des Attributs festlegen",
   "textFixReportId": "Bericht-ID korrigieren",
   "textFixRoleId": "Rollen-ID korrigieren",
@@ -134,7 +131,6 @@
   "textForReportQuery": "für Berichtsabfrage",
   "textForReps": "für Berichte",
   "textForRole": "für Rolle",
-  "textFuncsMany": "Viele",
   "textIn": "im",
   "textListIsAvailable": "Ist verfügbar",
   "textListItemId": "ID",
@@ -186,5 +182,9 @@
   "textUserLastName": "Nachname",
   "textUserUserId": "ID",
   "textUserUserName": "Spitzname",
-  "textWrongValue": "Falscher Wert!"
+  "textWrongValue": "Falscher Wert!",
+  "textMany": "Viele",
+  "textEnterTo": "Betreten des ...",
+  "textExitFrom": "Verlassen von ...",
+  "textInside": "Innerhalb von ..."
 }

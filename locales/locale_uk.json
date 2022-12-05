@@ -124,9 +124,6 @@
       "textAddNewAttributeValue": "Додати нове значення",
       "textCanBeDeleted": "Можна видалити",
       "textCurrentValue": "Поточне значення",
-      "textDestEnterTo": "Увійти в ...",
-      "textDestExitFrom": "Вийти з ...",
-      "textDestInside": "Всередині ...",
       "textFixNewAttributeValue": "Виправити нове значення",
       "textFixReportId": "Виправити ID звіту",
       "textFixRoleId": "Виправити ID ролі",
@@ -139,7 +136,6 @@
       "textForReportQuery": "запитів",
       "textForReps": "звітів",
       "textForRole": "ролі",
-      "textFuncsMany": "Множинне число",
       "textIn": "в",
       "textListIsAvailable": "Доступно",
       "textListItemId": "ID",
@@ -191,7 +187,11 @@
       "textUserLastName": "Прізвище",
       "textUserUserId": "ID",
       "textUserUserName": "Нік",
-      "textWrongValue": "Помилкове значення!"
+      "textWrongValue": "Помилкове значення!",
+      "textMany": "Множинне число",
+      "textEnterTo": "Увійти в ...",
+      "textExitFrom": "Вийти з ...",
+      "textInside": "Всередині ..."
     }
   }
 }

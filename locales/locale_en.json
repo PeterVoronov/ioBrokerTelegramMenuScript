@@ -124,9 +124,6 @@
       "textAddNewAttributeValue": "Add new value for attribute",
       "textCanBeDeleted": "Can be deleted",
       "textCurrentValue": "Current value",
-      "textDestEnterTo": "Enter to ...",
-      "textDestExitFrom": "Exit from ...",
-      "textDestInside": "Inside ...",
       "textFixNewAttributeValue": "Fix value of attribute",
       "textFixReportId": "Fix report ID",
       "textFixRoleId": "Fix role ID",
@@ -139,7 +136,6 @@
       "textForReportQuery": "for Report Query",
       "textForReps": "for Reports",
       "textForRole": "for Role",
-      "textFuncsMany": "Many",
       "textIn": "in",
       "textListIsAvailable": "Is available",
       "textListItemId": "ID",
@@ -191,7 +187,11 @@
       "textUserLastName": "Last name",
       "textUserUserId": "ID",
       "textUserUserName": "Nickname",
-      "textWrongValue": "Wrong value!"
+      "textWrongValue": "Wrong value!",
+      "textMany": "Many",
+      "textEnterTo": "Enter to ...",
+      "textExitFrom": "Exit from ...",
+      "textInside": "Inside ..."
     }
   }
 }
