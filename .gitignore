@@ -69,3 +69,6 @@ typings/
 
 #crowdin config file
 crowdin.yml
+
+#exclude package-lock.json as it simple script
+package-lock.json
