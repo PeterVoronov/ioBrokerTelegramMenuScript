@@ -158,6 +158,8 @@
   "textMsgError": "Fehler!",
   "textMsgErrorNoResponse": "Fehler! Keine Antwort!",
   "textMsgSuccess": "Erfolg!",
+  "textMsgTranslationsIncompatibleVersion": "Nicht anwendbare Übersetzung! Große Versionsfehler sind falsch!",
+  "textMsgTranslationsNonApplicableUpdateMode": "Nicht anwendbarer Update-Modus für die Übersetzung! Unstimmigkeit der geringfügigen Version!",
   "textMsgUnsupportedObjectType": "Nicht unterstützter Objekttyp!",
   "textMsgValueNotInTheList": "Wert nicht in der Liste!",
   "textMsgValueUnacceptable": "Wert inakzeptabel!",

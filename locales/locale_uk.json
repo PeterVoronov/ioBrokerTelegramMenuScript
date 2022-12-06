@@ -163,6 +163,8 @@
       "textMsgError": "Помилка!",
       "textMsgErrorNoResponse": "Помилка! Немає відповіді!",
       "textMsgSuccess": "Успіх!",
+      "textMsgTranslationsIncompatibleVersion": "Непридатний переклад! Головна версія не збігається!",
+      "textMsgTranslationsNonApplicableUpdateMode": "Непридатний режим оновлення для перекладу! Мінорна версія не збігається!",
       "textMsgUnsupportedObjectType": "Непідтримуваний тип об'єкта!",
       "textMsgValueNotInTheList": "Значення, якого немає в переліку!",
       "textMsgValueUnacceptable": "Неприпустиме значення!",

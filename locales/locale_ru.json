@@ -163,6 +163,8 @@
       "textMsgError": "Ошибка!",
       "textMsgErrorNoResponse": "Ошибка! Нет ответа!",
       "textMsgSuccess": "Успех!",
+      "textMsgTranslationsIncompatibleVersion": "Неподходящий перевод! Несоответствие основной версии!",
+      "textMsgTranslationsNonApplicableUpdateMode": "Неподходящий режим обновления для перевода! Несовпадение минорной версии!",
       "textMsgUnsupportedObjectType": "Неподдерживаемый тип объекта!",
       "textMsgValueNotInTheList": "Значение отсутствует в списке!",
       "textMsgValueUnacceptable": "Недопустимое значение!",

@@ -163,6 +163,8 @@
       "textMsgError": "Error!",
       "textMsgErrorNoResponse": "Error! No response!",
       "textMsgSuccess": "Success!",
+      "textMsgTranslationsIncompatibleVersion": "Non-applicable translation! Major version mismatch!",
+      "textMsgTranslationsNonApplicableUpdateMode": "Non-applicable update mode for the translation! Minor version mismatch!",
       "textMsgUnsupportedObjectType": "Unsupported object type!",
       "textMsgValueNotInTheList": "Value not in the list!",
       "textMsgValueUnacceptable": "Value unacceptable!",
