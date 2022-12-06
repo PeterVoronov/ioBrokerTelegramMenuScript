@@ -1,0 +1,32 @@
+{
+  "name": "iobroker-auto-telegram-menu-script",
+  "version": "1.0.0",
+  "description": "Script to auto generate and process Telegram menu",
+  "main": "TelegramMenu.js",
+  "scripts": {
+    "lint": "eslint .",
+    "all": "npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com:PeterVoronov/ioBrokerTelegramMenuScript.git"
+  },
+  "keywords": [
+    "Telegram",
+    "Menu",
+    "JavaScript",
+    "ioBroker",
+    "Devices"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PeterVoronov/ioBrokerTelegramMenuScript/issues"
+  },
+  "homepage": "https://github.com/PeterVoronov/ioBrokerTelegramMenuScript/#readme",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "eslint": "^8.28.0"
+  }
+}

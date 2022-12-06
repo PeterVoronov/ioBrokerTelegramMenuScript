@@ -1,0 +1,24 @@
+{
+    
+    "env": {
+        "commonjs": true,
+        "es6": true,
+        "jest": true,
+        "node": true
+    },
+    "extends": "eslint:recommended",
+    "globals": {
+        "Atomics": "readonly",
+        "SharedArrayBuffer": "readonly"
+    },
+    "parserOptions": {
+        "ecmaVersion": 2018
+    },
+    "rules": {
+        "semi": [ "error", "always", { "omitLastInOneLineBlock": true} ],
+        "one-var": "off",
+        "space-before-function-paren": ["error", { "anonymous": "never", "named": "never", "asyncArrow": "always" }],
+        "brace-style": ["error", "stroustrup", { "allowSingleLine": true }],
+        "no-useless-escape": "off"
+    }
+}
