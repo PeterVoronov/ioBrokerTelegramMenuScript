@@ -24,8 +24,7 @@
     "url": "https://github.com/PeterVoronov/ioBrokerTelegramMenuScript/issues"
   },
   "homepage": "https://github.com/PeterVoronov/ioBrokerTelegramMenuScript/#readme",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "eslint": "^8.28.0"
   }
