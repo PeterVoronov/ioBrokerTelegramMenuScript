@@ -1,3 +1,4 @@
+/*eslint no-unused-vars: "off"*/
 const
     autoTelegramMenuTelegramAdapterInstanceId = 1,
     autoTelegramMenuExtensionsInitCommand = 'autoTelegramMenuExtensionsInit',

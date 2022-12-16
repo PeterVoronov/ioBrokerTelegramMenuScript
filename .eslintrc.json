@@ -8,17 +8,37 @@
     },
     "extends": "eslint:recommended",
     "globals": {
-        "Atomics": "readonly",
-        "SharedArrayBuffer": "readonly"
+        "clearSchedule": "readonly",
+        "existsState": "readonly",
+        "deleteState":"readonly",
+        "getState":"readonly",
+        "on": "readonly",
+        "getObject":"readonly",
+        "setObjectAsync":"readonly",
+        "existsObject": "readonly",
+        "deleteObjectAsync":"readonly",
+        "setState":"readonly",
+        "createState":"readonly",
+        "$": "readonly",
+        "messageTo": "readonly",
+        "unsubscribe":"readonly",
+        "getSubscriptions":"readonly",
+        "onMessage":"readonly",
+        "onLog":"readonly",
+        "sendTo":"readonly",
+        "schedule":"readonly"
     },
     "parserOptions": {
-        "ecmaVersion": 2018
+        "ecmaVersion": 2022
     },
     "rules": {
         "semi": [ "error", "always", { "omitLastInOneLineBlock": true} ],
         "one-var": "off",
         "space-before-function-paren": ["error", { "anonymous": "never", "named": "never", "asyncArrow": "always" }],
         "brace-style": ["error", "stroustrup", { "allowSingleLine": true }],
-        "no-useless-escape": "off"
+        "no-useless-escape": "off",
+        // "no-cond-assign": "except-parens",
+        "no-fallthrough": ["error", { "commentPattern": "break[\\s\\w]*omitted" }],
+        "no-prototype-builtins": "off"
     }
 }

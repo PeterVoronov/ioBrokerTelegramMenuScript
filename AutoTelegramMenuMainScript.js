@@ -27,7 +27,7 @@ const l = true;
 
 /*** Make functions to be printable in JSON.stringify with names ***/
 Object.defineProperty(Function.prototype, "toJSON", {
-    value:  function() { return `function ${this.name}`; }
+    value:  function() { return `function ${this.name}` }
 });
 
 /*** Make RegExp to be printable in JSON.stringify with names ***/
@@ -58,11 +58,11 @@ Object.defineProperty(RegExp.prototype, "toJSON", {
 * The mask defaults to dateFormat.masks.default.
 **/
 
-let dateFormat = function () {
+let dateFormat = function() {
     let token = /d{1,4}|m{1,4}|yy(?:yy)?|([HhMsTt])\1?|[LloSZ]|"[^"]*"|'[^']*'/g,
     timezone = /\b(?:[PMCEA][SDP]T|(?:Pacific|Mountain|Central|Eastern|Atlantic) (?:Standard|Daylight|Prevailing) Time|(?:GMT|UTC)(?:[-+]\d{4})?)\b/g,
     timezoneClip = /[^-+\dA-Z]/g,
-    pad = function (val, len) {
+    pad = function(val, len) {
         val = String(val);
         len = len || 2;
         while (val.length < len) val = "0" + val;
@@ -70,7 +70,7 @@ let dateFormat = function () {
     };
 
     /** Regex's and supporting functions are cached through closure */
-    return function (date, mask, utc) {
+    return function(date, mask, utc) {
         let dF = dateFormat;
 
         /** You can't provide utc if you skip other args (use the "UTC:" mask prefix) */
@@ -133,7 +133,7 @@ let dateFormat = function () {
                 S: ["th", "st", "nd", "rd"][d % 10 > 3 ? 0 : (d % 100 - d % 10 != 10) * d % 10]
             };
 
-        return mask.replace(token, function ($0) {
+        return mask.replace(token, function($0) {
             return $0 in flags ? flags[$0] : $0.slice(1, $0.length - 1);
         });
     };
@@ -168,7 +168,7 @@ dateFormat['i18n'] = {
 };
 
 Object.defineProperty(Date.prototype, "format", {
-    value:  function(mask, utc) { return dateFormat(this, mask, utc); }
+    value:  function(mask, utc) { return dateFormat(this, mask, utc) }
 });
 
 //*** Date formatting functions - end ***//
@@ -492,11 +492,11 @@ class ConfigOptions {
                 const perUserConfig = this.perUserConfig.get(user.userId);
                 return perUserConfig.hasOwnProperty(cfgItem)
                 && (perUserConfig[cfgItem] !== undefined)
-                && (perUserConfig[cfgItem] !== null)
+                && (perUserConfig[cfgItem] !== null);
             }
         }
         else {
-            return this.globalConfig.hasOwnProperty(cfgItem) && (this.globalConfig[cfgItem] !== undefined) && (this.globalConfig[cfgItem] !== null)
+            return this.globalConfig.hasOwnProperty(cfgItem) && (this.globalConfig[cfgItem] !== undefined) && (this.globalConfig[cfgItem] !== null);
         }
         return false;
     }
@@ -531,7 +531,7 @@ class ConfigOptions {
         switch (cfgItem) {
             case cfgSummaryTextLengthMax:
                 if ((user.userId != user.chatId) && typeOf(result, 'number') && (this.existsOption(cfgTextLengthModifierForGChats, user) || this.existsOption(cfgTextLengthModifierForGChats))) {
-                    result += this.getOption(cfgTextLengthModifierForGChats, user)
+                    result += this.getOption(cfgTextLengthModifierForGChats, user);
                 }
                 break;
 
@@ -657,7 +657,8 @@ class ConfigOptions {
                 if (value.indexOf('[') === 0) {
                     try {
                         result = JSON.parse(value);
-                    } catch (err) {
+                    } 
+                    catch (err) {
                         console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
                     }
                 }
@@ -673,7 +674,8 @@ class ConfigOptions {
             if (valueToParseType === 'string') {
                 try {
                     value = JSON.parse(value, mapReviver);
-                } catch (err) {
+                } 
+                catch (err) {
                     console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
                 }
                 valueToParseType = typeof(value);
@@ -686,7 +688,8 @@ class ConfigOptions {
             if (valueToParseType === 'string') {
                 try {
                     value = JSON.parse(value);
-                } catch (err) {
+                } 
+                catch (err) {
                     console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
                 }
                 valueToParseType = typeof(value);
@@ -697,7 +700,7 @@ class ConfigOptions {
         }
         else if (currentType === 'number') {
             if (valueToParseType === 'string') {
-                if (! isNaN(value)) result = Number(value)
+                if (! isNaN(value)) result = Number(value);
             }
             else if (valueToParseType === 'number') {
                 result = value;
@@ -724,7 +727,7 @@ class ConfigOptions {
             const currentMask =  this.getMask(cfgItem);
             switch (typeOf(currentMask)) {
                 case 'regexp':
-                    result = currentMask && currentMask.test(result) ? result : undefined
+                    result = currentMask && currentMask.test(result) ? result : undefined;
                     break;
                 default:
                     break;
@@ -881,17 +884,17 @@ class ConfigOptions {
                             this.deleteUserOption(cfgItem, {userId});
                         }
                     });
-                })
+                });
             }
             if (backupData.hasOwnProperty('perUserConfig') && typeOf(backupData.perUserConfig, 'map') && backupData.perUserConfig.size) {
                 backupData.perUserConfig.forEach((userConfigData, userId) => {
                     Object.keys(this.globalConfig).forEach(cfgItem => {
                         if ( (! configGlobalOptions.includes(cfgItem)) && userConfigData.hasOwnProperty(cfgItem) && (userConfigData[cfgItem] !== undefined) && (userConfigData[cfgItem] !== null)) {
                             // logs(`setOption(${cfgItem}, ${JSON.stringify({userId})}) = ${JSON.stringify(userConfigData[cfgItem])}`, l)
-                            if (this.globalConfig[cfgItem] !== userConfigData[cfgItem]) this.setOption(cfgItem, {userId}, userConfigData[cfgItem])
+                            if (this.globalConfig[cfgItem] !== userConfigData[cfgItem]) this.setOption(cfgItem, {userId}, userConfigData[cfgItem]);
                         }
-                    })
-                })
+                    });
+                });
             }
         }
     }
@@ -923,7 +926,7 @@ class ConfigOptions {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `"${itemValue}"`,
                 submenu: new Array()
-            }
+            };
             if (isThisLevelAllowModify) {
                 let subSubMenuIndex = 0;
                 subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
@@ -1018,7 +1021,7 @@ class ConfigOptions {
                                         icon: currentLanguage === languageId ? configOptions.getOption(cfgDefaultIconOn) : '',
                                         param: currentLanguage === languageId ? cmdNoOperation : '',
                                         submenu: new Array()
-                                    }
+                                    };
                                     if (currentLanguage !== languageId) {
                                         let subSubMenuIndex = 0;
                                         subSubMenuIndex = subMenuItem.submenu.push({
@@ -1086,10 +1089,10 @@ class ConfigOptions {
                                             }
                                             return subMenu;
                                         }
-                                    })
+                                    });
                                 }
                                 return subMenu;
-                            }
+                            };
                             break;
 
                         case cfgGraphsIntervals:
@@ -1130,14 +1133,14 @@ class ConfigOptions {
                                     }
                                 }
                                 return subMenu;
-                            }
+                            };
                             break;
 
                         default:
                             break;
                     }
                     switch (itemType) {
-                        case 'array':
+                        case 'array': {
                             if (isThisLevelAllowModify) {
                                 subMenuItem.accessLevel = currentAccessLevel;
                                 subMenuItem.param = commandsPackParams(cfgItem, optionScope);
@@ -1148,25 +1151,25 @@ class ConfigOptions {
                                 currentItem.param = commandsPackParams(cfgItem, optionScope);
                             }
                             break;
-
-                        case 'number':
+                        }
+                        case 'number': {
                             if (isSystemLevelOption || (optionScope === configOptionScopeUser)) currentItem.name = `${currentItem.name} [${currentOptionValue}]`;
                             subMenuItem.name += `[${currentOptionValue}]`;
                             break;
-
-                        case 'string':
-                            let maxTextLength = this.globalConfig[cfgSummaryTextLengthMax] - 5 -currentItemName.length;
+                        }
+                        case 'string': {
+                            let maxTextLength = this.globalConfig[cfgSummaryTextLengthMax] - 5 - currentItemName.length;
                             if (isSystemLevelOption || (optionScope === configOptionScopeUser)) currentItem.name += ` ['${currentOptionValue.length > maxTextLength ? '...' : ''}${currentOptionValue.slice(-maxTextLength)}']`;
                             maxTextLength = this.globalConfig[cfgSummaryTextLengthMax] - 5 -currentSubMenuItemName.length;
                             subMenuItem.name += ` ['${currentOptionValue.length > maxTextLength ? '...' : ''}${currentOptionValue.slice(-maxTextLength)}']`;
                             break;
-
-                        case 'boolean':
+                        }
+                        case 'boolean': {
                             if (isSystemLevelOption || (optionScope === configOptionScopeUser)) currentItem.name += ` ${currentOptionValue ? this.globalConfig[cfgDefaultIconOn] : this.globalConfig[cfgDefaultIconOff]}`;
                             subMenuItem.name += ` ${currentOptionValue ? this.globalConfig[cfgDefaultIconOn] : this.globalConfig[cfgDefaultIconOff]}`;
                             subMenuItem.param = commandsPackParams(cmdItemPress, dataTypeConfig, cfgItem, optionScope);
                             break;
-
+                        }
 
                         default:
                             break;
@@ -1202,7 +1205,7 @@ class ConfigOptions {
             // this.menuSchedule = schedule(scheduleString, () => {this.functionScheduleMenuUpdate});
         }
     }
-};
+}
 
 /**
  * Global variable to store the all configuration options/items (ConfigOption class).
@@ -1281,11 +1284,11 @@ class MenuRoles {
         if (itemId !== undefined) {
             itemId = this.existsId(itemId);
             if (typeOf(this.data[itemId], 'array')) this.data[itemId] = MenuRoles.sortRules(this.data[itemId]);
-            this.compileRules(itemId)
+            this.compileRules(itemId);
         }
         else {
             Object.keys(this.data).forEach(roleId => {
-                this.initRules(roleId)
+                this.initRules(roleId);
             });
         }
     }
@@ -1306,7 +1309,7 @@ class MenuRoles {
                     {mask: `setup${rolesIdAndMaskDelimiter}alerts`, accessLevel: rolesAccessLevelFull},
                     {mask: `setup${rolesIdAndMaskDelimiter}${rolesMaskAnyValue}`, accessLevel: rolesAccessLevelForbidden}
                 ]
-            }
+            };
         }
         this.initRules();
     }
@@ -1349,7 +1352,7 @@ class MenuRoles {
             rulesList.forEach(newRule => {
                 if ((typeof(newRule) === 'object') && newRule.hasOwnProperty('mask') && newRule.hasOwnProperty('accessLevel')) {
                     if (! this.data[itemId].find(rule => JSON.stringify(rule) === JSON.stringify(newRule))) {
-                        this.data[itemId].push(newRule)
+                        this.data[itemId].push(newRule);
                     }
                 }
             });
@@ -1387,7 +1390,7 @@ class MenuRoles {
         let roles = {};
         if (itemId) {
             if (this.existsId(itemId)) {
-                roles = {[itemId]: compiled ? this.compiledData[itemId] : this.data[itemId]}
+                roles = {[itemId]: compiled ? this.compiledData[itemId] : this.data[itemId]};
             }
         }
         else {
@@ -1443,7 +1446,7 @@ class MenuRoles {
     static maskInverse(mask) {
         const [maskPrefix, maskSuffix] = mask.split(rolesIdAndMaskDelimiter);
         if (maskSuffix) {
-            return `${maskSuffix}${rolesIdAndMaskDelimiter}${maskPrefix}`
+            return `${maskSuffix}${rolesIdAndMaskDelimiter}${maskPrefix}`;
         }
         else {
             return maskPrefix;
@@ -1459,7 +1462,7 @@ class MenuRoles {
      */
     getUsers(itemId) {
         if (typeof(this.getRelatedDataFunction) === 'function') {
-            return this.getRelatedDataFunction(itemId)
+            return this.getRelatedDataFunction(itemId);
         }
         else {
             return [];
@@ -1507,9 +1510,9 @@ class MenuRoles {
             const currentRules = this.data[itemId];
             if (typeOf(currentRules, 'array')) {
                 let compiledData = new Array();
-                currentRules.forEach(currentRule => {compiledData.push({...currentRule})});;
+                currentRules.forEach(currentRule => {compiledData.push({...currentRule})});
                 const compileRule = (inputRule) => {
-                    const currentRule = {...inputRule}
+                    const currentRule = {...inputRule};
                     const
                         [ruleMaskPrefix, ruleMaskSuffix] = currentRule.mask.split(rolesIdAndMaskDelimiter),
                         isPrefixAny = ruleMaskPrefix === rolesMaskAnyValue,
@@ -1608,7 +1611,7 @@ class MenuRoles {
                 const
                     regexp = menuIdSuffix ? (inverseMasks ? rule.regexpInverted: rule.regexpDirect) : (inverseMasks ? rule.regexpInvertedHalf: rule.regexpDirectHalf),
                     [maskPrefix, maskSuffix] = (inverseMasks ? rule.maskInverted : rule.mask ).split(rolesIdAndMaskDelimiter);
-                return regexp.test(menuItemId) && (! ((menuItemIdParts.length === 1) && (maskPrefix === rolesMaskAnyValue) && (maskSuffix !== rolesMaskAnyValue) && (MenuRoles.accessLevelsPreventToShow.includes(rule.accessLevel))))
+                return regexp.test(menuItemId) && (! ((menuItemIdParts.length === 1) && (maskPrefix === rolesMaskAnyValue) && (maskSuffix !== rolesMaskAnyValue) && (MenuRoles.accessLevelsPreventToShow.includes(rule.accessLevel))));
             });
         if (regexpMatch && regexpMatch.length) {
             result = {...MenuRoles.sortRules(regexpMatch, inverseMasks, true)[0]};
@@ -1619,7 +1622,7 @@ class MenuRoles {
                 }
             }
             else if ((! MenuRoles.accessLevelsPreventToShow.includes(result.accessLevel)) && (menuItemIdParts.length === 1) && (maskPrefix === rolesMaskAnyValue) && (maskSuffix !== rolesMaskAnyValue) ) {
-                result.accessLevel = rolesAccessLevelPossible
+                result.accessLevel = rolesAccessLevelPossible;
             }
             // else if ((! returnRule) && (menuItemId.split(idAndMaskDelimiter).length === 1) && (result.mask.split(idAndMaskDelimiter).length === 2) && (MenuRoles.compareAccessLevels(result.accessLevel, accessLevelForbidden) < 0)) {
             //     result.accessLevel = accessLevelPossible
@@ -1641,7 +1644,7 @@ class MenuRoles {
      */
     static #filterRoleByRole(rulesToFilter, rulesAsFilter, resultRules) {
         rulesToFilter.forEach(ruleToFilter => {
-            let resultRule = MenuRoles.#getAccessLevel(ruleToFilter.mask, rulesAsFilter, true)
+            let resultRule = MenuRoles.#getAccessLevel(ruleToFilter.mask, rulesAsFilter, true);
             if ((! resultRule) ||
                 (MenuRoles.compareAccessLevels(ruleToFilter.accessLevel, resultRule.accessLevel) < 0) ||
                 ((! ruleToFilter.mask.includes(rolesMaskAnyValue)) && resultRule.mask.includes(rolesMaskAnyValue)) ||
@@ -1649,11 +1652,11 @@ class MenuRoles {
                 resultRule = ruleToFilter;
             }
             if (! resultRules.find(rule => ((rule.mask === resultRule.mask) && MenuRoles.compareAccessLevels(rule.accessLevel, resultRule.accessLevel) <= 0))) {
-                resultRules.push(resultRule)
+                resultRules.push(resultRule);
             }
             else if (resultRules.find(rule => ((rule.mask === resultRule.mask) && MenuRoles.compareAccessLevels(rule.accessLevel, resultRule.accessLevel) > 0))) {
                 resultRules = resultRules.filter(rule => (! ((rule.mask === resultRule.mask) && MenuRoles.compareAccessLevels(rule.accessLevel, resultRule.accessLevel) > 0)));
-                resultRules.push(resultRule)
+                resultRules.push(resultRule);
             }
         });
         return resultRules;
@@ -1679,10 +1682,10 @@ class MenuRoles {
             const maskAllA = rulesListA.find(rule => rule.mask === rolesMaskAnyItem);
             const maskAllB = rulesListB.find(rule => rule.mask === rolesMaskAnyItem);
             if (maskAllA && ( (! maskAllB) || (MenuRoles.compareAccessLevels(maskAllA.accessLevel, maskAllB.accessLevel) < 0))) {
-                resultRules.push(maskAllA)
+                resultRules.push(maskAllA);
             }
             else if (maskAllB) {
-                resultRules.push(maskAllB)
+                resultRules.push(maskAllB);
             }
             const
                 roleAFiltered = rulesListA.filter(rule => rule.mask !== rolesMaskAnyItem),
@@ -1849,7 +1852,7 @@ class MenuRoles {
                     param: commandsPackParams(cmdItemMark, dataTypeMenuRoleRules, currentMask),
                     submenu: []
                 });
-            })
+            });
             subMenuIndex = subMenu.push({
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedMask}]`,
@@ -1893,11 +1896,11 @@ class MenuRoles {
                 if (menuItemToProcess.hasOwnProperty('descendants')) {
                     menuItemToProcess.descendants.forEach(descendantItem => {
                         subIndex = resultItem.submenu.push(menuGenerateItemWithSubMenus(user, descendantItem, `${currentIndex}.${subIndex}`, menuItemToProcess.id));
-                    })
+                    });
                 }
                 secondLevelListIds.forEach(itemId => {
                     const currentItem = secondLevelList[itemId];
-                    let currentItemName = translationsGetEnumName(user, secondLevelDataType, itemId, enumNameDeclinationKey)
+                    let currentItemName = translationsGetEnumName(user, secondLevelDataType, itemId, enumNameDeclinationKey);
                     if (itemId.includes('.')) {
                         const parentId = itemId.split('.').shift();
                         currentItemName = `${translationsGetEnumName(user, secondLevelDataType, parentId, enumNameDeclinationKey)} ${iconItemToSubItemByArrow} ${currentItemName}`;
@@ -1924,7 +1927,7 @@ class MenuRoles {
                             submenu: selectMask
                         });
                     }
-                })
+                });
             }
             const currentMask = `${currentItemId}${rolesIdAndMaskDelimiter}${rolesMaskAnyValue}`;
             subIndex = resultItem.submenu.push({
@@ -1958,7 +1961,7 @@ class MenuRoles {
             subMenuIndex = 0;
         rootMenu.submenu.forEach(rootMenuItem => {
             subMenuIndex = subMenu.push(menuGenerateItemWithSubMenus(user, rootMenuItem, `${currentIndex}.${subMenuIndex}`));
-        })
+        });
         subMenuIndex = subMenu.push({
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedRule.mask}]`,
@@ -1989,7 +1992,7 @@ class MenuRoles {
         if (cachedExistsValue(user, cachedRolesRoleUnderEdit)) {
             currentRole = cachedGetValue(user, cachedRolesRoleUnderEdit);
             if (currentRole.roleId !== roleId) {
-                cachedDelValue(user, cachedRolesRoleUnderEdit)
+                cachedDelValue(user, cachedRolesRoleUnderEdit);
             }
         }
         if ((! cachedExistsValue(user, cachedRolesRoleUnderEdit)) || (currentRole.roleId !== roleId)) {
@@ -2010,7 +2013,7 @@ class MenuRoles {
                     icon: MenuRoles.accessLevelsIcons[MenuRoles.accessLevels.indexOf(rule.accessLevel)],
                     text: ruleCurrentDetails,
                     submenu: new Array()
-                }
+                };
             if ((roleId === rolesDefaultAdmin) || (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) >= 0)) {
                 currentItem.param = cmdNoOperation;
             }
@@ -2039,7 +2042,7 @@ class MenuRoles {
                     if (! cachedExistsValue(user, cachedRolesRoleUnderEdit)) {
                         cachedSetValue(user, cachedRolesRoleUnderEdit, {roleId : roleId, rules: currentRoleRules});
                     }
-                    return MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))
+                    return MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule));
                 },
                 submenu: (user, menuItemToProcess) => {return this.#menuGenerateRoleRulesAddItem(user, menuItemToProcess)}
             });
@@ -2052,7 +2055,8 @@ class MenuRoles {
                     param: commandsPackParams(cmdItemsProcess, dataTypeMenuRoles, roleId),
                     submenu: []
                 });
-            } else if ((! cachedExistsValue(user, cachedRolesRoleUnderEdit)) && ((this.existsId(roleId)) && (rolesInMenu.getUsers(roleId).length === 0))) {
+            } 
+            else if ((! cachedExistsValue(user, cachedRolesRoleUnderEdit)) && ((this.existsId(roleId)) && (rolesInMenu.getUsers(roleId).length === 0))) {
                 subMenuIndex = subMenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeMenuRoles, roleId, `${currentIndex}`, subMenuIndex));
             }
         }
@@ -2078,7 +2082,7 @@ class MenuRoles {
                     currentRoles[newRole.roleId] = newRole.rules;
                 }
                 // logs(`currentRoles = ${JSON.stringify(currentRoles)}`);
-            };
+            }
         const
             currentRoleRules = currentRoles[roleId],
             currentRoleDetailsList= [
@@ -2196,7 +2200,7 @@ class MenuRoles {
                             }
                         );
                     }
-                    return subMenu
+                    return subMenu;
                 }
             });
         }
@@ -2351,13 +2355,13 @@ class MenuUsers extends MenuRoles {
                 if (typeof(this.getRelatedDataFunction) === 'function') {
                     this.data[itemId]['roles'].forEach(roleId => {
                         const role = this.getRelatedDataFunction ? this.getRelatedDataFunction(roleId, compiled) : undefined;
-                        roles = {...roles, ...role}
-                    })
+                        roles = {...roles, ...role};
+                    });
                 }
             }
         }
         else {
-            roles = {...(this.getRelatedDataFunction ? this.getRelatedDataFunction(undefined, compiled) : {})}
+            roles = {...(this.getRelatedDataFunction ? this.getRelatedDataFunction(undefined, compiled) : {})};
         }
         // logs(`getRoles ${userId} ${JSON.stringify(roles)}`)
         return this.sortRoles(roles);
@@ -2386,7 +2390,7 @@ class MenuUsers extends MenuRoles {
      */
     getUsers(roleId) {
         const users = roleId ? Object.values(this.data).filter(user => user.roles.includes(roleId)) : Object.values(this.data);
-        return users.map(user => user.userId)
+        return users.map(user => user.userId);
     }
 
     /**
@@ -2442,7 +2446,7 @@ class MenuUsers extends MenuRoles {
         else {
             const users = this.getUsers(roleId);
             if (users) {
-                users.forEach(userId => this.updateRules(undefined, userId))
+                users.forEach(userId => this.updateRules(undefined, userId));
             }
         }
     }
@@ -2580,7 +2584,8 @@ function translationValidateLanguageId(languageId){
         if ((languageId.length === 2) && (canonicalLang.length)) {
             langId = canonicalLang[0];
         }
-    } catch (error) {
+    } 
+    catch (error) {
         console.warn(`Error of language id  '${languageId}' check '${error}'`);
     }
     return langId;
@@ -2605,9 +2610,9 @@ function translationsSave(user) {
         const
             translationId = `${prefixTranslationStates}.${languageId}`,
             translationString = JSON.stringify(objectKeysSort(translationsList[languageId]));
-        logs(`translationId = ${translationId} namesTranslation = ${JSON.stringify(translationsList[languageId], null, 2)}`)
+        logs(`translationId = ${translationId} namesTranslation = ${JSON.stringify(translationsList[languageId], null, 2)}`);
         if (existsState(translationId)) {
-            setState(translationId, translationString, true)
+            setState(translationId, translationString, true);
         }
         else {
             // @ts-ignore
@@ -2648,13 +2653,15 @@ function translationsLoad() {
             try {
                 // logs(`langId = ${langId}, translationId = ${translationId}`);
                 translationsList[canonicalLang] = JSON.parse(getState(translationId).val);
-            } catch (error) {
-                console.warn(`Can't process a translation for language ${languageId}!`)
+            } 
+            catch (error) {
+                console.warn(`Can't process a translation for language ${languageId}!`);
                 // translationList[languageId] = {};
             }
             // logs(`translationsList[${langId}] = ${JSON.stringify(translationsList[langId])}`);
-        } else {
-            console.warn(`Unknown language id '${languageId}', can't process it!`)
+        } 
+        else {
+            console.warn(`Unknown language id '${languageId}', can't process it!`);
         }
     });
 }
@@ -2677,25 +2684,25 @@ function translationsLoadLocalesFromRepository(languageId, callback) {
             languageId = languageIds.shift();
         if (languageId) {
             repo.get(translations[languageId])
-            .then(function (response) {
+            .then(function(response) {
                 if (response && response.data && typeOf(response.data,'object')) {
                     translations[languageId] = response.data;
                 }
             })
-            .catch(function (error) {
+            .catch(function(error) {
                 console.warn(`Can't download locale '${languageId}' from the repo! Error is '${error}'.`);
             })
-            .then(function () {
+            .then(function() {
                 if (languageIds.length) {
                     translationsDownloadFromRepo(repo, languageIds, translations, callback);
                 }
                 else {
-                    callback(translations, undefined)
+                    callback(translations, undefined);
                 }
             });
         }
         else {
-            callback(translations, undefined)
+            callback(translations, undefined);
         }
     }
 
@@ -2710,29 +2717,29 @@ function translationsLoadLocalesFromRepository(languageId, callback) {
         languageId = doAll;
     }
     if (languageId) {
-        console.log(scriptLocalesFolder)
+        console.log(scriptLocalesFolder);
         github.get(scriptLocalesFolder)
-        .then(function (response) {
+        .then(function(response) {
             if (response && response.data) {
                 let
                     localesLinks = {},
                     parsedLocale;
-                while (parsedLocale = translationLocalesExtractRegExp.exec(response.data)) {
+                while ((parsedLocale = translationLocalesExtractRegExp.exec(response.data))) {
                     console.log(`parsed = ${parsedLocale}`);
                     if (parsedLocale && parsedLocale.length && parsedLocale[1] && parsedLocale[2]) {
                         localesLinks[parsedLocale[2]] = parsedLocale[1].replace('/blob/', '/raw/');
                     }
                 }
                 if ((languageId !== doAll) && localesLinks.hasOwnProperty(languageId)) {
-                    localesLinks = {[languageId]: localesLinks[languageId]}
+                    localesLinks = {[languageId]: localesLinks[languageId]};
                 }
                 else if (languageId !== doAll) {
-                    callback(undefined, `Language with id = ${languageId} is not presented in repo!`)
+                    callback(undefined, `Language with id = ${languageId} is not presented in repo!`);
                 }
                 translationsDownloadFromRepo(github, Object.keys(localesLinks), localesLinks, callback);
             }
         })
-        .catch(function (error) {
+        .catch(function(error) {
             callback(undefined, `Can't get the locales list from repo! Error is '${error}'.`);
         });
     }
@@ -2817,11 +2824,12 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
     function translationsProcessUpdate(translationCurrentPart, translationInputPart, translationUpdateMode) {
         console.log(`translationUpdateMode = ${translationUpdateMode}`)
         switch (translationUpdateMode) {
-            case 'replace':
+            case 'replace': {
                 translationCurrentPart = translationInputPart;
                 break;
+            }
             case 'overwrite':
-            case 'enrich':
+            case 'enrich': {
                 Object.keys(translationInputPart).forEach(translationKey => {
                     if (translationCurrentPart.hasOwnProperty(translationKey)) {
                         if (typeOf(translationCurrentPart[translationKey], 'object') && typeOf(translationInputPart[translationKey], 'object')) {
@@ -2838,7 +2846,8 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
                     }
                 });
                 break;
-            case 'template':
+            }
+            case 'template':{
                 const translationTemplatePart = objectDeepClone(translationInputPart);
                 Object.keys(translationTemplatePart).forEach(translationKey => {
                     if (translationCurrentPart.hasOwnProperty(translationKey)) {
@@ -2852,6 +2861,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
                 });
                 translationCurrentPart = translationTemplatePart;
                 break;
+            }
             default:
                 break;
         }
@@ -3135,7 +3145,8 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
         const objectCommonName = object.common.name;
         if (typeof objectCommonName === 'string') {
             return objectCommonName;
-        } else if (typeof objectCommonName === 'object') {
+        } 
+        else if (typeof objectCommonName === 'object') {
             const languageFromConfig = configOptions.getOption(cfgMenuLanguage, user);
             if (objectCommonName.hasOwnProperty(languageFromConfig)) {
                 return objectCommonName[languageFromConfig];
@@ -3231,7 +3242,8 @@ function translationsCheckAndCacheUploadedFile(user, translationFileFullPath, tr
                     else {
                         console.warn(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
                     }
-                } catch (err) {
+                } 
+                catch (err) {
                     console.warn(`JSON parse error: ${JSON.stringify(err)} for translation '${translationFileName}'!`);
                 }
             }
@@ -3241,7 +3253,8 @@ function translationsCheckAndCacheUploadedFile(user, translationFileFullPath, tr
             nodeFS.rm(translationFileFullPath, {force: true }, (err) => {
                 if (err) console.warn(`Can't delete translation file '${translationFileFullPath}'! Error: '${JSON.stringify(err)}'.`);
             });
-        } catch (err) {
+        } 
+        catch (err) {
             console.warn(`Can't read translation file '${translationFileFullPath}'!`);
         }
     }
@@ -3390,7 +3403,7 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
         deviceAttributesListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceAttributes).map(key => key.split('.').join('_')) : [],
         deviceButtonsListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceButtons).map(key => key.split('.').join('_')) : [],
         currentDeviceListKeys = menuItemToProcess.param === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
-        ;
+        
     // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}, currentCommonPrefix = ${commonFunctionsAttributesTranslationPrefix}`, l);
     let
         subMenuIndex = 0,
@@ -3603,7 +3616,8 @@ function cachedGetValue(user, valueId, getLastChange) {
                     if (((cachedValuesStatesCommonAttributes[valueId].type === 'string') || (cachedValuesStatesCommonAttributes[valueId].type === 'json')) && (cachedVal.length > 0)) {
                         try {
                             cachedVal = JSON.parse(cachedVal, mapReviver);
-                        } catch (err) {
+                        } 
+                        catch (err) {
                             // cachedStates[id] = cachedVal;
                             logs(`Parse error - ${JSON.stringify(err)}`);
                         }
@@ -4300,14 +4314,15 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
             case 'nameTranslationId':
             case 'scriptName':
             case 'showAccessLevel':
-            case 'pressAccessLevel':
+            case 'pressAccessLevel': {
                 break;
+            }
 
             case 'deviceAttributes':
             case 'deviceButtons':
             case 'deviceAttributesValuesTranslation':
             case 'deviceButtonsValuesTranslation':
-            case 'devicesTranslation':
+            case 'devicesTranslation': {
                 if (! devicesMenuItem) {
                     devicesMenuIndex = subMenuIndex;
                     devicesMenuItem = {
@@ -4318,7 +4333,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                         funcEnum: currentItem,
                         icon: iconItemDevice,
                         submenu: new Array(),
-                    }
+                    };
                     subMenuIndex = subMenu.push(devicesMenuItem);
                 }
                 switch (enumerationItemAttr) {
@@ -4351,8 +4366,9 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                         break;
                 }
                 break;
+            }
 
-            case 'name':
+            case 'name': {
                 if (isCurrentAccessLevelAllowModify) {
                     subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataType, currentItem, 'names', enumerationNamesMain));
                     subMenuIndex = subMenu.push({
@@ -4363,8 +4379,9 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                     });
                 }
                 break;
+            }
 
-            case 'names':
+            case 'names': {
                 if (typeOf(currentEnumerationItem.names) === 'array') {
                     let
                         namesItem = {
@@ -4390,8 +4407,9 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                     }
                 }
                 break;
+            }
 
-            case 'group':
+            case 'group': {
                 const groupItem = {
                     index: `${currentIndex}.${subMenuIndex}`,
                     name: `${translationsItemMenuGet(user, 'group')}: [${currentEnumerationItem[enumerationItemAttr] == undefined ? '' : currentEnumerationItem[enumerationItemAttr]}]`,
@@ -4407,6 +4425,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                 }
                 subMenuIndex = subMenu.push(groupItem);
                 break;
+            }
 
 
             default:
@@ -4437,7 +4456,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
     if (isCurrentAccessLevelAllowModify){
         switch (dataType) {
             case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons:
+            case dataTypeDeviceButtons: {
                 const
                     currentFunction = enumerationsList[dataTypeFunction].list[dataTypeExtraId],
                     translationType = `${currentFunction.enum}.${dataTypeExtraId.replace('.', '_')}`,
@@ -4520,8 +4539,9 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                     subMenuIndex = subMenu.push(subMenuItem);
                 });
                 break;
+            }
 
-            case dataTypeReport:
+            case dataTypeReport: {
                 subMenuIndex = subMenu.push({
                     index: `${currentIndex}.${subMenuIndex}`,
                     name: `${translationsItemMenuGet(user, 'ReportEdit')}`,
@@ -4529,6 +4549,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                     submenu: simpleReportMenuGenerateReportEdit,
                 });
                 break;
+            }
         }
         if (((dataType === dataTypePrimaryEnums) && (enumerationsGetActiveSubItemsCount(dataTypeExtraId, currentItem) === 0)) ||
             ((dataType !== dataTypePrimaryEnums) &&
@@ -5127,7 +5148,8 @@ function enumerationEvaluateValueConversionCode(user, inputValue, convertValueCo
                 const timeStamp = new Date(inputValue);
                 // @ts-ignore
                 inputValue = timeStamp.format(configOptions.getOption(cfgDateTimeTemplate, user))
-            } catch (error) {
+            } 
+            catch (error) {
                 console.warn(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
             }
         }
@@ -5142,7 +5164,8 @@ function enumerationEvaluateValueConversionCode(user, inputValue, convertValueCo
                     nodeVm.runInContext(`const func = () => (${convertValueCode}); result = func()`, sandbox);
                 }
                 inputValue = result;
-            } catch (error) {
+            } 
+            catch (error) {
                 console.warn(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
             }
         }
@@ -5257,9 +5280,11 @@ function enumerationDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
                 let timeStamp;
                 logs(`deviceAttribute = ${JSON.stringify(deviceAttribute)}`);
                 switch (deviceAttribute) {
-                    case 'ts':
+                    case 'ts': {
                         timeStamp = new Date(Number(primaryState.ts));
-                    case 'lc':
+                        // break omitted
+                    }
+                    case 'lc': {
                         timeStamp = new Date(Number(primaryState.lc));
                         deviceAttributesArray.push({
                             label: translationsGetObjectName(user, deviceAttribute, currentFunctionId, undefined, true),
@@ -5268,14 +5293,16 @@ function enumerationDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
                             lengthModifier: 0
                         });
                         break;
-                    case 'ack':
+                    }
+                    case 'ack': {
                         deviceAttributesArray.push({
                             label: translationsGetObjectName(user, deviceAttribute, currentFunctionId, undefined, true),
                             valueString: primaryState.ack ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user),
                             lengthModifier: 1
                         });
                         break;
-                    default:
+                    }
+                    default: {
                         const deviceAttributeId = `${idPrefix}.${deviceAttribute}`;
                         logs(`deviceAttributeId = ${JSON.stringify(deviceAttributeId)}`);
                         if (existsObject(deviceAttributeId)) {
@@ -5283,6 +5310,7 @@ function enumerationDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
                             deviceAttributesArray.push({label: translationsGetObjectName(user, deviceAttributeId === primaryStateId ? translationPrimaryStateId : currObject, currentFunctionId), ...enumerationStateValueDetails(user, currObject, currentFunctionId, deviceAttributeId === primaryStateId ? primaryState : null)});
                         }
                         break;
+                    }
                 }
             });
             text = `<code>${menuPrintFixedLengthLinesForMenuItemDetails(user, deviceAttributesArray)}</code>`;
@@ -6412,7 +6440,8 @@ async function backupRestore(fileName, restoreItem) {
             result = true;
             try {
                 restoreData = JSON.parse(backupData, mapReviver);
-            } catch (error) {
+            } 
+            catch (error) {
                 console.warn(`Can't parse data from file ${backupFileName}! Error is '${JSON.stringify(error)}'.\nData in file is '${backupData}'`);
             }
             const restoreItems = Object.keys(backupRestoreItemsList);
@@ -7241,7 +7270,8 @@ const
             const menuItemAccessLevel = user && user.userId  ? usersInMenu.getMenuItemAccess(user.userId, itemId, (! currentItem.isExternal) && inverseMasks) : '';
             if ((menuItem.descendants.length > 0) || (user === null) || ((isMenuFastGeneration ) && menuItemAccessLevel && (MenuRoles.compareAccessLevels(menuItemAccessLevel, rolesAccessLevelForbidden) < 0))) {
                 return menuItem;
-            } else if (menuItemAccessLevel && (! MenuRoles.accessLevelsPreventToShow.includes(menuItemAccessLevel))) {
+            } 
+            else if (menuItemAccessLevel && (! MenuRoles.accessLevelsPreventToShow.includes(menuItemAccessLevel))) {
                 if (typeOf(menuItem.submenu) === 'function') {
                     const subMenu = menuItem.submenu(user, menuItem);
                     if (subMenu.length) {
@@ -7803,7 +7833,8 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
                 if (! skipConfirmation) telegramMessagesDisplayPopUpMessage(user);
                 menuDrawMenuItem(user, cmdPos, clearBefore, clearUserMessage, isSilent);
             }
-        } else {
+        } 
+        else {
             logs('cmdPos 2 = ' + JSON.stringify(cmdPos));
             if (! skipConfirmation) telegramMessagesDisplayPopUpMessage(user);
             menuDrawMenuItem(user, cmdPos, clearBefore, clearUserMessage, isSilent);
@@ -7958,7 +7989,8 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
                 logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}`);
                 currentSubMenuPos = menuItemToProcess.submenu.findIndex((item) => {
                     logs(`item = ${JSON.stringify(item)}`);
-                    return ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos))});
+                    return ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos))
+                });
                 logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`);
             }
         }
@@ -7975,7 +8007,8 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
             preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
             preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
             menuGetMenuRowToProcess(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, callback);
-        } else {
+        } 
+        else {
             logs(`currentMenuItem 2 = ${JSON.stringify(menuItemToProcess/* , null, 2 */)}`);
             logs(`preparedMessageObject 2 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
             logs(`currentMenuPos 2 = ${JSON.stringify(targetMenuPos/* , null, 2 */)}`);
@@ -8450,10 +8483,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
     if (isWaitForInput) {
         if (userInputToProcess != dataTypeIgnoreInput) {
             switch (currentCommand) {
-                case cmdItemUpload:
+                case cmdItemUpload: {
                     // logs(`currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, userInputToProcess = ${userInputToProcess}`, l);
                     switch (currentType) {
-                        case dataTypeTranslation:
+                        case dataTypeTranslation: {
                             const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, userInputToProcess, currentItem, currentParam);
                             if (isTranslationFileOk) {
                                 currentMenuPosition.push(
@@ -8466,16 +8499,19 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
                             }
                             break;
+                        }
 
-                        default:
+                        default: {
                             break;
+                        }
                     }
                     break;
+                }
 
                 case cmdGetInput:
-                default:
+                default: {
                     switch (currentType) {
-                        case dataTypeTranslation:
+                        case dataTypeTranslation: {
                             let currentTranslationId = currentItem;
                             if (currentParam && currentValue) {
                                 let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
@@ -8504,8 +8540,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 }
                             }
                             break;
+                        }
 
-                        case dataTypePrimaryEnums:
+                        case dataTypePrimaryEnums: {
                             if (currentValue && enumerationsList[currentValue]) {
                                 const currentEnumsList = enumerationsList[currentValue].enums;
                                 if (currentEnumsList[currentItem]) {
@@ -8519,11 +8556,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 }
                             }
                             break;
+                        }
 
                         case dataTypeDestination:
-                        case dataTypeFunction:
+                        case dataTypeFunction:{
                             switch (currentParam) {
-                                case 'state':
+                                case 'state': {
                                     const currentDeviceAttributes = enumerationsList[currentType].list[currentItem].deviceAttributes;
                                     if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(currentParam)) {
                                         currentDeviceAttributes[userInputToProcess] = objectDeepClone(currentDeviceAttributes[currentParam]);
@@ -8531,8 +8569,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                         delete currentDeviceAttributes[currentParam];
                                     }
                                     break;
+                                }
                             }
-                        case dataTypeReport:
+                        }
+                        // break omitted
+                        case dataTypeReport: {
                             switch (currentParam) {
                                 case 'setId':
                                 case 'fixId':
@@ -8549,16 +8590,18 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             }
                             enumerationSave(currentType);
                             break;
+                        }
 
                         case dataTypeDeviceAttributes:
-                        case dataTypeDeviceButtons:
+                        case dataTypeDeviceButtons: {
                             if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
                                 enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = userInputToProcess;
                             }
                             enumerationSave(dataTypeFunction);
                             break;
+                        }
 
-                        case dataTypeGroups:
+                        case dataTypeGroups: {
                             const currentEnumeration = enumerationGetList(currentParam, currentValue);
                             if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
                                 currentEnumeration[currentItem].group = userInputToProcess;
@@ -8571,9 +8614,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 enumerationSave(currentParam);
                             }
                             break;
+                        }
 
 
-                        case dataTypeMenuRoles:
+                        case dataTypeMenuRoles: {
                             switch (currentParam) {
                                 case 'setId':
                                 case 'fixId':
@@ -8583,15 +8627,17 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     break;
                             }
                             break;
+                        }
 
-                        case dataTypeReportMember:
+                        case dataTypeReportMember: {
                             let queryParams = cachedGetValue(user, cachedSimpleReportNewQuery);
                             queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
                             queryParams[currentItem] = userInputToProcess;
                             cachedSetValue(user, cachedSimpleReportNewQuery, queryParams);
                             break;
+                        }
 
-                        case dataTypeConfig:
+                        case dataTypeConfig: {
                             if (currentItem === cfgMenuLanguage) {
                                 cachedSetValue(user, cachedConfigNewLanguageId, userInputToProcess)
                             }
@@ -8639,8 +8685,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 }
                             }
                             break;
+                        }
 
-                        case dataTypeStateValue:
+                        case dataTypeStateValue: {
                             if (existsObject(currentParam)) {
                                 const
                                     stateObject = getObject(currentParam);
@@ -8660,8 +8707,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 }
                             }
                             break;
+                        }
 
-                        case dataTypeAlertSubscribed:
+                        case dataTypeAlertSubscribed: {
                             // @ts-ignore
                             userInputToProcess = Number(userInputToProcess);
                             if (Number.isNaN(userInputToProcess)) {
@@ -8687,13 +8735,17 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 }
                                 menuClearCachedMenuItemsAndRows(user);
                             }
-
-                        default:
                             break;
+                        }
+
+                        default: {
+                            break;
+                        }
                     }
                     logs('New values is set');
                     menuClearCachedMenuItemsAndRows(user);
                     break;
+                }
             }
 
         }
@@ -9117,13 +9169,15 @@ async function commandUserInputCallback(user, userInputToProcess) {
         switch (currentType) {
             case dataTypeDestination:
             case dataTypeFunction:
-            case dataTypeReport:
+            case dataTypeReport: {
                 const enumObjectId = enumerationsIsItemCanBeDeleted(currentType, currentItem, true);
                 if (enumObjectId) {
                     await deleteObjectAsync(enumObjectId);
                 }
+            }
+                // break omitted
             case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons:
+            case dataTypeDeviceButtons: {
                 const currentList = enumerationsSubTypes.includes(currentType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list;
                 delete currentList[currentItem];
                 enumerationReorderItems(currentList);
@@ -9131,8 +9185,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 currentMenuPosition.splice(-2, 2);
                 logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
                 break;
+            }
 
-            case dataTypePrimaryEnums:
+            case dataTypePrimaryEnums: {
                 if (enumerationsList.hasOwnProperty(currentParam)) {
                     const
                         currentEnumsList = enumerationsList[currentParam].enums;
@@ -9143,9 +9198,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     }
                 }
                 break;
+            }
 
 
-            case dataTypeReportMember:
+            case dataTypeReportMember: {
                 const
                     currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[currentItem].enum}.${currentItem}`;
                 let
@@ -9156,8 +9212,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 await setObjectAsync(currentReportId, currentReportObject);
                 currentMenuPosition.splice(-2, 2);
                 break;
+            }
 
-            case dataTypeAlertSubscribed:
+            case dataTypeAlertSubscribed: {
                 if (currentParam !== undefined) {
                     const
                         currentThresholds = alertsGetStateAlertThresholds(user, currentItem),
@@ -9175,8 +9232,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     currentMenuPosition.splice(-4, 4);
                 }
                 break;
+            }
 
-            case dataTypeTranslation:
+            case dataTypeTranslation: {
                 let currentTranslationId = currentItem;
                 if (currentParam && currentValue) {
                     let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
@@ -9198,11 +9256,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     translationsItemDelete(user, currentTranslationId)
                     currentMenuPosition.splice(-2, 2);
                 }
-                break;
+                break; 
+            }
 
-            case dataTypeConfig:
+            case dataTypeConfig: { 
                 switch (currentItem) {
-                    case cfgMenuLanguage:
+                    case cfgMenuLanguage: {
                         switch (currentParam) {
                             case configOptionScopeGlobal:
                                 if (translationsList.hasOwnProperty(currentValue)) {
@@ -9213,8 +9272,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 break;
                         }
                         break;
+                    }
 
-                    default:
+                    default: {
                         let configItemArray = configOptions.getOption(currentItem,  currentParam === configOptionScopeGlobal ? null : user);
                         // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, l)
                         if (configItemArray && Array.isArray(configItemArray)) {
@@ -9226,16 +9286,18 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         }
                         break;
                     }
+                    }
 
                 break;
+            }
 
-            case dataTypeMenuRoleRules:
+            case dataTypeMenuRoleRules: {
                 const
                     currentRole = cachedExistsValue(user, cachedRolesRoleUnderEdit) ? cachedGetValue(user, cachedRolesRoleUnderEdit) : undefined,
                     currentRoleId = currentRole ? currentRole.roleId : currentItem;
 
                 switch (currentRoleId) {
-                    case currentItem:
+                    case currentItem: {
                         let currentRules = currentRole ? currentRole.rules : (rolesInMenu.existsId(currentItem) ? rolesInMenu.getRules(currentItem) : undefined);
                         if (currentRules) {
                             const currentIndex = Number(currentParam);
@@ -9252,11 +9314,15 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             }
                         }
                         break;
+                    }
+                    default: {
+                        break;
+                    }
                 }
-
                 break;
+            }
 
-            case dataTypeMenuRoles:
+            case dataTypeMenuRoles: {
                 if (rolesInMenu.existsId(currentItem) && (rolesInMenu.getUsers(currentItem).length === 0)) {
                     rolesInMenu.delRole(currentItem)
                     currentMenuPosition.splice(-2, 2);
@@ -9264,14 +9330,17 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     cachedDelValue(user, cachedRolesRoleUnderEdit);
                 }
                 break;
+            }
 
-            case dataTypeBackup:
+            case dataTypeBackup: {
                 await backupFileDelete(currentItem).catch();
                 currentMenuPosition.splice(-2, 2);
                 break;
+            }
 
-            default:
+            default: {
                 break;
+            }
         }
         menuProcessMenuItem(user, undefined, currentMenuPosition);
     }
@@ -9279,10 +9348,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
         switch (currentType) {
             case dataTypeDestination:
             case dataTypeFunction:
-            case dataTypeReport:
+            case dataTypeReport: {
                 break;
+            }
 
-            case dataTypeReportMember:
+            case dataTypeReportMember: {
                 let queryParams = cachedGetValue(user, cachedSimpleReportNewQuery);
                 queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
                 switch (currentItem) {
@@ -9313,11 +9383,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 cachedSetValue(user, cachedSimpleReportNewQuery, queryParams);
                 menuClearCachedMenuItemsAndRows(user);
                 break;
+            }
 
-            case dataTypeConfig:
+            case dataTypeConfig: {
                 break;
+            }
 
-            case dataTypeMenuRoleRules:
+            case dataTypeMenuRoleRules: {
                 const currentRule = cachedExistsValue(user, cachedRolesNewRule) ? cachedGetValue(user, cachedRolesNewRule) : {mask: rolesMaskAnyItem, accessLevel: ''};
                 if (currentRule['mask'] === currentItem) {
                     currentRule['mask'] = rolesMaskAnyItem;
@@ -9329,9 +9401,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 menuClearCachedMenuItemsAndRows(user);
                 logs(`currentMenuItem = ${currentMenuPosition}`);
                 break;
-
-            default:
+            }
+            default: {
                 break;
+            }
         }
         menuProcessMenuItem(user, undefined, currentMenuPosition);
     }
@@ -9339,15 +9412,17 @@ async function commandUserInputCallback(user, userInputToProcess) {
         switch (currentType) {
             case dataTypeDestination:
             case dataTypeFunction:
-            case dataTypeReport:
+            case dataTypeReport: {
                 break;
+            }
 
             case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons:
+            case dataTypeDeviceButtons: {
                 if (enumerationRefreshFunctionDeviceStates(currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
-                break;
+                break; 
+            }
 
-            case dataTypeTranslation:
+            case dataTypeTranslation: {
                 if (cachedExistsValue(user, cachedTranslationToUpload)) {
                     const updateTranslationResult = translationsProcessLanguageUpdate(user, currentItem, currentParam);
                     telegramMessagesDisplayPopUpMessage(user, updateTranslationResult ? updateTranslationResult : translationsItemTextGet(user, 'MsgSuccess'));
@@ -9358,8 +9433,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 // logs(`currentMenuItem = ${currentMenuItem}`);
                 currentMenuPosition.splice(-2);
                 break;
+            }
 
-            case dataTypeReportMember:
+            case dataTypeReportMember: {
                 const
                     queryParams = cachedGetValue(user, cachedSimpleReportNewQuery),
                     queryStates = currentParam === doAll ? queryParams.queryPossibleStates : queryParams.queryStates;
@@ -9387,8 +9463,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 currentMenuPosition.splice(-2, 2);
                 cachedDelValue(user, cachedSimpleReportNewQuery)
                 break;
+            }
 
-            case dataTypeConfig:
+            case dataTypeConfig: { 
                 switch (currentItem) {
                     case cfgMenuLanguage:
                         if (currentParam === configOptionScopeGlobal) {
@@ -9418,8 +9495,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         break;
                 }
                 break;
+            }
 
-            case dataTypeMenuRoleRules:
+            case dataTypeMenuRoleRules: {
                 if (cachedExistsValue(user, cachedRolesNewRule)) {
                     const
                         currentRule = cachedGetValue(user, cachedRolesNewRule),
@@ -9434,8 +9512,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     currentMenuPosition.splice(-2, 2);
                 }
                 break;
+            }
 
-            case dataTypeMenuRoles:
+            case dataTypeMenuRoles: {
                 if (cachedExistsValue(user, cachedRolesRoleUnderEdit)) {
                     const currentRole = cachedGetValue(user, cachedRolesRoleUnderEdit);
                     if (currentItem === currentRole.roleId) {
@@ -9451,7 +9530,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     menuClearCachedMenuItemsAndRows(user);
                 }
                 break;
-            case dataTypeGraph:
+            }
+
+            case dataTypeGraph: {
                 const
                     graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
                     historyAdapter = `system.adapter.${configOptions.getOption(cfgHistoryAdapter)}`,
@@ -9518,7 +9599,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         try {
                             // @ts-ignore
                             await setObjectAsync(newTemplateId, graphTemplate)
-                        } catch (error) {
+                        } 
+                        catch (error) {
                             console.warn(`Can't create temporary template object ${newTemplateId}`)
                         }
                         if (existsObject(newTemplateId)) {
@@ -9544,7 +9626,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                         result => {
                                             if (result.error) {
                                                 console.error(`error: JSON.stringify(result.error)`);
-                                            } else if (result.data) {
+                                            } 
+                                            else if (result.data) {
                                                 telegramSendImage(user, tmpGraphFileName);
                                                 deleteObjectAsync(newTemplateId);
                                             }
@@ -9557,8 +9640,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 }
                 currentMenuPosition = undefined;
                 break;
+            }
 
-            case dataTypeBackup:
+            case dataTypeBackup: {
                 switch (currentItem) {
                     case backupModeCreate:
                         if (await backupCreate(backupModeManual)) {
@@ -9584,10 +9668,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         break;
                 }
                 break;
+            }
 
-            default:
+            default: {
                 break;
-        };
+            }
+        }
         if (currentMenuPosition) menuProcessMenuItem(user, undefined, currentMenuPosition);
     }
     else if (currentCommand === cmdItemReset) {
@@ -9611,7 +9697,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeFunction:
             case dataTypeReport:
             case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons:
+            case dataTypeDeviceButtons: {
                 const
                     currentList = enumerationsSubTypes.includes(currentType) && currentParam ?  enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list,
                     currentOrder = currentList[currentItem].order,
@@ -9627,11 +9713,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 }
                 enumerationSave(enumerationsSubTypes.includes(currentType) && currentParam ? dataTypeFunction : currentType);
                 break;
-
-            case dataTypeConfig:
+            }
+            case dataTypeConfig:   {
                 const currentIntervals = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user);
                 switch (currentItem) {
-                    case cfgGraphsIntervals:
+                    case cfgGraphsIntervals:{
                         const
                             currentIntervalIndex = Number(currentValue),
                             currentInterval = currentIntervals[currentIntervalIndex],
@@ -9642,14 +9728,17 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         configOptions.setOption(currentItem, user, currentIntervals);
                         menuClearCachedMenuItemsAndRows(user);
                         break;
-
-                    default:
+                    }
+                    default: {
                         break;
+                    }
                 }
                 break;
+            }
 
-            default:
+            default: {
                 break;
+            }
         }
 
         menuProcessMenuItem(user, undefined, currentMenuPosition);
@@ -9689,7 +9778,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
             await setObjectAsync(newReportId, obj)
             logs(`Object ${newReportId} is created : ${existsObject(newReportId)}`);
             menuClearCachedMenuItemsAndRows(user);
-        } catch (error) {
+        } 
+        catch (error) {
             console.error(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
             currentMenuPosition.splice(-1);
         }
@@ -10340,7 +10430,9 @@ function telegramOnLogError(logRecord) {
                 };
                 // logs(`telegramLastErrors[${telegramErrorParsed[2]}] = ${JSON.stringify(telegramLastErrors[telegramErrorParsed[2]])}`, l)
             }
-        } catch (error) {
+        } 
+        catch (error) {
+            //
         }
     }
 }
@@ -10370,7 +10462,8 @@ function telegramOnConnected(connected) {
             let sent;
             try {
                 sent = JSON.parse(obj.state.val);
-            } catch (err) {
+            } 
+            catch (err) {
                 logs(`JSON parse error: ${JSON.stringify(err)}`);
                 return undefined;
             }
@@ -10451,7 +10544,8 @@ function telegramOnConnected(connected) {
             let request;
             try {
                 request = JSON.parse(obj.state.val);
-            } catch (err) {
+            } 
+            catch (err) {
                 logs(`JSON parse error: ${JSON.stringify(err)}`);
                 return undefined;
             }
@@ -10529,8 +10623,7 @@ function telegramOnConnected(connected) {
                 }
             }
         });
-        setTimeout( () =>
-            {
+        setTimeout( () => {
                 while (telegramQueuesIsWaitingConnection.length) {
                     telegramMessagesSendToFromQueue(telegramQueuesIsWaitingConnection.shift());
                 }
@@ -10621,7 +10714,7 @@ async function autoTelegramMenuInstanceInit() {
 
 
 // @ts-ignore
-await autoTelegramMenuInstanceInit();
+/* await  */autoTelegramMenuInstanceInit();
 
 
 
@@ -10756,10 +10849,8 @@ function objectAssignToTemplateLevelOne(template, inputObject, level) {
         }
     }
     else {
-        return objectDeepClone(inputObject)
+        return objectDeepClone(inputObject);
     }
-
-    throw new Error("Unable to assign obj to template! Its type isn't supported.");
 }
 
 
@@ -10790,7 +10881,7 @@ function objectKeysSort(inputObject) {
  */
 function logs(txt, debug) {
     if ((configOptions.getOption(cfgDebugMode)) || (debug !== undefined)){
-        log((arguments.callee.caller  ? arguments.callee.caller.name : '') + ': ' + txt);
+        console.log((arguments.callee.caller  ? arguments.callee.caller.name : '') + ': ' + txt);
     }
 }
 
@@ -10806,7 +10897,8 @@ function mapReplacer(key, value) {
         dataType: 'Map',
         value: [...value]
       };
-    } else {
+    } 
+    else {
       return value;
     }
 }
