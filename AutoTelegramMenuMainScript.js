@@ -3,11 +3,10 @@
 /*************************************************/
 /* Primary and only one thing to configure       */
 /*************************************************/
+/* global autoTelegramMenuTelegramAdapterInstanceId */
 const telegramInstance                  = autoTelegramMenuTelegramAdapterInstanceId ? `${autoTelegramMenuTelegramAdapterInstanceId}` :  '1';   // Primary and only one config parameter for the script
 /*************************************************/
 // All other constants and variables are only for internal use
-
-// https://www.emojicopy.com/
 
 // @ts-ignore
 const nodeOS = require('node:os');
@@ -23,7 +22,14 @@ const nodeVm = require('node:vm');
 // @ts-ignore
 const axios = require('axios');
 
-const l = true;
+/* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
+/* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
+/* global autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
+/* global autoTelegramMenuExtensionsSendAlertToTelegram */
+
+
+
+const _l = true;
 
 /*** Make functions to be printable in JSON.stringify with names ***/
 Object.defineProperty(Function.prototype, "toJSON", {
@@ -320,7 +326,7 @@ const
     iconItemLess                            = '⤓',
     iconItemHistory                         = '📃',
     iconItemReset                           = '↺',
-    iconItemUnavailable                     = '🆘'
+    _iconItemUnavailable                     = '🆘'
     ;
 
 
@@ -657,7 +663,7 @@ class ConfigOptions {
                 if (value.indexOf('[') === 0) {
                     try {
                         result = JSON.parse(value);
-                    } 
+                    }
                     catch (err) {
                         console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
                     }
@@ -674,7 +680,7 @@ class ConfigOptions {
             if (valueToParseType === 'string') {
                 try {
                     value = JSON.parse(value, mapReviver);
-                } 
+                }
                 catch (err) {
                     console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
                 }
@@ -688,7 +694,7 @@ class ConfigOptions {
             if (valueToParseType === 'string') {
                 try {
                     value = JSON.parse(value);
-                } 
+                }
                 catch (err) {
                     console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
                 }
@@ -837,7 +843,7 @@ class ConfigOptions {
                 // console.log('state ' + JSON.stringify(id) + ' saved for option ' + JSON.stringify(cfgItem) + ' = ' + JSON.stringify(currentValue));
             }
             else {
-                if (existsState(id)) deleteState(id, (error, result) => {
+                if (existsState(id)) deleteState(id, (error, _result) => {
                     if (error) {
                         console.warn(`Error during deletion of state '${cfgItem}' : ${JSON.stringify(error)}`);
                     }
@@ -872,7 +878,7 @@ class ConfigOptions {
         if (typeOf(backupData, 'object') && backupData.hasOwnProperty('globalConfig') && typeOf(backupData.globalConfig, 'object')) {
             Object.keys(this.globalConfig).forEach(cfgItem => {
                 if (backupData.globalConfig.hasOwnProperty(cfgItem) && (backupData.globalConfig[cfgItem] !== undefined) && (backupData.globalConfig[cfgItem] !== null)) {
-                    // logs(`setOption(${cfgItem}) = ${JSON.stringify(backupData.globalConfig[cfgItem])}`, l)
+                    // logs(`setOption(${cfgItem}) = ${JSON.stringify(backupData.globalConfig[cfgItem])}`, _l)
                     if (this.globalConfig[cfgItem] !== backupData.globalConfig[cfgItem]) this.setOption(cfgItem, null, backupData.globalConfig[cfgItem]);
                 }
             });
@@ -890,7 +896,7 @@ class ConfigOptions {
                 backupData.perUserConfig.forEach((userConfigData, userId) => {
                     Object.keys(this.globalConfig).forEach(cfgItem => {
                         if ( (! configGlobalOptions.includes(cfgItem)) && userConfigData.hasOwnProperty(cfgItem) && (userConfigData[cfgItem] !== undefined) && (userConfigData[cfgItem] !== null)) {
-                            // logs(`setOption(${cfgItem}, ${JSON.stringify({userId})}) = ${JSON.stringify(userConfigData[cfgItem])}`, l)
+                            // logs(`setOption(${cfgItem}, ${JSON.stringify({userId})}) = ${JSON.stringify(userConfigData[cfgItem])}`, _l)
                             if (this.globalConfig[cfgItem] !== userConfigData[cfgItem]) this.setOption(cfgItem, {userId}, userConfigData[cfgItem]);
                         }
                     });
@@ -1031,7 +1037,7 @@ class ConfigOptions {
                                             param: commandsPackParams(cmdItemPress, dataTypeConfig, cfgItem, optionScope, languageId),
                                             submenu: []
                                         });
-                                        subSubMenuIndex = subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeConfig, cfgItem, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, optionScope, languageId));
+                                        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeConfig, cfgItem, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, optionScope, languageId));
                                     }
                                     subMenuIndex = subMenu.push(subMenuItem);
                                 });
@@ -1363,10 +1369,10 @@ class MenuRoles {
     /**
      * If the role exists and has no associated users, delete the role and save the data.
      * @param {string} itemId - The Id of the role to delete.
-     * @param {string=} options - The id of the role to delete.
+     * @param {string=} _options - The id of the role to delete.
      * @returns {boolean} The result of the delete operation.
      */
-    delRole(itemId, options) {
+    delRole(itemId, _options) {
         let result = false;
         if (this.existsId(itemId)) {
             if  (this.getUsers(itemId).length === 0) {
@@ -1472,10 +1478,10 @@ class MenuRoles {
     /**
      * If the role with itemId exists, return the array of rules, otherwise return an empty array.
      * @param {string} itemId - The role ID to get the rules for.
-     * @param {boolean=} compiled - defined to be compatible with the child class (`MenuUsers`) method.
+     * @param {boolean=} _compiled - defined to be compatible with the child class (`MenuUsers`) method.
      * @returns {object[]} An array of rules.
      */
-    getRules(itemId, compiled) {
+    getRules(itemId, _compiled) {
         if (this.existsId(itemId)) {
             return this.data[itemId];
         }
@@ -1766,7 +1772,7 @@ class MenuRoles {
         // logs(`getCachedState(user, cachedCurrentNewRule) = ${JSON.stringify(getCachedState(user, cachedCurrentNewRule))}`);
         const
             currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-            [cmdId, dataType, roleId, ruleIndex] = commandUnpackParams(menuItemToProcess.param),
+            [_cmdId, dataType, roleId, ruleIndex] = commandUnpackParams(menuItemToProcess.param),
             isForNewRule = Number(ruleIndex) == -1,
             currentRole = cachedExistsValue(user, cachedRolesRoleUnderEdit) ? cachedGetValue(user, cachedRolesRoleUnderEdit) : {roleId : 'emptyRole', rules: []},
             currentRoleRules = currentRole.roleId === roleId ? currentRole['rules'] : (this.existsId(roleId) ? this.getRules(roleId) : []),
@@ -1835,7 +1841,7 @@ class MenuRoles {
         function selectMask(user, menuItemToProcess) {
             const
                 currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-                [cmdId, upperItemId, currentItemId] = commandUnpackParams(menuItemToProcess.param),
+                [_cmdId, upperItemId, currentItemId] = commandUnpackParams(menuItemToProcess.param),
                 currentMasks = [`${upperItemId}${rolesIdAndMaskDelimiter}${currentItemId}`, `${rolesMaskAnyValue}${rolesIdAndMaskDelimiter}${currentItemId}`],
                 savedMask = cachedExistsValue(user, cachedRolesNewRule) ? cachedGetValue(user, cachedRolesNewRule)['mask'] : '',
                 rootMenu = menuRootMenuItemGenerate(null),
@@ -1879,7 +1885,7 @@ class MenuRoles {
                 name: `${menuItemToProcess.name}${menuItemToProcess.icon ? ` ${menuItemToProcess.icon}` : ''}`,
                 icon: iconItemButton,
                 group: parentItemId ? parentItemId : menuButtonsDefaultGroup,
-                function: (user, menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))),
+                function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))),
                 submenu: new Array()
             };
             const
@@ -1910,7 +1916,7 @@ class MenuRoles {
                         name: `${currentItemName}${currentItem.icon ? ` ${currentItem.icon}` :''}`,
                         icon: iconItemButton,
                         param: commandsPackParams(cmdEmptyCommand, currentItemId, itemId),
-                        function: (user, menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))),
+                        function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))),
                         submenu: selectMask
                     });
                 });
@@ -1923,7 +1929,7 @@ class MenuRoles {
                             name: `${subMenuItem.name}`,
                             icon: iconItemButton,
                             param: commandsPackParams(cmdEmptyCommand, currentItemId, subMenuItem.id),
-                            function: (user, menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))),
+                            function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedGetValue(user, cachedRolesNewRule))),
                             submenu: selectMask
                         });
                     }
@@ -1967,7 +1973,7 @@ class MenuRoles {
             name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedRule.mask}]`,
             icon: iconItemEdit,
             param: commandsPackParams(cmdEmptyCommand, dataTypeMenuRoleRules, roleId, -1),
-            function: (user, menuItemToProcess) => (MenuRoles.#ruleDetails(user, savedRule)),
+            function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, savedRule)),
             submenu: (user, menuItemToProcess) => {return this.#menuRuleSetAccessLevel(user, menuItemToProcess)}});
             logs(`subMenu 2 = ${JSON.stringify(subMenu, null, 2)}`);
         return subMenu;
@@ -2027,7 +2033,7 @@ class MenuRoles {
                     text: ruleCurrentDetails,
                     submenu: (user, menuItemToProcess) => {return this.#menuRuleSetAccessLevel(user, menuItemToProcess)}
                 });
-                if (rule.mask !== rolesMaskAnyItem) subSubId = currentItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeMenuRoleRules, roleId, `${currentIndex}.${subMenuIndex}`, subSubId, subMenuIndex));
+                if (rule.mask !== rolesMaskAnyItem) currentItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeMenuRoleRules, roleId, `${currentIndex}.${subMenuIndex}`, subSubId, subMenuIndex));
             }
             subMenuIndex = subMenu.push(currentItem);
         });
@@ -2038,7 +2044,7 @@ class MenuRoles {
                 group: 'itemAdd',
                 icon: iconItemPlus,
                 param: roleId,
-                function: (user, menuItemToProcess) => {
+                function: (user, _menuItemToProcess) => {
                     if (! cachedExistsValue(user, cachedRolesRoleUnderEdit)) {
                         cachedSetValue(user, cachedRolesRoleUnderEdit, {roleId : roleId, rules: currentRoleRules});
                     }
@@ -2055,7 +2061,7 @@ class MenuRoles {
                     param: commandsPackParams(cmdItemsProcess, dataTypeMenuRoles, roleId),
                     submenu: []
                 });
-            } 
+            }
             else if ((! cachedExistsValue(user, cachedRolesRoleUnderEdit)) && ((this.existsId(roleId)) && (rolesInMenu.getUsers(roleId).length === 0))) {
                 subMenuIndex = subMenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeMenuRoles, roleId, `${currentIndex}`, subMenuIndex));
             }
@@ -2146,7 +2152,7 @@ class MenuRoles {
                 name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
                 group: 'addItem',
                 icon: iconItemPlus,
-                function: (user, menuItemToProcess) => {
+                function: (user, _menuItemToProcess) => {
                     if (cachedExistsValue(user, cachedRolesNewRoleId)) {
                         const newRoleId = cachedGetValue(user, cachedRolesNewRoleId);
                         if (newRoleId.length <= 12) {
@@ -2190,7 +2196,7 @@ class MenuRoles {
                         }
                     }
                     else {
-                        subMenuIndex = subMenu.push(
+                        subMenu.push(
                             {
                                 index: `${currentIndex}.${subMenuIndex}`,
                                 name: `${translationsItemCoreGet(user, 'cmdSetId')}`,
@@ -2507,7 +2513,7 @@ class MenuUsers extends MenuRoles {
                 });
             }
             const rolesList = Object.keys(this.getRoles(userId)).join(',');
-            subSubId = currentItem.submenu.push({
+            currentItem.submenu.push({
                 index: `${currentIndex}.${subMenuIndex}.${subSubId}`,
                 name: `${translationsItemMenuGet(user, 'RolesList')}: [${rolesList.length > 23 ? `${rolesList.slice(0, 10)}...` : rolesList}]`,
                 param: userId,
@@ -2584,7 +2590,7 @@ function translationValidateLanguageId(languageId){
         if ((languageId.length === 2) && (canonicalLang.length)) {
             langId = canonicalLang[0];
         }
-    } 
+    }
     catch (error) {
         console.warn(`Error of language id  '${languageId}' check '${error}'`);
     }
@@ -2653,13 +2659,13 @@ function translationsLoad() {
             try {
                 // logs(`langId = ${langId}, translationId = ${translationId}`);
                 translationsList[canonicalLang] = JSON.parse(getState(translationId).val);
-            } 
+            }
             catch (error) {
                 console.warn(`Can't process a translation for language ${languageId}!`);
                 // translationList[languageId] = {};
             }
             // logs(`translationsList[${langId}] = ${JSON.stringify(translationsList[langId])}`);
-        } 
+        }
         else {
             console.warn(`Unknown language id '${languageId}', can't process it!`);
         }
@@ -2744,7 +2750,7 @@ function translationsLoadLocalesFromRepository(languageId, callback) {
         });
     }
     else {
-        callback(undefined, 'Wrong language Id!')
+        callback(undefined, 'Wrong language Id!');
     }
 }
 
@@ -2757,7 +2763,7 @@ async function translationsInitialLoadLocalesFromRepository(){
         translationsLoadLocalesFromRepository(doAll, (locales, error) => {
             if (error) {
                 console.warn(`Can't make an initial load of locales from repo! Error is '${error}'.`);
-                reject(error)
+                reject(error);
             }
             else {
                 Object.keys(locales).forEach(languageId => {
@@ -2822,7 +2828,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
      * @returns {object} The updated translation part.
      */
     function translationsProcessUpdate(translationCurrentPart, translationInputPart, translationUpdateMode) {
-        console.log(`translationUpdateMode = ${translationUpdateMode}`)
+        console.log(`translationUpdateMode = ${translationUpdateMode}`);
         switch (translationUpdateMode) {
             case 'replace': {
                 translationCurrentPart = translationInputPart;
@@ -2865,13 +2871,13 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
             default:
                 break;
         }
-        return translationCurrentPart
+        return translationCurrentPart;
     }
     let result = '';
     if (cachedExistsValue(user, cachedTranslationToUpload)) {
         const
             translationInputFull = cachedGetValue(user, cachedTranslationToUpload),
-            translationInputLanguage = translationInputFull.hasOwnProperty('language') ? translationValidateLanguageId(translationInputFull.language) : '',
+            _translationInputLanguage = translationInputFull.hasOwnProperty('language') ? translationValidateLanguageId(translationInputFull.language) : '',
             translationInputVersionCompare = translationCompareVersion(translationInputFull['version']);
         if (translationInputFull.hasOwnProperty('translation') && typeOf(translationInputFull['translation'], 'object') && (Math.abs(translationInputVersionCompare) < 10)) {
             const
@@ -2884,7 +2890,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
                 translationCurrentParts.forEach((translationPart) => {
                     if (translationInput.hasOwnProperty(translationPart)) {
                         if (translationCurrent.hasOwnProperty(translationPart)) {
-                            translationCurrent[translationPart] = translationsProcessUpdate(translationCurrent[translationPart], translationInput[translationPart], translationUpdateMode)
+                            translationCurrent[translationPart] = translationsProcessUpdate(translationCurrent[translationPart], translationInput[translationPart], translationUpdateMode);
                         }
                         else {
                             translationCurrent[translationPart] = translationInput[translationPart];
@@ -2902,7 +2908,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
             result = translationsItemTextGet(user, 'MsgTranslationsIncompatibleVersion');
         }
     }
-    return result
+    return result;
 }
 
 /**
@@ -2918,7 +2924,7 @@ function translationsGetCurrentForUser(user) {
         currentTranslation;
     // logs(`languageId = ${languageId}`);
     if ((! translationsList[languageId])) {
-        console.warn(`Language ${languageId}, configured for current user is not exists!`)
+        console.warn(`Language ${languageId}, configured for current user is not exists!`);
         languageId = configOptions.getOption(cfgMenuLanguage);
     }
     if (translationsList[languageId]) {
@@ -2948,9 +2954,9 @@ function translationsPointOnItemOwner(user, translationId, pointOnItemItself) {
             const currentId = idsList.shift();
             if (currentId) {
                 if (! currentTranslation.hasOwnProperty(`${currentId}`))  {
-                    currentTranslation[currentId] = {}
+                    currentTranslation[currentId] = {};
                 }
-                currentTranslation = currentTranslation[currentId]
+                currentTranslation = currentTranslation[currentId];
             }
         }
     }
@@ -2966,7 +2972,7 @@ function translationsPointOnItemOwner(user, translationId, pointOnItemItself) {
  */
 function translationsItemGet(user, translationId) {
     logs(`getFromTranslation(user, ${translationId}) from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
-    // logs(`translationId = ${translationId}`, l)
+    // logs(`translationId = ${translationId}`, _l)
     const
         currentTranslation = translationsPointOnItemOwner(user, translationId),
         translationIdArray = translationId ? translationId.split('.') : [],
@@ -2976,13 +2982,13 @@ function translationsItemGet(user, translationId) {
     // logs(`currentTranslation[${shortId}] = ${currentTranslation[shortId]}`);
     if (translationId && shortId && currentTranslation) {
         if (! currentTranslation.hasOwnProperty(shortId)) {
-            console.warn(`translationId '${translationId}' is not found. getFromTranslation is called from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`)
+            console.warn(`translationId '${translationId}' is not found. getFromTranslation is called from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
             currentTranslation[shortId] = translationId;
             translationsSave(user);
         }
         else if (((translationId.indexOf(translationCommonFunctionsAttributesPrefix) !== 0) && (currentTranslation[shortId].indexOf(translationCommonFunctionsAttributesPrefix) === 0))
             || (idPrefix && (translationId.indexOf(translationCommonFunctionsAttributesPrefix) !== 0) && (currentTranslation[shortId].indexOf(translationCommonFunctionsAttributesPrefix) === 0))) {
-            return translationsItemGet(user, currentTranslation[shortId])
+            return translationsItemGet(user, currentTranslation[shortId]);
         }
         return currentTranslation[shortId];
     }
@@ -3016,7 +3022,7 @@ function translationsItemGet(user, translationId) {
         result += items.map(item => (stringCapitalize(item))).join('');
     }
     return result;
-};
+}
 
 /**
  * This functions returns the value for the appropriate text translation Id,
@@ -3026,7 +3032,7 @@ function translationsItemGet(user, translationId) {
  * @returns {string} The translation value for the provided Id.
  */
  function translationsItemTextGet(user, ...items) {
-    return translationsItemCoreGet(user, translationsItemGenerateId('text', ...items ))
+    return translationsItemCoreGet(user, translationsItemGenerateId('text', ...items ));
 }
 
 /**
@@ -3037,7 +3043,7 @@ function translationsItemGet(user, translationId) {
  * @returns {string} The translation value for the provided Id.
  */
  function translationsItemMenuGet(user, ...items) {
-    return translationsItemCoreGet(user, translationsItemGenerateId('menu', ...items ))
+    return translationsItemCoreGet(user, translationsItemGenerateId('menu', ...items ));
 }
 
 
@@ -3071,7 +3077,7 @@ function translationsItemDelete(user, translationId) {
         while (idsList.length > 0) {
             const shortId = idsList.pop();
             if (shortId) {
-                delete currentTranslation[shortId]
+                delete currentTranslation[shortId];
                 if ((idsList.length === 0) || (Object.keys(currentTranslation).length > 0 )) break;
                 currentTranslation = translationsPointOnItemOwner(user, idsList.join('.'));
             }
@@ -3127,7 +3133,7 @@ function translationsItemDelete(user, translationId) {
 function translationsGetObjectName(user, object, functionId, destinationId, isCommon) {
     logs(`object = ${JSON.stringify(object)}`);
     const translationId = translationsGetObjectId(object, functionId, destinationId, isCommon);
-    // logs(`object = ${object}, translationId = ${translationId}`, l);
+    // logs(`object = ${object}, translationId = ${translationId}`, _l);
     if (translationId) {
         const objectName = translationsItemGet(user, translationId);
         if (objectName !== translationId) {
@@ -3138,14 +3144,14 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
         }
     }
     if ((typeof(object) === 'string') && existsObject(object)) {
-        object = getObject(object)
+        object = getObject(object);
     }
     logs(`object 2 = ${JSON.stringify(object)}`);
     if (object && object.hasOwnProperty('common') && object.common.hasOwnProperty('name')) {
         const objectCommonName = object.common.name;
         if (typeof objectCommonName === 'string') {
             return objectCommonName;
-        } 
+        }
         else if (typeof objectCommonName === 'object') {
             const languageFromConfig = configOptions.getOption(cfgMenuLanguage, user);
             if (objectCommonName.hasOwnProperty(languageFromConfig)) {
@@ -3206,7 +3212,7 @@ function translationsGetEnumName(user, enumerationType, enumId, enumNameDeclinat
  * @returns {string} The related name in current language.
  */
 function translationsGetPartName(user, translationPartId) {
-    const translationPartPrefix = [translationCoreId, doAll].includes(translationPartId) ? 'translation' : ''
+    const translationPartPrefix = [translationCoreId, doAll].includes(translationPartId) ? 'translation' : '';
     return translationsItemMenuGet(user, translationPartPrefix, translationPartId);
 }
 
@@ -3231,8 +3237,8 @@ function translationsCheckAndCacheUploadedFile(user, translationFileFullPath, tr
                     inputTranslation = typeOf(inputTranslation, 'string') ? JSON.parse(inputTranslation) : inputTranslation;
                     const currentLanguage = translationValidateLanguageId(inputTranslation.language);
                     translationFileName = translationFileName ? translationFileName : `locale_${currentLanguage}.json`;
-                    // logs(`inputTranslation = ${JSON.stringify(inputTranslation, null, 2)}`, l);
-                    // logs(`${(inputTranslation.type === translationType)}, ${(inputTranslation.version === translationVersion)}, ${(currentLanguage)}, ${inputTranslation.translation}`, l)
+                    // logs(`inputTranslation = ${JSON.stringify(inputTranslation, null, 2)}`, _l);
+                    // logs(`${(inputTranslation.type === translationType)}, ${(inputTranslation.version === translationVersion)}, ${(currentLanguage)}, ${inputTranslation.translation}`, _l)
                     if ((inputTranslation.type === translationType) && (inputTranslation.version === translationVersion)
                         && (currentLanguage) && inputTranslation.translation) {
                             cachedSetValue(user, cachedTranslationToUpload, inputTranslation);
@@ -3242,7 +3248,7 @@ function translationsCheckAndCacheUploadedFile(user, translationFileFullPath, tr
                     else {
                         console.warn(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
                     }
-                } 
+                }
                 catch (err) {
                     console.warn(`JSON parse error: ${JSON.stringify(err)} for translation '${translationFileName}'!`);
                 }
@@ -3253,7 +3259,7 @@ function translationsCheckAndCacheUploadedFile(user, translationFileFullPath, tr
             nodeFS.rm(translationFileFullPath, {force: true }, (err) => {
                 if (err) console.warn(`Can't delete translation file '${translationFileFullPath}'! Error: '${JSON.stringify(err)}'.`);
             });
-        } 
+        }
         catch (err) {
             console.warn(`Can't read translation file '${translationFileFullPath}'!`);
         }
@@ -3279,7 +3285,7 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
         const
             inputTranslation = cachedGetValue(user, cachedTranslationToUpload),
             currentLanguage = inputTranslation ? translationValidateLanguageId(inputTranslation.language) : '',
-            currentVersion =  inputTranslation ? inputTranslation.version : '';
+            _currentVersion =  inputTranslation ? inputTranslation.version : '';
         if (currentLanguage && inputTranslation.translation) {
             const translationParts = [...translationTopItems, doAll];
             translationParts.forEach(translationPart => {
@@ -3306,7 +3312,7 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
                             submenu: []
                         });
 
-                    })
+                    });
                     subMenuIndex = subMenu.push(subMenuItem);
                 }
             });
@@ -3323,13 +3329,13 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
 */
 function translationsUploadMenuItemDetails(user, menuItemToProcess) {
     const
-        [cmdId, currentType, currentPart, currentMode] = commandUnpackParams(menuItemToProcess.param),
+        [_cmdId, _currentType, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.param),
         currentItemDetailsList = [];
     if (cachedExistsValue(user, cachedTranslationToUpload)) {
         const
             inputTranslation = cachedGetValue(user, cachedTranslationToUpload),
             currentLanguage = translationValidateLanguageId(inputTranslation.language),
-            currentVersion = inputTranslation.version;
+            _currentVersion = inputTranslation.version;
         currentItemDetailsList.push({label: translationsItemCoreGet(user, 'cfgMenuLanguage'), valueString: configOptions.getOption(cfgMenuLanguage, user)});
         currentItemDetailsList.push({label: translationsItemTextGet(user, 'languageInFile'), valueString: currentLanguage});
         if (currentPart && (currentPart.indexOf(doUpload) !== 0)) {
@@ -3374,12 +3380,12 @@ function translationsBasicItemsMenuGenerate(user, menuItemToProcess) {
                     };
                     if (isCurrentAccessLevelAllowModify) {
                         subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, key, translationType));
-                        subSubMenuIndex = subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, key, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex));
+                        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, key, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex));
                     }
                     else {
-                        subMenuItem.param = cmdNoOperation
+                        subMenuItem.param = cmdNoOperation;
                     }
-                subMenuIndex = subMenu.push(subMenuItem)
+                subMenuIndex = subMenu.push(subMenuItem);
             }
         });
     return subMenu;
@@ -3403,22 +3409,20 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
         deviceAttributesListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceAttributes).map(key => key.split('.').join('_')) : [],
         deviceButtonsListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceButtons).map(key => key.split('.').join('_')) : [],
         currentDeviceListKeys = menuItemToProcess.param === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
-        
-    // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}, currentCommonPrefix = ${commonFunctionsAttributesTranslationPrefix}`, l);
-    let
-        subMenuIndex = 0,
-        subMenu = [];
+
+    // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}, currentCommonPrefix = ${commonFunctionsAttributesTranslationPrefix}`, _l);
+    let subMenu = [];
     Object.keys(currentTranslation)
         .filter(translationKey => typeof(currentTranslation[translationKey]) === 'string')
         .filter(translationKey => ((! currentFunctionId) || (! deviceAttributesListKeys.find(attrId => (attrId === translationKey)))))
         .filter(translationKey => ((! currentFunctionId) || (! deviceButtonsListKeys.find(attrId => (attrId === translationKey)))))
         .filter(translationKey => ((! currentFunctionId) || currentDeviceListKeys.find(attrId => (translationKey.indexOf(attrId) === 0))))
         .forEach((translationKey, translationKeyIndex) => {
-            // logs(`key = ${translationKey}, translationType = ${translationType}`, l);
+            // logs(`key = ${translationKey}, translationType = ${translationType}`, _l);
             const currentTranslationId = `${translationType}.${translationKey}`;
             let currentValue = currentTranslation[translationKey];
             if (currentValue === currentTranslationId) {
-                currentValue += ' ' + iconItemNotFound
+                currentValue += ' ' + iconItemNotFound;
             }
             else if (currentValue.indexOf(translationCommonFunctionsAttributesPrefix) === 0) {
                 currentValue = `${translationsItemGet(user, `${translationCommonFunctionsAttributesPrefix}.${translationKey}`)} ${iconItemCommon}`;
@@ -3441,12 +3445,12 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
                     param: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
                     submenu: [],
                 });
-                subSubMenuIndex = subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, translationKey, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex));
+                subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, translationKey, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex));
             }
             else {
                 subMenuItem.param = cmdNoOperation;
             }
-            subMenuIndex = subMenu.push(subMenuItem);
+            subMenu.push(subMenuItem);
         });
     return subMenu;
 }
@@ -3476,10 +3480,10 @@ function translationsFunctionDeviceItemsMenuGenerate(user, menuItemToProcess) {
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
         translationType = `${idFunctions}.${menuItemToProcess.id}`,
-        currentFunction = menuItemToProcess.funcEnum,
+        _currentFunction = menuItemToProcess.funcEnum,
         currentTranslation = translationsPointOnItemOwner(user, `${translationType}.destinations`, true),
         destinationItems = enumerationsList[dataTypeDestination].list;
-    // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}`, l);
+    // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}`, _l);
     let subMenu = [];
     Object.keys(currentTranslation)
         .filter(translationKey => ((typeof(currentTranslation[translationKey]) === 'object') && (destinationItems.hasOwnProperty(translationKey))))
@@ -3494,13 +3498,13 @@ function translationsFunctionDeviceItemsMenuGenerate(user, menuItemToProcess) {
                 },
                 currentDevices = currentTranslation[translationKey];
             Object.keys(currentDevices).forEach((translationDeviceKey, translationDeviceKeyIndex) => {
-                // logs(`key = ${translationDeviceKey}, translationType = ${translationType}`, l);
+                // logs(`key = ${translationDeviceKey}, translationType = ${translationType}`, _l);
                 const currentTranslationId = `${translationType}.destinations.${translationKey}.${translationDeviceKey}`;
                 let
                     currentValue = currentDevices[translationDeviceKey],
                     subSubMenuIndex = 0;
                 if (currentValue === currentTranslationId) {
-                    currentValue = `${currentValue.split('.').pop().split('_').slice(-4).join('.')} ${iconItemNotFound}`
+                    currentValue = `${currentValue.split('.').pop().split('_').slice(-4).join('.')} ${iconItemNotFound}`;
                 }
                 const subSubMenuItem = {
                     index: `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`,
@@ -3511,12 +3515,12 @@ function translationsFunctionDeviceItemsMenuGenerate(user, menuItemToProcess) {
                 };
                 if (isCurrentAccessLevelAllowModify) {
                     subSubMenuIndex = subSubMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, dataTypeTranslation, translationType, translationKeyIndex, translationDeviceKeyIndex));
-                    subSubMenuIndex = subSubMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, translationType, `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, translationKeyIndex, translationDeviceKeyIndex));
+                    subSubMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, translationType, `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, translationKeyIndex, translationDeviceKeyIndex));
                 }
                 else {
                     subSubMenuItem.param = cmdNoOperation;
                 }
-                subMenuItem.submenu.push(subSubMenuItem)
+                subMenuItem.submenu.push(subSubMenuItem);
             });
             subMenu.push(subMenuItem);
         });
@@ -3616,7 +3620,7 @@ function cachedGetValue(user, valueId, getLastChange) {
                     if (((cachedValuesStatesCommonAttributes[valueId].type === 'string') || (cachedValuesStatesCommonAttributes[valueId].type === 'json')) && (cachedVal.length > 0)) {
                         try {
                             cachedVal = JSON.parse(cachedVal, mapReviver);
-                        } 
+                        }
                         catch (err) {
                             // cachedStates[id] = cachedVal;
                             logs(`Parse error - ${JSON.stringify(err)}`);
@@ -3804,17 +3808,17 @@ function sentImagesGet(user) {
     let imagesIds = new Array();
     sentImages.forEach((imageDate, imageId) => {
         if (imageDate < lastEditableTime) {
-            sentImages.delete(imageId)
+            sentImages.delete(imageId);
         }
-        else (
-            imagesIds.push(imageId)
-        )
+        else {
+            imagesIds.push(imageId);
+        }
     });
     if (sentImages.size) {
-        cachedSetValue(user, cachedSentImages, sentImages)
+        cachedSetValue(user, cachedSentImages, sentImages);
     }
     else {
-        cachedDelValue(user, cachedSentImages)
+        cachedDelValue(user, cachedSentImages);
     }
     return imagesIds;
 }
@@ -4012,7 +4016,7 @@ function enumerationCompareOrderOfItems(a, b, enumerationType) {
             return 1;
         }
         else if (itemsList.hasOwnProperty(b)) {
-            return -1
+            return -1;
         }
     }
     return a < b ? -1 : ( a > b ? 1 : 0);
@@ -4026,7 +4030,7 @@ function enumerationCompareOrderOfItems(a, b, enumerationType) {
  */
 function enumerationLoad(enumerationType) {
     logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`);
-    enumerationsList[enumerationType].list = {}
+    enumerationsList[enumerationType].list = {};
     if (existsState(enumerationsList[enumerationType].state)) {
         const parsedObject = JSON.parse(getState(enumerationsList[enumerationType].state).val);
         if (parsedObject.hasOwnProperty('list')  && typeOf(parsedObject.list, 'object') && parsedObject.list) {
@@ -4115,7 +4119,7 @@ function enumerationsInit(enumerationType) {
                             currentEnumerationIds = Object.keys(currentEnumerationList).sort((a, b) => (currentEnumerationList[a].order - currentEnumerationList[b].order));
                         currentItemPosition = currentEnumerationIds.indexOf(parentItemId);
                         do {
-                            currentItemPosition++
+                            currentItemPosition++;
                         } while ((currentItemPosition < countItems) && (currentEnumerationIds[currentItemPosition].indexOf(parentItemId) === 0));
                         if (currentItemPosition  < countItems) {
                             for( let itemIndex = currentItemPosition; itemIndex < countItems; itemIndex++){
@@ -4139,7 +4143,7 @@ function enumerationsInit(enumerationType) {
                             convertValueCode: "",
                             nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), currentItem, undefined, enumerationDeviceBasicAttributes.includes(deviceAttr)),
                             order : stateIndex
-                        }
+                        };
                     });
                     currentEnumerationList[currentItem].deviceAttributes = deviceAttributesList;
                 }
@@ -4216,7 +4220,7 @@ function enumerationItemGroupsMenuGenerate(user, menuItemToProcess) {
         subMenu = [];
     const
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-        [cmdId, dataType, currentItem, dataTypeExtraId] = commandUnpackParams(menuItemToProcess.param),
+        [_cmdId, dataType, currentItem, dataTypeExtraId] = commandUnpackParams(menuItemToProcess.param),
         currentEnumeration = enumerationGetList(dataType, dataTypeExtraId),
         currentMenuItem = currentEnumeration[currentItem],
         currentMenuItemGroup = currentMenuItem ? currentMenuItem.group : '',
@@ -4258,7 +4262,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-        [cmdId, dataType, currentItem, paramToSkip, dataTypeExtraId, otherParams] = commandUnpackParams(menuItemToProcess.param),
+        [_cmdId, dataType, currentItem, _paramToSkip, dataTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
         currentEnumeration = enumerationGetList(dataType, dataTypeExtraId);
     const
         currentEnumerationItem = currentEnumeration[currentItem],
@@ -4421,7 +4425,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                 }
                 else {
                     groupItem.param = cmdNoOperation;
-                    groupItem.submenu = []
+                    groupItem.submenu = [];
                 }
                 subMenuIndex = subMenu.push(groupItem);
                 break;
@@ -4500,7 +4504,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                             submenu: []
                         });
                         subMenuIndex = subMenu.push(subMenuItem);
-                    })
+                    });
                 }
                 currentIds.forEach(currentId => {
                     const
@@ -4535,7 +4539,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                         param: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
                         submenu: [],
                     });
-                    subSubMenuIndex = subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, dataTypeTranslation, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentTranslationId));
+                    subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeTranslation, dataTypeTranslation, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentTranslationId));
                     subMenuIndex = subMenu.push(subMenuItem);
                 });
                 break;
@@ -4603,7 +4607,7 @@ function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, with
  */
 function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
     const
-        [cmdId, enumerationType, currentItem, paramToSkip, enumerationTypeExtraId, otherParams] = commandUnpackParams(menuItemToProcess.param),
+        [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
         currentEnumeration = enumerationGetList(enumerationType, enumerationTypeExtraId),
         currentEnumerationItem = currentEnumeration[currentItem];
     const currentItemDetailsList = [];
@@ -4661,7 +4665,7 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
  */
 function enumerationItemName(user, enumerationType, enumerationItemId, enumerationItem) {
     const currentItemTranslationId = translationsGetEnumId(user, enumerationType, enumerationItemId, enumerationNamesMain);
-    // logs(`enumerationType = ${enumerationType}, enumerationItemId = ${enumerationItemId}, currentItemTranslationId = ${currentItemTranslationId}`, l)
+    // logs(`enumerationType = ${enumerationType}, enumerationItemId = ${enumerationItemId}, currentItemTranslationId = ${currentItemTranslationId}`, _l)
     if (enumerationItem.hasOwnProperty('name') && (enumerationItem.name !== undefined) && (translationsItemGet(user, currentItemTranslationId) === currentItemTranslationId) ) {
         // logs(`currentItemTranslationId ${currentItemTranslationId}`);
         enumerationsRereadItemName(user, enumerationType, enumerationItemId);
@@ -4695,7 +4699,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
     if (enumerationType !== dataTypePrimaryEnums) enumerationsInit(enumerationsSubTypes.includes(enumerationType) ? dataTypeFunction : enumerationType);
     if (enumerationsSubTypes.includes(enumerationType)) {
         if (Object.keys(enumerationsList[dataTypeFunction].list[enumerationTypeExtraId][enumerationType]).length === 0) {
-            enumerationRefreshFunctionDeviceStates(enumerationTypeExtraId, enumerationType, false)
+            enumerationRefreshFunctionDeviceStates(enumerationTypeExtraId, enumerationType, false);
         }
     }
     const currentEnumeration = enumerationGetList(enumerationType, enumerationTypeExtraId);
@@ -4705,11 +4709,11 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
     Object.keys(currentEnumeration)
         .sort((a, b) => (currentEnumeration[a].order - currentEnumeration[b].order))
         .forEach((currentItem) => {
-            // logs(`currentItem = ${JSON.stringify(currentItem)}`, l);
+            // logs(`currentItem = ${JSON.stringify(currentItem)}`, _l);
             const
                 currentEnumerationItem = currentEnumeration[currentItem],
                 currentIcon = currentEnumerationItem.isEnabled ? (currentEnumerationItem.hasOwnProperty('icon') ? currentEnumerationItem.icon : '') : iconItemDisabled;
-            // logs(`currentEnumerationItem = ${JSON.stringify(currentEnumerationItem)}`, l);
+            // logs(`currentEnumerationItem = ${JSON.stringify(currentEnumerationItem)}`, _l);
             const currentMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}`,
                     name: `${enumerationItemName(user, enumerationType, currentItem, currentEnumerationItem)}${currentEnumerationItem.isExternal ? ` ${iconItemIsExternal}`: ''}`,
@@ -4771,7 +4775,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
                                     param: '',
                                     submenu: simpleReportMenuGenerateReportEdit,
                                 });
-                            })
+                            });
                         }
                         subMenuIndex = subMenu.push(subMenuItem);
                     }
@@ -4813,8 +4817,8 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
                 Object.keys(enumerationsList).forEach(dataType => {
                     Object.keys(enumerationsList[dataType].enums).forEach(enumId => {
                         if (availableEnums.includes(enumId)) availableEnums.splice(availableEnums.indexOf(enumId), 1);
-                    })
-                })
+                    });
+                });
                 if (availableEnums.length) {
                     const subMenuItem = {
                         index: `${currentIndex}.${subMenuIndex}`,
@@ -4830,7 +4834,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
                             name: `${stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumId}`))}[${enumId}]`,
                             param: commandsPackParams(cmdItemPress, enumerationType, enumId, cmdItemAdd, enumerationTypeExtraId),
                             submenu: []
-                        })
+                        });
                     });
                     subMenuIndex = subMenu.push(subMenuItem);
                 }
@@ -4902,7 +4906,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
         currentDeviceAttributes.forEach((deviceAttributeId) => {
             const
                 stateIdFull = `${idPrefix}.${deviceAttributeId}`,
-                stateShortIdSectionsCount = deviceAttributeId.split('.').length;;
+                stateShortIdSectionsCount = deviceAttributeId.split('.').length;
             if (existsObject(stateIdFull) && (( stateShortIdSectionsCount == 1) || (isStatesInFolders && ( stateShortIdSectionsCount == 2)))) {
                 const stateObject = getObject(stateIdFull, '*');
                 logs('itemObject.common = ' + JSON.stringify(stateObject.common));
@@ -4972,7 +4976,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                             funcEnum: currentFunctionId,
                                             icon: stateValue == possibleValue ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user),
                                             submenu: []
-                                        }
+                                        };
                                         subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
                                         if (stateValue == possibleValue) {
                                             subMenuItem.name += ` (${(enumerationStateValueDetails(user, stateObject, currentFunctionId, currentState)['valueString'])})`;
@@ -5002,7 +5006,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                         funcEnum: currentFunctionId,
                                         icon: stateValue == possibleValue ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff,),
                                         submenu: []
-                                    }
+                                    };
                                     subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
 
                                 });
@@ -5078,7 +5082,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                         group: cmdItemsProcess,
                         param: commandsPackParams(cmdItemsProcess, dataTypeGraph, stateId, stateName, graphsIntervalMinutes, currentFunctionId, menuItemToProcess.destEnum)
                     });
-                })
+                });
             }
             if (sentImagesExists(user)) {
                 subSubSubMenuIndex = subSubMenuItem.submenu.push({
@@ -5090,7 +5094,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                 });
             }
             subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
-        })
+        });
         if (sentImagesExists(user)) {
             subSubMenuIndex = subSubMenuIndex = subMenuItem.submenu.push({
                 index: `${currentIndex}.${subSubMenuIndex}`,
@@ -5141,14 +5145,14 @@ function enumerationExtractPossibleValueStates(inputStates) {
  */
 function enumerationEvaluateValueConversionCode(user, inputValue, convertValueCode) {
     // logs(`value = ${value}, convertValueCode = ${convertValueCode}`)
-    const printDate = 'printDate(value)'
+    const printDate = 'printDate(value)';
     if (typeOf(convertValueCode, 'string')) {
         if ((convertValueCode === printDate) || (convertValueCode === `${printDate};`)) {
             try {
                 const timeStamp = new Date(inputValue);
                 // @ts-ignore
-                inputValue = timeStamp.format(configOptions.getOption(cfgDateTimeTemplate, user))
-            } 
+                inputValue = timeStamp.format(configOptions.getOption(cfgDateTimeTemplate, user));
+            }
             catch (error) {
                 console.warn(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
             }
@@ -5163,8 +5167,11 @@ function enumerationEvaluateValueConversionCode(user, inputValue, convertValueCo
                 else {
                     nodeVm.runInContext(`const func = () => (${convertValueCode}); result = func()`, sandbox);
                 }
-                inputValue = result;
-            } 
+                /**
+                 * ! fix - to check!
+                 */
+                inputValue = sandbox.result;
+            }
             catch (error) {
                 console.warn(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
             }
@@ -5336,7 +5343,7 @@ function enumerationGetList(enumerationType, enumerationTypeExtraId) {
                 {}
             )
         ):
-        enumerationsList[enumerationType].list
+        enumerationsList[enumerationType].list;
 }
 
 /**
@@ -5357,8 +5364,8 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
             currentFunction = enumerationsList[dataTypeFunction].list[functionId],
             currentDeviceStatesList = typeOfDeviceStates === dataTypeDeviceAttributes ? currentFunction.deviceAttributes : currentFunction.deviceButtons,
             currentDeviceStatesListCount = Object.keys(currentDeviceStatesList).length,
-            destsList = enumerationsList[dataTypeDestination].list,
-            destsListKeys = Object.keys(destsList).filter((destId) => (destsList[destId].isEnabled && destsList[destId].isAvailable)).sort((a, b) => (destsList[a].order - destsList[b].order));
+            destinationsList = enumerationsList[dataTypeDestination].list,
+            destinationsListKeys = Object.keys(destinationsList).filter((destId) => (destinationsList[destId].isEnabled && destinationsList[destId].isAvailable)).sort((a, b) => (destinationsList[a].order - destinationsList[b].order));
         if (typeOfDeviceStates === dataTypeDeviceAttributes) {
             enumerationDeviceBasicAttributes.split(':').forEach((deviceAttr) => {
                 deviceAttr = deviceAttr.indexOf('-') === 0 ? deviceAttr.slice(1) : deviceAttr;
@@ -5367,11 +5374,10 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
                         isEnabled : false,
                         nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationDeviceBasicAttributes.includes(deviceAttr)),
                         order : Object.keys(currentDeviceStatesList).length
-                    }
+                    };
                 }
             });
         }
-        // logs(`destsList = ${JSON.stringify(destsList)}`);
         $(`state[id=*${currentFunction.state}](${currentFunction.enum}=${functionId})`).each( (mainId) =>  {
             if (existsObject(mainId)) {
                 const
@@ -5379,9 +5385,9 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
                     idPrefix = mainId.split('.').slice(0, currentFunction.statesInFolders ? -2 : -1).join('.'),
                     fullFuncId = `enum.${currentFunction.enum}.${functionId}`;
                 if (mainObject.hasOwnProperty('enumIds') ) {
-                    for (const destId of destsListKeys) {
-                        const fullDestId = `enum.${destsList[destId].enum}.${destId}`;
-                        // logs(`idPrefix = ${idPrefix}, fullDestId = ${fullDestId}`, l);
+                    for (const destId of destinationsListKeys) {
+                        const fullDestId = `enum.${destinationsList[destId].enum}.${destId}`;
+                        // logs(`idPrefix = ${idPrefix}, fullDestId = ${fullDestId}`, _l);
                         if (mainObject['enumIds'] && mainObject['enumIds'].includes(fullDestId)) {
                             $(`state[id=${idPrefix}.*](${currentFunction.enum}=${functionId})`).each((stateId) => {
                                 if (existsObject(stateId)) {
@@ -5395,7 +5401,7 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
                                                     isEnabled : isOnlyEnabled,
                                                     nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationDeviceBasicAttributes.includes(deviceAttr)),
                                                     order : Object.keys(currentDeviceStatesList).length,
-                                                }
+                                                };
                                                 if (typeOfDeviceStates === dataTypeDeviceAttributes) {
                                                     currentDeviceStatesList[deviceAttr].convertValueCode = "";
                                                 }
@@ -5443,7 +5449,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
     const {id , name, icon, externalMenu, scriptName} = extensionDetails;
     logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails)}`);
     logs(`scriptName= ${JSON.stringify(scriptName)}`);
-    const extensionId = `ext${stringCapitalize(id)}`
+    const extensionId = `ext${stringCapitalize(id)}`;
     const functionsList = enumerationsList[dataTypeFunction].list;
     if (functionsList.hasOwnProperty(extensionId) && (functionsList[extensionId] !== undefined)) {
         functionsList[extensionId].isAvailable = true;
@@ -5484,7 +5490,7 @@ const
 function extensionsInit() {
     const timeout = configOptions.getOption(cfgExternalMenuTimeout);
     messageTo(extensionsInitCommand, {messageId : extensionsRegisterCommand, timeout: timeout }, {timeout: timeout}, (result) => {
-        logs(`${extensionsInitCommand} result = ${JSON.stringify(result)}`)
+        logs(`${extensionsInitCommand} result = ${JSON.stringify(result)}`);
     });
 }
 
@@ -5515,7 +5521,8 @@ function alertsGet() {
         if ((alertsState !== undefined) && typeOf(alertsState.val, 'string')) {
             try {
                 alertsCached = JSON.parse(alertsState.val, mapReviver);
-            } catch (err) {
+            }
+            catch (err) {
                 // cachedStates[id] = cachedVal;
                 console.warn(`Alert parse error - ${JSON.stringify(err)}`);
                 alertsCached = {};
@@ -5549,7 +5556,7 @@ function alertsStore(alerts) {
  * @param {any=} currentValue  - Current state `value`. If not defined - will be read from `state`.
  */
 function alertsStoreStateValue(alertStateId, currentValue){
-    // logs(`alertStateId = ${alertStateId}, currentValue = ${currentValue}`, l)
+    // logs(`alertStateId = ${alertStateId}, currentValue = ${currentValue}`, _l)
     if (currentValue === undefined) {
         if (existsState(alertStateId)) {
             currentValue = getState(alertStateId).val;
@@ -5632,16 +5639,16 @@ function alertsInit(checkStates) {
             .filter(stateId => (currentSubscriptions[stateId].filter(handler => (handler.name === scriptName)).length))
             .filter(stateId => (! stateId.includes(telegramAdapter)))
             .filter(stateId => (! stateId.includes(prefixPrimary)));
-    // logs(`currentlySubscribedStates, length = ${currentlySubscribedStates.length}, list = ${JSON.stringify(currentlySubscribedStates)}`, l);
+    // logs(`currentlySubscribedStates, length = ${currentlySubscribedStates.length}, list = ${JSON.stringify(currentlySubscribedStates)}`, _l);
     statesToSubscribe.forEach(stateId => {
         if (! currentlySubscribedStates.includes(stateId)) {
-            // logs(`subscribe on ${stateId}`, l);
+            // logs(`subscribe on ${stateId}`, _l);
             if (existsState(stateId)) on({id: stateId, change: 'ne'}, alertsOnAlert);
         }
     });
     currentlySubscribedStates.forEach(stateId => {
         if (! statesToSubscribe.includes(stateId)) {
-            // logs(`unsubscribe on ${stateId}`, l);
+            // logs(`unsubscribe on ${stateId}`, _l);
             unsubscribe(stateId);
         }
     });
@@ -5658,7 +5665,7 @@ function alertsInit(checkStates) {
                     alertsOnAlert({id: stateId, state: {val: currentValue}, oldState : {val: oldValue}});
                 }
             }
-        })
+        });
     }
 }
 
@@ -5686,7 +5693,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
     const
         itemPos = cachedGetValue(user, cachedMenuItem),
         isMenuOn = cachedGetValue(user, cachedMenuOn),
-        [lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, '95:59:00');
+        [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, '95:59:00');
     if (isMenuOn && itemPos && (! isUserMessageOldOrNotExists) && (! isAcknowledged)) menuProcessMenuItem(user, undefined, undefined, true);
 }
 
@@ -5756,7 +5763,7 @@ function alertsOnAlert(object) {
                     isAlertStatePrimary = alertFunction && (object.id.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
                     alertFuncName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationNamesMain),
                     alertStatus = alertFunctionId ? enumerationStateValueDetails(user, object.id, alertFunctionId, object.state)['valueString'] : object.state.val,
-                    alertOldStatus = alertFunctionId ? enumerationStateValueDetails(user, object.id, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
+                    _alertOldStatus = alertFunctionId ? enumerationStateValueDetails(user, object.id, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
                     alertDeviceName = translationsGetObjectName(user, object.id.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
                     alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
                     alertStateType = alertObject.common['type'];
@@ -5782,7 +5789,7 @@ function alertsOnAlert(object) {
                                 onLess = thresholds[threshold].onLess,
                                 thresholdValue = Number(threshold);
 
-                            return ((object.state.val < thresholdValue) && (object.oldState.val >= thresholdValue) && onLess) || ((object.state.val >= thresholdValue) && (object.oldState.val < thresholdValue) && onAbove)
+                            return ((object.state.val < thresholdValue) && (object.oldState.val >= thresholdValue) && onLess) || ((object.state.val >= thresholdValue) && (object.oldState.val < thresholdValue) && onAbove);
                         })
                         .forEach(threshold => {
                             alertMessages.push(`${alertText} ${alertStatus} [${(object.state.val <= Number(threshold)) && (object.oldState.val > Number(threshold)) ? iconItemLess : iconItemAbove}${threshold}]`);
@@ -5850,10 +5857,10 @@ function alertsHistoryMenuGenerate(user, menuItemToProcess) {
                         menuClearCachedMenuItemsAndRows(user);
                     }
                 }
-                const [subSubMenu,  subSubMenuIndex] = menuNavigationLeftRightMenuPartGenerate(user, [], `${currentIndex}.${subMenuIndex}`, subMenuIndex, currentMessageIndex, alertMessages.length - 1, undefined, true);
+                const [subSubMenu, _subSubMenuIndex] = menuNavigationLeftRightMenuPartGenerate(user, [], `${currentIndex}.${subMenuIndex}`, subMenuIndex, currentMessageIndex, alertMessages.length - 1, undefined, true);
                 return subSubMenu;
             },
-        })
+        });
     }
     return subMenu;
 }
@@ -6103,7 +6110,7 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
                 const
                     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
                     currentName = menuItemToProcess.name,
-                    [cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
+                    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
                     currentStateObject = getObject(currentStateId),
                     currentStateUnits = currentStateObject && currentStateObject.hasOwnProperty('common') && currentStateObject.common && currentStateObject.common.hasOwnProperty('unit') && currentStateObject.common.unit ? ` ${currentStateObject.common.unit}` : '',
                     [currentThresholds, currentStateAlertThresholds] = alertsGetStateAlertThresholds(user, currentStateId, true);
@@ -6188,7 +6195,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
         currentFunctionEnum = currentFunction.enum,
         fullFunctionId = `enum.${currentFunctionEnum}.${currentFunctionId}`,
         isStatesInFolders = currentFunction.statesInFolders,
-        currentIcons = {on: currentFunction.iconOn, off: currentFunction.iconOff},
+        _currentIcons = {on: currentFunction.iconOn, off: currentFunction.iconOff},
         deviceAttributesList = currentFunction.deviceAttributes,
         currentDeviceAttributes = deviceAttributesList ? Object.keys(deviceAttributesList).filter((deviceAttr) => (deviceAttributesList[deviceAttr].isEnabled)).sort((a, b) => (deviceAttributesList[a].order - deviceAttributesList[b].order)) : [],
         deviceButtonsList = currentFunction.deviceButtons,
@@ -6247,7 +6254,7 @@ const
     backupItemMenuListItems = 'enumerationItems',
     backupItemAlerts = 'alerts',
     backupRestoreItemsList = {[backupItemAll]: doAll, [backupItemConfigOptions]: 'configuration', [backupItemMenuListItems]: 'functionsDestsReports', [backupItemAlerts]: backupItemAlerts};
-let backupScheduleReference;
+let _backupScheduleReference;
 
 /**
  * This function generates a submenu to manage Auto Telegram Menu configuration
@@ -6260,7 +6267,7 @@ function backupMenuGenerate(user, menuItemToProcess) {
     logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-        currentId = menuItemToProcess.id,
+        _currentId = menuItemToProcess.id,
         currentAccessLevel = menuItemToProcess.accessLevel,
         backupFiles = backupGetFolderList();
     let
@@ -6282,12 +6289,12 @@ function backupMenuGenerate(user, menuItemToProcess) {
                 icon: iconItemBackupRestore,
                 id: backupModeRestore,
                 submenu: new Array()
-            }
+            };
             const restoreSubSubMenu = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? backupRestoreMenuGenerate : [];
             backupFiles.forEach((fileName, fileIndex) => {
                 const
                     backupFileDetails = fileName.match(backupFileMask),
-                    [fullName, backupDate, backupTime, backupMode] = backupFileDetails && (backupFileDetails.length === 4) ? backupFileDetails : [];
+                    [_fullName, backupDate, backupTime, backupMode] = backupFileDetails && (backupFileDetails.length === 4) ? backupFileDetails : [];
                 if (backupDate && backupTime && backupMode) {
                     restoreSubMenu.submenu.push({
                         index: `${currentIndex}.${subMenuIndex}.${fileIndex}`,
@@ -6295,7 +6302,7 @@ function backupMenuGenerate(user, menuItemToProcess) {
                         // icon: iconItemBackupCreate,
                         param: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? fileName : cmdNoOperation,
                         submenu: restoreSubSubMenu,
-                    })
+                    });
                 }
             });
             subMenuIndex = subMenu.push(restoreSubMenu);
@@ -6312,7 +6319,7 @@ function backupMenuGenerate(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupRestoreMenuGenerate(user, menuItemToProcess) {
-    // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, l);
+    // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, _l);
     const
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
         currentParam = menuItemToProcess.param;
@@ -6327,7 +6334,7 @@ function backupRestoreMenuGenerate(user, menuItemToProcess) {
             param: commandsPackParams(cmdItemsProcess, dataTypeBackup, backupModeRestore, currentParam, backupItem),
             submenu: []
         });
-    })
+    });
     subMenuIndex = subMenu.push(menuDeleteItemMenuItemGenerate(user, dataTypeBackup, currentParam, `${currentIndex}`, subMenuIndex));
     return subMenu;
 }
@@ -6342,7 +6349,7 @@ async function backupFileDelete(backupFileName){
         delFile('', fileToDelete, (error) => {
             if (error) {
                 console.warn(`Can't delete backup file ${fileToDelete}! Error is '${error}'.`);
-                reject(error)
+                reject(error);
             }
             else {
                 console.warn(`Backup file ${fileToDelete} was successfully deleted.`);
@@ -6407,7 +6414,7 @@ async function backupCreate(backupMode) {
         enumerationItemsBackup[dataType] = {
             enums: enumerationsList[dataType].enums,
             list: enumerationsList[dataType].list
-        }
+        };
     });
     backupData[backupItemMenuListItems] = enumerationItemsBackup;
     backupData[backupItemAlerts] = alertsGet();
@@ -6419,8 +6426,8 @@ async function backupCreate(backupMode) {
         backupFileName = nodePath.join(backupFolder,`${backupPrefix}-${dateNow}-${backupMode}.json`);
     return await backupFileWrite(backupFileName, backupDataJSON, backupMode)
         .then(await backupDeleteOldFiles)
-        .catch(error => {});
-    // logs(`Files: ${JSON.stringify(backupGetFolderList(), null, 1)}`, l);
+        .catch(_error => {});
+    // logs(`Files: ${JSON.stringify(backupGetFolderList(), null, 1)}`, _l);
 }
 
 /**
@@ -6434,13 +6441,13 @@ async function backupRestore(fileName, restoreItem) {
     if (backupFileMask.test(fileName)) {
         const
             backupFileName = nodePath.join(backupFolder, fileName),
-            backupData = await backupFileRead(backupFileName).catch(error => {});
+            backupData = await backupFileRead(backupFileName).catch(_error => {});
         let restoreData;
         if (backupData) {
             result = true;
             try {
                 restoreData = JSON.parse(backupData, mapReviver);
-            } 
+            }
             catch (error) {
                 console.warn(`Can't parse data from file ${backupFileName}! Error is '${JSON.stringify(error)}'.\nData in file is '${backupData}'`);
             }
@@ -6455,16 +6462,16 @@ async function backupRestore(fileName, restoreItem) {
                 itemsToRestore.forEach(itemToRestore => {
                     switch (itemToRestore) {
                         case backupItemConfigOptions:
-                            // logs(`1 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, l);
+                            // logs(`1 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
                             if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
-                                configOptions.restoreDataFromBackup(restoreData[backupItemConfigOptions])
+                                configOptions.restoreDataFromBackup(restoreData[backupItemConfigOptions]);
                                 rolesInMenu.refresh();
                                 usersInMenu.refresh();
                             }
                             break;
 
                         case backupItemMenuListItems:
-                            // logs(`2 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, l);
+                            // logs(`2 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
                             if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
                                 const enumerationItemsBackup = restoreData[itemToRestore];
                                 Object.keys(enumerationsList).forEach(dataType => {
@@ -6476,7 +6483,7 @@ async function backupRestore(fileName, restoreItem) {
                                         //         enums: enumerationItemsBackup[dataType].enums,
                                         //         list: enumerationItemsBackup[dataType].list
                                         //     }
-                                        // )}`, l)
+                                        // )}`, _l)
                                         enumerationsList[dataType].enums = enumerationItemsBackup[dataType].enums;
                                         enumerationsList[dataType].list = enumerationItemsBackup[dataType].list;
                                         enumerationsInit(dataType);
@@ -6487,7 +6494,7 @@ async function backupRestore(fileName, restoreItem) {
                             break;
 
                         case backupItemAlerts:
-                            // logs(`3 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, l);
+                            // logs(`3 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
                             if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
                                 alertsStore(restoreData[itemToRestore]);
                                 alertsInit();
@@ -6498,7 +6505,7 @@ async function backupRestore(fileName, restoreItem) {
                         default:
                             break;
                     }
-                })
+                });
             }
             else {
                 result = false;
@@ -6524,10 +6531,10 @@ async function backupDeleteOldFiles(mode) {
             backupFiles = backupGetFolderList(),
             maxBackupFiles = configOptions.getOption(cfgConfigBackupCopiesCount);
         while (backupFiles.length > maxBackupFiles) {
-            await backupFileDelete(backupFiles.shift()).catch(error => {})
+            await backupFileDelete(backupFiles.shift()).catch(_error => {});
         }
     }
-    return true
+    return true;
 }
 
 /**
@@ -6595,13 +6602,13 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                         index: `${currentIndex}.${memberId}`,
                         name: `${memberTopObjectName} (${member.split('.').pop()})`,
                         icon: enumerationsList[dataTypeReport].icon,
-                        function: (user, menuItemToProcess) => (`${memberTopObjectName} (${member})`),
+                        function: (_user, _menuItemToProcess) => (`${memberTopObjectName} (${member})`),
                         submenu: [
                             menuDeleteItemMenuItemGenerate(user, dataTypeReportMember, reportId, `${currentIndex}.${memberId}`, 0, memberId)
                         ],
-                    })
+                    });
                 }
-            })
+            });
         }
         memberId = newMenu.push({
             index: `${currentIndex}.${memberId}`,
@@ -6631,14 +6638,14 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                             subMenu = [],
                             subMenuIndex = 0;
                         Object.keys(enumerationsList[dataTypeDestination].list).filter((key) => (enumerationsList[dataTypeDestination].list[key].isEnabled)).forEach((key) => {
-                            const isSelected = queryDests.includes(key)? '|' : '';
+                            const _isSelected = queryDests.includes(key)? '|' : '';
                             subMenuIndex = subMenu.push({
                                 index: `${currentIndex}.${subMenuIndex}`,
                                 name: `${translationsGetEnumName(user, dataTypeDestination, key)}`,
                                 icon: queryDests.includes(key) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].list[key].icon,
                                 param: commandsPackParams(cmdItemMark, dataTypeReportMember, dataTypeDestination, key),
                                 submenu: []
-                            })
+                            });
                         });
                         return subMenu;
                     }
@@ -6678,10 +6685,10 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                                 destIndex = 0,
                                 itemsMarked = 0;
                             if (! destsList.length) {
-                                destsList = Object.keys(enumerationsList[dataTypeDestination].list)
+                                destsList = Object.keys(enumerationsList[dataTypeDestination].list);
                             }
-                            logs(`destsList = ${JSON.stringify(destsList)}, queryState = ${queryState}, queryRole = ${queryRole}`)
-                            const query = `state${queryState ? `[id=*.${queryState}]` : '[id=*]'}${queryRole ? `[role=${queryRole}]` : ''}`
+                            logs(`destsList = ${JSON.stringify(destsList)}, queryState = ${queryState}, queryRole = ${queryRole}`);
+                            const query = `state${queryState ? `[id=*.${queryState}]` : '[id=*]'}${queryRole ? `[role=${queryRole}]` : ''}`;
                             logs(`query = ${query}`);
                             destsList.forEach((destinationId) => {
                                 const currentDestination = enumerationsList[dataTypeDestination].list[destinationId];
@@ -6705,7 +6712,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                                         index: `${currentIndex}.${subMenuIndex-1}.${index}`,
                                         name: `${stateTopObjectName} (${id.split('.').pop()})`,
                                         icon: queryStates.includes(id) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].icon,
-                                        function: (user, menuItemToProcess) => (`${stateTopObjectName} (${id})`),
+                                        function: (_user, _menuItemToProcess) => (`${stateTopObjectName} (${id})`),
                                         submenu: [
                                             {
                                                 index: `${currentIndex}.${subMenuIndex-1}.${index}`,
@@ -6738,7 +6745,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                             });
                             logs(`statesArray = ${JSON.stringify(queryPossibleStates)}`);
                             logs(`submenu = ${JSON.stringify(subMenu, null, 2)}`);
-                            cachedSetValue(user, cachedSimpleReportNewQuery, {queryDests, queryState, queryRole, queryStates, queryPossibleStates})
+                            cachedSetValue(user, cachedSimpleReportNewQuery, {queryDests, queryState, queryRole, queryStates, queryPossibleStates});
                             return subMenu;
                         },
                     });
@@ -6788,7 +6795,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             );
         }
     }
-    return newMenu
+    return newMenu;
 }
 
 /**
@@ -6817,13 +6824,13 @@ function simpleReportPrepareStructure(reportStatesList) {
                             for (let enumType of destsEnums) {
                                 if (key.indexOf(`${prefixEnums}.${enumType}`) === 0)
                                     return true;
-                            };
+                            }
                             return false;
                         }).map(key => key.split('.').pop());
                 let stateFuncs = currentObject['enumIds'].filter(key => (funcsEnums.find(enumId => (key.indexOf(`${prefixEnums}.${enumId}`) === 0)))).map(key => key.split('.').pop());
                 stateDests.forEach(stateDest => {
                     if (! stateFuncs.length) {
-                        stateFuncs.push(enumerationFunctionNotFound)
+                        stateFuncs.push(enumerationFunctionNotFound);
                     }
                     else if (stateFuncs.length > 1) {
                         if (! Object.keys(objectToFunctionList).length) {
@@ -6834,7 +6841,7 @@ function simpleReportPrepareStructure(reportStatesList) {
                                     if (functionObject.hasOwnProperty('common') && functionObject.common.hasOwnProperty('members')) {
                                         functionObject.common.members.forEach(item => {
                                             objectToFunctionList[item] = functionId;
-                                        })
+                                        });
                                     }
                                 }
 
@@ -6847,22 +6854,22 @@ function simpleReportPrepareStructure(reportStatesList) {
                                 stateFuncs = [objectToFunctionList[currentStateId]];
                                 break;
                             }
-                            currentStateId = currentStateId.split('.').slice(0, -1).join('.')
+                            currentStateId = currentStateId.split('.').slice(0, -1).join('.');
                         }
                     }
                     stateFuncs.forEach(stateFunc => {
                         if (! reportStatesStructure.hasOwnProperty(stateDest)) {
-                            reportStatesStructure[stateDest] = {}
+                            reportStatesStructure[stateDest] = {};
                         }
                         if (! reportStatesStructure[stateDest].hasOwnProperty(stateFunc)) {
-                            reportStatesStructure[stateDest][stateFunc] = {}
+                            reportStatesStructure[stateDest][stateFunc] = {};
                         }
                         if (! reportStatesStructure[stateDest][stateFunc].hasOwnProperty(topStateId)) {
                             reportStatesStructure[stateDest][stateFunc][topStateId] = new Array();
                         }
-                        reportStatesStructure[stateDest][stateFunc][topStateId].push(currentObject)
-                    })
-                })
+                        reportStatesStructure[stateDest][stateFunc][topStateId].push(currentObject);
+                    });
+                });
             }
 
         }
@@ -6895,7 +6902,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
         if (reportObject && reportObject.hasOwnProperty('common') && reportObject.common.hasOwnProperty('members') && Array.isArray(reportObject.common['members']) && reportObject.common['members'].length) {
             const
                 reportStatesList = reportObject.common['members'].sort(),
-                funcsList = enumerationsList[dataTypeFunction].list,
+                _funcsList = enumerationsList[dataTypeFunction].list,
                 isAlwaysExpanded = reportsList.list[reportId].alwaysExpanded;
             logs(`reportStatesList = ${JSON.stringify(reportStatesList)}`);
             let
@@ -6921,9 +6928,9 @@ function simpleReportGenerate(user, menuItemToProcess) {
                                 reportLines.push({label: `   ${linePrefix}${translationsGetObjectName(user, currentStateObject, currentFuncId)}`});
                             }
                             reportLines[reportLines.length - 1] = {...reportLines[reportLines.length - 1], ...enumerationStateValueDetails(user, currentStateObject, currentFuncId)};
-                        })
-                    })
-                })
+                        });
+                    });
+                });
             });
             logs(`reportLines = ${JSON.stringify(reportLines)}`);
             reportText = `<code>${menuPrintFixedLengthLinesForMenuItemDetails(user, reportLines)}</code>`;
@@ -6952,7 +6959,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
         const reportObject = getObject(`${prefixEnums}.${reportItem.enum}.${reportId}`);
         if (reportObject && reportObject.hasOwnProperty('common') && reportObject.common.hasOwnProperty('members') && Array.isArray(reportObject.common['members']) && reportObject.common['members'].length) {
             const reportStatesList = reportObject.common['members'].sort();
-            let shortStates = reportStatesList.map(state => state.split('.').pop()).reduce((previousState, currentState) => { if (! previousState.includes(currentState)) previousState.push(currentState); return previousState; }, new Array());
+            let shortStates = reportStatesList.map(state => state.split('.').pop()).reduce((previousState, currentState) => { if (! previousState.includes(currentState)) previousState.push(currentState); return previousState }, new Array());
             const graphsTemplate = shortStates.length === 1 ? (existsObject(`${graphsTemplatesFolder}.${shortStates[0]}`) ? shortStates[0] : graphsDefaultTemplate) : undefined;
             if (graphsTemplate) {
                 let subMenuIndex = 0;
@@ -6981,7 +6988,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
             }
         }
     }
-    return subMenu
+    return subMenu;
 }
 
 //*** simpleReports - end ***//
@@ -7153,13 +7160,13 @@ const
                 icon: enumerationsList[dataType].icon,
                 submenu: enumerationsListMenuGenerate
             })));
-            logs(`subMenu`)
+            logs(`subMenu`);
             subMenu.forEach(subMenuItem => {
                 const subMenuItemAccessLevel = user && user.userId ? usersInMenu.getMenuItemAccess(user.userId, `${menuItem.id}${rolesIdAndMaskDelimiter}${subMenuItem.id}`) : '';
                 if ((user === null) || (user && user.userId && (MenuRoles.compareAccessLevels(subMenuItemAccessLevel, rolesAccessLevelForbidden) < 0))) {
                     subMenuItem.accessLevel = subMenuItemAccessLevel;
                     if (Array.isArray(subMenuItem.submenu) && subMenuItem.submenu.length) {
-                        subMenuItem.submenu.forEach(subSubMenuItem => (subSubMenuItem.accessLevel = subMenuItemAccessLevel))
+                        subMenuItem.submenu.forEach(subSubMenuItem => (subSubMenuItem.accessLevel = subMenuItemAccessLevel));
                     }
                     menuItem.submenu.push(subMenuItem);
                 }
@@ -7189,7 +7196,7 @@ const
         const
             historyAdapterId = configOptions.getOption(cfgHistoryAdapter, user),
             graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
-            isGraphsEnabled = historyAdapterId && existsObject(`${graphsTemplatesFolder}.${graphsDefaultTemplate}`)
+            isGraphsEnabled = historyAdapterId && existsObject(`${graphsTemplatesFolder}.${graphsDefaultTemplate}`);
         menuItem = {
             name: translationsItemMenuGet(user, 'SimpleReports'),
             id: 'info',
@@ -7270,7 +7277,7 @@ const
             const menuItemAccessLevel = user && user.userId  ? usersInMenu.getMenuItemAccess(user.userId, itemId, (! currentItem.isExternal) && inverseMasks) : '';
             if ((menuItem.descendants.length > 0) || (user === null) || ((isMenuFastGeneration ) && menuItemAccessLevel && (MenuRoles.compareAccessLevels(menuItemAccessLevel, rolesAccessLevelForbidden) < 0))) {
                 return menuItem;
-            } 
+            }
             else if (menuItemAccessLevel && (! MenuRoles.accessLevelsPreventToShow.includes(menuItemAccessLevel))) {
                 if (typeOf(menuItem.submenu) === 'function') {
                     const subMenu = menuItem.submenu(user, menuItem);
@@ -7349,7 +7356,7 @@ const
  * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
  */
 function menuDeleteItemMenuItemGenerate(user, dataType, dataItem, upperMenuItemIndex, subMenuItemIndex, dataId, ...dataValues) {
-    // logs(`param = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, l)
+    // logs(`param = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, _l)
     return {
         index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
         name: `${translationsItemCoreGet(user, cmdItemDelete)}`,
@@ -7366,7 +7373,7 @@ function menuDeleteItemMenuItemGenerate(user, dataType, dataItem, upperMenuItemI
                 submenu: [],
             }
         ],
-    }
+    };
 }
 
 /**
@@ -7384,7 +7391,7 @@ function menuRenameItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemInd
         icon: iconItemEdit,
         param: commandsPackParams(cmdGetInput, ...commandParams),
         submenu: [],
-    }
+    };
 }
 
 /**
@@ -7403,7 +7410,7 @@ function menuAddItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemIndex,
         param: commandsPackParams(cmdGetInput, ...commandParams),
         group: 'addNew',
         submenu: []
-    }
+    };
 }
 
 /**
@@ -7422,7 +7429,7 @@ function menuResetItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemInde
         param: commandsPackParams(cmdItemReset, ...commandParams),
         group: 'reset',
         submenu: []
-    }
+    };
 }
 
 /**
@@ -7537,7 +7544,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
         if (menuItemToProcess.hasOwnProperty('descendants') && typeOf(menuItemToProcess.descendants, 'array') && menuItemToProcess.descendants.length) {
             const currentMenuItemDescendants = menuMakeMenuIndexed(menuItemToProcess.descendants, currentIndex);
             if (currentMenuItemDescendants && typeOf(currentMenuItemDescendants, 'array') && currentMenuItemDescendants.length)
-                currentMenuItemDescendants.forEach(descendantItem => subMenu.push({...descendantItem, parentId: primaryLevelMenuItemId, group: 'descendants'}))
+                currentMenuItemDescendants.forEach(descendantItem => subMenu.push({...descendantItem, parentId: primaryLevelMenuItemId, group: 'descendants'}));
         }
         /** this way to find an objects only by function and then filter by dest/destEnum, is a ten times faster than include destEnum in search pattern
          like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`) */
@@ -7550,8 +7557,8 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
                 if (currentObject.hasOwnProperty('enumIds') ) {
                     secondaryMenuItemsIndex.forEach((currentLevelMenuItemId) => {
                         const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId];
-                        if (! isFunctionsFirst ) shortStateId = stateId.split('.').slice(- currentLevelMenuItem.state.split('.').length).join('.')
-                        //  logs(`\n shortStateId = ${shortStateId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentLevelMenuItem = ${JSON.stringify(currentLevelMenuItem)}`, l);
+                        if (! isFunctionsFirst ) shortStateId = stateId.split('.').slice(- currentLevelMenuItem.state.split('.').length).join('.');
+                        //  logs(`\n shortStateId = ${shortStateId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentLevelMenuItem = ${JSON.stringify(currentLevelMenuItem)}`, _l);
                         //  logs(`currentObject(${stateId})['enumIds'].includes(${enumsPrefix}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}) = ${currentObject['enumIds'].includes(`enum.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)}`)
                         if ((isFunctionsFirst || (currentLevelMenuItem.state === shortStateId)) && currentObject['enumIds'].includes(`${prefixEnums}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)) {
                             if (! deviceList.hasOwnProperty(currentLevelMenuItemId)) deviceList[currentLevelMenuItemId] = [];
@@ -7561,12 +7568,12 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
                 }
             }
         });
-        // logs(`deviceList = ${JSON.stringify(deviceList, null, 2)}`, l)
+        // logs(`deviceList = ${JSON.stringify(deviceList, null, 2)}`, _l)
         Object.keys(deviceList).sort((a, b) => (secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)).forEach((currentLevelMenuItemId) => {
             if (currentLevelMenuItemId && currentLevelMenuItemId.includes('.')) {
-                const [parentId, descendantId] = currentLevelMenuItemId.split('.');
+                const [parentId, _descendantId] = currentLevelMenuItemId.split('.');
                 if (! Object.keys(deviceList).includes(parentId)) {
-                    deviceList[parentId] = []
+                    deviceList[parentId] = [];
                 }
             }
         });
@@ -7578,7 +7585,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
                 currentAccessLevel = user && user.userId ? usersInMenu.getMenuItemAccess(user.userId, menuItemId, inverseMasks) : undefined,
                 functionId = isFunctionsFirst ? primaryLevelMenuItemId : currentLevelMenuItemId,
                 destinationId = isFunctionsFirst ? currentLevelMenuItemId : primaryLevelMenuItemId;
-            // logs(`primaryLevelMenuItemId = ${primaryLevelMenuItemId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentAccessLevel = ${currentAccessLevel}`, l);
+            // logs(`primaryLevelMenuItemId = ${primaryLevelMenuItemId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentAccessLevel = ${currentAccessLevel}`, _l);
             if (currentAccessLevel && (! MenuRoles.accessLevelsPreventToShow.includes(currentAccessLevel))) {
                 const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId];
                 if (! isFunctionsFirst)  {
@@ -7598,7 +7605,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
                 };
                 const isStatesInFolders = isFunctionsFirst ? primaryMenuItem.statesInFolders : currentLevelMenuItem;
                 // logs('deviceList[currentLevelMenuItemId] = ' + JSON.stringify(deviceList[currentLevelMenuItemId]));
-                if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelForbidden) < 0 ) deviceList[currentLevelMenuItemId].forEach((deviceStateId, deviceIndex) => {
+                if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelForbidden) < 0 ) deviceList[currentLevelMenuItemId].forEach((deviceStateId, _deviceIndex) => {
                     const
                         idPrefix = deviceStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
                         deviceId = idPrefix.split('.').pop();
@@ -7667,12 +7674,12 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
         for (const subMenuIndex of subMenu.keys()) {
             const currentSubMenu = subMenu[subMenuIndex].submenu;
             if (typeOf(currentSubMenu) === 'array' && (currentSubMenu.length === 0)) {
-                delete subMenu[subMenuIndex]
+                delete subMenu[subMenuIndex];
             }
-        };
+        }
         subMenu = subMenu.filter(item => (item));
     }
-    // logs('subMenu New = ' + JSON.stringify(subMenu, null, 1), l);
+    // logs('subMenu New = ' + JSON.stringify(subMenu, null, 1), _l);
     return subMenu;
 }
 
@@ -7752,7 +7759,7 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
                 let [currState, possibleValue] = commandUnpackParams(menuItemToProcess.state);
                 const currObject = getObject(currState);
                 logs('currObject = ' + JSON.stringify(currObject));
-                const role = currObject.common['role'];
+                const _role = currObject.common['role'];
                 if (currObject.common['write']) {
                     clearTimeout(timer);
                     timer = setTimeout(function() {
@@ -7833,7 +7840,7 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
                 if (! skipConfirmation) telegramMessagesDisplayPopUpMessage(user);
                 menuDrawMenuItem(user, cmdPos, clearBefore, clearUserMessage, isSilent);
             }
-        } 
+        }
         else {
             logs('cmdPos 2 = ' + JSON.stringify(cmdPos));
             if (! skipConfirmation) telegramMessagesDisplayPopUpMessage(user);
@@ -7904,7 +7911,7 @@ const
  * @param {object} user - The user that is currently logged in.
  */
 function menuClearCachedMenuItemsAndRows(user) {
-    cachedDelValue(user, cachedMenuItemsAndRows)
+    cachedDelValue(user, cachedMenuItemsAndRows);
 }
 
 const cachedMenuLongCommandsWithParams = 'longCommandsWithParams';
@@ -7989,7 +7996,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
                 logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}`);
                 currentSubMenuPos = menuItemToProcess.submenu.findIndex((item) => {
                     logs(`item = ${JSON.stringify(item)}`);
-                    return ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos))
+                    return ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos));
                 });
                 logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`);
             }
@@ -8007,7 +8014,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
             preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
             preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
             menuGetMenuRowToProcess(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, callback);
-        } 
+        }
         else {
             logs(`currentMenuItem 2 = ${JSON.stringify(menuItemToProcess/* , null, 2 */)}`);
             logs(`preparedMessageObject 2 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
@@ -8049,7 +8056,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
                         buttonsCount = buttonsCount - buttonsOffset;
                     }
                     else {
-                        cachedDelValue(user, cachedMenuButtonsOffset)
+                        cachedDelValue(user, cachedMenuButtonsOffset);
                     }
                 }
             }
@@ -8068,7 +8075,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
                 if (currentSubMenuItem.hasOwnProperty('param') && (typeof(currentSubMenuItem.param) === 'string') && (currentSubMenuItem.param.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.param !== cmdPrefix)) {
                     if (currentSubMenuItem.param.length > 64) {
                         callbackDataToCache.set(currentSubIndex, currentSubMenuItem.param);
-                        callbackData = commandsPackParams(cmdCached, currentSubIndex)
+                        callbackData = commandsPackParams(cmdCached, currentSubIndex);
                     }
                     else {
                         callbackData = currentSubMenuItem.param;
@@ -8235,7 +8242,7 @@ function menuScheduleMenuMessageRenew(atTime, idOfUser) {
                 scheduledRefresh.reference = schedule({hour: atTimeArray.shift(), minute: atTimeArray.pop()},
                     () => {
                             console.log(`Refresh is scheduled on ${atTime} for ${currentUser === menuRefreshTimeAllUsers ? 'all users' :` userId = ${currentUser}`}.`);
-                            menuRenewMenuMessage(currentUser === idOfUser ? idOfUser : menuRefreshTimeAllUsers)
+                            menuRenewMenuMessage(currentUser === idOfUser ? idOfUser : menuRefreshTimeAllUsers);
                         }
                 );
                 menuRefreshScheduled.set(currentUser, scheduledRefresh);
@@ -8252,19 +8259,19 @@ function menuScheduleMenuMessageRenew(atTime, idOfUser) {
  */
 function menuRenewMenuMessage(idOfUser, forceNow) {
     let userIds = (idOfUser !== menuRefreshTimeAllUsers) && usersInMenu.validId(idOfUser) ? [idOfUser] : usersInMenu.getUsers();
-    // logs('userIds = ' + JSON.stringify(userIds), l);
+    // logs('userIds = ' + JSON.stringify(userIds), _l);
     if (idOfUser === menuRefreshTimeAllUsers) {
         userIds = userIds.concat(telegramGetGroupChats(true));
-        // logs(`users = ${JSON.stringify(userIds)}`, l);
+        // logs(`users = ${JSON.stringify(userIds)}`, _l);
     }
     userIds.forEach(userId => {
-        // logs('userId = ' + JSON.stringify(userId), l);
+        // logs('userId = ' + JSON.stringify(userId), _l);
         if ((idOfUser == userId) || ((idOfUser === menuRefreshTimeAllUsers) && ((! menuRefreshScheduled.has(userId)) || forceNow))) {
             const user = telegramUsersGenerateUserObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
-            // logs('user = ' + JSON.stringify(user), l);
+            // logs('user = ' + JSON.stringify(user), _l);
             const
-                [lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48),
-                [lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta24),
+                [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48),
+                [_lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta24),
                 isCachedMenuOn = cachedGetValue(user, cachedMenuOn);
             if ((isCachedMenuOn === true) && (! isBotMessageOld48OrNotExists) && isBotMessageOld24OrNotExists) {
                 const itemPos = cachedGetValue(user, cachedMenuItem);
@@ -8297,7 +8304,7 @@ function menuSplitButtonsArrayIntoButtonsPerRowsArray(user, buttonsArray) {
     const
         defaultButtonKeys = ['text', 'callback_data'],
         maxTextLength = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user);
-    // logs(`maxTextLength = ${maxTextLength}`, l);
+    // logs(`maxTextLength = ${maxTextLength}`, _l);
     let
         buttonsRow = [],
         currentGroup = '';
@@ -8319,7 +8326,7 @@ function menuSplitButtonsArrayIntoButtonsPerRowsArray(user, buttonsArray) {
             else {
                 currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
                 countLength += currentLength + (countLength === 0 ? 0 : 3);
-                Object.keys(currentButton).forEach(buttonKey => {if (! defaultButtonKeys.includes(buttonKey)) delete currentButton[buttonKey]});
+                Object.keys(currentButton).forEach(buttonKey => {if (! defaultButtonKeys.includes(buttonKey)) delete currentButton[buttonKey];});
                 buttonsRow.push(currentButton);
                 i = j;
             }
@@ -8471,9 +8478,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
         longCommandId = isLongCommandsCached ? commandUnpackParams(userInput).pop() : null,
         cachedLongCommands = isLongCommandsCached && cachedExistsValue(user, cachedMenuLongCommandsWithParams) ? cachedGetValue(user, cachedMenuLongCommandsWithParams) : null,
         inputData = cachedLongCommands && cachedLongCommands.has(longCommandId) ? cachedLongCommands.get(longCommandId) : userInput,
-        [currentCommand, currentType, currentItem, currentParam, currentValue, currentSubParam, currentSubValue, ...otherItems] = commandUnpackParams(inputData, [cmdNoOperation]),
+        [currentCommand, currentType, currentItem, currentParam, currentValue, currentSubParam, currentSubValue, ..._otherItems] = commandUnpackParams(inputData, [cmdNoOperation]),
         menuMessageObject = {};
-    ;
     let
         currentMenuPosition = cachedGetValue(user, cachedMenuItem);
     if (cachedExistsValue(user, cachedMenuLongCommandsWithParams)) cachedDelValue(user, cachedMenuLongCommandsWithParams);
@@ -8484,7 +8490,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         if (userInputToProcess != dataTypeIgnoreInput) {
             switch (currentCommand) {
                 case cmdItemUpload: {
-                    // logs(`currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, userInputToProcess = ${userInputToProcess}`, l);
+                    // logs(`currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, userInputToProcess = ${userInputToProcess}`, _l);
                     switch (currentType) {
                         case dataTypeTranslation: {
                             const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, userInputToProcess, currentItem, currentParam);
@@ -8520,7 +8526,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
                                     if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
                                         currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
-                                    }else {
+                                    }
+                                    else {
                                         currentTranslationId = '';
                                     }
                                 }
@@ -8534,7 +8541,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 const newPosition = Object.keys(currentTranslation)
                                     .filter((key) => (! key.includes('.')) && (key.indexOf(currentParam) === 0))
                                     .sort((a, b) => (currentTranslation[a].localeCompare(currentTranslation[b])))
-                                    .indexOf(currentItem)
+                                    .indexOf(currentItem);
                                 if (newPosition >= 0) {
                                     currentMenuPosition.splice(-1, newPosition);
                                 }
@@ -8550,7 +8557,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                         oldIcon = currentEnumsList[currentItem].icon,
                                         currentList = enumerationsList[currentValue].list;
                                     currentEnumsList[currentItem].icon = userInputToProcess;
-                                    Object.keys(currentList).forEach(currentListItem => {if ((currentList[currentListItem].enum === currentItem) && (currentList[currentListItem].icon === oldIcon)) currentList[currentListItem].icon = userInputToProcess});
+                                    Object.keys(currentList).forEach(currentListItem => {if ((currentList[currentListItem].enum === currentItem) && (currentList[currentListItem].icon === oldIcon)) currentList[currentListItem].icon = userInputToProcess;});
                                     enumerationsInit(currentValue);
                                     enumerationSave(currentValue);
                                 }
@@ -8606,7 +8613,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
                                 currentEnumeration[currentItem].group = userInputToProcess;
                             }
-                            // logs(`currentParam, currentValue = ${[currentType, currentItem, currentParam, currentValue,]}`, l)
+                            // logs(`currentParam, currentValue = ${[currentType, currentItem, currentParam, currentValue,]}`, _l)
                             if (currentValue) {
                                 enumerationSave(dataTypeFunction);
                             }
@@ -8639,7 +8646,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
                         case dataTypeConfig: {
                             if (currentItem === cfgMenuLanguage) {
-                                cachedSetValue(user, cachedConfigNewLanguageId, userInputToProcess)
+                                cachedSetValue(user, cachedConfigNewLanguageId, userInputToProcess);
                             }
                             else {
                                 const configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user);
@@ -8667,7 +8674,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                             newValue = parsedValue !== undefined ? {id: userInputToProcess, minutes: parsedValue} : null;
                                             menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
                                         }
-                                        if (newValue !== null) configItem.push(newValue)
+                                        if (newValue !== null) configItem.push(newValue);
                                     }
                                     configOptions.setOption(currentItem, user, configItem);
                                 }
@@ -8761,7 +8768,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
     }
     else if (currentCommand === cmdGetInput) {
         switch (currentType) {
-            case dataTypeTranslation:
+            case dataTypeTranslation: {
                 let
                     currentTranslationId = currentItem,
                     currentTranslationValue;
@@ -8777,12 +8784,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     }
                 }
                 else {
-                    currentTranslationValue = translationsItemGet(user, currentTranslationId)
+                    currentTranslationValue = translationsItemGet(user, currentTranslationId);
                 }
                 if (currentTranslationValue) menuMessageObject.menutext = `${translationsItemCoreGet(user, 'cmdItemRename')} ${currentTranslationId} = "${currentTranslationValue}" :`;
                 break;
+            }
 
-            case dataTypePrimaryEnums:
+            case dataTypePrimaryEnums: {
                 if (currentValue && enumerationsList[currentValue]) {
                     const currentEnumsList = enumerationsList[currentValue].enums;
                     if (currentEnumsList[currentItem]) {
@@ -8790,56 +8798,66 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     }
                 }
                 break;
+            }
 
             case dataTypeDestination:
             case dataTypeFunction:
-            case dataTypeReport:
+            case dataTypeReport: {
                 switch (currentParam) {
                     case 'setId':
-                    case 'fixId':
+                    case 'fixId': {
                         const simpleReportId = cachedGetValue(user, cachedSimpleReportIdToCreate);
                         menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, simpleReportId ? 'fix': 'set', 'reportId')} ${simpleReportId ? `= ${simpleReportId}` : ''}`;
                         cachedDelValue(user, cachedSimpleReportIdToCreate);
                         break;
+                    }
 
-                    case 'names':
+                    case 'names': {
                         menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentValue)}" = ${translationsGetEnumName(user, currentType, currentItem, currentValue)}:`;
                         break;
+                    }
 
-                    default:
+                    default: {
                         menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[currentType].list[currentItem][currentParam]}:`;
                         break;
+                    }
                 }
                 break;
+            }
 
             case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons:
+            case dataTypeDeviceButtons: {
                 if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
                     menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam]}:`;
                 }
                 break;
+            }
 
-            case dataTypeMenuRoles:
+            case dataTypeMenuRoles: {
                 switch (currentParam) {
                     case 'setId':
-                    case 'fixId':
+                    case 'fixId': {
                         const newRoleId = cachedGetValue(user, cachedRolesNewRoleId);
                         menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, newRoleId ? 'fix': 'set', 'RoleId')} ${newRoleId ? `= ${newRoleId}` : ''}`;
                         cachedDelValue(user, cachedRolesNewRoleId);
                         break;
-                    default:
+                    }
+                    default: {
                         // menuMessageObject.menutext =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', currentType))} "${getFromTranslation(user, generateTextId(currentType, currentParam))}" = ${enumerationItems[currentType].list[currentItem][currentParam]}:`;
                         break;
+                    }
                 }
                 break;
+            }
 
 
-            case dataTypeReportMember:
+            case dataTypeReportMember: {
                 const queryParams = cachedGetValue(user, cachedSimpleReportNewQuery);
                 menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(user, currentItem)} ${queryParams && queryParams.hasOwnProperty(currentItem) && queryParams[currentItem] ? `= ${queryParams[currentItem]}` : ''}`;
                 break;
+            }
 
-            case dataTypeConfig:
+            case dataTypeConfig: {
                 const
                     configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user),
                     configItemMask  = configOptions.getMaskDescription(currentItem);
@@ -8870,8 +8888,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     }
                 }
                 break;
+            }
 
-            case dataTypeStateValue:
+            case dataTypeStateValue: {
                 if (existsObject(currentParam)) {
                     const
                         stateObject = getObject(currentParam),
@@ -8883,22 +8902,24 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         if (stateObject.common.hasOwnProperty('min') || stateObject.common.hasOwnProperty('max')) {
                             menuMessageObject.menutext += '(';
                             if (stateObject.common.hasOwnProperty('min')) {
-                                menuMessageObject.menutext += `${translationsItemTextGet(user, 'Min')} = ${stateObject.common.min}`
+                                menuMessageObject.menutext += `${translationsItemTextGet(user, 'Min')} = ${stateObject.common.min}`;
                             }
                             menuMessageObject.menutext += ' - ';
                             if (stateObject.common.hasOwnProperty('max')) {
-                                menuMessageObject.menutext += `${translationsItemTextGet(user, 'Max')} = ${stateObject.common.max}`
+                                menuMessageObject.menutext += `${translationsItemTextGet(user, 'Max')} = ${stateObject.common.max}`;
                             }
                             menuMessageObject.menutext += ')';
                         }
                     }
-                    menuMessageObject.menutext += ':'
+                    menuMessageObject.menutext += ':';
                 }
                 break;
+            }
 
-            default:
+            default: {
                 menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)}:`;
                 break;
+            }
         }
         if (menuMessageObject.menutext) {
             menuMessageObject.menutext += botMessageStamp;
@@ -8913,7 +8934,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
         // setCachedValue(user, cachedMenuOn, false);
         /** if it private chat - delete user input, if configured **/
         menuProcessMenuItem(user, undefined, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, true);
-    } else if (currentCommand.indexOf(cmdClose) === 0) {
+    }
+    else if (currentCommand.indexOf(cmdClose) === 0) {
 
         menuCloseMenu(user);
     }
@@ -8924,8 +8946,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
             const cachedToDelete = cachedGetValue(user, cachedDelCachedOnBack);
             if (cachedToDelete && cachedToDelete.hasOwnProperty(currentMenuPosition)) {
                 if (Array.isArray(cachedToDelete[currentMenuPosition])) {
-                    logs(`cachedToDelete[currentMenuItem] = ${JSON.stringify(cachedToDelete[currentMenuPosition])}`)
-                    cachedToDelete[currentMenuPosition].forEach(cachedId => (cachedDelValue(user, cachedId)))
+                    logs(`cachedToDelete[currentMenuItem] = ${JSON.stringify(cachedToDelete[currentMenuPosition])}`);
+                    cachedToDelete[currentMenuPosition].forEach(cachedId => (cachedDelValue(user, cachedId)));
                 }
                 delete cachedToDelete[currentMenuPosition];
             }
@@ -8939,8 +8961,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
             const cachedToDelete = cachedGetValue(user, cachedDelCachedOnBack);
             Object.keys(cachedToDelete).forEach(itemsToDelete => {
                 if (Array.isArray(cachedToDelete[itemsToDelete])) {
-                    logs(`cachedToDelete[[${itemsToDelete}] = ${JSON.stringify(cachedToDelete[itemsToDelete])}`)
-                    cachedToDelete[itemsToDelete].forEach(cachedId => (cachedDelValue(user, cachedId)))
+                    logs(`cachedToDelete[[${itemsToDelete}] = ${JSON.stringify(cachedToDelete[itemsToDelete])}`);
+                    cachedToDelete[itemsToDelete].forEach(cachedId => (cachedDelValue(user, cachedId)));
                     delete cachedToDelete[itemsToDelete];
                 }
             });
@@ -8983,7 +9005,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeFunction:
             case dataTypeReport:
             case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons:
+            case dataTypeDeviceButtons: {
                 const currentList = enumerationsSubTypes.includes(currentType) && currentValue ? enumerationsList[dataTypeFunction].list[currentValue][currentType] : enumerationsList[currentType].list;
                 if (enumerationsSubTypes.includes(currentType) && enumerationDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
                     currentList[currentItem][currentParam] = currentSubParam;
@@ -8997,23 +9019,25 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 }
                 enumerationSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
                 break;
+            }
 
-            case dataTypePrimaryEnums:
+            case dataTypePrimaryEnums: {
                 if (enumerationsList.hasOwnProperty(currentValue)) {
                     if (currentParam === cmdItemAdd) {
                         enumerationsList[currentValue].enums[currentItem] = {
                             isEnabled: true,
                             order: Object.keys(enumerationsList[currentValue].enums).length,
                             icon: ''
-                        }
+                        };
                         // initMenuListItems(currentValue);
                         enumerationSave(currentValue);
                         currentMenuPosition.splice(-2, 2, dataTypePrimaryEnums);
                     }
                 }
                 break;
+            }
 
-            case dataTypeGroups:
+            case dataTypeGroups: {
                 const currentEnumeration = enumerationGetList(currentParam, currentSubParam ? currentSubParam : '');
                 if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
                     currentEnumeration[currentItem].group = currentEnumeration[currentItem].group === currentValue ? '' : currentValue;
@@ -9025,9 +9049,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     enumerationSave(currentParam);
                 }
                 break;
+            }
 
 
-            case dataTypeConfig:
+            case dataTypeConfig: {
                 switch (currentItem) {
                     case cfgMenuLanguage:
                         configOptions.setOption(currentItem, currentParam === configOptionScopeUser ? user : null, currentValue);
@@ -9038,8 +9063,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         break;
                 }
                 break;
+            }
 
-            case dataTypeAlertSubscribed:
+            case dataTypeAlertSubscribed: {
                 const
                     currentThresholds = alertsGetStateAlertThresholds(user, currentItem),
                     currentThresholdsKeys = Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))),
@@ -9050,12 +9076,14 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -2).join('.'), alertThresholdSet);
                 }
                 break;
+            }
 
-            case dataTypeMenuUsers:
+            case dataTypeMenuUsers: {
                 usersInMenu.toggleItemIsEnabled(currentItem);
                 break;
+            }
 
-            case dataTypeMenuUserRoles:
+            case dataTypeMenuUserRoles: {
                 if (usersInMenu.hasRole(currentItem, currentParam)) {
                     usersInMenu.delRole(currentItem, currentParam);
                 }
@@ -9063,8 +9091,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     usersInMenu.addRole(currentItem, currentParam);
                 }
                 break;
+            }
 
-            case dataTypeMenuRoleRules:
+            case dataTypeMenuRoleRules: {
                 const currentIndex = Number(currentParam);
                 if (currentIndex === -1) {
                     if (cachedExistsValue(user, cachedRolesNewRule)) {
@@ -9084,9 +9113,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     }
                 }
                 break;
+            }
 
-            default:
+            default: {
                 break;
+            }
         }
         menuClearCachedMenuItemsAndRows(user);
         menuProcessMenuItem(user, undefined, currentMenuPosition);
@@ -9116,15 +9147,16 @@ async function commandUserInputCallback(user, userInputToProcess) {
         switch (currentType) {
             case dataTypeTranslation:
                 switch (currentItem) {
-                    case doUploadDirectly:
+                    case doUploadDirectly: {
                         cachedSetValue(user, cachedIsWaitForInput, userInputToProcess);
                         cachedDelValue(user, cachedTranslationToUpload);
                         telegramMessagesFormatAndPushToQueueMessage(user, {menutext: translationsItemTextGet(user, 'UploadTranslationFile')}, false, false, false);
                         break;
+                    }
 
-                    case doUploadFromRepo:
+                    case doUploadFromRepo: {
                         const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
-                        translationsLoadLocalesFromRepository(currentLanguageId, (locales, error) => {
+                        translationsLoadLocalesFromRepository(currentLanguageId, (locales, _error) => {
                             if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(currentLanguageId) && typeOf(locales[currentLanguageId], 'object')) {
                                 const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, '', '', '', locales[currentLanguageId]);
                                 if (isTranslationFileOk) {
@@ -9144,9 +9176,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             }
                         });
                         break;
+                    }
 
-                    default:
+                    default: {
                         break;
+                    }
                 }
                 break;
 
@@ -9253,13 +9287,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     }
                 }
                 if (currentTranslationId) {
-                    translationsItemDelete(user, currentTranslationId)
+                    translationsItemDelete(user, currentTranslationId);
                     currentMenuPosition.splice(-2, 2);
                 }
-                break; 
+                break;
             }
 
-            case dataTypeConfig: { 
+            case dataTypeConfig: {
                 switch (currentItem) {
                     case cfgMenuLanguage: {
                         switch (currentParam) {
@@ -9276,7 +9310,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
                     default: {
                         let configItemArray = configOptions.getOption(currentItem,  currentParam === configOptionScopeGlobal ? null : user);
-                        // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, l)
+                        // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, _l)
                         if (configItemArray && Array.isArray(configItemArray)) {
                             if (configItemArray.length > Number(currentValue)) {
                                 configItemArray.splice(Number(currentValue), 1);
@@ -9305,7 +9339,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 currentRules.splice(currentIndex,  1);
                                 if (currentRole) {
                                     currentRole.rules = currentRules;
-                                    cachedSetValue(user, cachedRolesRoleUnderEdit, currentRole)
+                                    cachedSetValue(user, cachedRolesRoleUnderEdit, currentRole);
                                 }
                                 else {
                                     rolesInMenu.setRules(currentItem, currentRules, usersInMenu);
@@ -9324,7 +9358,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
             case dataTypeMenuRoles: {
                 if (rolesInMenu.existsId(currentItem) && (rolesInMenu.getUsers(currentItem).length === 0)) {
-                    rolesInMenu.delRole(currentItem)
+                    rolesInMenu.delRole(currentItem);
                     currentMenuPosition.splice(-2, 2);
                     menuClearCachedMenuItemsAndRows(user);
                     cachedDelValue(user, cachedRolesRoleUnderEdit);
@@ -9358,10 +9392,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 switch (currentItem) {
                     case dataTypeDestination:
                         if (queryParams.queryDests.includes(currentParam) ) {
-                            delete queryParams.queryDests[queryParams.queryDests.indexOf(currentParam)]
+                            delete queryParams.queryDests[queryParams.queryDests.indexOf(currentParam)];
                         }
                         else {
-                            queryParams.queryDests.push(currentParam)
+                            queryParams.queryDests.push(currentParam);
                         }
                         queryParams.queryStates = [];
                         queryParams.queryPossibleStates = [];
@@ -9369,10 +9403,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
                     case 'states':
                         if (queryParams.queryStates.includes(queryParams.queryPossibleStates[currentParam])) {
-                            delete queryParams.queryStates[queryParams.queryStates.indexOf(queryParams.queryPossibleStates[currentParam])]
+                            delete queryParams.queryStates[queryParams.queryStates.indexOf(queryParams.queryPossibleStates[currentParam])];
                         }
                         else {
-                            queryParams.queryStates.push(queryParams.queryPossibleStates[currentParam])
+                            queryParams.queryStates.push(queryParams.queryPossibleStates[currentParam]);
                         }
                         currentMenuPosition.splice(-1);
                         break;
@@ -9419,7 +9453,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
                 if (enumerationRefreshFunctionDeviceStates(currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
-                break; 
+                break;
             }
 
             case dataTypeTranslation: {
@@ -9461,18 +9495,18 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
                 }
                 currentMenuPosition.splice(-2, 2);
-                cachedDelValue(user, cachedSimpleReportNewQuery)
+                cachedDelValue(user, cachedSimpleReportNewQuery);
                 break;
             }
 
-            case dataTypeConfig: { 
+            case dataTypeConfig: {
                 switch (currentItem) {
                     case cfgMenuLanguage:
                         if (currentParam === configOptionScopeGlobal) {
                             const newLanguageId = currentValue;
                             if (! translationsList.hasOwnProperty(newLanguageId)) {
                                 const menuPosition = currentMenuPosition;
-                                translationsLoadLocalesFromRepository(newLanguageId, (locales, error) => {
+                                translationsLoadLocalesFromRepository(newLanguageId, (locales, _error) => {
                                     translationsList[newLanguageId] = {};
                                     if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(newLanguageId) && typeOf(locales[newLanguageId], 'object')) {
                                         if (translationsCheckAndCacheUploadedFile(user, '', '', '', locales[newLanguageId])) {
@@ -9482,7 +9516,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                             }
                                         }
                                     }
-                                    translationsSave()
+                                    translationsSave();
                                     menuPosition.splice(-1, 1);
                                     menuProcessMenuItem(user, undefined, menuPosition);
                                 });
@@ -9576,11 +9610,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                                 if (graphLines.length > 0) currentLine.commonYAxis = "0";
                                                 currentLine.lineStyle = (graphLines.length % 3) === 0 ? 'solid' : ((graphLines.length % 3) === 1 ? 'dashed' : 'dotted');
                                                 graphLines.push(currentLine);
-                                            })
-                                        })
-                                    })
+                                            });
+                                        });
+                                    });
                                 });
-                                graphTemplate.native.data.title = translationsGetEnumName(user, dataTypeReport, reportId)
+                                graphTemplate.native.data.title = translationsGetEnumName(user, dataTypeReport, reportId);
                             }
                         }
                         else {
@@ -9598,10 +9632,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         graphTemplate['_id'] = newTemplateId;
                         try {
                             // @ts-ignore
-                            await setObjectAsync(newTemplateId, graphTemplate)
-                        } 
+                            await setObjectAsync(newTemplateId, graphTemplate);
+                        }
                         catch (error) {
-                            console.warn(`Can't create temporary template object ${newTemplateId}`)
+                            console.warn(`Can't create temporary template object ${newTemplateId}`);
                         }
                         if (existsObject(newTemplateId)) {
                             // logs(`newTemplateId`);
@@ -9626,7 +9660,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                         result => {
                                             if (result.error) {
                                                 console.error(`error: JSON.stringify(result.error)`);
-                                            } 
+                                            }
                                             else if (result.data) {
                                                 telegramSendImage(user, tmpGraphFileName);
                                                 deleteObjectAsync(newTemplateId);
@@ -9681,7 +9715,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeConfig:
                 if (! configGlobalOptions.includes(currentItem)) {
                     configOptions.deleteUserOption(currentItem, user);
-                    // logs(`exists = ${JSON.stringify(configOptions.existsOption(currentItem, user))}, currentItem = ${JSON.stringify(configOptions.getOption(currentItem, user))}`, l)
+                    // logs(`exists = ${JSON.stringify(configOptions.existsOption(currentItem, user))}, currentItem = ${JSON.stringify(configOptions.getOption(currentItem, user))}`, _l)
                     menuClearCachedMenuItemsAndRows(user);
                 }
                 break;
@@ -9750,7 +9784,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             messageTo(`${currentEnumeration[currentItem].state}.update`, {request: ['name', 'icon'], timeout: timeout}, {timeout: timeout}, (result) => {
                 if (result.success) {
                     if (result.name) {
-                        enumerationsUpdateItemName(user, currentType, currentItem, currentEnumeration[currentItem], result.name)
+                        enumerationsUpdateItemName(user, currentType, currentItem, currentEnumeration[currentItem], result.name);
                     }
                     if (result.icon) {
                         currentEnumeration[currentItem].icon = result.icon;
@@ -9759,7 +9793,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     menuClearCachedMenuItemsAndRows(user);
                 }
                 menuProcessMenuItem(user);
-                logs(`${currentEnumeration[currentItem].state}.update result = ${JSON.stringify(result)}`)
+                logs(`${currentEnumeration[currentItem].state}.update result = ${JSON.stringify(result)}`);
             });
         }
         else {
@@ -9775,10 +9809,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
         try {
             const newReportId = `${prefixEnums}.${currentParam}.${currentItem}`;
             // @ts-ignore
-            await setObjectAsync(newReportId, obj)
+            await setObjectAsync(newReportId, obj);
             logs(`Object ${newReportId} is created : ${existsObject(newReportId)}`);
             menuClearCachedMenuItemsAndRows(user);
-        } 
+        }
         catch (error) {
             console.error(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
             currentMenuPosition.splice(-1);
@@ -9817,7 +9851,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 }
             }
             else if (menuIndex) {
-                currentMenuPosition.push(menuIndex)
+                currentMenuPosition.push(menuIndex);
             }
         });
         menuClearCachedMenuItemsAndRows(user);
@@ -9860,8 +9894,8 @@ function telegramGetGroupChats(activeOnly) {
             if (activeOnly) {
                 const
                     user = telegramUsersGenerateUserObjectFromId(undefined, chatId),
-                    [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48),
-                    [lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedLastMessage, timeDelta96);
+                    [_lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48),
+                    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedLastMessage, timeDelta96);
                 if ((! isBotMessageOldOrNotExists) && (! isUserMessageOldOrNotExists)) chatsList.push(chatId);
             }
             else {
@@ -9948,7 +9982,7 @@ function telegramSendImage(user, imageFullPath, callback) {
 function telegramOnSendFileCommand(data, callback) {
     const {user, fileFullPath} = data;
     if (user && fileFullPath) {
-        telegramSendFile(user, fileFullPath, callback)
+        telegramSendFile(user, fileFullPath, callback);
     }
     else {
         const error = `Wrong data provided! ${JSON.stringify(data)}`;
@@ -9965,7 +9999,7 @@ function telegramOnSendFileCommand(data, callback) {
 function telegramOnSendImageCommand(data, callback) {
     const {user, imageFullPath} = data;
     if (user && imageFullPath) {
-        telegramSendImage(user, imageFullPath, callback)
+        telegramSendImage(user, imageFullPath, callback);
     }
     else {
         const error = `Wrong data provided! ${JSON.stringify(data)}`;
@@ -10063,11 +10097,11 @@ function telegramMessagesFormatAndPushToQueueMessage(user, preparedMessageObject
             }
             telegramObjects.push(telegramObject);
             if (clearUserMessage) {
-                telegramObjects = [telegramObjects]
+                telegramObjects = [telegramObjects];
                 const clearUser = telegramMessagesClearCurrentMessage(user, clearUserMessage, true);
                 if (clearUser) telegramObjects.push(clearUser);
             }
-            // logs(`telegramObjects = ${JSON.stringify(telegramObjects, null, 2)}`, l)
+            // logs(`telegramObjects = ${JSON.stringify(telegramObjects, null, 2)}`, _l)
             telegramMessagesPushMessageToQueue(user, telegramObjects);
             if (createNewMessage || clearBefore ) {
                 cachedSetValue(user, cachedMenuOn, true);
@@ -10099,7 +10133,7 @@ function telegramMessagesPushMessageToQueue(user, telegramObject) {
     else {
         userMessagesQueue.push(telegramObject);
     }
-    logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue, null, 2)}`)
+    logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue, null, 2)}`);
     cachedSetValue(user, cachedTelegramMessagesQueue, userMessagesQueue);
     if (isReady) {
         telegramMessagesSendToFromQueue(user);
@@ -10131,12 +10165,12 @@ function telegramMessagesSendToFromQueue(user, messageId) {
         if (! result) {
             if (waitForLog) {
                 setTimeout(() => {
-                    telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false)
+                    telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false);
                 },
                 telegramDelayToCatchLog);
             }
             else {
-                // logs(`telegramLastErrors = ${JSON.stringify(telegramLastErrors)}, ${telegramLastErrors.hasOwnProperty(`${user.chatId}`)}`, l)
+                // logs(`telegramLastErrors = ${JSON.stringify(telegramLastErrors)}, ${telegramLastErrors.hasOwnProperty(`${user.chatId}`)}`, _l)
                 if (telegramLastErrors && telegramLastErrors.hasOwnProperty(`${user.chatId}`) && telegramLastErrors[`${user.chatId}`]) {
                     telegramLastUserError = telegramLastErrors[`${user.chatId}`];
                     if ((telegramLastUserError.ts < sendToTS) || (telegramLastUserError.ts > currentTS)) {
@@ -10146,7 +10180,7 @@ function telegramMessagesSendToFromQueue(user, messageId) {
                 console.warn(`Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({...user, rootMenu : null})})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(telegramLastUserError, null, 2)}.`);
                 if (telegramLastUserError && telegramLastUserError.hasOwnProperty['error'] && (telegramLastUserError.error.level === telegramErrorLevelFatal)) {
                     setTimeout(() => {
-                        telegramMessagesSendToFromQueue(user)
+                        telegramMessagesSendToFromQueue(user);
                     },
                     telegramDelayToSendReTry);
                 }
@@ -10170,7 +10204,7 @@ function telegramMessagesSendToFromQueue(user, messageId) {
                         sendTo(telegramAdapter, telegramObject, result => {telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true)});
                     }
                     else {
-                        result = -1
+                        result = -1;
                     }
                 }
                 if (telegramObject && (result === -1)) {
@@ -10210,7 +10244,7 @@ function telegramMessagesSendToFromQueue(user, messageId) {
                     userMessagesQueue.splice(0, currentLength);
                     logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue)}`);
                     if (userMessagesQueue.length === 0) {
-                        cachedDelValue(user, cachedTelegramMessagesQueue)
+                        cachedDelValue(user, cachedTelegramMessagesQueue);
                     }
                     else {
                         cachedSetValue(user, cachedTelegramMessagesQueue, userMessagesQueue);
@@ -10240,14 +10274,14 @@ function telegramMessagesSendToFromQueue(user, messageId) {
                 telegramObjects = userMessagesQueue[currentPos];
                 if (telegramObjects === undefined) {
                     if (currentPos < (userMessagesQueue.length - 1)) {
-                        currentPos = userMessagesQueue.length - 1
+                        currentPos = userMessagesQueue.length - 1;
                     }
                     else if (currentPos > 0) (
                         currentPos -= 1
-                    )
+                    );
                     else {
                         cachedDelValue(user, cachedTelegramMessagesQueue);
-                        currentPos = -1
+                        currentPos = -1;
                     }
                     telegramObjects = currentPos >= 0 ? userMessagesQueue[currentPos] : undefined;
                 }
@@ -10262,7 +10296,7 @@ function telegramMessagesSendToFromQueue(user, messageId) {
                         userMessagesQueue.splice(currentPos, 1);
                         logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue)}`);
                         if (userMessagesQueue.length === 0) {
-                            cachedDelValue(user, cachedTelegramMessagesQueue)
+                            cachedDelValue(user, cachedTelegramMessagesQueue);
                         }
                         else {
                             cachedSetValue(user, cachedTelegramMessagesQueue, userMessagesQueue);
@@ -10277,11 +10311,11 @@ function telegramMessagesSendToFromQueue(user, messageId) {
                         telegramObjects[0][telegramCommandEditMessage].options.message_id = messageId;
                     }
                 }
-                // logs(`messageId = ${messageId}`, l);
+                // logs(`messageId = ${messageId}`, _l);
                 const
                     telegramObject = telegramObjects.shift(),
                     sentToTimeStamp = Date.now();
-                // logs(`\n userMessagesQueue.length = ${userMessagesQueue.length}, userMessagesQueue = ${JSON.stringify(userMessagesQueue)}\ntelegramObject = ${JSON.stringify(telegramObject)}, \ntelegramObjects = ${JSON.stringify(telegramObjects)}`, l);
+                // logs(`\n userMessagesQueue.length = ${userMessagesQueue.length}, userMessagesQueue = ${JSON.stringify(userMessagesQueue)}\ntelegramObject = ${JSON.stringify(telegramObject)}, \ntelegramObjects = ${JSON.stringify(telegramObjects)}`, _l);
                 sendTo(telegramAdapter, telegramObject, result => {telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentPos + 1, sentToTimeStamp, true)});
             }
         }
@@ -10313,7 +10347,7 @@ function telegramMessagesClearCurrentMessage(user, isUserMessageToDelete, create
                 },
                 isBotMessage: ! isUserMessageToDelete,
             }
-        }
+        };
         if (user.userId) telegramObject.user = telegramUsersGetUserIdForTelegram(user);
         if (user.userId != user.chatId) {
             telegramObject.chatId = user.chatId;
@@ -10428,9 +10462,9 @@ function telegramOnLogError(logRecord) {
                         message: telegramErrorParsed[5]
                     }
                 };
-                // logs(`telegramLastErrors[${telegramErrorParsed[2]}] = ${JSON.stringify(telegramLastErrors[telegramErrorParsed[2]])}`, l)
+                // logs(`telegramLastErrors[${telegramErrorParsed[2]}] = ${JSON.stringify(telegramLastErrors[telegramErrorParsed[2]])}`, _l)
             }
-        } 
+        }
         catch (error) {
             //
         }
@@ -10462,7 +10496,7 @@ function telegramOnConnected(connected) {
             let sent;
             try {
                 sent = JSON.parse(obj.state.val);
-            } 
+            }
             catch (err) {
                 logs(`JSON parse error: ${JSON.stringify(err)}`);
                 return undefined;
@@ -10478,7 +10512,7 @@ function telegramOnConnected(connected) {
                         firstName: sent.chat.first_name,
                         lastName: sent.chat.last_name,
                         userName: sent.chat.username
-                    }
+                    };
                 }
                 else {
                     user.chatId = sent.chat.id;
@@ -10523,7 +10557,7 @@ function telegramOnConnected(connected) {
                     if ((! user.userId) && userId) {
                         user.userId = Number(userId);
                         user = {...cachedGetValue({userId, chatId: userId}, cachedUser), ...user};
-                        logs(`user = ${JSON.stringify(user)}`)
+                        logs(`user = ${JSON.stringify(user)}`);
                     }
                     cachedSetValue(user, cachedMenuOn, true);
                     telegramMessagesSendToFromQueue(user, messageId );
@@ -10544,7 +10578,7 @@ function telegramOnConnected(connected) {
             let request;
             try {
                 request = JSON.parse(obj.state.val);
-            } 
+            }
             catch (err) {
                 logs(`JSON parse error: ${JSON.stringify(err)}`);
                 return undefined;
@@ -10586,7 +10620,7 @@ function telegramOnConnected(connected) {
                                     firstName: request.from.first_name,
                                     lastName: request.from.last_name,
                                     userName: request.from.username
-                                }
+                                };
                                 if (user.userId == user.chatId) cachedSetValue(user, cachedUser, user);
                             }
                             if (command !== undefined) {
@@ -10604,7 +10638,7 @@ function telegramOnConnected(connected) {
                             }
                             else if (request.hasOwnProperty('document')) {
                                 if (cachedExistsValue(user, cachedIsWaitForInput)) {
-                                    const [isWaitForInput, currentType, currentItem, currentParam, currentValue, currentSubParam, currentSubValue, ...otherItems] = commandUnpackParams(cachedGetValue(user, cachedIsWaitForInput));
+                                    const [isWaitForInput, currentType, currentItem, _currentParam, _currentValue, _currentSubParam, _currentSubValue, ..._otherItems] = commandUnpackParams(cachedGetValue(user, cachedIsWaitForInput));
                                     // logs(`isWaitForInput = ${isWaitForInput}, subMenuItemId = ${subMenuItemId}`);
                                     if (isWaitForInput === cmdItemUpload) {
                                         cachedSetValue(user, cachedIsWaitForInput, commandsPackParams(cmdItemUpload, currentType, request.document.file_name, request.document.file_size, currentItem));
@@ -10691,7 +10725,7 @@ async function autoTelegramMenuInstanceInit() {
     alertsInit(true);
 
     if (configOptions.getOption(cfgConfigBackupCopiesCount)) {
-        backupScheduleReference = schedule({hour: 2, minute: 5},() => {backupCreate(backupModeAuto)});
+        _backupScheduleReference = schedule({hour: 2, minute: 5},() => {backupCreate(backupModeAuto)});
     }
 
     if (configOptions.getOption(cfgUpdateMessagesOnStart)) {
@@ -10727,7 +10761,7 @@ async function autoTelegramMenuInstanceInit() {
  * @returns {string|boolean} The result is a text, when `compareWithType` is not defined, or the boolean value.
  */
 function typeOf(value, compareWithType) {
-    let result
+    let result;
     if (Array.isArray(value) || (value instanceof Array)) {
         result = 'array';
     }
@@ -10837,7 +10871,7 @@ function objectAssignToTemplateLevelOne(template, inputObject, level) {
 
     if (typeOf(template, 'object') && typeOf(inputObject, 'object')) {
         if (level) {
-            return objectDeepClone(inputObject)
+            return objectDeepClone(inputObject);
         }
         else {
             let copy = {};
@@ -10864,12 +10898,12 @@ function objectKeysSort(inputObject) {
     if (typeof(inputObject) === 'object') {
             Object.keys(inputObject).sort().forEach((id) => {
                 if (typeof(inputObject[id]) === 'object') {
-                    sortedObject[id] = objectKeysSort(inputObject[id])
+                    sortedObject[id] = objectKeysSort(inputObject[id]);
                 }
                 else {
                     sortedObject[id] = inputObject[id];
                 }
-            })
+            });
     }
     return sortedObject;
 }
@@ -10897,7 +10931,7 @@ function mapReplacer(key, value) {
         dataType: 'Map',
         value: [...value]
       };
-    } 
+    }
     else {
       return value;
     }

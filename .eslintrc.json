@@ -18,14 +18,22 @@
         "existsObject": "readonly",
         "deleteObjectAsync":"readonly",
         "setState":"readonly",
+        "setStateAsync":"readonly",
         "createState":"readonly",
         "$": "readonly",
         "messageTo": "readonly",
         "unsubscribe":"readonly",
         "getSubscriptions":"readonly",
         "onMessage":"readonly",
+        "onMessageUnregister":"readonly",
         "onLog":"readonly",
         "sendTo":"readonly",
+        "scriptName":"readonly",
+        "instance":"readonly",
+        "getEnums":"readonly",
+        "writeFile":"readonly",
+        "readFile":"readonly",
+        "delFile":"readonly",
         "schedule":"readonly"
     },
     "parserOptions": {
@@ -37,7 +45,7 @@
         "space-before-function-paren": ["error", { "anonymous": "never", "named": "never", "asyncArrow": "always" }],
         "brace-style": ["error", "stroustrup", { "allowSingleLine": true }],
         "no-useless-escape": "off",
-        // "no-cond-assign": "except-parens",
+        "no-unused-vars": ["error", { "vars": "local", "varsIgnorePattern":  "^_", "argsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^ignore"  }],
         "no-fallthrough": ["error", { "commentPattern": "break[\\s\\w]*omitted" }],
         "no-prototype-builtins": "off"
     }

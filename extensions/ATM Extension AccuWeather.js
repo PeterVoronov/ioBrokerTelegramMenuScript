@@ -1,3 +1,8 @@
+/* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
+/* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
+/* global  autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
+/* global autoTelegramMenuExtensionsSendAlertToTelegram */
+
 console.log(`Script is ${scriptName} on instance ${instance}`);
 const
     // @ts-ignore
@@ -11,10 +16,9 @@ const
 
 const
     // @ts-ignore
-    autoTelegramMenuExtensionsGetCachedState = autoTelegramMenuExtensionsGetCachedStateCommand ? `${autoTelegramMenuExtensionsGetCachedStateCommand}` : 'autoTelegramMenuExtensionsGetCachedState',
+    _autoTelegramMenuExtensionsGetCachedState = autoTelegramMenuExtensionsGetCachedStateCommand ? `${autoTelegramMenuExtensionsGetCachedStateCommand}` : 'autoTelegramMenuExtensionsGetCachedState',
     // @ts-ignore
-    autoTelegramMenuExtensionsSetCachedState = autoTelegramMenuExtensionsSetCachedStateCommand ? `${autoTelegramMenuExtensionsSetCachedStateCommand}` : 'autoTelegramMenuExtensionsSetCachedState';
-
+    _autoTelegramMenuExtensionsSetCachedState = autoTelegramMenuExtensionsSetCachedStateCommand ? `${autoTelegramMenuExtensionsSetCachedStateCommand}` : 'autoTelegramMenuExtensionsSetCachedState';
 
 function extensionAccuWeatherInit(messageId, timeout){
     messageTo(messageId === undefined ? autoTelegramMenuExtensionsRegister : messageId,
@@ -31,7 +35,7 @@ function extensionAccuWeatherInit(messageId, timeout){
                 // console.log(`${extensionId} in script '${scriptName}' is registered = ${JSON.stringify(result.success)}`);
             }
             else {
-                console.warn(`Error to register ${autoTelegramMenuExtensionId} - ${result.error}`)
+                console.warn(`Error to register ${autoTelegramMenuExtensionId} - ${result.error}`);
             }
         }
     );
@@ -40,7 +44,7 @@ function extensionAccuWeatherInit(messageId, timeout){
 onMessage(autoTelegramMenuExtensionsInit, ({messageId, timeout}, callback) => {
     // console.log(`messageId = ${messageId}, timeout = ${timeout}`);
     extensionAccuWeatherInit(messageId, timeout);
-    callback({success: true})
+    callback({success: true});
 });
 
 
@@ -167,7 +171,7 @@ const accuweatherIcons = {
     },
 };
 
-function getCurrentHour() {
+function _getCurrentHour() {
     let currentHour = Number.parseInt(new Date().toTimeString().slice(0, 2));
     if (currentHour === 24) currentHour = 0;
     return currentHour;
@@ -184,19 +188,26 @@ function convertPressure(inMB) {
 function convertDirection(degrees) {
     if ((degrees >= 338) || (degrees <= 22)) {
         return 'C ⇓';
-    } else if ((degrees > 22) && (degrees < 67)) {
+    }
+    else if ((degrees > 22) && (degrees < 67)) {
         return 'CВ ⇙';
-    } else if ((degrees >= 68) && (degrees <= 112)) {
+    }
+    else if ((degrees >= 68) && (degrees <= 112)) {
         return 'В ⇐';
-    } else if ((degrees >= 112) && (degrees <= 157)) {
+    }
+    else if ((degrees >= 112) && (degrees <= 157)) {
         return 'ЮВ ⇖';
-    } else if ((degrees >= 158) && (degrees <= 202)) {
+    }
+    else if ((degrees >= 158) && (degrees <= 202)) {
         return 'Ю ⇑';
-    } else if ((degrees > 202) && (degrees < 247)) {
+    }
+    else if ((degrees > 202) && (degrees < 247)) {
         return 'ЮЗ ⇗';
-    } else if ((degrees >= 247) && (degrees <= 292)) {
+    }
+    else if ((degrees >= 247) && (degrees <= 292)) {
         return 'З ⇒';
-    } else {
+    }
+    else {
         return 'СЗ ⇘';
     }
 }
@@ -287,20 +298,23 @@ function possiblePrecipitationHours() {
             if (previousPrecipitationHour !== undefined) {
                 if ((hour - 1) > previousPrecipitationHour) {
                     precipitation += `${delim}${previousPrecipitationHour}..${hour-1}`;
-                } else {
+                }
+                else {
                     precipitation += `${delim}${previousPrecipitationHour}`;
                 }
                 delim = ', ';
                 previousPrecipitationHour = undefined;
             }
-        } else if (previousPrecipitationHour === undefined) {
+        }
+        else if (previousPrecipitationHour === undefined) {
             previousPrecipitationHour = hour;
         }
     }
     if (previousPrecipitationHour !== undefined) {
         if (previousPrecipitationHour < 24) {
             precipitation += `${delim}${previousPrecipitationHour}..${24}`;
-        } else {
+        }
+        else {
             precipitation += `${delim}${previousPrecipitationHour}`;
         }
     }
@@ -309,7 +323,7 @@ function possiblePrecipitationHours() {
 
 function getTodaysForecast() {
     // @ts-ignore
-    const day = 1;
+    const _day = 1;
     const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val);
     const hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val;
     let precipitation = hasPrecipitation ? `\r\n * Осадки: ${getState(`accuweather.0.Current.PrecipitationType`).val}` : 'Без осадков';
@@ -326,7 +340,7 @@ function getTodaysForecast() {
 }
 
 
-onMessage('accuweatherForecast', ({user, data}, callback) => {
+onMessage('accuweatherForecast', ({_user, data}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
@@ -363,7 +377,7 @@ onMessage('accuweatherForecast', ({user, data}, callback) => {
     }
 });
 
-onMessage('accuweatherForecastDetailed', ({user, data}, callback) => {
+onMessage('accuweatherForecastDetailed', ({_user, data}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.text = getDetailedForecast(1);
@@ -373,7 +387,7 @@ onMessage('accuweatherForecastDetailed', ({user, data}, callback) => {
     }
 });
 
-onMessage('accuweatherForecastTomorrow', ({user, data}, callback) => {
+onMessage('accuweatherForecastTomorrow', ({_user, data}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.text = getDetailedForecast(2);
@@ -383,7 +397,7 @@ onMessage('accuweatherForecastTomorrow', ({user, data}, callback) => {
     }
 });
 
-onMessage('accuweatherForecastHourly', ({user, data}, callback) => {
+onMessage('accuweatherForecastHourly', ({_user, data}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
@@ -391,7 +405,7 @@ onMessage('accuweatherForecastHourly', ({user, data}, callback) => {
         const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
         const mainHour = new Date().getHours();
         // @ts-ignore
-        let currentHour = mainHour;
+        let _currentHour = mainHour;
         data.text = getHourlyForecast(mainHour);
         data.submenu = [];
         for (let currentHour = new Date().getHours(); currentHour < 24; currentHour++) {
@@ -407,7 +421,7 @@ onMessage('accuweatherForecastHourly', ({user, data}, callback) => {
     }
 });
 
-onMessage('accuweatherForecastLong', ({user, data}, callback) => {
+onMessage('accuweatherForecastLong', ({_user, data}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
