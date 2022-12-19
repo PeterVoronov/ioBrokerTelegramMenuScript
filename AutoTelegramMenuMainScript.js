@@ -1,10 +1,10 @@
 //"use strict";
 
+/* global autoTelegramMenuTelegramAdapterInstanceId */
 /*************************************************/
 /* Primary and only one thing to configure       */
 /*************************************************/
-/* global autoTelegramMenuTelegramAdapterInstanceId */
-const telegramInstance                  = autoTelegramMenuTelegramAdapterInstanceId ? `${autoTelegramMenuTelegramAdapterInstanceId}` :  '1';   // Primary and only one config parameter for the script
+const telegramInstance                  = autoTelegramMenuTelegramAdapterInstanceId ? `${autoTelegramMenuTelegramAdapterInstanceId}` :  '0';   // Primary and only one config parameter for the script
 /*************************************************/
 // All other constants and variables are only for internal use
 
