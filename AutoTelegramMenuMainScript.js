@@ -21,7 +21,6 @@ const nodeVm = require('node:vm');
 
 // @ts-ignore
 const axios = require('axios');
-const { isExternal } = require('node:util/types');
 
 /* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
 /* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
@@ -3231,21 +3230,19 @@ function translationsGetForExtension(user, extensionId) {
     let translations = {};
     if (extensionId) {
         let extensionFunctionId = extensionId;
-        if (extensionFunctionId.indexOf([prefixExtensionId]) === 0) {
+        if (extensionFunctionId.indexOf(prefixExtensionId) === 0) {
             extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, '');
         }
         else {
             extensionId = `${prefixExtensionId}.${extensionId}`;
         }
-        if (enumerationsList[dataTypeFunction].hasOwnProperty(extensionId) && enumerationsList[dataTypeFunction][isExternal]) {
-            const currentExtension = enumerationsList[dataTypeFunction];
+        if (enumerationsList[dataTypeFunction].hasOwnProperty(extensionId) && enumerationsList[dataTypeFunction][extensionId].isExternal) {
+            const currentExtension = enumerationsList[dataTypeFunction][extensionId];
             if (currentExtension.hasOwnProperty('translationsKeys') && currentExtension.translationsKeys) {
+                const translationsKeyPrefix = `${idFunctions}.${idExternal}.${extensionId}.translations`;
                 currentExtension.translationsKeys.forEach(translationKey => {
-                    const
-                        currentTranslationId = `${idFunctions}.${idExternal}.${extensionId}.translations.${translationKey}`,
-                        currentTranslation = translationsItemGet(user, currentTranslationId);
-                    if (currentTranslation) translations[translationKey] = currentTranslation;
-
+                    const currentTranslation = translationsItemGet(user, `${translationsKeyPrefix}.${translationKey}`);
+                    translations[translationKey] = currentTranslation !== 'No translation' ? currentTranslation : translationKey;
                 });
             }
         }
