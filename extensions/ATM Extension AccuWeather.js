@@ -12,7 +12,49 @@ const
     // @ts-ignore
     autoTelegramMenuExtensionsTimeout = 500,
     // @ts-ignore
-    autoTelegramMenuExtensionId = 'accuw';
+    autoTelegramMenuExtensionId = 'accuw',
+
+    autoTelegramMenuExtensionTranslationsKeys = [
+        'WeatherForecast',
+        'ForecastDetailed',
+        'ForecastOnTomorrow',
+        'ForecastHourly',
+        'ForecastTomorrow',
+        'ForecastLong',
+        'Day',
+        'Night',
+        'Wind',
+        'metersPerSecondShort',
+        'windGust',
+        'windNorth',
+        'windNorthEast',
+        'windEast',
+        'windSouthEast',
+        'windSouth',
+        'windSouthWest',
+        'windWest',
+        'windNorthWest',
+        'Precipitations',
+        'NoPrecipitation',
+        'millimetersShort',
+        'PossiblePrecipitationHours',
+        'thunderstormProbability',
+        'total',
+        'rain',
+        'snow',
+        'ice',
+        'withProbability',
+        'Temperature',
+        'from',
+        'to',
+        'upTo',
+        'RealFeel',
+        'inShade',
+        'RelativeHumidity',
+        'dewPoint',
+        'pressure',
+        'mmHg'
+    ];
 
 const
     // @ts-ignore
@@ -24,10 +66,11 @@ function extensionAccuWeatherInit(messageId, timeout){
     messageTo(messageId === undefined ? autoTelegramMenuExtensionsRegister : messageId,
         {
             id : autoTelegramMenuExtensionId,
-            name: "Прогноз погоды",
+            nameTranslationId: 'WeatherForecast',
             icon: '☂️',
-            externalMenu: 'accuweatherForecast',
-            scriptName: scriptName
+            externalMenu: 'menuAccuweatherForecast',
+            scriptName: scriptName,
+            translationsKeys: autoTelegramMenuExtensionTranslationsKeys
         },
         {timeout: timeout === undefined ? autoTelegramMenuExtensionsTimeout : timeout},
         (result) => {
@@ -185,30 +228,30 @@ function convertPressure(inMB) {
     return Math.round(inMB * 7.5006210) / 10;
 }
 
-function convertDirection(degrees) {
+function convertDirection(degrees, translations) {
     if ((degrees >= 338) || (degrees <= 22)) {
-        return 'C ⇓';
+        return `${translations['windNorth']} ⇓`;
     }
     else if ((degrees > 22) && (degrees < 67)) {
-        return 'CВ ⇙';
+        return `${translations['windNorthEast']} ⇙`;
     }
     else if ((degrees >= 68) && (degrees <= 112)) {
-        return 'В ⇐';
+        return `${translations['windEast']} ⇐`;
     }
     else if ((degrees >= 112) && (degrees <= 157)) {
-        return 'ЮВ ⇖';
+        return `${translations['windSouthEast']} ⇖`;
     }
     else if ((degrees >= 158) && (degrees <= 202)) {
-        return 'Ю ⇑';
+        return `${translations['windSouth']} ⇑`;
     }
     else if ((degrees > 202) && (degrees < 247)) {
-        return 'ЮЗ ⇗';
+        return `${translations['windSouthWest']} ⇗`;
     }
     else if ((degrees >= 247) && (degrees <= 292)) {
-        return 'З ⇒';
+        return `${translations['windWest']} ⇒`;
     }
     else {
-        return 'СЗ ⇘';
+        return `${translations['windNorthWest']} ⇘`;
     }
 }
 
@@ -228,69 +271,68 @@ function getForecastTime(inputDate) {
     });
 }
 
-function getDetailedForecast(day) {
+function getDetailedForecast(day, translations) {
     const currentDate = new Date(getState(`accuweather.0.Daily.Day${day}.Date`).val);
     const amountPrecipitation = getState(`accuweather.0.Summary.TotalLiquidVolume_d${day}`).val;
-    const precipitation = amountPrecipitation > 0 ? `\r\n * Осадки: ${amountPrecipitation} мм. с вероятностью ${getState(`accuweather.0.Summary.PrecipitationProbability_d${day}`).val}%` : '. Без осадков';
+    const precipitation = amountPrecipitation > 0 ? `\r\n * ${translations['Precipitations']}: ${amountPrecipitation} ${translations['millimetersShort']} ${translations['withProbability']} ${getState(`accuweather.0.Summary.PrecipitationProbability_d${day}`).val}%` : `. ${translations['NoPrecipitation']}`;
     // @ts-ignore
     const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
     let text = ` ${getForecastDate(currentDate)} :`;
     text += `\r\n * ${getState(`accuweather.0.Summary.WeatherText_d${day}`).val}${precipitation}${day === 1 ? possiblePrecipitationHours() : ''}`;
-    text += `\r\n * Температура: от ${getState(`accuweather.0.Summary.TempMin_d${day}`).val}${degrees} до ${getState(`accuweather.0.Summary.TempMax_d${day}`).val}${degrees}`;
-    text += `\r\n * Ощущаемая: от ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val}${degrees} до ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val}${degrees}`;
+    text += `\r\n * ${translations['Temperature']}: ${translations['from']} ${getState(`accuweather.0.Summary.TempMin_d${day}`).val}${degrees} ${translations['to']} ${getState(`accuweather.0.Summary.TempMax_d${day}`).val}${degrees}`;
+    text += `\r\n * ${translations['RealFeel']}: ${translations['from']} ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val}${degrees} ${translations['to']} ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val}${degrees}`;
     for (const dayNight of ['Day', 'Night']) {
         const hasDayNightPrecipitation = getState(`accuweather.0.Daily.Day${day}.${dayNight}.HasPrecipitation`).val;
-        let dayNightPrecipitation = '. Без осадков';
+        let dayNightPrecipitation = `. ${translations['NoPrecipitation']}`;
         //console.log(`Probability for ${day} ${dayNight} = ${hasDayNightPrecipitation}, type : ${typeof(hasDayNightPrecipitation)}`);
         if (hasDayNightPrecipitation) {
-            dayNightPrecipitation = `\r\n * Осадки: `;
+            dayNightPrecipitation = `\r\n * : ${translations['Precipitations']}`;
             for (const precipitationType of ['Rain', 'Snow', 'Ice']) {
                 const typeProbability = Number.parseInt(getState(`accuweather.0.Daily.Day${day}.${dayNight}.${precipitationType}Probability`).val);
                 const typeVolume = Number.parseInt(getState(`accuweather.0.Daily.Day${day}.${dayNight}.${precipitationType}Volume`).val);
                 if ((typeProbability > 0) && (typeVolume > 0)) {
-                    dayNightPrecipitation += `\r\n    * ${(precipitationType === 'Rain' ? 'Дождь' : (precipitationType === 'Snow' ? 'Снег' : 'Лёд') )} ${typeVolume} мм. с вероятностью ${typeProbability}%.`;
+                    dayNightPrecipitation += `\r\n    * ${translations[precipitationType.toLowerCase()]} ${typeVolume} ${translations['millimetersShort']} ${translations['withProbability']} ${typeProbability}%.`;
                 }
             }
             const totalLiquidVolume = Number.parseInt(getState(`accuweather.0.Daily.Day${day}.${dayNight}.TotalLiquidVolume`).val);
-            if (totalLiquidVolume > 0) dayNightPrecipitation += `\r\n    * Всего до ${totalLiquidVolume} мм.`;
+            if (totalLiquidVolume > 0) dayNightPrecipitation += `\r\n    * ${translations['total']} ${translations['upTo']} ${totalLiquidVolume} ${translations['millimetersShort']}`;
             const thunderstormProbability = Number.parseInt(getState(`accuweather.0.Daily.Day${day}.${dayNight}.ThunderstormProbability`).val);
-            if (thunderstormProbability > 0) dayNightPrecipitation += `\r\n    * Вероятность грозы ${thunderstormProbability}%`;
+            if (thunderstormProbability > 0) dayNightPrecipitation += `\r\n    * ${translations['thunderstormProbability']} ${thunderstormProbability}%`;
         }
 
-        text += `\r\n${dayNight === 'Day' ? `Днём` : `Ночью`}:\r\n * ${getState(`accuweather.0.Daily.Day${day}.${dayNight}.LongPhrase`).val}${dayNightPrecipitation}`;
-        text += `\r\n * Ветер ${convertDirection(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindSpeed`).val)} м/с, порывы до ${convertSpeed(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindGust`).val)} м/с`;
+        text += `\r\n${translations[dayNight]}:\r\n * ${getState(`accuweather.0.Daily.Day${day}.${dayNight}.LongPhrase`).val}${dayNightPrecipitation}`;
+        text += `\r\n * ${translations['Wind']} ${convertDirection(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindDirection`).val, translations)} ${convertSpeed(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindSpeed`).val)} ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindGust`).val)} ${translations['metersPerSecondShort']}`;
     }
     return text;
 }
 
-function getHourlyForecast(hour) {
+function getHourlyForecast(hour, translations) {
     const currentDate = new Date(getState(`accuweather.0.Hourly.h${hour}.DateTime`).val);
     // @ts-ignore
     const degrees = getObject(`accuweather.0.Hourly.h${hour}.Temperature`).common.unit;
     let text = ` ${getForecastDate(currentDate)} ${getForecastTime(currentDate)}`;
     const hasPrecipitation = getState(`accuweather.0.Hourly.h${hour}.HasPrecipitation`).val;
-    let precipitation = '. Без осадков';
+    let precipitation = `. ${translations['NoPrecipitation']}`;
     if (hasPrecipitation) {
-        precipitation = `\r\n * Осадки до ${getState(`accuweather.0.Hourly.h${hour}.TotalLiquidVolume`).val} мм. с вероятностью ${getState(`accuweather.0.Hourly.h${hour}.PrecipitationProbability`).val}%: `;
+        precipitation = `\r\n * ${translations['Precipitations']} ${translations['upTo']} ${getState(`accuweather.0.Hourly.h${hour}.TotalLiquidVolume`).val} ${translations['millimetersShort']} ${translations['withProbability']} ${getState(`accuweather.0.Hourly.h${hour}.PrecipitationProbability`).val}%: `;
         for (const precipitationType of ['Rain', 'Snow', 'Ice']) {
             const typeProbability = Number.parseInt(getState(`accuweather.0.Hourly.h${hour}.${precipitationType}Probability`).val);
             const typeVolume = Number.parseInt(getState(`accuweather.0.Hourly.h${hour}.${precipitationType}Volume`).val);
             if ((typeProbability > 0) && (typeVolume > 0)) {
-                precipitation += `\r\n    * ${(precipitationType === 'Rain' ? 'Дождь' : (precipitationType === 'Snow' ? 'Снег' : 'Лёд') )} ${typeVolume} мм. с вероятностью ${typeProbability}%.`;
+                precipitation += `\r\n    * ${translations[precipitationType.toLowerCase()]} ${typeVolume} ${translations['millimetersShort']} ${translations['withProbability']} ${typeProbability}%.`;
             }
         }
     }
     text += `\r\n * ${getState(`accuweather.0.Hourly.h${hour}.IconPhrase`).val}${precipitation}`;
-    text += `\r\n * Температура: ${getState(`accuweather.0.Hourly.h${hour}.Temperature`).val}${degrees}, ощущаемая: ${getState(`accuweather.0.Hourly.h${hour}.RealFeelTemperature`).val}${degrees}`;
-    text += `\r\n * Ветер ${convertDirection(getState(`accuweather.0.Hourly.h${hour}.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindSpeed`).val)} м/с, порывы до ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindGust`).val)} м/с`;
-
+    text += `\r\n * ${translations['Temperature']}: ${getState(`accuweather.0.Hourly.h${hour}.Temperature`).val}${degrees}, ${translations['RealFeel']}: ${getState(`accuweather.0.Hourly.h${hour}.RealFeelTemperature`).val}${degrees}`;
+    text += `\r\n * ${translations['Wind']}: ${convertDirection(getState(`accuweather.0.Hourly.h${hour}.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindSpeed`).val)}  ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindGust`).val)} ${translations['metersPerSecondShort']}`;
     return text;
 }
 
-function possiblePrecipitationHours() {
+function possiblePrecipitationHours(translations) {
     let precipitation = '';
     let previousPrecipitationHour;
-    let delim = '\r\n    * Возможные часы осадков: ';
+    let delim = `\r\n    * ${translations['PossiblePrecipitationHours']}: `;
     let hasHourPrecipitation = false;
     for (let hour = 1; hour <= 24; hour++) {
         hasHourPrecipitation = getState(`accuweather.0.Hourly.h${hour < 24 ? hour : 0}.HasPrecipitation`).val;
@@ -321,54 +363,54 @@ function possiblePrecipitationHours() {
     return precipitation;
 }
 
-function getTodaysForecast() {
+function getTodaysForecast(translations) {
     // @ts-ignore
     const _day = 1;
     const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val);
     const hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val;
-    let precipitation = hasPrecipitation ? `\r\n * Осадки: ${getState(`accuweather.0.Current.PrecipitationType`).val}` : 'Без осадков';
+    let precipitation = hasPrecipitation ? `\r\n * ${translations['Precipitations']}: ${getState(`accuweather.0.Current.PrecipitationType`).val}` : translations['noPrecipitation'];
     // @ts-ignore
     const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
     let text = ` ${getForecastDate(currentDate)} на ${getForecastTime(currentDate)}:`;
     text += `\r\n * ${getState(`accuweather.0.Current.WeatherText`).val}. ${precipitation}${possiblePrecipitationHours()}`;
-    text += `\r\n * Температура: ${getState(`accuweather.0.Current.Temperature`).val}${degrees}`;
-    text += `\r\n * Ощущаемая: ${getState(`accuweather.0.Current.RealFeelTemperature`).val}${degrees}, в тени: ${getState(`accuweather.0.Current.RealFeelTemperatureShade`).val}${degrees}`;
-    text += `\r\n * Влажность воздуха: ${getState(`accuweather.0.Current.RelativeHumidity`).val}%, точка росы: ${getState(`accuweather.0.Current.DewPoint`).val}${degrees}`;
-    text += `\r\n * ${getState(`accuweather.0.Current.PressureTendency`).val} давление: ${convertPressure(getState(`accuweather.0.Current.Pressure`).val)} мм.рст.`;
-    text += `\r\n * Ветер ${convertDirection(getState(`accuweather.0.Current.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Current.WindSpeed`).val)} м/с, порывы до ${convertSpeed(getState(`accuweather.0.Current.WindGust`).val)} м/с`;
+    text += `\r\n * ${translations['Temperature']}: ${getState(`accuweather.0.Current.Temperature`).val}${degrees}`;
+    text += `\r\n * ${translations['RealFeel']}: ${getState(`accuweather.0.Current.RealFeelTemperature`).val}${degrees}, ${translations['inShade']}: ${getState(`accuweather.0.Current.RealFeelTemperatureShade`).val}${degrees}`;
+    text += `\r\n * ${translations['RelativeHumidity']}: ${getState(`accuweather.0.Current.RelativeHumidity`).val}%, ${translations['dewPoint']}: ${getState(`accuweather.0.Current.DewPoint`).val}${degrees}`;
+    text += `\r\n * ${getState(`accuweather.0.Current.PressureTendency`).val} ${translations['pressure']}: ${convertPressure(getState(`accuweather.0.Current.Pressure`).val)} ${translations['mmHg']}`;
+    text += `\r\n * ${translations['Wind']}: ${convertDirection(getState(`accuweather.0.Current.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Current.WindSpeed`).val)} ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Current.WindGust`).val)} ${translations['metersPerSecondShort']}`;
     return text;
 }
 
 
-onMessage('accuweatherForecast', ({_user, data}, callback) => {
+onMessage('accuweatherForecast', ({user: _user, data, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
         const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
         const currentHour = new Date().getHours();
-        data.text = getTodaysForecast();
+        data.text = getTodaysForecast(translations);
         data.submenu = [{
-                "name": "Детальный",
+                "name": translations['ForecastDetailed'],
                 "icon": data.icon,
-                "externalMenu": 'accuweatherForecastDetailed',
+                "externalMenu": 'menuAccuweatherForecastDetailed',
                 "submenu": [],
             },
             {
-                "name": "Почасовой",
+                "name": translations['ForecastHourly'],
                 "icon": accuweatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
-                "externalMenu": 'accuweatherForecastHourly',
+                "externalMenu": 'menuAccuweatherForecastHourly',
                 "submenu": [],
             },
             {
-                "name": `${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Minimum`).val} ${degrees} .. ${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Maximum`).val} ${degrees} - На завтра`,
+                "name": `${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Minimum`).val} ${degrees} .. ${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Maximum`).val} ${degrees} - ${translations['ForecastTomorrow']}`,
                 "icon": accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
-                "externalMenu": 'accuweatherForecastTomorrow',
+                "externalMenu": 'menuAccuweatherForecastTomorrow',
                 "submenu": [],
             },
             {
-                "name": "- Длительный",
+                "name": `- ${translations['ForecastLong']}`,
                 "icon": accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d3').val].icon + ' ' + accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d4').val].icon + ' ' + accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d5').val].icon,
-                "externalMenu": 'accuweatherForecastLong',
+                "externalMenu": 'menuAccuweatherForecastLong',
                 "submenu": [],
             },
         ];
@@ -377,27 +419,27 @@ onMessage('accuweatherForecast', ({_user, data}, callback) => {
     }
 });
 
-onMessage('accuweatherForecastDetailed', ({_user, data}, callback) => {
+onMessage('accuweatherForecastDetailed', ({user: _user, data, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
-        data.text = getDetailedForecast(1);
+        data.text = getDetailedForecast(1, translations);
         data.submenu = [];
         //console.log(`Prepared data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
         callback(data);
     }
 });
 
-onMessage('accuweatherForecastTomorrow', ({_user, data}, callback) => {
+onMessage('accuweatherForecastTomorrow', ({user: _user, data, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
-        data.text = getDetailedForecast(2);
+        data.text = getDetailedForecast(2, translations);
         data.submenu = [];
         //console.log(`Prepared data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
         callback(data);
     }
 });
 
-onMessage('accuweatherForecastHourly', ({_user, data}, callback) => {
+onMessage('accuweatherForecastHourly', ({user: _user, data, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
@@ -406,12 +448,12 @@ onMessage('accuweatherForecastHourly', ({_user, data}, callback) => {
         const mainHour = new Date().getHours();
         // @ts-ignore
         let _currentHour = mainHour;
-        data.text = getHourlyForecast(mainHour);
+        data.text = getHourlyForecast(mainHour, translations);
         data.submenu = [];
         for (let currentHour = new Date().getHours(); currentHour < 24; currentHour++) {
             data.submenu.push({
                 "name": `${getState(`accuweather.0.Hourly.h${currentHour}.RealFeelTemperature`).val} ${degrees} (${currentHour})`,
-                "text": getHourlyForecast(currentHour),
+                "text": getHourlyForecast(currentHour, translations),
                 "icon": accuweatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
                 "submenu": [],
             });
@@ -421,7 +463,7 @@ onMessage('accuweatherForecastHourly', ({_user, data}, callback) => {
     }
 });
 
-onMessage('accuweatherForecastLong', ({_user, data}, callback) => {
+onMessage('accuweatherForecastLong', ({user: _user, data, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
@@ -433,7 +475,7 @@ onMessage('accuweatherForecastLong', ({_user, data}, callback) => {
             const currentDay = `${getState(`accuweather.0.Summary.DayOfWeek_d${day}`).val} ${currentDate.getDate()}`;
             data.submenu.push({
                 "name": `${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val} ${degrees} .. ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val} ${degrees} (${currentDay})`,
-                "text": getDetailedForecast(day),
+                "text": getDetailedForecast(day, translations),
                 "icon": accuweatherIcons[getState(`accuweather.0.Summary.WeatherIcon_d${day}`).val].icon,
                 "submenu": [],
             });
