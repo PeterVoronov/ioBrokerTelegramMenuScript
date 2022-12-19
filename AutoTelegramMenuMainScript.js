@@ -329,7 +329,7 @@ const
     iconItemLess                            = '⤓',
     iconItemHistory                         = '📃',
     iconItemReset                           = '↺',
-    _iconItemUnavailable                     = '🆘'
+    iconItemUnavailable                     = '🆘'
     ;
 
 
@@ -3780,12 +3780,7 @@ function cachedAddToDelCachedOnBack(user, menuItemIndex, valueId) {
         cachedSetValue(user, cachedDelCachedOnBack, cachedToDelete);
     }
 }
-
 //*** cachedStates - end ***//
-
-/**
- * todo - add command for Extensions, to send an image
- */
 
 //*** sentImages - begin ***//
 /**
@@ -3928,6 +3923,7 @@ const
                 isExternal: false,
                 order : 0,
                 state: 'state',
+                availableState: '',
                 icon: '🔆',
                 enum: idFunctions,
                 name: enumerationNamesMain,
@@ -8151,23 +8147,31 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
  * @returns {string} The icon of the menu item.
  */
 function menuGetMenuItemIcon(user, menuItemToProcess) {
-    logs('user = ' + JSON.stringify(user));
-    logs('subMenuRowItem = ' + JSON.stringify(menuItemToProcess));
-    let icon = '';
+    // logs(`subMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
+    let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '' ;
     if (menuItemToProcess !== undefined) {
-        if ((typeof menuItemToProcess.icons === 'object')) {
-            if (menuItemToProcess.hasOwnProperty('state') && existsObject(menuItemToProcess.state) && (getObject(menuItemToProcess.state).common.type === 'boolean')) {
-                icon = existsState(menuItemToProcess.state) ? (getState(menuItemToProcess.state).val ? menuItemToProcess.icons.on : menuItemToProcess.icons.off) : menuItemToProcess.icons.off;
-            }
-            else {
-                icon = menuItemToProcess.icon;
+        const currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined;
+        if (currentFunction && currentFunction.hasOwnProperty('stateAvailable')) {
+            const currentFunctionStateAvailableId = currentFunction.stateAvailable;
+            if (currentFunctionStateAvailableId && menuItemToProcess.hasOwnProperty('state')) {
+                const currentItemStateAvailableId = menuItemToProcess.state.split('.').splice(-1, 1, currentFunctionStateAvailableId).join('.');
+                if (existsState(currentItemStateAvailableId)) {
+                    const currentItemStateAvailable = getState(currentItemStateAvailableId);
+                    if (currentItemStateAvailable && currentItemStateAvailable.hasOwnProperty('val')) {
+                        if (! currentItemStateAvailable.val) icon = iconItemUnavailable;
+                    }
+                }
             }
         }
-        else if (typeof menuItemToProcess.icons === 'function') {
+        if (icon !== iconItemUnavailable) {
+            if (typeOf(menuItemToProcess.icons,'object')) {
+                if (menuItemToProcess.hasOwnProperty('state') && existsObject(menuItemToProcess.state) && (getObject(menuItemToProcess.state).common.type === 'boolean')) {
+                    icon = existsState(menuItemToProcess.state) ? (getState(menuItemToProcess.state).val ? menuItemToProcess.icons.on : menuItemToProcess.icons.off) : menuItemToProcess.icons.off;
+                }
+            }
+            else if (typeOf(menuItemToProcess.icons, 'function')) {
                 icon = menuItemToProcess.icons(user, menuItemToProcess);
-        }
-        else {
-            icon = menuItemToProcess.icon ? menuItemToProcess.icon : '' ;
+            }
         }
     }
     return icon;
