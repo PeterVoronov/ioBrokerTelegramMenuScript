@@ -1,0 +1,10 @@
+# exclude .gitignore and similar from the generated tarball
+.git*           export-ignore
+.eslintrc*      export-ignore
+# exclude docs supporting files
+docs/           export-ignore
+# exclude locales, as it have another way of distribution
+locales/        export-ignore
+# exclude pseudo package files and node_modules(if exists)
+package*        export-ignore
+node_modules/   export-ignore
