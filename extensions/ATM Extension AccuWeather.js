@@ -391,24 +391,28 @@ onMessage('accuweatherForecast', ({user: _user, data, translations}, callback) =
         data.text = getTodaysForecast(translations);
         data.submenu = [{
                 "name": translations['ForecastDetailed'],
+                "funcEnum": autoTelegramMenuExtensionId,
                 "icon": data.icon,
                 "externalMenu": 'menuAccuweatherForecastDetailed',
                 "submenu": [],
             },
             {
                 "name": translations['ForecastHourly'],
+                "funcEnum": autoTelegramMenuExtensionId,
                 "icon": accuweatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
                 "externalMenu": 'menuAccuweatherForecastHourly',
                 "submenu": [],
             },
             {
                 "name": `${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Minimum`).val} ${degrees} .. ${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Maximum`).val} ${degrees} - ${translations['ForecastTomorrow']}`,
+                "funcEnum": autoTelegramMenuExtensionId,
                 "icon": accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
                 "externalMenu": 'menuAccuweatherForecastTomorrow',
                 "submenu": [],
             },
             {
                 "name": `- ${translations['ForecastLong']}`,
+                "funcEnum": autoTelegramMenuExtensionId,
                 "icon": accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d3').val].icon + ' ' + accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d4').val].icon + ' ' + accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d5').val].icon,
                 "externalMenu": 'menuAccuweatherForecastLong',
                 "submenu": [],
@@ -453,6 +457,7 @@ onMessage('accuweatherForecastHourly', ({user: _user, data, translations}, callb
         for (let currentHour = new Date().getHours(); currentHour < 24; currentHour++) {
             data.submenu.push({
                 "name": `${getState(`accuweather.0.Hourly.h${currentHour}.RealFeelTemperature`).val} ${degrees} (${currentHour})`,
+                "funcEnum": autoTelegramMenuExtensionId,
                 "text": getHourlyForecast(currentHour, translations),
                 "icon": accuweatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
                 "submenu": [],

@@ -21,6 +21,7 @@ const nodeVm = require('node:vm');
 
 // @ts-ignore
 const axios = require('axios');
+const { isExternal } = require('node:util/types');
 
 /* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
 /* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
@@ -232,6 +233,7 @@ const
     prefixConfigStates                      = `${prefixPrimary}.config`,
     prefixTranslationStates                 = `${prefixPrimary}.translations`,
     prefixCacheStates                       = `${prefixPrimary}.cache`,
+    prefixExtensionId                        = 'ext',
     prefixExternalStates                    = 'external',
     prefixEnums                             = 'enum',
 
@@ -3209,7 +3211,7 @@ function translationsGetEnumName(user, enumerationType, enumId, enumNameDeclinat
 }
 
 /**
- * This function returns a translation file(object) part name by it's Id
+ * This function returns a translation file(object) part name by it's Id.
  * @param {object} user - The user object.
  * @param {string} translationPartId - The translation file part Id (i.e. core, functions, ..., all);
  * @returns {string} The related name in current language.
@@ -3218,6 +3220,39 @@ function translationsGetPartName(user, translationPartId) {
     const translationPartPrefix = [translationCoreId, doAll].includes(translationPartId) ? idTranslation : '';
     return translationsItemMenuGet(user, translationPartPrefix, translationPartId);
 }
+
+/**
+ * This function is used to get all translations for the extensions as an object.
+ * @param {object} user - The user object.
+ * @param {string} extensionId - The extension ID.
+ * @returns {object} The object, consists a translations, as a properties.
+ */
+function translationsGetForExtension(user, extensionId) {
+    let translations = {};
+    if (extensionId) {
+        let extensionFunctionId = extensionId;
+        if (extensionFunctionId.indexOf([prefixExtensionId]) === 0) {
+            extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, '');
+        }
+        else {
+            extensionId = `${prefixExtensionId}.${extensionId}`;
+        }
+        if (enumerationsList[dataTypeFunction].hasOwnProperty(extensionId) && enumerationsList[dataTypeFunction][isExternal]) {
+            const currentExtension = enumerationsList[dataTypeFunction];
+            if (currentExtension.hasOwnProperty('translationsKeys') && currentExtension.translationsKeys) {
+                currentExtension.translationsKeys.forEach(translationKey => {
+                    const
+                        currentTranslationId = `${idFunctions}.${idExternal}.${extensionId}.translations.${translationKey}`,
+                        currentTranslation = translationsItemGet(user, currentTranslationId);
+                    if (currentTranslation) translations[translationKey] = currentTranslation;
+
+                });
+            }
+        }
+    }
+    return translations;
+}
+
 
 /**
  * This function checks if the file is exists, has a right size and structure. And if yes - store it's content in cache.
@@ -5445,10 +5480,10 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
  * @param {function} callback - The callback function.
  */
 function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
-    const {id , name, icon, externalMenu, scriptName} = extensionDetails;
+    const {id , name, nameTranslationId, icon, externalMenu, scriptName, translationsKeys} = extensionDetails;
     logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails)}`);
     logs(`scriptName= ${JSON.stringify(scriptName)}`);
-    const extensionId = `ext${stringCapitalize(id)}`;
+    const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
     const functionsList = enumerationsList[dataTypeFunction].list;
     if (functionsList.hasOwnProperty(extensionId) && (functionsList[extensionId] !== undefined)) {
         functionsList[extensionId].isAvailable = true;
@@ -5460,13 +5495,15 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
             isExternal: true,
             enum: idExternal,
             name: name,
+            nameTranslationId: nameTranslationId,
             names: [enumerationNamesBasic, enumerationNamesMany],
             order: Object.keys(functionsList).length,
             icon: icon,
             state: externalMenu,
             deviceAttributes: {}/* '' */,
-            scriptName: scriptName
-            };
+            scriptName: scriptName,
+            translationsKeys: translationsKeys
+        };
     }
     // logs(`functionsList[${extensionId}] = ${JSON.stringify(functionsList[extensionId])}`);
     enumerationSave(dataTypeFunction);
@@ -7829,7 +7866,7 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
                     cmdPos = cmdPos ? cmdPos.slice(0, cmdPos.length-1) : [];
                     menuDrawMenuItem(user, cmdPos, clearBefore, clearUserMessage, isSilent);
                 }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
-                messageTo(menuItemToProcess.externalCommand, {user, data: menuItemToProcess.hasOwnProperty('externalCommandParams') ? menuItemToProcess.externalCommandParams : undefined}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function externalCommandExecuted(result){
+                messageTo(menuItemToProcess.externalCommand, {user, data: menuItemToProcess.hasOwnProperty('externalCommandParams') ? menuItemToProcess.externalCommandParams : undefined, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function externalCommandExecuted(result){
                     if (result.success) {
                         stateSetSuccessfully();
                     }
@@ -7961,7 +7998,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
         }
     }
     if (menuItemToProcess.externalMenu) {
-        messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
+        messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
             logs('subMenu = ' + JSON.stringify(subMenu));
             if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
                 logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
