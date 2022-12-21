@@ -8,3 +8,6 @@ locales/        export-ignore
 # exclude pseudo package files and node_modules(if exists)
 package*        export-ignore
 node_modules/   export-ignore
+# iobroker related code
+tsconfig.json   export-ignore
+.iobroker/      export-ignore
