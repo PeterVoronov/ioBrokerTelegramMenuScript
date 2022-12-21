@@ -1,5 +1,5 @@
 {
-    
+
     "env": {
         "commonjs": true,
         "es6": true,
@@ -7,37 +7,14 @@
         "node": true
     },
     "extends": "eslint:recommended",
-    "globals": {
-        "clearSchedule": "readonly",
-        "existsState": "readonly",
-        "deleteState":"readonly",
-        "getState":"readonly",
-        "on": "readonly",
-        "getObject":"readonly",
-        "setObjectAsync":"readonly",
-        "existsObject": "readonly",
-        "deleteObjectAsync":"readonly",
-        "setState":"readonly",
-        "setStateAsync":"readonly",
-        "createState":"readonly",
-        "$": "readonly",
-        "messageTo": "readonly",
-        "unsubscribe":"readonly",
-        "getSubscriptions":"readonly",
-        "onMessage":"readonly",
-        "onMessageUnregister":"readonly",
-        "onLog":"readonly",
-        "sendTo":"readonly",
-        "scriptName":"readonly",
-        "instance":"readonly",
-        "getEnums":"readonly",
-        "writeFile":"readonly",
-        "readFile":"readonly",
-        "delFile":"readonly",
-        "schedule":"readonly"
-    },
+    "plugins": [
+        "@typescript-eslint"
+    ],
     "parserOptions": {
-        "ecmaVersion": 2022
+        "ecmaVersion": 2022,
+        "project": [
+            "./tsconfig.json"
+        ]
     },
     "rules": {
         "semi": [ "error", "always", { "omitLastInOneLineBlock": true} ],
