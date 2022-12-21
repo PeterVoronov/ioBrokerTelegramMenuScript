@@ -8182,7 +8182,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
  */
 function menuGetMenuItemIcon(user, menuItemToProcess) {
     // logs(`subMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
-    let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '' ;
+    let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '';
     if (menuItemToProcess !== undefined) {
         const currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined;
         if (currentFunction && currentFunction.hasOwnProperty('stateAvailable')) {
