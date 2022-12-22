@@ -11,3 +11,5 @@ node_modules/   export-ignore
 # iobroker related code
 tsconfig.json   export-ignore
 .iobroker/      export-ignore
+# vscode related exclusions
+.vscode/        export-ignore

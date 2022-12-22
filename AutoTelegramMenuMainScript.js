@@ -3401,21 +3401,21 @@ function translationsBasicItemsMenuGenerate(user, menuItemToProcess) {
     Object.keys(currentTranslation)
         .filter((key) => (key.indexOf(translationType) === 0))
         .sort()
-        .forEach((key) => {
-            logs(`Translation key is ${key}`);
-            if ((! key.includes('.')) && (key.indexOf(translationType) === 0)) {
+        .forEach((translationKey) => {
+            logs(`Translation key is ${translationKey}`);
+            if ((! translationKey.includes('.')) && (translationKey.indexOf(translationType) === 0)) {
                 let
                     subSubMenuIndex = 0,
                     subMenuItem = {
                         index: `${currentIndex}.${subMenuIndex}`,
-                        name: `[${currentTranslation[key]}] ${currentTranslation[key] === key ? iconItemNotFound : '' }`,
+                        name: `[${currentTranslation[translationKey]}] ${currentTranslation[translationKey] === translationKey ? iconItemNotFound : '' }`,
                         icon: iconItemTranslation,
-                        text: ` (${key})`,
+                        text: ` (${translationKey})`,
                         submenu: new Array()
                     };
                     if (isCurrentAccessLevelAllowModify) {
-                        subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${key}`));
-                        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${key}`));
+                        subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
+                        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
                     }
                     else {
                         subMenuItem.param = cmdNoOperation;
@@ -3561,6 +3561,44 @@ function translationsFunctionDeviceItemsMenuGenerate(user, menuItemToProcess) {
         });
     return subMenu;
 }
+
+/**
+ * This function generates a submenu to manage the appropriate extension translations items .
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]}  Newly generated submenu.
+ */
+function translationExtensionsTranslationsItemsMenuGenerate(user, menuItemToProcess) {
+    const
+        currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+        currentAccessLevel = menuItemToProcess.accessLevel,
+        isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
+        translationType = `${idFunctions}.${idExternal}.${menuItemToProcess.id}.translations`,
+        currentTranslation = translationsPointOnItemOwner(user, `${translationType}.destinations`, true);
+    // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}`, _l);
+    let subMenu = [];
+    Object.keys(currentTranslation).forEach((translationKey, translationKeyIndex) => {
+        const
+            subMenuItem = {
+                index: `${currentIndex}.${translationKeyIndex}`,
+                name: translationsItemGet(user, `${translationType}.${translationKey}`),
+                icon: iconItemTranslation,
+                text: ` (${translationKey})`,
+                submenu: new Array()
+            };
+        let subSubMenuIndex = 0;
+        if (isCurrentAccessLevelAllowModify) {
+            subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
+            subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
+        }
+        else {
+            subMenuItem.param = cmdNoOperation;
+        }
+        subMenu.push(subMenuItem);
+    });
+    return subMenu;
+}
+
 //*** Translation - end ***//
 
 //*** cachedStates - begin ***//
@@ -4462,8 +4500,19 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                 break;
             }
 
+            case  'translationsKeys': {
+                if (isCurrentAccessLevelAllowModify) {
+                    subMenuIndex = subMenu.push({
+                        index: `${currentIndex}.${subMenuIndex}`,
+                        name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
+                        id: currentItem,
+                        submenu: translationExtensionsTranslationsItemsMenuGenerate,
+                    });
+                }
+                break;
+            }
 
-            default:
+            default: {
                 switch (typeof(currentEnumerationItem[enumerationItemAttr])) {
                     case 'boolean':
                         subMenuIndex = subMenu.push({
@@ -4486,6 +4535,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                         break;
                 }
                 break;
+            }
         }
     }
     if (isCurrentAccessLevelAllowModify){
@@ -6427,7 +6477,7 @@ async function backupFileRead(backupFileName){
             }
             else {
                 // console.warn(`Backup file ${backupFileName} is created successfully.`);
-                resolve(data);
+                resolve(data ? `${data}` : '');
             }
         });
     });
@@ -9970,9 +10020,9 @@ const cachedTelegramMessagesQueue = 'messagesQueue';
 function telegramSendFile(user, fileFullPath, callback) {
     nodeFS.access(fileFullPath, nodeFS.constants.R_OK, (error) => {
         if (error) {
-            error = `Can't read file ${fileFullPath}! Error is ${JSON.stringify(error)}`;
-            console.warn(error);
-            if (callback) callback({success: false, error});
+            const errorMessage = `Can't read file ${fileFullPath}! Error is ${JSON.stringify(error)}`;
+            console.warn(errorMessage);
+            if (callback) callback({success: false, error: errorMessage});
         }
         else {
             const documentTelegramObject = {
@@ -10000,9 +10050,9 @@ function telegramSendFile(user, fileFullPath, callback) {
 function telegramSendImage(user, imageFullPath, callback) {
     nodeFS.access(imageFullPath, nodeFS.constants.R_OK, (error) => {
         if (error) {
-            error = `Can't read file ${imageFullPath}! Error is ${JSON.stringify(error)}`;
-            console.warn(error);
-            if (callback) callback({success: false, error});
+            const errorMessage = `Can't read file ${imageFullPath}! Error is ${JSON.stringify(error)}`;
+            console.warn(errorMessage);
+            if (callback) callback({success: false, error: errorMessage});
         }
         else {
             const imageTelegramObject = {
