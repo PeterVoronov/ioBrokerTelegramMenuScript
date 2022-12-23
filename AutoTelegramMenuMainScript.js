@@ -3573,11 +3573,13 @@ function translationExtensionsTranslationsItemsMenuGenerate(user, menuItemToProc
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-        translationType = `${idFunctions}.${idExternal}.${menuItemToProcess.id}.translations`,
-        currentTranslation = translationsPointOnItemOwner(user, `${translationType}.destinations`, true);
-    // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}`, _l);
+        extensionId = menuItemToProcess.id,
+        translationType = `${idFunctions}.${idExternal}.${extensionId}.translations`,
+        _currentTranslation = translationsPointOnItemOwner(user, translationType, true),
+        currentTranslationKeys = enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) ? enumerationsList[dataTypeFunction].list[extensionId].translationsKeys : [];
+    // logs(`currentTranslation = ${JSON.stringify(currentTranslation)}, currentTranslationKeys = ${JSON.stringify(currentTranslationKeys)}`, _l);
     let subMenu = [];
-    Object.keys(currentTranslation).forEach((translationKey, translationKeyIndex) => {
+    if (currentTranslationKeys) currentTranslationKeys.forEach((translationKey, translationKeyIndex) => {
         const
             subMenuItem = {
                 index: `${currentIndex}.${translationKeyIndex}`,
@@ -3596,6 +3598,7 @@ function translationExtensionsTranslationsItemsMenuGenerate(user, menuItemToProc
         }
         subMenu.push(subMenuItem);
     });
+    // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
     return subMenu;
 }
 
@@ -4157,16 +4160,17 @@ function enumerationReorderItems(currentEnumeration) {
  * ioBroker `enums` or Auto Telegram Menu Extensions is available.
  * Result will be stored in the `enumerationItems[enumerationType].list`.
  * @param {string} enumerationType - The string defines the enumerationItem type.
+ * @param {boolean=} withExtensions - The selector to init Extensions.
  */
-function enumerationsInit(enumerationType) {
+function enumerationsInit(enumerationType, withExtensions) {
     logs(`  enumerationItems= ${JSON.stringify(enumerationsList[enumerationType])}`);
     let currentEnumerationList = enumerationsList[enumerationType].list;
     let countItems = enumerationReorderItems(currentEnumerationList);
     Object.keys(currentEnumerationList).forEach((currentItem) => {
         currentEnumerationList[currentItem] = objectAssignToTemplateLevelOne(enumerationsList[enumerationType].defaultObject, currentEnumerationList[currentItem]);
-        currentEnumerationList[currentItem].isAvailable = false;
+        if ((! currentEnumerationList[currentItem].isExternal) || withExtensions ) currentEnumerationList[currentItem].isAvailable = false;
     });
-    extensionsInit();
+    if ((enumerationType === dataTypeFunction) && withExtensions)  extensionsInit();
     Object.keys(enumerationsList[enumerationType].enums).forEach(enumType => {
         for (const currentEnum of getEnums(enumType)) {
             logs(`enumerationType = ${enumerationType}, enumType = ${enumType},  currentEnum = ${JSON.stringify(currentEnum, null, 2)}}`);
@@ -4351,7 +4355,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
         }
         [subMenu,  subMenuIndex] = menuMoveItemUpDownMenuPartGenerate(user, subMenu, currentIndex, subMenuIndex, currentEnumerationItem.order, lastItemIndex, 'topRows', dataType, currentItem, dataTypeExtraId);
     }
-    logs(` = ${JSON.stringify(currentEnumerationItem)}`);
+    // logs(` = ${JSON.stringify(currentEnumerationItem)}`, _l);
     let enumerationItemAttrs = Object.keys(currentEnumerationItem);
     switch (dataType) {
         case dataTypeFunction:
@@ -4501,6 +4505,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
             }
 
             case  'translationsKeys': {
+                // logs(`currentItem = ${currentItem}, isCurrentAccessLevelAllowModify = ${isCurrentAccessLevelAllowModify} `, _l);
                 if (isCurrentAccessLevelAllowModify) {
                     subMenuIndex = subMenu.push({
                         index: `${currentIndex}.${subMenuIndex}`,
@@ -5535,6 +5540,8 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
     if (functionsList.hasOwnProperty(extensionId) && (functionsList[extensionId] !== undefined)) {
         functionsList[extensionId].isAvailable = true;
         functionsList[extensionId].scriptName = scriptName;
+        functionsList[extensionId].nameTranslationId = nameTranslationId;
+        functionsList[extensionId].translationsKeys = translationsKeys;
     }
     else {
         functionsList[extensionId] = {...enumerationsList[dataTypeFunction].defaultObject,
@@ -10808,7 +10815,7 @@ async function autoTelegramMenuInstanceInit() {
 
     Object.keys(enumerationsList).forEach(itemType => {
         enumerationLoad(itemType);
-        enumerationsInit(itemType);
+        enumerationsInit(itemType, itemType === dataTypeFunction);
         enumerationSave(itemType);
     });
 
