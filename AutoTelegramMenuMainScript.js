@@ -8228,6 +8228,34 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
     }
 }
 
+/**
+ * This function checks the availability of menu item(device) via `availableState` property of `function`.
+ * @param {string|object} currentFunction - The id or full definition object of current `function`.
+ * @param {string} primaryStateFullId - The full id of the primary state of the menu item(device).
+ * @returns {boolean} The availability status.
+ */
+function menuItemIsAvailable(currentFunction, primaryStateFullId ) {
+    if (typeOf(currentFunction, 'string')) {
+        currentFunction = enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunction) ? enumerationsList[dataTypeFunction].list[currentFunction] : undefined;
+    }
+    else if (! typeOf(currentFunction, 'object')) {
+        currentFunction = null;
+    }
+    let result = true;
+    if (currentFunction && currentFunction.hasOwnProperty('availableState')) {
+        const currentFunctionAvailableStateId = currentFunction.availableState;
+        if (currentFunctionAvailableStateId && primaryStateFullId) {
+            const currentItemAvailableStateId = primaryStateFullId.split('.').splice(-1, 1, currentFunctionAvailableStateId).join('.');
+            if (existsState(currentItemAvailableStateId)) {
+                const currentItemAvailableState = getState(currentItemAvailableStateId);
+                if (currentItemAvailableState && currentItemAvailableState.hasOwnProperty('val')) {
+                    result = currentItemAvailableState.val;
+                }
+            }
+        }
+    }
+    return result;
+}
 
 /**
  * This function checks if the menu item has an `icons` property that is an object, then use the on or off icon depending
@@ -8242,17 +8270,8 @@ function menuGetMenuItemIcon(user, menuItemToProcess) {
     let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '';
     if (menuItemToProcess !== undefined) {
         const currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined;
-        if (currentFunction && currentFunction.hasOwnProperty('stateAvailable')) {
-            const currentFunctionStateAvailableId = currentFunction.stateAvailable;
-            if (currentFunctionStateAvailableId && menuItemToProcess.hasOwnProperty('state')) {
-                const currentItemStateAvailableId = menuItemToProcess.state.split('.').splice(-1, 1, currentFunctionStateAvailableId).join('.');
-                if (existsState(currentItemStateAvailableId)) {
-                    const currentItemStateAvailable = getState(currentItemStateAvailableId);
-                    if (currentItemStateAvailable && currentItemStateAvailable.hasOwnProperty('val')) {
-                        if (! currentItemStateAvailable.val) icon = iconItemUnavailable;
-                    }
-                }
-            }
+        if (currentFunction && menuItemToProcess.hasOwnProperty('state') && menuItemToProcess.state) {
+            if (! menuItemIsAvailable(currentFunction, menuItemToProcess.state)) icon = iconItemUnavailable;
         }
         if (icon !== iconItemUnavailable) {
             if (typeOf(menuItemToProcess.icons,'object')) {
