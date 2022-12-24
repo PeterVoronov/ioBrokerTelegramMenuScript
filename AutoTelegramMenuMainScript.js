@@ -4000,7 +4000,9 @@ const
                 icon: '🔆',
                 enum: idFunctions,
                 name: enumerationNamesMain,
+                nameTranslationId: undefined,
                 names: [enumerationNamesBasic, enumerationNamesMany],
+                translationsKeys: undefined,
                 group: '',
                 deviceAttributes: `state:${enumerationDeviceBasicAttributes}`,
                 deviceButtons: {},
@@ -4100,7 +4102,7 @@ function enumerationCompareOrderOfItems(a, b, enumerationType) {
  * Result will be stored in the global variable `enumerationItems`.
  * @param {string} enumerationType - The string defines the enumerationItem type.
  */
-function enumerationLoad(enumerationType) {
+function enumerationsLoad(enumerationType) {
     logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`);
     enumerationsList[enumerationType].list = {};
     if (existsState(enumerationsList[enumerationType].state)) {
@@ -4112,7 +4114,7 @@ function enumerationLoad(enumerationType) {
             enumerationsList[enumerationType].enums = parsedObject.enums;
         }
     }
-    // logs(`  enumerationItems[${enumerationType}].list = ${JSON.stringify(enumerationItems[enumerationType].list)}`);
+    // logs(`  enumerationItems[${enumerationType}].list = ${JSON.stringify(enumerationsList[enumerationType].list, null, 2)}`, _l);
 }
 
 /**
@@ -4120,7 +4122,7 @@ function enumerationLoad(enumerationType) {
  * in the related ioBroker state.
  * @param {string} enumerationType - The string defines the enumerationItem type.
  */
-function enumerationSave(enumerationType) {
+function enumerationsSave(enumerationType) {
     logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`);
     const listToSave = JSON.stringify({enums: enumerationsList[enumerationType].enums/* , icons: enumerationItems[enumerationType].icons */, list: enumerationsList[enumerationType].list});
     if (existsState(enumerationsList[enumerationType].state)) {
@@ -4173,7 +4175,7 @@ function enumerationsInit(enumerationType, withExtensions) {
     if ((enumerationType === dataTypeFunction) && withExtensions)  extensionsInit();
     Object.keys(enumerationsList[enumerationType].enums).forEach(enumType => {
         for (const currentEnum of getEnums(enumType)) {
-            logs(`enumerationType = ${enumerationType}, enumType = ${enumType},  currentEnum = ${JSON.stringify(currentEnum, null, 2)}}`);
+            // logs(`enumerationType = ${enumerationType}, enumType = ${enumType},  currentEnum = ${JSON.stringify(currentEnum, null, 2)}}`, _l);
             const currentItem = currentEnum.id.replace(`${prefixEnums}.${enumType}.`, '');
             const
                 currentItemSectionsCount = currentItem.split('.').length,
@@ -4223,7 +4225,7 @@ function enumerationsInit(enumerationType, withExtensions) {
             }
         }
     });
-    logs(`  enumerationItems[${enumerationType}].list = ${JSON.stringify(enumerationsList[enumerationType].list)}`);
+    // logs(`  enumerationItems[${enumerationType}].list = ${JSON.stringify(enumerationsList[enumerationType].list, null, 2)}`, _l);
 }
 
 /**
@@ -4274,7 +4276,7 @@ function enumerationsRereadItemName(user, enumerationType, enumerationItemId) {
             currentEnum.name[configOptions.getOption(cfgMenuLanguage)] ? currentEnum.name[configOptions.getOption(cfgMenuLanguage)] :
                 (currentEnum.name['en'] ? currentEnum.name['en'] : (typeof(currentEnum.name) === 'string' ? currentEnum.name : enumerationItemId)));
     }
-    enumerationSave(enumerationType);
+    enumerationsSave(enumerationType);
 }
 
 
@@ -4782,7 +4784,11 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
         currentAccessLevel = menuItemToProcess.accessLevel,
         enumerationType = menuItemToProcess.hasOwnProperty('id') ? menuItemToProcess.id : menuItemToProcess.param,
         enumerationTypeExtraId = enumerationsSubTypesExtended.includes(enumerationType) ? menuItemToProcess.param : undefined;
-    if (enumerationType !== dataTypePrimaryEnums) enumerationsInit(enumerationsSubTypes.includes(enumerationType) ? dataTypeFunction : enumerationType);
+    if (enumerationType !== dataTypePrimaryEnums) {
+        const dataType = enumerationsSubTypes.includes(enumerationType) ? dataTypeFunction : enumerationType;
+        enumerationsLoad(dataType);
+        enumerationsInit(dataType);
+    }
     if (enumerationsSubTypes.includes(enumerationType)) {
         if (Object.keys(enumerationsList[dataTypeFunction].list[enumerationTypeExtraId][enumerationType]).length === 0) {
             enumerationRefreshFunctionDeviceStates(enumerationTypeExtraId, enumerationType, false);
@@ -5508,7 +5514,7 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
             }
         });
         if (Object.keys(currentDeviceStatesList).length !== currentDeviceStatesListCount) {
-            enumerationSave(dataTypeFunction);
+            enumerationsSave(dataTypeFunction);
             return true;
         }
     }
@@ -5533,7 +5539,7 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
  */
 function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
     const {id , name, nameTranslationId, icon, externalMenu, scriptName, translationsKeys} = extensionDetails;
-    logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails)}`);
+    logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`);
     logs(`scriptName= ${JSON.stringify(scriptName)}`);
     const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
     const functionsList = enumerationsList[dataTypeFunction].list;
@@ -5559,8 +5565,8 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
             translationsKeys: translationsKeys
         };
     }
-    // logs(`functionsList[${extensionId}] = ${JSON.stringify(functionsList[extensionId])}`);
-    enumerationSave(dataTypeFunction);
+    // logs(`functionsList[${extensionId}] = ${JSON.stringify(functionsList[extensionId], null, 2)}`, _l);
+    enumerationsSave(dataTypeFunction);
     callback({success: true});
 }
 
@@ -6577,7 +6583,7 @@ async function backupRestore(fileName, restoreItem) {
                                         enumerationsList[dataType].enums = enumerationItemsBackup[dataType].enums;
                                         enumerationsList[dataType].list = enumerationItemsBackup[dataType].list;
                                         enumerationsInit(dataType);
-                                        enumerationSave(dataType);
+                                        enumerationsSave(dataType);
                                     }
                                 });
                             }
@@ -8682,7 +8688,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     currentEnumsList[currentItem].icon = userInputToProcess;
                                     Object.keys(currentList).forEach(currentListItem => {if ((currentList[currentListItem].enum === currentItem) && (currentList[currentListItem].icon === oldIcon)) currentList[currentListItem].icon = userInputToProcess;});
                                     enumerationsInit(currentValue);
-                                    enumerationSave(currentValue);
+                                    enumerationsSave(currentValue);
                                 }
                             }
                             break;
@@ -8718,7 +8724,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     enumerationsList[currentType].list[currentItem][currentParam] = userInputToProcess;
                                     break;
                             }
-                            enumerationSave(currentType);
+                            enumerationsSave(currentType);
                             break;
                         }
 
@@ -8727,7 +8733,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
                                 enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = userInputToProcess;
                             }
-                            enumerationSave(dataTypeFunction);
+                            enumerationsSave(dataTypeFunction);
                             break;
                         }
 
@@ -8738,10 +8744,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             }
                             // logs(`currentParam, currentValue = ${[currentType, currentItem, currentParam, currentValue,]}`, _l)
                             if (currentValue) {
-                                enumerationSave(dataTypeFunction);
+                                enumerationsSave(dataTypeFunction);
                             }
                             else {
-                                enumerationSave(currentParam);
+                                enumerationsSave(currentParam);
                             }
                             break;
                         }
@@ -9140,7 +9146,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         enumerationRefreshFunctionDeviceStates(currentItem, dataTypeDeviceButtons, true);
                     }
                 }
-                enumerationSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
+                enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
                 break;
             }
 
@@ -9153,7 +9159,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             icon: ''
                         };
                         // initMenuListItems(currentValue);
-                        enumerationSave(currentValue);
+                        enumerationsSave(currentValue);
                         currentMenuPosition.splice(-2, 2, dataTypePrimaryEnums);
                     }
                 }
@@ -9166,10 +9172,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     currentEnumeration[currentItem].group = currentEnumeration[currentItem].group === currentValue ? '' : currentValue;
                 }
                 if (currentSubParam) {
-                    enumerationSave(dataTypeFunction);
+                    enumerationsSave(dataTypeFunction);
                 }
                 else {
-                    enumerationSave(currentParam);
+                    enumerationsSave(currentParam);
                 }
                 break;
             }
@@ -9338,7 +9344,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 const currentList = enumerationsSubTypes.includes(currentType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list;
                 delete currentList[currentItem];
                 enumerationReorderItems(currentList);
-                enumerationSave(enumerationsSubTypes.includes(currentType)  && currentParam ? dataTypeFunction : currentType);
+                enumerationsSave(enumerationsSubTypes.includes(currentType)  && currentParam ? dataTypeFunction : currentType);
                 currentMenuPosition.splice(-2, 2);
                 logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
                 break;
@@ -9350,7 +9356,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         currentEnumsList = enumerationsList[currentParam].enums;
                     if (Object.keys(currentEnumsList).includes(currentItem)) {
                         delete currentEnumsList[currentItem];
-                        enumerationSave(currentParam);
+                        enumerationsSave(currentParam);
                         currentMenuPosition.splice(-3, 3, dataTypePrimaryEnums);
                     }
                 }
@@ -9868,7 +9874,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     currentList[currentItem].order = newOrder;
                     currentMenuPosition.splice(-1, 1, newOrder);
                 }
-                enumerationSave(enumerationsSubTypes.includes(currentType) && currentParam ? dataTypeFunction : currentType);
+                enumerationsSave(enumerationsSubTypes.includes(currentType) && currentParam ? dataTypeFunction : currentType);
                 break;
             }
             case dataTypeConfig:   {
@@ -9912,7 +9918,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     if (result.icon) {
                         currentEnumeration[currentItem].icon = result.icon;
                     }
-                    enumerationSave(currentType);
+                    enumerationsSave(currentType);
                     menuClearCachedMenuItemsAndRows(user);
                 }
                 menuProcessMenuItem(user);
@@ -10833,9 +10839,9 @@ async function autoTelegramMenuInstanceInit() {
     onMessage(extensionsRegisterCommand, extensionsOnRegisterToAutoTelegramMenu); // 6
 
     Object.keys(enumerationsList).forEach(itemType => {
-        enumerationLoad(itemType);
+        enumerationsLoad(itemType);
         enumerationsInit(itemType, itemType === dataTypeFunction);
-        enumerationSave(itemType);
+        enumerationsSave(itemType);
     });
 
     const telegramConnectedId = `system.adapter.${telegramAdapter}.connected`;
@@ -10998,7 +11004,8 @@ function objectAssignToTemplateLevelOne(template, inputObject, level) {
         else {
             let copy = {};
             for (const key of Object.keys(template)) {
-                copy[key] = objectAssignToTemplateLevelOne(template[key], inputObject[key], level++);
+                const newValue = objectAssignToTemplateLevelOne(template[key], inputObject[key], level++);
+                if (newValue !== undefined) copy[key] =  newValue;
             }
             return copy;
 
