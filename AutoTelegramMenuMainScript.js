@@ -4986,7 +4986,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
     let
         subMenuIndex = 0,
         subMenu = [];
-    logs('destEnum = ' + JSON.stringify(menuItemToProcess.destEnum));
+    // logs('menuItemToProcess = ' + JSON.stringify(menuItemToProcess), _l);
     logs('currentMenuFuncId = ' + JSON.stringify(currentFunctionId));
     logs('currentMenuStateId = ' + JSON.stringify(primaryStateId));
     // logs('mainStateShortId = ' + JSON.stringify(mainStateShortId));
@@ -5187,8 +5187,8 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
             subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
         });
         if (sentImagesExists(user)) {
-            subSubMenuIndex = subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subSubMenuIndex}`,
+            subSubMenuIndex = subMenuItem.submenu.push({
+                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                 name: `${translationsItemCoreGet(user, cmdDeleteAllSentImages)}`,
                 icon: iconItemDelete,
                 param: cmdDeleteAllSentImages,
@@ -5197,6 +5197,10 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
         }
         subMenuIndex = subMenu.push(subMenuItem);
     }
+    if (menuItemToProcess.hasOwnProperty('navigationParams') && typeOf(menuItemToProcess.navigationParams, 'array') && (menuItemToProcess.navigationParams.length === 4)) {
+        [subMenu, subMenuIndex]  = menuNavigationLeftRightMenuPartGenerate(user, subMenu, currentIndex, subMenuIndex, menuItemToProcess.navigationParams[0], menuItemToProcess.navigationParams[1], undefined, false, menuItemToProcess.navigationParams[2], menuItemToProcess.navigationParams[3]);
+    }
+    // logs('subMenu New = ' + JSON.stringify(subMenu, null, 1), _l);
     return subMenu;
 
 }
@@ -7542,18 +7546,20 @@ function menuResetItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemInde
  * @param {number} lastItemIndex - The current max index in the appropriate collection (array) which holds an item.
  * @param {string=} groupId - The group Id for menu.
  * @param {boolean=} backwardOrder - If items is indexed from max to min.
+ * @param {string=} leftItemMenuId - left menu item ID for non numeric index.
+ * @param {string=} rightItemMenuId - left menu item ID for non numeric index.
  * @returns {[object[], number]} The array with an updated `subMenu` with new menu navigation items, processed by `cmdItemJumpTo`, and updated `subMenuItemIndex`.
  */
-function menuNavigationLeftRightMenuPartGenerate(user, subMenu, upperMenuItemIndex, subMenuItemIndex, currentItemIndex, lastItemIndex, groupId, backwardOrder) {
+function menuNavigationLeftRightMenuPartGenerate(user, subMenu, upperMenuItemIndex, subMenuItemIndex, currentItemIndex, lastItemIndex, groupId, backwardOrder, leftItemMenuId, rightItemMenuId) {
     const currentItemSubIndex = upperMenuItemIndex.split('.').pop();
     if (currentItemSubIndex &&
         // @ts-ignore
-        (! isNaN(currentItemSubIndex))) {
+        (! isNaN(currentItemSubIndex) || (leftItemMenuId || rightItemMenuId))) {
         if ((backwardOrder && (currentItemIndex < lastItemIndex)) || (!backwardOrder && (currentItemIndex > 0))) {
             subMenuItemIndex = subMenu.push({
                 index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
                 name: `${iconItemMoveLeft}`,
-                param: commandsPackParams(cmdItemJumpTo, ['left'].join('.')),
+                param: commandsPackParams(cmdItemJumpTo, (leftItemMenuId ? ['up', leftItemMenuId] : ['left']).join('.')),
                 group: groupId === undefined ? cmdItemJumpTo : groupId,
                 submenu: [],
             });
@@ -7562,7 +7568,7 @@ function menuNavigationLeftRightMenuPartGenerate(user, subMenu, upperMenuItemInd
             subMenuItemIndex = subMenu.push({
                 index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
                 name: `${iconItemMoveRight}`,
-                param: commandsPackParams(cmdItemJumpTo, ['right'].join('.')),
+                param: commandsPackParams(cmdItemJumpTo, (rightItemMenuId ? ['up', rightItemMenuId] : ['right']).join('.')),
                 group: groupId === undefined ? cmdItemJumpTo : groupId,
                 submenu: [],
             });
@@ -7622,7 +7628,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
         primaryMenuItemsList = enumerationsList[primaryInputType].list,
         primaryLevelMenuItemId = menuItemToProcess.parentId ? `${menuItemToProcess.parentId}.${menuItemToProcess.id}` : menuItemToProcess.id;
     let subMenu = [];
-    logs('primaryLevelMenuItemId = ' + JSON.stringify(primaryLevelMenuItemId));
+    // logs('primaryLevelMenuItemId = ' + JSON.stringify(primaryLevelMenuItemId), _l);
     if (primaryMenuItemsList.hasOwnProperty(primaryLevelMenuItemId)) {
         const
             primaryEnumId =  isFunctionsFirst ? 'funcEnum' : 'destEnum',
@@ -7738,6 +7744,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
                     currentMenuItem.submenu[0]['id'] = currentMenuItem.id;
                     currentMenuItem = currentMenuItem.submenu[0];
                 }
+                currentMenuItem.submenu = menuAddNavigationLeftRightToSubMenu(user, currentMenuItem.submenu);
                 if (currentLevelMenuItemId.includes('.')) {
                     const [parentId, descendantId] = currentLevelMenuItemId.split('.');
                     let parentItem = subMenu.find(subMenuItem => ((subMenuItem[secondaryEnumId] === parentId)));
@@ -7769,7 +7776,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
             // }
         });
     }
-    // logs('subMenu Pre = ' + JSON.stringify(subMenu, null, 1));
+    // logs(`subMenu Pre = ${JSON.stringify(subMenu, null, 1)}`, _l);
     if (subMenu.length) {
         for (const subMenuIndex of subMenu.keys()) {
             const currentSubMenu = subMenu[subMenuIndex].submenu;
@@ -7778,8 +7785,35 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
             }
         }
         subMenu = subMenu.filter(item => (item));
+        subMenu = menuAddNavigationLeftRightToSubMenu(user, subMenu);
     }
-    // logs('subMenu New = ' + JSON.stringify(subMenu, null, 1), _l);
+    // logs(`subMenu New = ${JSON.stringify(subMenu, null, 1)}`, _l);
+    return subMenu;
+}
+
+/**
+ * This function add navigation buttons to current sub menu.
+ * @param {object} user - The user object.
+ * @param {array} subMenu - The sub menu to process.
+ * @returns {array} = The result sub menu.
+ */
+function menuAddNavigationLeftRightToSubMenu(user, subMenu) {
+    if (typeOf(subMenu, 'array') && subMenu.length) {
+        const subMenuMaxIndex = subMenu.length - 1;
+        if (subMenuMaxIndex) {
+            let _subSubMenuIndex = 0;
+            subMenu.forEach((subMenuItem, subMenuItemIndex) => {
+                // logs(`typeOf(subMenuItem.submenu) ${typeOf(subMenuItem.submenu)}`, _l);
+                const nonNumberIndexes = [subMenuItemIndex > 0 ? subMenu[subMenuItemIndex - 1].index.split('.').pop() : undefined, subMenuItemIndex < subMenuMaxIndex ? subMenu[subMenuItemIndex + 1].index.split('.').pop() : undefined];
+                if (typeOf(subMenuItem.submenu, 'array')) {
+                    [subMenuItem.submenu, _subSubMenuIndex]  = menuNavigationLeftRightMenuPartGenerate(user, subMenuItem.submenu, subMenuItem.index, subMenuItem.submenu.length, subMenuItemIndex, subMenuMaxIndex, undefined, false, ...nonNumberIndexes);
+                }
+                else if (typeOf(subMenuItem.submenu, 'function')) {
+                    subMenuItem.navigationParams = [subMenuItemIndex, subMenuMaxIndex, ...nonNumberIndexes];
+                }
+            });
+        }
+    }
     return subMenu;
 }
 
@@ -8539,6 +8573,9 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
             }
             if (inputMenu[key].hasOwnProperty('descendants') ) {
                 newMenuRowItem.descendants = [...inputMenu[key].descendants];
+            }
+            if (inputMenu[key].hasOwnProperty('navigationParams') ) {
+                newMenuRowItem.navigationParams = [...inputMenu[key].navigationParams];
             }
             if (newMenuRowItem.submenu === undefined) {
                 if (Array.isArray(inputMenu[key].submenu) && inputMenu[key].submenu.length ) {
