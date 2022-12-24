@@ -4069,10 +4069,6 @@ const
     enumerationItemDefaultDetails = ['itemId', 'isAvailable', 'state', 'order'];
 
 /**
- * todo - add different icon for unavailable device, and show it in menu. And disable buttons for it ...
- */
-
-/**
  * This function make compare of the enumerationItems of identical type for sorting
  * it by the `order` property.
  * @param {object} a - The enumerationItem object.
@@ -5017,7 +5013,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
             stateShortIdSectionsCount = deviceButtonId.split('.').length,
             currentButton = deviceButtonsList[deviceButtonId],
             isButtonAllowedToShow = MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.showAccessLevel) <= 0,
-            isButtonAllowedToPress = isCurrentAccessLevelAllowModify && (MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0);
+            isButtonAllowedToPress = isCurrentAccessLevelAllowModify && (MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0) && menuItemIsAvailable(currentFunction, primaryStateId);
         // logs(`deviceButtonId = ${deviceButtonId}, isButtonAllowedToShow = ${isButtonAllowedToShow}, isButtonAllowedToPress = ${isButtonAllowedToPress}, stateIdFull ${stateIdFull}`);
         /* to process only right devices */
         if (isButtonAllowedToShow && existsObject(stateIdFull) && (( stateShortIdSectionsCount == 1) || (isStatesInFolders && ( stateShortIdSectionsCount == 2)))) {
@@ -5035,31 +5031,31 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                     const stateName = translationsGetObjectName(user, stateObject, currentFunctionId);
                     // logs(`stateName = ${JSON.stringify(stateName)}`);
                     if (stateName) {
-                        if (isButtonAllowedToPress) {
-                            let
-                                subSubMenuIndex = 0,
-                                currentState = existsState(stateIdFull) ? getState(stateIdFull): undefined,
-                                stateValue = currentState !== undefined ? currentState.val : undefined,
-                                states = [],
-                                subMenuItem = {
-                                    index: `${currentIndex}.${subMenuIndex}`,
-                                    name: `${stateName}`,
-                                    funcEnum: currentFunctionId,
-                                    group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
-                                    submenu: new Array()
-                                };
-                            logs('stateObject = ' + JSON.stringify(stateObject, null, 2));
-                            if (currentStateType === 'boolean') {
-                                if (stateValue === undefined) stateValue = false;
-                                subMenuItem.icons = currentIcons;
-                                subMenuItem.state = stateIdFull;
-                            }
-                            else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
-                                states = enumerationExtractPossibleValueStates(stateObject.common['states']);
-                                logs('states = ' + JSON.stringify(states));
-                                if ((states !== undefined) && Object.keys(states).length > 0) {
-                                    subMenuItem.icon = '';
-                                    for (const [possibleValue, possibleName] of Object.entries(states)) {
+                        let
+                            subSubMenuIndex = 0,
+                            currentState = existsState(stateIdFull) ? getState(stateIdFull): undefined,
+                            stateValue = currentState !== undefined ? currentState.val : undefined,
+                            states = [],
+                            subMenuItem = {
+                                index: `${currentIndex}.${subMenuIndex}`,
+                                name: `${stateName}`,
+                                funcEnum: currentFunctionId,
+                                group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
+                                submenu: new Array()
+                            };
+                        logs('stateObject = ' + JSON.stringify(stateObject, null, 2));
+                        if (currentStateType === 'boolean') {
+                            if (stateValue === undefined) stateValue = false;
+                            subMenuItem.icons = currentIcons;
+                            subMenuItem.state = stateIdFull;
+                        }
+                        else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
+                            states = enumerationExtractPossibleValueStates(stateObject.common['states']);
+                            logs('states = ' + JSON.stringify(states));
+                            if ((states !== undefined) && Object.keys(states).length > 0) {
+                                subMenuItem.icon = '';
+                                for (const [possibleValue, possibleName] of Object.entries(states)) {
+                                    if (isButtonAllowedToPress) {
                                         logs(`possibleValue = ${JSON.stringify(possibleValue)}, possibleName = ${JSON.stringify(possibleName)}`);
                                         const subSubMenuItem = {
                                             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
@@ -5070,25 +5066,27 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                             submenu: []
                                         };
                                         subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
-                                        if (stateValue == possibleValue) {
-                                            subMenuItem.name += ` (${(enumerationStateValueDetails(user, stateObject, currentFunctionId, currentState)['valueString'])})`;
-                                        }
                                     }
-                                    logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2));
+                                    if (stateValue == possibleValue) {
+                                        subMenuItem.name += ` (${(enumerationStateValueDetails(user, stateObject, currentFunctionId, currentState)['valueString'])})`;
+                                    }
+                                }
+                                logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2));
+                            }
+                        }
+                        else if (currentStateType === 'number') {
+                            const step = Number(stateObject.common.hasOwnProperty('step') ? stateObject.common['step'] : 1);
+                            stateValue = Number(stateValue);
+                            for(let steps = stateValue - 2 * step; steps <= stateValue + 2 * step; steps += step) {
+                                if ( ((! stateObject.common.hasOwnProperty('min')) || (steps >=  Number(stateObject.common['min'])))
+                                && ((! stateObject.common.hasOwnProperty('max')) || (steps <=  Number(stateObject.common['max'])))) {
+                                    states.push(steps);
                                 }
                             }
-                            else if (currentStateType === 'number') {
-                                const step = Number(stateObject.common.hasOwnProperty('step') ? stateObject.common['step'] : 1);
-                                stateValue = Number(stateValue);
-                                for(let steps = stateValue - 2 * step; steps <= stateValue + 2 * step; steps += step) {
-                                    if ( ((! stateObject.common.hasOwnProperty('min')) || (steps >=  Number(stateObject.common['min'])))
-                                    && ((! stateObject.common.hasOwnProperty('max')) || (steps <=  Number(stateObject.common['max'])))) {
-                                        states.push(steps);
-                                    }
-                                }
-                                subMenuItem.icon = '';
-                                subMenuItem.name += ` (${stateValue ? stateValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' })`;
-                                logs('states.length = ' + JSON.stringify(states.length));
+                            subMenuItem.icon = '';
+                            subMenuItem.name += ` (${stateValue ? stateValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' })`;
+                            logs('states.length = ' + JSON.stringify(states.length));
+                            if (isButtonAllowedToPress) {
                                 states.forEach(possibleValue => {
                                     logs('possibleValue = ' + JSON.stringify(possibleValue));
                                     const subSubMenuItem = {
@@ -5111,14 +5109,15 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                     submenu: []
                                 });
                             }
-                            if ((subMenuItem.icon !== undefined) || subMenuItem.icons) {
-                                logs('subMenuItem.icon = ' + JSON.stringify(subMenuItem.icon));
-                                if (deviceButtonId !== primaryStateShortId) {
-                                    subMenuIndex = subMenu.push(subMenuItem);
-                                }
-                                else {
-                                    subMenuIndex = subMenu.unshift(subMenuItem);
-                                }
+                        }
+                        if ((subMenuItem.icon !== undefined) || subMenuItem.icons) {
+                            logs('subMenuItem.icon = ' + JSON.stringify(subMenuItem.icon));
+                            if (! isButtonAllowedToPress) subMenuItem.param = cmdNoOperation;
+                            if (deviceButtonId !== primaryStateShortId) {
+                                subMenuIndex = subMenu.push(subMenuItem);
+                            }
+                            else {
+                                subMenuIndex = subMenu.unshift(subMenuItem);
                             }
                         }
                         if (isGraphsEnabled && enumerationIsHistoryEnabledForState(stateObject, historyAdapterId) && (currentStateType === 'number')) {
@@ -8251,7 +8250,7 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId ) {
     if (currentFunction && currentFunction.hasOwnProperty('availableState')) {
         const currentFunctionAvailableStateId = currentFunction.availableState;
         if (currentFunctionAvailableStateId && primaryStateFullId) {
-            const currentItemAvailableStateId = primaryStateFullId.split('.').splice(-1, 1, currentFunctionAvailableStateId).join('.');
+            const currentItemAvailableStateId = [...primaryStateFullId.split('.').slice(0, currentFunction.statesInFolders ? -2 : -1), currentFunctionAvailableStateId].join('.');
             if (existsState(currentItemAvailableStateId)) {
                 const currentItemAvailableState = getState(currentItemAvailableStateId);
                 if (currentItemAvailableState && currentItemAvailableState.hasOwnProperty('val')) {
@@ -8272,7 +8271,7 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId ) {
  * @returns {string} The icon of the menu item.
  */
 function menuGetMenuItemIcon(user, menuItemToProcess) {
-    // logs(`subMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
+    // logs(`\nsubMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
     let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '';
     if (menuItemToProcess !== undefined) {
         const currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined;
