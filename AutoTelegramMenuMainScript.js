@@ -221,7 +221,7 @@ const
 
     telegramAdapter = `telegram.${telegramInstance}`,
 
-//*** Various prefixes for ioBroker states ***//
+    //*** Various prefixes for ioBroker states ***//
     scriptRepositorySite                    = 'https://github.com/',
     scriptRepositorySubUrl                  = '/PeterVoronov/ioBrokerTelegramMenuScript/',
     scriptVersion                           = 'main',
@@ -236,13 +236,16 @@ const
     prefixExternalStates                    = 'external',
     prefixEnums                             = 'enum',
 
+    //*** Bot message identification stamp ***//
     botMessageStamp = '\u200B\uFEFF\uFEFF\uFEFF\u200B',
 
+    //*** Graphs related constants ***//
     graphsDefaultTemplate                   = 'default',
     graphsTemporaryFolder                   = '_temp_',
 
     temporaryFolderPrefix                   = 'autoTelegramTemporary-',
 
+    //*** Data type constants ***//
     dataTypeTranslation                     = 'transl',
     dataTypePrimaryEnums                    = 'enums',
     dataTypeDestination                     = 'dest',
@@ -261,11 +264,14 @@ const
     dataTypeGraph                           = 'graph',
     dataTypeBackup                          = 'backup',
     dataTypeGroups                          = 'groups',
+    dataTypeIgnoreInput                     = '=====',
 
+    //*** Time interval constants ***//
     timeDelta24                             = '23:59:00',
     timeDelta48                             = '47:59:00',
     timeDelta96                             = '95:59:00',
 
+    //*** ID constants ***//
     idEnumerations                          = 'enumerations',
     idFunctions                             = 'functions',
     idDestinations                          = 'destinations',
@@ -275,16 +281,22 @@ const
     idExternal                              = prefixExternalStates,
     idAlerts                                = 'alerts',
 
+    //*** Items default delimiter ***//
     itemsDelimiter                          = '::',
 
-    dataTypeIgnoreInput                     = '=====',
-
+    //*** Do commands ***//
     doAll                                   = 'all',
     doUpload                                = 'upload',
     doUploadDirectly                        = 'uploadD',
     doUploadFromRepo                        = 'uploadR',
     doDownload                              = 'download',
 
+    //*** Jump to commands ***//
+    jumpToUp                                = '@up',
+    jumpToLeft                              = '@left',
+    jumpToRight                             = '@right',
+
+    //*** Icons ***//
     iconItemDelete                          = '🗑️',
     iconItemEdit                            = '✍️',
     iconItemDisabled                        = '🚫',
@@ -1849,11 +1861,11 @@ class MenuRoles {
                 currentMasks = [`${upperItemId}${rolesIdAndMaskDelimiter}${currentItemId}`, `${rolesMaskAnyValue}${rolesIdAndMaskDelimiter}${currentItemId}`],
                 savedMask = cachedExistsValue(user, cachedRolesNewRule) ? cachedGetValue(user, cachedRolesNewRule)['mask'] : '',
                 rootMenu = menuRootMenuItemGenerate(null),
-                jumpArray = ['up', 'up', rootMenu.submenu.length];
+                jumpToArray = [jumpToUp, jumpToUp, rootMenu.submenu.length];
             let
                 subMenu = [],
                 subMenuIndex = 0;
-            if (upperItemId.includes('.')) jumpArray.unshift('up');
+            if (upperItemId.includes('.')) jumpToArray.unshift(jumpToUp);
             currentMasks.forEach(currentMask => {
                 subMenuIndex = subMenu.push({
                     index: `${currentIndex}.${subMenuIndex}`,
@@ -1867,7 +1879,7 @@ class MenuRoles {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedMask}]`,
                 icon: iconItemEdit,
-                param: commandsPackParams(cmdItemJumpTo, jumpArray.join('.')),
+                param: commandsPackParams(cmdItemJumpTo, jumpToArray.join('.')),
                 submenu: []
             });
             return subMenu;
@@ -1897,10 +1909,10 @@ class MenuRoles {
                 enumId = isMenuFunctionsFirst ? 'funcEnum' : 'destEnum',
                 enumNameDeclinationKey = isMenuFunctionsFirst ? enumerationNamesMain : enumerationNamesMany,
                 secondLevelDataType = isMenuFunctionsFirst ? dataTypeDestination : dataTypeFunction,
-                jumpArray = ['up', rootMenu.submenu.length],
+                jumpArray = [jumpToUp, rootMenu.submenu.length],
                 secondLevelList = enumerationsList[secondLevelDataType].list,
                 secondLevelListIds = Object.keys(secondLevelList).filter((itemId) => (secondLevelList[itemId].isEnabled && secondLevelList[itemId].isAvailable)).sort((itemA, itemB) => (secondLevelList[itemA].order - secondLevelList[itemB].order));
-            if (parentItemId) jumpArray.unshift('up');
+            if (parentItemId) jumpArray.unshift(jumpToUp);
             let subIndex = 0;
             if (menuItemToProcess.hasOwnProperty(enumId)) {
                 if (menuItemToProcess.hasOwnProperty('descendants')) {
@@ -4584,7 +4596,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                             name: `${translationsItemMenuGet(user, 'ItemsProcess')}`,
                             icon: iconItemApply,
                             group: cmdItemsProcess,
-                            param: commandsPackParams(cmdItemJumpTo, ['up'].join('.')),
+                            param: commandsPackParams(cmdItemJumpTo, [jumpToUp].join('.')),
                             submenu: []
                         });
                         subMenuIndex = subMenu.push(subMenuItem);
@@ -7559,7 +7571,7 @@ function menuNavigationLeftRightMenuPartGenerate(user, subMenu, upperMenuItemInd
             subMenuItemIndex = subMenu.push({
                 index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
                 name: `${iconItemMoveLeft}`,
-                param: commandsPackParams(cmdItemJumpTo, (leftItemMenuId ? ['up', leftItemMenuId] : ['left']).join('.')),
+                param: commandsPackParams(cmdItemJumpTo, (leftItemMenuId ? [jumpToUp, leftItemMenuId] : [jumpToLeft]).join('.')),
                 group: groupId === undefined ? cmdItemJumpTo : groupId,
                 submenu: [],
             });
@@ -7568,7 +7580,7 @@ function menuNavigationLeftRightMenuPartGenerate(user, subMenu, upperMenuItemInd
             subMenuItemIndex = subMenu.push({
                 index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
                 name: `${iconItemMoveRight}`,
-                param: commandsPackParams(cmdItemJumpTo, (rightItemMenuId ? ['up', rightItemMenuId] : ['right']).join('.')),
+                param: commandsPackParams(cmdItemJumpTo, (rightItemMenuId ? [jumpToUp, rightItemMenuId] : [jumpToRight]).join('.')),
                 group: groupId === undefined ? cmdItemJumpTo : groupId,
                 submenu: [],
             });
@@ -10003,14 +10015,14 @@ async function commandUserInputCallback(user, userInputToProcess) {
     else if (currentCommand === cmdItemJumpTo) {
         const jumpToArray = currentType.split('.');
         jumpToArray.forEach(menuIndex => {
-            if (menuIndex === 'up') {
+            if (menuIndex === jumpToUp) {
                 if (currentMenuPosition.length) currentMenuPosition.pop();
             }
-            else if ((menuIndex === 'left') || (menuIndex === 'right')) {
+            else if ((menuIndex === jumpToLeft) || (menuIndex === jumpToRight)) {
                 if (currentMenuPosition.length) {
                     let currentPos = currentMenuPosition.pop();
                     if (! isNaN(currentPos)) {
-                        currentPos = Number(currentPos) + (menuIndex === 'left' ? -1 : 1);
+                        currentPos = Number(currentPos) + (menuIndex === jumpToLeft ? -1 : 1);
                     }
                     currentMenuPosition.push(currentPos);
                 }
