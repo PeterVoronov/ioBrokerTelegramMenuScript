@@ -5615,7 +5615,8 @@ function extensionsInit() {
 const
     alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
     cachedAlertMessages = 'alertMessages',
-    alertThresholdSet = 'alertThresholdSet';
+    alertThresholdSet = 'alertThresholdSet',
+    alertThresholdId = 'threshold';
 
 let alertsCached = {};
 
@@ -5852,30 +5853,33 @@ function alertsStoreMessagesToCache(user, alertMessages) {
 function alertsOnAlert(object) {
     const
         alerts = alertsGet(),
-        activeChatGroups = telegramGetGroupChats(true);
-    if ((alerts !== undefined) && alerts.hasOwnProperty(object.id)) {
+        activeChatGroups = telegramGetGroupChats(true),
+        objectId = object.id;
+    if ((alerts !== undefined) && alerts.hasOwnProperty(objectId)) {
         // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
-        let alertIsRaised = false;
-        alerts[object.id].chatIds.forEach((thresholds, chatId) => {
+        let
+            alertIsRaised = false,
+            alertHasCountsChanged = false;
+        alerts[objectId].chatIds.forEach((thresholds, chatId) => {
             chatId = Number(chatId);
             const user = chatId > 0 ? telegramUsersGenerateUserObjectFromId(chatId) : telegramUsersGenerateUserObjectFromId(undefined, chatId);
             if ((chatId > 0) || (activeChatGroups.includes(chatId))) {
                 let currentState = cachedGetValue(user, cachedCurrentState);
-                logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(object.id)}`);
+                logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
                 const
                     alertMessages = new Array(),
-                    alertObject = getObject(object.id, true),
-                    alertDestinationId = alerts[object.id].destination,
+                    alertObject = getObject(objectId, true),
+                    alertDestinationId = alerts[objectId].destination,
                     alertDestinationName = translationsGetEnumName(user, dataTypeDestination, alertDestinationId, enumerationNamesInside),
-                    alertFunctionId = alerts[object.id].function,
+                    alertFunctionId = alerts[objectId].function,
                     functionsList = enumerationsList[dataTypeFunction].list,
                     alertFunction = functionsList && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
                     isStatesInFolders = alertFunction && alertFunction.statesInFolders,
-                    isAlertStatePrimary = alertFunction && (object.id.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
+                    isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
                     alertFuncName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationNamesMain),
-                    alertStatus = alertFunctionId ? enumerationStateValueDetails(user, object.id, alertFunctionId, object.state)['valueString'] : object.state.val,
-                    _alertOldStatus = alertFunctionId ? enumerationStateValueDetails(user, object.id, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
-                    alertDeviceName = translationsGetObjectName(user, object.id.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
+                    alertStatus = alertFunctionId ? enumerationStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
+                    _alertOldStatus = alertFunctionId ? enumerationStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
+                    alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
                     alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
                     alertStateType = alertObject.common['type'];
                 let alertText = `${alertFuncName} "${alertDeviceName} ${translationsItemTextGet(user, 'In').toLowerCase()} ${alertDestinationName}"`;
@@ -5894,19 +5898,26 @@ function alertsOnAlert(object) {
                 else if ((alertStateType === 'number') && (Object.keys(thresholds).length)) {
                     Object.keys(thresholds)
                         .sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB)))
-                        .filter(threshold => {
-                            const
-                                onAbove = thresholds[threshold].onAbove,
-                                onLess = thresholds[threshold].onLess,
-                                thresholdValue = Number(threshold);
-
-                            return ((object.state.val < thresholdValue) && (object.oldState.val >= thresholdValue) && onLess) || ((object.state.val >= thresholdValue) && (object.oldState.val < thresholdValue) && onAbove);
-                        })
                         .forEach(threshold => {
-                            alertMessages.push(`${alertText} ${alertStatus} [${(object.state.val <= Number(threshold)) && (object.oldState.val > Number(threshold)) ? iconItemLess : iconItemAbove}${threshold}]`);
+                            const
+                                currentThreshold = thresholds[threshold],
+                                onAbove = currentThreshold.onAbove,
+                                onLess = currentThreshold.onLess,
+                                thresholdValue = Number(threshold),
+                                onCount = currentThreshold.hasOwnProperty('onCount') ? currentThreshold.onCount : 1,
+                                counted = currentThreshold.hasOwnProperty('counted') ? currentThreshold.counted : 0,
+                                isLess = (object.state.val < thresholdValue) && ((object.oldState.val >= thresholdValue) || ((onCount > 1) && counted < 0)) && onLess,
+                                isAbove = (object.state.val >= thresholdValue) && ((object.oldState.val < thresholdValue) || ((onCount > 1) && counted > 0)) && onAbove,
+                                currentlyCounted = counted + (isLess ? -1 : (isAbove ? 1 : 0)),
+                                isOnCount = Math.abs(currentlyCounted) === onCount;
+                            if (isOnCount) alertMessages.push(`${alertText} ${alertStatus} [${isLess ? iconItemLess : iconItemAbove}${threshold}]`);
+                            if ((onCount > 1) && (counted !== currentlyCounted)) {
+                                currentThreshold['counted'] = isOnCount ? 0 : currentlyCounted;
+                                if (! alertHasCountsChanged) alertHasCountsChanged = true;
+                            }
                         });
                 }
-                alertMessages.forEach(alertMessage => alertsMessagePush(user, object.id, alertMessage, object.id === currentState));
+                alertMessages.forEach(alertMessage => alertsMessagePush(user, objectId, alertMessage, objectId === currentState));
                 if ((alertMessages.length > 0) && (! alertIsRaised)) {
                     alertIsRaised = true;
                 }
@@ -5917,6 +5928,9 @@ function alertsOnAlert(object) {
         });
         if (alertIsRaised && configOptions.getOption(cfgCheckAlertStatesOnStartUp)) {
             alertsStoreStateValue(object.id, object.state.val);
+        }
+        if(alertHasCountsChanged) {
+            alertsStore(alerts);
         }
     }
 }
@@ -6228,38 +6242,52 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
                 let
                     subMenu = [],
                     subMenuIndex = 0;
-                Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))).forEach(currentThreshold => {
+                Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))).forEach(currentThresholdNumber => {
+                    const
+                        currentThreshold = currentThresholds[currentThresholdNumber],
+                        currentOnCount = currentThreshold.hasOwnProperty('onCount') ? currentThreshold.onCount : 1;
                     subMenuIndex = subMenu.push({
                         index: `${currentIndex}.${subMenuIndex}`,
-                        name: `${currentThreshold}${currentStateUnits} [${currentThresholds[currentThreshold].onAbove ? iconItemAbove : ''}${currentThresholds[currentThreshold].onLess ? iconItemLess : ''}]`,
+                        name: `${currentThresholdNumber}${currentStateUnits} [${currentThreshold.onAbove ? iconItemAbove : ''}${currentThreshold.onLess ? iconItemLess : ''}](${currentOnCount})`,
                         icon: iconItemEdit,
                         submenu: [
                             {
                                 index: `${currentIndex}.${subMenuIndex}.0`,
-                                name: `${currentThreshold}${currentStateUnits}`,
+                                name: `${currentThresholdNumber}${currentStateUnits}`,
                                 icon: iconItemEdit,
-                                param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex),
+                                group: 'value',
+                                param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId, `${currentThresholdNumber}${currentStateUnits}`),
                                 submenu: [],
                             },
                             {
                                 index: `${currentIndex}.${subMenuIndex}.1`,
-                                name: `${currentThreshold}${currentStateUnits} ${iconItemAbove}`,
-                                icon: currentThresholds[currentThreshold].onAbove ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
-                                param: commandsPackParams((currentThresholds[currentThreshold].onAbove === currentThresholds[currentThreshold].onLess) || (! currentThresholds[currentThreshold].onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
+                                name: `${currentThresholdNumber}${currentStateUnits} ${iconItemAbove}`,
+                                icon: currentThreshold.onAbove ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
+                                group: 'borders',
+                                param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
                                 submenu: [],
                             },
                             {
                                 index: `${currentIndex}.${subMenuIndex}.2`,
-                                name: `${currentThreshold}${currentStateUnits} ${iconItemLess}`,
-                                icon: currentThresholds[currentThreshold].onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
-                                param: commandsPackParams((currentThresholds[currentThreshold].onAbove === currentThresholds[currentThreshold].onLess) || (! currentThresholds[currentThreshold].onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
+                                name: `${currentThresholdNumber}${currentStateUnits} ${iconItemLess}`,
+                                icon: currentThreshold.onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
+                                group: 'borders',
+                                param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
                                 submenu: [],
                             },
-                            menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 3, dataTypeAlertSubscribed, currentStateId, subMenuIndex)
+                            {
+                                index: `${currentIndex}.${subMenuIndex}.3`,
+                                name: `${translationsItemTextGet(user, 'onCount')} (${currentOnCount})`,
+                                icon: iconItemEdit,
+                                group: 'onCount',
+                                param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onCount', currentOnCount),
+                                submenu: [],
+                            },
+                            menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 4, dataTypeAlertSubscribed, currentStateId, subMenuIndex)
                         ],
                     });
                 });
-                subMenuIndex = subMenu.push(menuAddItemMenuItemGenerate(user, currentIndex, subMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex));
+                subMenuIndex = subMenu.push(menuAddItemMenuItemGenerate(user, currentIndex, subMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId));
                 const isThresholdsSetChanged = JSON.stringify(currentStateAlertThresholds) !== JSON.stringify(currentThresholds);
                 if (isThresholdsSetChanged || Object.keys(currentStateAlertThresholds).length) {
                     subMenuIndex = subMenu.push(
@@ -8660,8 +8688,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
     let
         currentMenuPosition = cachedGetValue(user, cachedMenuItem);
     if (cachedExistsValue(user, cachedMenuLongCommandsWithParams)) cachedDelValue(user, cachedMenuLongCommandsWithParams);
-    logs(`cachedCommand = ${cachedLongCommands}`);
-    logs(`currentCommand = ${currentCommand}, currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
+    // logs(`cachedCommand = ${cachedLongCommands}`, _l);
+    // logs(`currentCommand = ${currentCommand}, currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentSubParam = ${currentSubParam}, currentSubValue = ${currentSubValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`, _l);
 
     if (isWaitForInput) {
         if (userInputToProcess != dataTypeIgnoreInput) {
@@ -8905,18 +8933,23 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     currentThresholds = alertsGetStateAlertThresholds(user, currentItem),
                                     currentThresholdsKeys = Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))),
                                     currentThresholdIndex = Number(currentParam);
-                                let currentThresholdRules = {onAbove: true, onLess: true};
-                                if (currentThresholdIndex < currentThresholdsKeys.length) {
-                                    currentThresholdRules = currentThresholds[currentThresholdsKeys[currentThresholdIndex]];
-                                    delete currentThresholds[currentThresholdsKeys[currentThresholdIndex]];
+                                if (currentValue === alertThresholdId) {
+                                    let currentThresholdRules = {onAbove: true, onLess: true};
+                                    if (currentThresholdIndex < currentThresholdsKeys.length) {
+                                        currentThresholdRules = currentThresholds[currentThresholdsKeys[currentThresholdIndex]];
+                                        delete currentThresholds[currentThresholdsKeys[currentThresholdIndex]];
+                                    }
+                                    currentThresholds[userInputToProcess] = currentThresholdRules;
+                                    if (currentThresholdIndex < currentThresholdsKeys.length) {
+                                        const newIndex = Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))).findIndex(threshold => (Number(threshold) === Number(userInputToProcess)));
+                                        currentMenuPosition.splice(-1, 1, newIndex);
+                                    }
                                 }
-                                currentThresholds[userInputToProcess] = currentThresholdRules;
+                                else {
+                                    currentThresholds[currentThresholdsKeys[currentThresholdIndex]][currentValue] = userInputToProcess;
+                                }
                                 cachedSetValue(user, alertThresholdSet, currentThresholds);
                                 cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -2).join('.'), alertThresholdSet);
-                                if (currentThresholdIndex < currentThresholdsKeys.length) {
-                                    const newIndex = Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))).findIndex(threshold => (Number(threshold) === Number(userInputToProcess)));
-                                    currentMenuPosition.splice(-1, 1, newIndex);
-                                }
                                 menuClearCachedMenuItemsAndRows(user);
                             }
                             break;
@@ -9031,6 +9064,11 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeReportMember: {
                 const queryParams = cachedGetValue(user, cachedSimpleReportNewQuery);
                 menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(user, currentItem)} ${queryParams && queryParams.hasOwnProperty(currentItem) && queryParams[currentItem] ? `= ${queryParams[currentItem]}` : ''}`;
+                break;
+            }
+
+            case dataTypeAlertSubscribed: {
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, currentValue)}${currentSubParam ? ` = ${currentSubParam}` : ''}:`;
                 break;
             }
 
