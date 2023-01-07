@@ -5720,7 +5720,7 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertThresholds) {
         const chatsMap = new Map();
         chatsMap.set(user.chatId, alertThresholds);
         alerts[alertId] = {function: alertFunc, destination: alertDest, chatIds: chatsMap};
-        on({id: alertId, change: 'ne'}, alertsOnAlert);
+        on({id: alertId, change: 'any'}, alertsOnAlert);
     }
     logs(`alerts = ${JSON.stringify(alerts)}`);
     cachedDelValue(user, alertThresholdSet);
@@ -5758,7 +5758,7 @@ function alertsInit(checkStates) {
     statesToSubscribe.forEach(stateId => {
         if (! currentlySubscribedStates.includes(stateId)) {
             // logs(`subscribe on ${stateId}`, _l);
-            if (existsState(stateId)) on({id: stateId, change: 'ne'}, alertsOnAlert);
+            if (existsState(stateId)) on({id: stateId, change: 'any'}, alertsOnAlert);
         }
     });
     currentlySubscribedStates.forEach(stateId => {
@@ -5861,6 +5861,9 @@ function alertsOnAlert(object) {
     if ((alerts !== undefined) && alerts.hasOwnProperty(objectId)) {
         // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
         let alertIsRaised = false;
+        const
+            currentStateValue = object.state.val,
+            oldStateValue = object.oldState.val;
         alerts[objectId].chatIds.forEach((thresholds, chatId) => {
             chatId = Number(chatId);
             const user = chatId > 0 ? telegramUsersGenerateUserObjectFromId(chatId) : telegramUsersGenerateUserObjectFromId(undefined, chatId);
@@ -5883,18 +5886,19 @@ function alertsOnAlert(object) {
                     alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
                     alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
                     alertStateType = alertObject.common['type'];
-                let alertText = `${alertFuncName} "${alertDeviceName} ${translationsItemTextGet(user, 'In').toLowerCase()} ${alertDestinationName}"`;
-                if (! isAlertStatePrimary) alertText += ` ${alertStateName} -`;
+                let alertTextMain = `${alertFuncName} "${alertDeviceName} ${translationsItemTextGet(user, 'In').toLowerCase()} ${alertDestinationName}"`;
+                if (! isAlertStatePrimary) alertTextMain += ` ${alertStateName} -`;
                 logs(`alertDestId = ${alertDestinationId}, alertDestName = ${JSON.stringify(alertDestinationName)}`);
                 if ((alertStateType === 'boolean')
                     ||
                     (alertObject.common.hasOwnProperty('states') && (['string','number'].includes(alertStateType)))
                     ) {
-                    // alertFunc = enumerationItems[inputFunction].list.hasOwnProperty(alertFuncEnum) ? enumerationItems[inputFunction].list[alertFuncEnum] : undefined,
-                    logs(`alertName = ${JSON.stringify(alertDeviceName)}`);
-                    // logs(`alertFunc[${alertFuncEnum}] = ${JSON.stringify(alertFunc)}`);
-                    alertText += ` ${alertStatus}`;
-                    alertMessages.push(alertText);
+                    if (currentStateValue !== oldStateValue) {
+                        // alertFunc = enumerationItems[inputFunction].list.hasOwnProperty(alertFuncEnum) ? enumerationItems[inputFunction].list[alertFuncEnum] : undefined,
+                        logs(`alertName = ${JSON.stringify(alertDeviceName)}`);
+                        // logs(`alertFunc[${alertFuncEnum}] = ${JSON.stringify(alertFunc)}`);
+                        alertMessages.push(`${alertTextMain}  ${alertStatus}`);
+                    }
                 }
                 else if ((alertStateType === 'number') && (Object.keys(thresholds).length)) {
                     Object.keys(thresholds)
@@ -5905,8 +5909,6 @@ function alertsOnAlert(object) {
                                 onAbove = currentThreshold.onAbove,
                                 onLess = currentThreshold.onLess,
                                 thresholdValue = Number(threshold),
-                                currentStateValue = object.state.val,
-                                oldStateValue = object.oldState.val,
                                 onCount = currentThreshold.hasOwnProperty(alertThresholdOnCountId) ? currentThreshold[alertThresholdOnCountId] : 1,
                                 onTimeInterval = currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0,
                                 idVariableCounted = [objectId, chatId, threshold, 'counted'].join(itemsDelimiter),
@@ -5917,7 +5919,7 @@ function alertsOnAlert(object) {
                                 variableTimerStatus = (variableTimerOn && alertsVariables.has(idVariableTimerStatus)) ? alertsVariables.get(idVariableTimerStatus) : 0,
                                 isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue) || ((onCount > 1) && (variableCounted < 0)) || (variableTimerOn && (variableTimerStatus < 0))),
                                 isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || ((onCount > 1) && (variableCounted > 0)) || (variableTimerOn && (variableTimerStatus < 0))),
-                                alertMessageText = `${alertText} ${alertStatus} [${isLess ? iconItemLess : iconItemAbove}${threshold}]`;
+                                alertMessageText = `${alertTextMain} ${alertStatus} [${isLess ? iconItemLess : iconItemAbove}${threshold}]`;
                             if (onTimeInterval) {
                                 if (variableTimerOn) {
                                     const currentTimerStatus = variableTimerStatus + (variableTimerStatus > 0 ? (isLess ? -1 :  0) : (isAbove ? 1 : 0));
