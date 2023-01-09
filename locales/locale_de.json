@@ -185,17 +185,8 @@
       "textSetShowAccessLevel": "Zugriffsebene zum Anzeigen festlegen",
       "textSwitchOff": "Ausschalten",
       "textSwitchOn": "Einschalten",
-      "textTimeRange12h": "12 Stunden",
-      "textTimeRange1d": "Ein Tag",
-      "textTimeRange1m": "Ein Monat",
-      "textTimeRange1w": "Eine Woche",
-      "textTimeRange1y": "Ein Jahr",
       "textTimeRange2h": "Zwei Stunden",
-      "textTimeRange2w": "Zwei Wochen",
-      "textTimeRange3d": "Drei Tage",
-      "textTimeRange3m": "Drei Monate",
       "textTimeRange6h": "Sechs Stunden",
-      "textTimeRange6m": "Sechs Monate",
       "textTranslationPart": "Übersetzung Teil",
       "textUploadTranslationFile": "Übersetzungsdatei hochladen",
       "textUseButtonAsAttribute": "Schaltfläche als Attribut anzeigen",
@@ -205,7 +196,16 @@
       "textUserLastName": "Nachname",
       "textUserUserId": "ID",
       "textUserUserName": "Spitzname",
-      "textWrongValue": "Falscher Wert!"
+      "textWrongValue": "Falscher Wert!",
+      "textTimeRange12H": "12 Stunden",
+      "textTimeRange1D": "Ein Tag",
+      "textTimeRange1M": "Ein Monat",
+      "textTimeRange1W": "Eine Woche",
+      "textTimeRange1Y": "Ein Jahr",
+      "textTimeRange2W": "Zwei Wochen",
+      "textTimeRange3D": "Drei Tage",
+      "textTimeRange3M": "Drei Monate",
+      "textTimeRange6M": "Sechs Monate"
     }
   }
 }
