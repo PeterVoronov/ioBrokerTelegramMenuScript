@@ -197,7 +197,6 @@
       "textUserUserId": "ID",
       "textUserUserName": "Spitzname",
       "textWrongValue": "Falscher Wert!",
-      "textTimeRange12H": "12 Stunden",
       "textTimeRange1D": "Ein Tag",
       "textTimeRange1M": "Ein Monat",
       "textTimeRange1W": "Eine Woche",
@@ -205,7 +204,8 @@
       "textTimeRange2W": "Zwei Wochen",
       "textTimeRange3D": "Drei Tage",
       "textTimeRange3M": "Drei Monate",
-      "textTimeRange6M": "Sechs Monate"
+      "textTimeRange6M": "Sechs Monate",
+      "textTimeRange12h": "12 Stunden"
     }
   }
 }
