@@ -34,7 +34,8 @@
         "writeFile":"readonly",
         "readFile":"readonly",
         "delFile":"readonly",
-        "schedule":"readonly"
+        "schedule":"readonly",
+        "formatDate":"readonly"
     },
     "plugins": [
         "@typescript-eslint"

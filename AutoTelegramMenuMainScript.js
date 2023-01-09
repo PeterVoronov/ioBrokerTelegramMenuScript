@@ -159,6 +159,17 @@ const
     doUploadFromRepo                        = 'uploadR',
     doDownload                              = 'download',
 
+    //*** Time intervals ***//
+    timeIntervalsInMinutes                           = {
+        'm'                                 : 1,
+        'h'                                 : 60,
+        'D'                                 : 24*60,
+        'W'                                 : 7*24*60,
+        'M'                                 : 30*24*60,
+        'Y'                                 : 365*24*60
+    },
+    timeIntervalsIndexList                  = Object.keys(timeIntervalsInMinutes).join(''),
+
     //*** Jump to commands ***//
     jumpToUp                                = '@up',
     jumpToLeft                              = '@left',
@@ -276,29 +287,30 @@ const
         [cfgShowResultMessages]             : true,                             // Show alert messages, as reactions on some input
         [cfgGraphsScale]                    : 1,                                // Scale for e-charts graphs
         [cfgGraphsIntervals]                : [
-                                                {id: '2h',  minutes:     120},
-                                                {id: '6h',  minutes:     360},
-                                                {id: '12h', minutes:     720},
-                                                {id: '1d',  minutes:    1440},
-                                                {id: '3d',  minutes:    4320},
-                                                {id: '1w',  minutes:   10080},
-                                                {id: '2w',  minutes:   20160},
-                                                {id: '1m',  minutes:   43200},
-                                                {id: '3m',  minutes:  129600},
-                                                {id: '6m',  minutes:  259200},
-                                                {id: '1y',  minutes:  525600},
+                                                {id: '2h',  minutes: timeIntervalsInMinutes.h * 2},
+                                                {id: '6h',  minutes: timeIntervalsInMinutes.h * 6},
+                                                {id: '12h', minutes: timeIntervalsInMinutes.h * 12},
+                                                {id: '1D',  minutes: timeIntervalsInMinutes.D},
+                                                {id: '3D',  minutes: timeIntervalsInMinutes.D * 3},
+                                                {id: '1W',  minutes: timeIntervalsInMinutes.W},
+                                                {id: '2W',  minutes: timeIntervalsInMinutes.W * 2},
+                                                {id: '1M',  minutes: timeIntervalsInMinutes.M},
+                                                {id: '3M',  minutes: timeIntervalsInMinutes.M * 3},
+                                                {id: '6M',  minutes: timeIntervalsInMinutes.M * 6},
+                                                {id: '1Y',  minutes: timeIntervalsInMinutes.Y },
                                             ],                                 // Time ranges back from now, in minutes
         [cfgDefaultIconOn]                  : iconItemOn,
         [cfgDefaultIconOff]                 : iconItemOff,
         [cfgAlertMessagesHistoryDepth]      : 48,                               // Alert messages history depth in hours
         [cfgUpdateMessageTime]              : '12:05',
         [cfgUpdateMessagesOnStart]          : 5,                                // Refresh menu messages after script start. If 0 - will not refresh.
-        [cfgDateTimeTemplate]               : "dd.mm HH:MM:ss",                 // Template for date and time in Menu
+        [cfgDateTimeTemplate]               : "DD.MM hh:mm:ss",                 // Template for date and time in Menu
 
     },
+
     configDefaultOptionMasks = {
-        [cfgUpdateMessageTime]              : {text: 'HH:MM', rule:/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/},
-        [cfgGraphsIntervals]                : {text: '#M|#h|#d|#w|#m|#y', rule: /^(\d+)([mhdwMy])$/}
+        [cfgUpdateMessageTime]              : {text: 'hh:mm', rule:/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/},
+        [cfgGraphsIntervals]                : {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)}
     }
 ;
 
@@ -3600,7 +3612,7 @@ function cachedGetValue(user, valueId, getLastChange) {
  * and check its age against an appropriate `cachedValueMaxAge`.
  * @param {object} user - The user object.
  * @param {string} valueId - The Id of cached value.
- * @param {string} cachedValueMaxAge - The string in a format 'HH:MM:ss'
+ * @param {string} cachedValueMaxAge - The string in a format 'hh:mm:ss'
  * @returns {[any, boolean]} The array with cached value and boolean indicator of it's age and presence.
  */
 function cachedGetValueAndCheckItIfOld(user, valueId, cachedValueMaxAge) {
@@ -8332,7 +8344,7 @@ function menuUpdateMenuBySchedule() {
 
 /**
  * This function schedule a renew of the Telegram message, which consists a Auto Telegram Menu, to avoid the time limitation for the bots to edit their own messages.
- * @param {string} atTime - The time of the day as string in the format of 'HH:MM'.
+ * @param {string} atTime - The time of the day as string in the format of 'hh:mm'.
  * @param {number=} idOfUser - The user's id.
  */
 function menuScheduleMenuMessageRenew(atTime, idOfUser) {
@@ -8782,7 +8794,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                                 currentMask =  configOptions.getMask(currentItem),
                                                 configItemMask  = configOptions.getMaskDescription(currentItem),
                                                 parsedValueArray = currentMask && currentMask.test(userInputToProcess) ? userInputToProcess.match(currentMask): [],
-                                                parsedValue = parsedValueArray && parsedValueArray.length ? Number(parsedValueArray[1]) * (parsedValueArray[2] === 'M' ? 1 : (parsedValueArray[2] === 'h' ? 60 : (parsedValueArray[2] === 'd' ? 1440 : (parsedValueArray[2] === 'w' ? 10080 : (parsedValueArray[2] === 'm' ? 43200 : 525600)) ))) : undefined;
+                                                parsedValue = parsedValueArray && parsedValueArray.length && timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2]) ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]] : undefined;
                                             newValue = parsedValue !== undefined ? {id: userInputToProcess, minutes: parsedValue} : null;
                                             menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
                                         }
