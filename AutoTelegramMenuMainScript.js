@@ -5495,7 +5495,6 @@ const
     cachedAlertMessages = 'alertMessages',
     alertThresholdSet = 'alertThresholdSet',
     alertThresholdId = 'threshold',
-    alertThresholdOnCountId = 'onCount',
     alertThresholdOnTimeIntervalId = 'onTimeInterval',
     alertsStoredVariables = new Map();
 
@@ -5598,7 +5597,7 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
         const chatsMap = new Map();
         chatsMap.set(user.chatId, alertDetailsOrThresholds);
         alerts[alertId] = {function: alertFunc, destination: alertDest, chatIds: chatsMap};
-        on({id: alertId, change: 'any'}, alertsOnSubscribedState);
+        on({id: alertId, change: 'ne'}, alertsOnSubscribedState);
     }
     logs(`alerts = ${JSON.stringify(alerts)}`);
     cachedDelValue(user, alertThresholdSet);
@@ -5636,7 +5635,7 @@ function alertsInit(checkStates) {
     statesToSubscribe.forEach(stateId => {
         if (! currentlySubscribedStates.includes(stateId)) {
             // logs(`subscribe on ${stateId}`, _l);
-            if (existsState(stateId)) on({id: stateId, change: 'any'}, alertsOnSubscribedState);
+            if (existsState(stateId)) on({id: stateId, change: 'ne'}, alertsOnSubscribedState);
         }
     });
     currentlySubscribedStates.forEach(stateId => {
@@ -5772,16 +5771,11 @@ function alertsOnSubscribedState(object) {
                     (alertObject.common.hasOwnProperty('states') && (['string','number'].includes(alertStateType)))
                     ) {
                     const
-                        onCount = detailsOrThresholds.hasOwnProperty(alertThresholdOnCountId) ? detailsOrThresholds[alertThresholdOnCountId] : 1,
                         onTimeInterval = detailsOrThresholds.hasOwnProperty(alertThresholdOnTimeIntervalId) ? detailsOrThresholds[alertThresholdOnTimeIntervalId] : 0,
-                        idStoredCounted = [objectId, chatId, 'counted'].join(itemsDelimiter),
-                        idStoredCountedValue = [objectId, chatId, 'countedValue'].join(itemsDelimiter),
-                        storedCounted = alertsStoredVariables.has(idStoredCounted) ? alertsStoredVariables.get(idStoredCounted) : 0,
-                        storedCountedValue = alertsStoredVariables.has(idStoredCountedValue) ? alertsStoredVariables.get(idStoredCountedValue) : undefined,
                         idStoredTimerOn = [objectId, chatId, 'timerOn'].join(itemsDelimiter),
                         idStoredTimerValue = [objectId, chatId, 'timerValue'].join(itemsDelimiter),
                         storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
-                        storedTimerValue = (storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)) ? alertsStoredVariables.get(idStoredTimerValue) : undefined,
+                        [storedTimerValue, storedTimerOldValue] = (storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)) ? alertsStoredVariables.get(idStoredTimerValue) : [undefined, undefined],
                         alertMessageText = `${alertTextMain}  ${alertStatus}`;
                     if (onTimeInterval) {
                         if (storedTimerOn) {
@@ -5791,8 +5785,8 @@ function alertsOnSubscribedState(object) {
                                 alertsStoredVariables.delete(idStoredTimerValue);
                             }
                         }
-                        else if (currentStateValue !== oldStateValue) {
-                            alertsStoredVariables.set(idStoredTimerValue, currentStateValue);
+                        if ((storedTimerOn === undefined) || (currentStateValue !== storedTimerOldValue)) {
+                            alertsStoredVariables.set(idStoredTimerValue, [currentStateValue, oldStateValue]);
                             alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
                                 alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
                                 alertsStoredVariables.delete(idStoredTimerOn);
@@ -5801,24 +5795,7 @@ function alertsOnSubscribedState(object) {
                         }
                     }
                     else {
-                        const
-                            currentlyCounted = storedCounted ? (currentStateValue === storedCountedValue ? storedCounted + 1 : 0) : (currentStateValue !== oldStateValue ? 1 : 0),
-                            isOnCount = currentlyCounted === onCount;
-                        if (isOnCount) {
-                            // alertFunc = enumerationItems[inputFunction].list.hasOwnProperty(alertFuncEnum) ? enumerationItems[inputFunction].list[alertFuncEnum] : undefined,
-                            logs(`alertName = ${JSON.stringify(alertDeviceName)}`);
-                            // logs(`alertFunc[${alertFuncEnum}] = ${JSON.stringify(alertFunc)}`);
-                            alertMessages.push(alertMessageText);
-                        }
-                        if (onCount > 1) {
-                            if (storedCounted !== currentlyCounted) {
-                                alertsStoredVariables.set(idStoredCounted, isOnCount ? 0 : currentlyCounted);
-                            }
-                            if (currentlyCounted === 1) {
-                                alertsStoredVariables.set(idStoredCountedValue, currentStateValue);
-                            }
-                        }
-
+                        alertMessages.push(alertMessageText);
                     }
                 }
                 else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
@@ -5830,16 +5807,13 @@ function alertsOnSubscribedState(object) {
                                 onAbove = currentThreshold.onAbove,
                                 onLess = currentThreshold.onLess,
                                 thresholdValue = Number(threshold),
-                                onCount = currentThreshold.hasOwnProperty(alertThresholdOnCountId) ? currentThreshold[alertThresholdOnCountId] : 1,
                                 onTimeInterval = currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0,
-                                idStoredCounted = [objectId, chatId, threshold, 'counted'].join(itemsDelimiter),
-                                storedCounted = alertsStoredVariables.has(idStoredCounted) ? alertsStoredVariables.get(idStoredCounted) : 0,
                                 idStoredTimerOn = [objectId, chatId, threshold, 'timerOn'].join(itemsDelimiter),
                                 idStoredTimerStatus = [objectId, chatId, threshold, 'timerStatus'].join(itemsDelimiter),
                                 storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
                                 storedTimerStatus = (storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)) ? alertsStoredVariables.get(idStoredTimerStatus) : 0,
-                                isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue) || ((onCount > 1) && (storedCounted < 0)) || (storedTimerOn && (storedTimerStatus < 0))),
-                                isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || ((onCount > 1) && (storedCounted > 0)) || (storedTimerOn && (storedTimerStatus < 0))),
+                                isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue)  || (storedTimerOn && (storedTimerStatus < 0))),
+                                isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || (storedTimerOn && (storedTimerStatus < 0))),
                                 alertMessageText = `${alertTextMain} ${alertStatus} [${isLess ? iconItemLess : iconItemAbove}${threshold}]`;
                             if (onTimeInterval) {
                                 if (storedTimerOn) {
@@ -5863,13 +5837,7 @@ function alertsOnSubscribedState(object) {
                                 }
                             }
                             else {
-                                const
-                                    currentlyCounted = storedCounted + (storedCounted === 0 ? (isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0)) : (isLess ? -1 : (isAbove ? 1 : 0))),
-                                    isOnCount = Math.abs(currentlyCounted) === onCount;
-                                if (isOnCount) alertMessages.push(alertMessageText);
-                                if ((onCount > 1) && (storedCounted !== currentlyCounted)) {
-                                    alertsStoredVariables.set(idStoredCounted, isOnCount ? 0 : currentlyCounted);
-                                }
+                                alertMessages.push(alertMessageText);
                             }
                         });
                 }
@@ -6189,19 +6157,10 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
                         currentName = menuItemToProcess.name,
                         [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
                         [currentAlertDetails, currentStateAlertDetails] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true),
-                        currentOnCount = currentAlertDetails.hasOwnProperty(alertThresholdOnCountId) ? currentAlertDetails[alertThresholdOnCountId] : 1,
                         currentOnTimeInterval = `${currentAlertDetails.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentAlertDetails[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`;
                     let
                         subMenu = [],
                         subMenuIndex = 0;
-                    subMenuIndex = subMenu.push({
-                        index: `${currentIndex}.${subMenuIndex}.${subMenuIndex}`,
-                        name: `${translationsItemTextGet(user, alertThresholdOnCountId)} (${currentOnCount})`,
-                        icon: iconItemEdit,
-                        group: 'thresholdOn',
-                        param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnCountId, currentOnCount),
-                        submenu: [],
-                    });
                     subMenuIndex = subMenu.push({
                         index: `${currentIndex}.${subMenuIndex}.${subMenuIndex}`,
                         name: `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`,
@@ -6210,11 +6169,11 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
                         param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval),
                         submenu: [],
                     });
-                    const isThresholdsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
+                    const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
                     subMenu.push(
                         {
                             index: `${currentIndex}.${subMenuIndex}`,
-                            name: `${currentName}${isThresholdsSetChanged ?  ` (${iconItemEdit})` : ''}`,
+                            name: `${currentName}${isAlertDetailsSetChanged ?  ` (${iconItemEdit})` : ''}`,
                             icons: alertsGetIcon,
                             group: cmdItemsProcess,
                             state: currentStateId,
@@ -6261,11 +6220,10 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
     Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))).forEach(currentThresholdNumber => {
         const
             currentThreshold = currentThresholds[currentThresholdNumber],
-            currentOnCount = currentThreshold.hasOwnProperty(alertThresholdOnCountId) ? currentThreshold[alertThresholdOnCountId] : 1,
             currentOnTimeInterval = `${currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`,
             subMenuItem = {
                 index: `${currentIndex}.${subMenuIndex}`,
-                name: `${currentThresholdNumber}${currentStateUnits} [${currentThreshold.onAbove ? iconItemAbove : ''}${currentThreshold.onLess ? iconItemLess : ''}](${currentOnCount}){${currentOnTimeInterval}}`,
+                name: `${currentThresholdNumber}${currentStateUnits} [${currentThreshold.onAbove ? iconItemAbove : ''}${currentThreshold.onLess ? iconItemLess : ''}]({currentOnTimeInterval})`,
                 icon: iconItemEdit,
                 submenu: new Array()
             };
@@ -6292,14 +6250,6 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
                 icon: currentThreshold.onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
                 group: 'borders',
                 param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
-                submenu: [],
-            });
-            subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${translationsItemTextGet(user, alertThresholdOnCountId)} (${currentOnCount})`,
-                icon: iconItemEdit,
-                group: 'thresholdOn',
-                param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnCountId, currentOnCount),
                 submenu: [],
             });
             subSubMenuIndex = subMenuItem.submenu.push({
@@ -6361,13 +6311,12 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
         currentDeviceStates = [...currentDeviceAttributes, ...currentDeviceButtons],
         primaryStateId = menuItemToProcess.param,
         idPrefix = primaryStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
-        primaryStateShortId = primaryStateId.replace(`${idPrefix}.`,''),
         currentAccessLevel = menuItemToProcess.accessLevel;
     let
         subMenu = [],
         subMenuIndex = 0;
         currentDeviceStates.forEach((shortStateId, stateIndex) => {
-            if (! enumerationDeviceBasicAttributes.includes(shortStateId)  && (currentDeviceStates.indexOf(shortStateId) === stateIndex) /* && (shortStateId !== primaryStateShortId) */) {
+            if (! enumerationDeviceBasicAttributes.includes(shortStateId)  && (currentDeviceStates.indexOf(shortStateId) === stateIndex)) {
                 const currentStateId = [idPrefix, shortStateId].join('.');
                 if (currentDeviceAttributes.includes(shortStateId) ||
                     (currentDeviceButtons.includes(shortStateId) && (MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[shortStateId].showAccessLevel) <= 0))) {
@@ -8968,12 +8917,6 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 else {
                                     const currentDetailsOrThreshold = currentThresholdIndex >= 0 ? alertDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]] : alertDetailsOrThresholds;
                                     currentDetailsOrThreshold[currentValue] = userInputToProcess;
-                                    if (currentValue === alertThresholdOnCountId) {
-                                        currentDetailsOrThreshold[alertThresholdOnTimeIntervalId] = 0;
-                                    }
-                                    else {
-                                        currentDetailsOrThreshold[alertThresholdOnCountId] = 1;
-                                    }
                                 }
                                 cachedSetValue(user, alertThresholdSet, alertDetailsOrThresholds);
                                 cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, currentThresholdIndex >= 0  ? -2 : -1).join('.'), alertThresholdSet);
