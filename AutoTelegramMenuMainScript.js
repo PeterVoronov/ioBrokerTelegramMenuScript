@@ -92,7 +92,7 @@ const
     //*** Various prefixes for ioBroker states ***//
     scriptRepositorySite                    = 'https://github.com/',
     scriptRepositorySubUrl                  = '/PeterVoronov/ioBrokerTelegramMenuScript/',
-    scriptVersion                           = 'main',
+    scriptVersion                           = 'v0.9.5-dev',
     scriptLocalesFolder                     = `${scriptRepositorySubUrl}blob/${scriptVersion}/locales/`,
 
 
