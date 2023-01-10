@@ -200,5 +200,8 @@
   "textTimeRange3D": "3 дні",
   "textTimeRange3M": "3 місяці",
   "textTimeRange6M": "Півроку",
-  "textTimeRange12h": "12 годин"
+  "textTimeRange12h": "12 годин",
+  "menuExtensionTranslations": "Мовні налаштування розширення",
+  "textSecondsShort": "сек.",
+  "textOnTimeInterval": "Мінімальна затримка до реагування"
 }

@@ -202,5 +202,6 @@
   "textTimeRange6M": "Six months",
   "textTimeRange12h": "12 hours",
   "menuExtensionTranslations": "Extension Translations",
-  "textSecondsShort": "sec"
+  "textSecondsShort": "sec.",
+  "textOnTimeInterval": "Minimal timeout to trigger"
 }

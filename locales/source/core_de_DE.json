@@ -200,5 +200,8 @@
   "textTimeRange3D": "Drei Tage",
   "textTimeRange3M": "Drei Monate",
   "textTimeRange6M": "Sechs Monate",
-  "textTimeRange12h": "12 Stunden"
+  "textTimeRange12h": "12 Stunden",
+  "menuExtensionTranslations": "Übersetzungen der Erweiterung",
+  "textSecondsShort": "sek.",
+  "textOnTimeInterval": "Minimaler Timeout zum Auslösen"
 }

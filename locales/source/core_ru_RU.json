@@ -200,5 +200,8 @@
   "textTimeRange3D": "3 дня",
   "textTimeRange3M": "3 месяца",
   "textTimeRange6M": "Полгода",
-  "textTimeRange12h": "12 часов"
+  "textTimeRange12h": "12 часов",
+  "menuExtensionTranslations": "Языковые настройки расширения",
+  "textSecondsShort": "сек.",
+  "textOnTimeInterval": "Минимальный тайм-аут для срабатывания"
 }
