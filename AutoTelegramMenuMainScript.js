@@ -5497,7 +5497,7 @@ const
     alertThresholdId = 'threshold',
     alertThresholdOnCountId = 'onCount',
     alertThresholdOnTimeIntervalId = 'onTimeInterval',
-    alertsVariables = new Map();
+    alertsStoredVariables = new Map();
 
 let alertsRules = {};
 
@@ -5598,7 +5598,7 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
         const chatsMap = new Map();
         chatsMap.set(user.chatId, alertDetailsOrThresholds);
         alerts[alertId] = {function: alertFunc, destination: alertDest, chatIds: chatsMap};
-        on({id: alertId, change: 'any'}, alertsOnAlert);
+        on({id: alertId, change: 'any'}, alertsOnSubscribedState);
     }
     logs(`alerts = ${JSON.stringify(alerts)}`);
     cachedDelValue(user, alertThresholdSet);
@@ -5636,7 +5636,7 @@ function alertsInit(checkStates) {
     statesToSubscribe.forEach(stateId => {
         if (! currentlySubscribedStates.includes(stateId)) {
             // logs(`subscribe on ${stateId}`, _l);
-            if (existsState(stateId)) on({id: stateId, change: 'any'}, alertsOnAlert);
+            if (existsState(stateId)) on({id: stateId, change: 'any'}, alertsOnSubscribedState);
         }
     });
     currentlySubscribedStates.forEach(stateId => {
@@ -5655,7 +5655,7 @@ function alertsInit(checkStates) {
                     currentValue = getState(stateId).val,
                     oldValue = alerts[stateId].value;
                 if ((currentValue !== undefined) && (currentValue !== oldValue)) {
-                    alertsOnAlert({id: stateId, state: {val: currentValue}, oldState : {val: oldValue}});
+                    alertsOnSubscribedState({id: stateId, state: {val: currentValue}, oldState : {val: oldValue}});
                 }
             }
         });
@@ -5731,7 +5731,7 @@ function alertsStoreMessagesToCache(user, alertMessages) {
  * This function is called when state of any subscribed for alert objects is changed.
  * @param {object} object - This object contained all information about changed state.
  */
-function alertsOnAlert(object) {
+function alertsOnSubscribedState(object) {
     const
         alerts = alertsGet(),
         activeChatGroups = telegramGetGroupChats(true),
@@ -5742,7 +5742,7 @@ function alertsOnAlert(object) {
         const
             currentStateValue = object.state.val,
             oldStateValue = object.oldState.val;
-        alerts[objectId].chatIds.forEach((thresholds, chatId) => {
+        alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
             chatId = Number(chatId);
             const user = chatId > 0 ? telegramUsersGenerateUserObjectFromId(chatId) : telegramUsersGenerateUserObjectFromId(undefined, chatId);
             if ((chatId > 0) || (activeChatGroups.includes(chatId))) {
@@ -5771,61 +5771,104 @@ function alertsOnAlert(object) {
                     ||
                     (alertObject.common.hasOwnProperty('states') && (['string','number'].includes(alertStateType)))
                     ) {
-                    if (currentStateValue !== oldStateValue) {
-                        // alertFunc = enumerationItems[inputFunction].list.hasOwnProperty(alertFuncEnum) ? enumerationItems[inputFunction].list[alertFuncEnum] : undefined,
-                        logs(`alertName = ${JSON.stringify(alertDeviceName)}`);
-                        // logs(`alertFunc[${alertFuncEnum}] = ${JSON.stringify(alertFunc)}`);
-                        alertMessages.push(`${alertTextMain}  ${alertStatus}`);
+                    const
+                        onCount = detailsOrThresholds.hasOwnProperty(alertThresholdOnCountId) ? detailsOrThresholds[alertThresholdOnCountId] : 1,
+                        onTimeInterval = detailsOrThresholds.hasOwnProperty(alertThresholdOnTimeIntervalId) ? detailsOrThresholds[alertThresholdOnTimeIntervalId] : 0,
+                        idStoredCounted = [objectId, chatId, 'counted'].join(itemsDelimiter),
+                        idStoredCountedValue = [objectId, chatId, 'countedValue'].join(itemsDelimiter),
+                        storedCounted = alertsStoredVariables.has(idStoredCounted) ? alertsStoredVariables.get(idStoredCounted) : 0,
+                        storedCountedValue = alertsStoredVariables.has(idStoredCountedValue) ? alertsStoredVariables.get(idStoredCountedValue) : undefined,
+                        idStoredTimerOn = [objectId, chatId, 'timerOn'].join(itemsDelimiter),
+                        idStoredTimerValue = [objectId, chatId, 'timerValue'].join(itemsDelimiter),
+                        storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
+                        storedTimerValue = (storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)) ? alertsStoredVariables.get(idStoredTimerValue) : undefined,
+                        alertMessageText = `${alertTextMain}  ${alertStatus}`;
+                    if (onTimeInterval) {
+                        if (storedTimerOn) {
+                            if (currentStateValue !== storedTimerValue) {
+                                clearTimeout(storedTimerOn);
+                                alertsStoredVariables.delete(idStoredTimerOn);
+                                alertsStoredVariables.delete(idStoredTimerValue);
+                            }
+                        }
+                        else if (currentStateValue !== oldStateValue) {
+                            alertsStoredVariables.set(idStoredTimerValue, currentStateValue);
+                            alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
+                                alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                                alertsStoredVariables.delete(idStoredTimerOn);
+                                alertsStoredVariables.delete(idStoredTimerValue);
+                            }, onTimeInterval * 1000));
+                        }
+                    }
+                    else {
+                        const
+                            currentlyCounted = storedCounted ? (currentStateValue === storedCountedValue ? storedCounted + 1 : 0) : (currentStateValue !== oldStateValue ? 1 : 0),
+                            isOnCount = currentlyCounted === onCount;
+                        if (isOnCount) {
+                            // alertFunc = enumerationItems[inputFunction].list.hasOwnProperty(alertFuncEnum) ? enumerationItems[inputFunction].list[alertFuncEnum] : undefined,
+                            logs(`alertName = ${JSON.stringify(alertDeviceName)}`);
+                            // logs(`alertFunc[${alertFuncEnum}] = ${JSON.stringify(alertFunc)}`);
+                            alertMessages.push(alertMessageText);
+                        }
+                        if (onCount > 1) {
+                            if (storedCounted !== currentlyCounted) {
+                                alertsStoredVariables.set(idStoredCounted, isOnCount ? 0 : currentlyCounted);
+                            }
+                            if (currentlyCounted === 1) {
+                                alertsStoredVariables.set(idStoredCountedValue, currentStateValue);
+                            }
+                        }
+
                     }
                 }
-                else if ((alertStateType === 'number') && (Object.keys(thresholds).length)) {
-                    Object.keys(thresholds)
+                else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
+                    Object.keys(detailsOrThresholds)
                         .sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB)))
                         .forEach(threshold => {
                             const
-                                currentThreshold = thresholds[threshold],
+                                currentThreshold = detailsOrThresholds[threshold],
                                 onAbove = currentThreshold.onAbove,
                                 onLess = currentThreshold.onLess,
                                 thresholdValue = Number(threshold),
                                 onCount = currentThreshold.hasOwnProperty(alertThresholdOnCountId) ? currentThreshold[alertThresholdOnCountId] : 1,
                                 onTimeInterval = currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0,
-                                idVariableCounted = [objectId, chatId, threshold, 'counted'].join(itemsDelimiter),
-                                variableCounted = alertsVariables.has(idVariableCounted) ? alertsVariables.get(idVariableCounted) : 0,
-                                idVariableTimerOn = [objectId, chatId, threshold, 'timerOn'].join(itemsDelimiter),
-                                idVariableTimerStatus = [objectId, chatId, threshold, 'timerStatus'].join(itemsDelimiter),
-                                variableTimerOn = alertsVariables.has(idVariableTimerOn) ? alertsVariables.get(idVariableTimerOn) : undefined,
-                                variableTimerStatus = (variableTimerOn && alertsVariables.has(idVariableTimerStatus)) ? alertsVariables.get(idVariableTimerStatus) : 0,
-                                isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue) || ((onCount > 1) && (variableCounted < 0)) || (variableTimerOn && (variableTimerStatus < 0))),
-                                isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || ((onCount > 1) && (variableCounted > 0)) || (variableTimerOn && (variableTimerStatus < 0))),
+                                idStoredCounted = [objectId, chatId, threshold, 'counted'].join(itemsDelimiter),
+                                storedCounted = alertsStoredVariables.has(idStoredCounted) ? alertsStoredVariables.get(idStoredCounted) : 0,
+                                idStoredTimerOn = [objectId, chatId, threshold, 'timerOn'].join(itemsDelimiter),
+                                idStoredTimerStatus = [objectId, chatId, threshold, 'timerStatus'].join(itemsDelimiter),
+                                storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
+                                storedTimerStatus = (storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)) ? alertsStoredVariables.get(idStoredTimerStatus) : 0,
+                                isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue) || ((onCount > 1) && (storedCounted < 0)) || (storedTimerOn && (storedTimerStatus < 0))),
+                                isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || ((onCount > 1) && (storedCounted > 0)) || (storedTimerOn && (storedTimerStatus < 0))),
                                 alertMessageText = `${alertTextMain} ${alertStatus} [${isLess ? iconItemLess : iconItemAbove}${threshold}]`;
                             if (onTimeInterval) {
-                                if (variableTimerOn) {
-                                    const currentTimerStatus = variableTimerStatus + (variableTimerStatus > 0 ? (isLess ? -1 :  0) : (isAbove ? 1 : 0));
+                                if (storedTimerOn) {
+                                    const currentTimerStatus = storedTimerStatus + (storedTimerStatus > 0 ? (isLess ? -1 :  0) : (isAbove ? 1 : 0));
                                     if (currentTimerStatus === 0) {
-                                        clearTimeout(variableTimerOn);
-                                        alertsVariables.delete(idVariableTimerOn);
-                                        alertsVariables.delete(idVariableTimerStatus);
+                                        clearTimeout(storedTimerOn);
+                                        alertsStoredVariables.delete(idStoredTimerOn);
+                                        alertsStoredVariables.delete(idStoredTimerStatus);
                                     }
                                 }
                                 else {
                                     const currentTimerStatus =  isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0);
                                     if (currentTimerStatus !== 0) {
-                                        alertsVariables.set(idVariableTimerStatus, isLess ? -1 :  1);
-                                        alertsVariables.set(idVariableTimerOn, setTimeout(() => {
+                                        alertsStoredVariables.set(idStoredTimerStatus, isLess ? -1 :  1);
+                                        alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
                                             alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
-                                            alertsVariables.delete(idVariableTimerOn);
-                                            alertsVariables.delete(idVariableTimerStatus);
+                                            alertsStoredVariables.delete(idStoredTimerOn);
+                                            alertsStoredVariables.delete(idStoredTimerStatus);
                                         }, onTimeInterval * 1000));
                                     }
                                 }
                             }
                             else {
                                 const
-                                    currentlyCounted = variableCounted + (variableCounted === 0 ? (isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0)) : (isLess ? -1 : (isAbove ? 1 : 0))),
+                                    currentlyCounted = storedCounted + (storedCounted === 0 ? (isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0)) : (isLess ? -1 : (isAbove ? 1 : 0))),
                                     isOnCount = Math.abs(currentlyCounted) === onCount;
                                 if (isOnCount) alertMessages.push(alertMessageText);
-                                if ((onCount > 1) && (variableCounted !== currentlyCounted)) {
-                                    alertsVariables.set(idVariableCounted, isOnCount ? 0 : currentlyCounted);
+                                if ((onCount > 1) && (storedCounted !== currentlyCounted)) {
+                                    alertsStoredVariables.set(idStoredCounted, isOnCount ? 0 : currentlyCounted);
                                 }
                             }
                         });
@@ -6179,6 +6222,7 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
                             submenu: [],
                         }
                     );
+                    return subMenu;
                 };
             }
             else {
@@ -6322,8 +6366,8 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
     let
         subMenu = [],
         subMenuIndex = 0;
-        currentDeviceStates.forEach(shortStateId => {
-            if (! enumerationDeviceBasicAttributes.includes(shortStateId) && (shortStateId !== primaryStateShortId)) {
+        currentDeviceStates.forEach((shortStateId, stateIndex) => {
+            if (! enumerationDeviceBasicAttributes.includes(shortStateId)  && (currentDeviceStates.indexOf(shortStateId) === stateIndex) /* && (shortStateId !== primaryStateShortId) */) {
                 const currentStateId = [idPrefix, shortStateId].join('.');
                 if (currentDeviceAttributes.includes(shortStateId) ||
                     (currentDeviceButtons.includes(shortStateId) && (MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[shortStateId].showAccessLevel) <= 0))) {
@@ -6337,8 +6381,9 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
                                 const
                                     stateIndex = `${currentIndex}.${subMenuIndex}`,
                                     stateName = `${translationsGetObjectName(user, currentStateObject, currentFunctionId)}`,
-                                    subMenuItem = alertsSubscribedOnMenuItemGenerate(stateIndex, stateName, currentStateId, currentStateObject, commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId));
+                                    subMenuItem = alertsSubscribedOnMenuItemGenerate(stateIndex, stateName, currentStateId, currentStateObject, commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId), true);
                                 if (subMenuItem) {
+                                    // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 1)}`, _l)
                                     subMenuIndex = subMenu.push(subMenuItem);
                                 }
                             }
