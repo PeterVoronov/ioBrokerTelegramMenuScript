@@ -2742,6 +2742,11 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
                                 translationCurrentPart[translationKey] = translationInputPart[translationKey];
                             }
                         }
+                        else if (translationUpdateMode === 'enrich') {
+                            if (typeOf(translationInputPart[translationKey], 'string') && (typeOf(translationCurrentPart[translationKey]) === typeOf(translationInputPart[translationKey])) && (translationCurrentPart[translationKey].includes(translationKey))) {
+                                translationCurrentPart[translationKey] = translationInputPart[translationKey];
+                            }
+                        }
                     }
                     else {
                         translationCurrentPart[translationKey] = translationInputPart[translationKey];
@@ -3300,7 +3305,7 @@ function translationsBasicItemsMenuGenerate(user, menuItemToProcess) {
                     subSubMenuIndex = 0,
                     subMenuItem = {
                         index: `${currentIndex}.${subMenuIndex}`,
-                        name: `[${currentTranslation[translationKey]}] ${currentTranslation[translationKey] === translationKey ? iconItemNotFound : '' }`,
+                        name: `[${currentTranslation[translationKey]}] ${currentTranslation[translationKey].includes(translationKey) ? iconItemNotFound : '' }`,
                         icon: iconItemTranslation,
                         text: ` (${translationKey})`,
                         submenu: new Array()
