@@ -201,5 +201,6 @@
   "textTimeRange3M": "Three months",
   "textTimeRange6M": "Six months",
   "textTimeRange12h": "12 hours",
-  "menuExtensionTranslations": "Extension Translations"
+  "menuExtensionTranslations": "Extension Translations",
+  "textSecondsShort": "sec"
 }
