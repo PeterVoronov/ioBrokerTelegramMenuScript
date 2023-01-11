@@ -1,8 +1,11 @@
 name: 'Refresh core locales with crowdin.com translations'
 on:
-  schedule:
+  #schedule:
     #- cron:  '5 */6 * * *'
     # scheduled to runs every 5th minute past the 0, 6, 12 and 18th hour.
+  push:
+    paths:
+      - 'locales/source/core.json'
   workflow_dispatch:  # click the button on Github repo!
 
 jobs:
@@ -16,8 +19,8 @@ jobs:
         uses: crowdin/github-action@1.5.1
         with:
           upload_sources: true
-          upload_translations: false
-          download_translations: true
+          upload_translations: true
+          download_translations: false
           # Export options
           skip_untranslated_strings: true
           export_only_approved: true
@@ -29,16 +32,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-      - id: transform
-        name: Transform and commit changes
-        uses: PetroSVoronov/action-prepare-locales@v1.0.4
-        with:
-          folder_with_simple_jsons: locales/core
-          folder_with_core_translations: locales
-          git_user_name: github-actions
-          git_user_email: github-actions@github.com
-      - id: push
-        name: Push changes
-        if: steps.transform.outputs.is_commit_available == 'true'
-        run: |
-          git push
+      #- id: transform
+      #  name: Transform and commit changes
+      #  uses: PetroSVoronov/action-prepare-locales@v1.0.4
+      #  with:
+      #    folder_with_simple_jsons: locales/core
+      #    folder_with_core_translations: locales
+      #    git_user_name: github-actions
+      #    git_user_email: github-actions@github.com
+      #- id: push
+      #  name: Push changes
+      #  if: steps.transform.outputs.is_commit_available == 'true'
+      #  run: |
+      #    git push
