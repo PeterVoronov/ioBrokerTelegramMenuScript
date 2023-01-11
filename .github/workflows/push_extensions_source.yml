@@ -17,7 +17,7 @@ jobs:
         with:
           upload_sources: true
           upload_translations: false
-          upload_sources_args: '--no-auto-update'
+          #upload_sources_args: '--no-auto-update'
           download_translations: false
           # Export options
           skip_untranslated_strings: true
@@ -26,9 +26,9 @@ jobs:
           create_pull_request: false
           push_translations: false
           # Sources pattern
-          source: extensions/*/locales/extension.json
+          #source: extensions/*/locales/extension.json
           # Translations pattern
-          translation: '%original_path%/locale_%locale_with_underscore%.json'
+          #translation: '%original_path%/locale_%locale_with_underscore%.json'
           config: '.crowdin.yml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
