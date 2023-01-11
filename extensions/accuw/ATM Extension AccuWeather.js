@@ -17,7 +17,6 @@ const
     autoTelegramMenuExtensionTranslationsKeys = [
         'WeatherForecast',
         'ForecastDetailed',
-        'ForecastOnTomorrow',
         'ForecastHourly',
         'ForecastTomorrow',
         'ForecastLong',
