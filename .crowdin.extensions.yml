@@ -21,13 +21,13 @@ files: [
   # Source files filter
   # e.g. "/resources/en/*.json"
   #
-  "source" : "locales/core/source.json",
+  "source" : "/extensions/*/locales/source/extension.json",
 
   #
   # Where translations will be placed
   # e.g. "/resources/%two_letters_code%/%original_file_name%"
   #
-  "translation" : "locales/core/core__%two_letters_code%.json",
+  "translation" : "%original_path%/extension_%two_letters_code%.json",
 
   #
   # Files or directories for ignore

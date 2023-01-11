@@ -2,7 +2,7 @@ name: 'Refresh extensions translations with crowdin'
 on:
   push:
     paths:
-      - 'extensions/*/locales/extension.json'
+      - 'extensions/*/locales/source/extension.json'
   workflow_dispatch:  # click the button on Github repo!
 
 jobs:
