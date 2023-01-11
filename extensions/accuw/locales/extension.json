@@ -40,7 +40,8 @@
           "RelativeHumidity": "Relative humidity",
           "dewPoint": "dew point",
           "pressure": "pressure",
-          "mmHg": "mmHg."
+          "mmHg": "mmHg.",
+          "test": "1"
         }
       }
     }
