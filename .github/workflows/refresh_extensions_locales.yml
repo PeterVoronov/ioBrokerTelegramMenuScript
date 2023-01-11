@@ -6,12 +6,12 @@ on:
   workflow_dispatch:  # click the button on Github repo!
 
 jobs:
-  crowdin_push:
+  crowdin_extensions_refresh:
     runs-on: ubuntu-latest
     steps:
       - id: checkout
         uses: actions/checkout@v3
-      - id: crowdin-push
+      - id: crowdin-refresh
         name: Push extensions locales sources to crowdin
         uses: crowdin/github-action@1.5.1
         with:
@@ -22,11 +22,8 @@ jobs:
           skip_untranslated_strings: true
           export_only_approved: true
           # git options
-          create_pull_request: true
-          localization_branch_name: l10n_crowdin_extensions
-          pull_request_title: 'New Crowdin translations for extensions'
-          pull_request_body: 'New Crowdin pull request with translations for extensions'
-          pull_request_base_branch_name: github.ref_name
+          push_translations: true
+          localization_branch_name: github.ref_name
           config: '.crowdin.extensions.yml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
