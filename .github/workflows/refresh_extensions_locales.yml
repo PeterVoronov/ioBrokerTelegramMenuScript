@@ -23,7 +23,8 @@ jobs:
           export_only_approved: true
           # git options
           push_translations: true
-          localization_branch_name: github.ref_name
+          localization_branch_name: ${{ github.ref_name }}
+          create_pull_request: false
           config: '.crowdin.extensions.yml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
