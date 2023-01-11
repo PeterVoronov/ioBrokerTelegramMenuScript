@@ -1,4 +1,4 @@
-name: 'Upload extensions sources for translation to crowdin'
+name: 'Refresh extensions translations with crowdin'
 on:
   push:
     paths:
@@ -17,17 +17,16 @@ jobs:
         with:
           upload_sources: true
           upload_translations: false
-          download_translations: false
+          download_translations: true
           # Export options
           skip_untranslated_strings: true
           export_only_approved: true
           # git options
-          create_pull_request: false
-          push_translations: false
-          # Sources pattern
-          #source: extensions/*/locales/extension.json
-          # Translations pattern
-          #translation: '%original_path%/locale_%locale_with_underscore%.json'
+          create_pull_request: true
+          localization_branch_name: l10n_crowdin_extensions
+          pull_request_title: 'New Crowdin translations for extensions'
+          pull_request_body: 'New Crowdin pull request with translations for extensions'
+          pull_request_base_branch_name: github.ref_name
           config: '.crowdin.extensions.yml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
