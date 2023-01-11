@@ -29,7 +29,7 @@ jobs:
           #source: extensions/*/locales/extension.json
           # Translations pattern
           #translation: '%original_path%/locale_%locale_with_underscore%.json'
-          config: '.crowdin.yml'
+          config: '.crowdin.extensions.yml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
