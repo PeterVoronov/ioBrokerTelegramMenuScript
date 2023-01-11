@@ -93,7 +93,8 @@ const
     scriptRepositorySite                    = 'https://github.com/',
     scriptRepositorySubUrl                  = '/PeterVoronov/ioBrokerTelegramMenuScript/',
     scriptVersion                           = 'v0.9.5-dev',
-    scriptLocalesFolder                     = `${scriptRepositorySubUrl}blob/${scriptVersion}/locales/`,
+    scriptBranchRemoteFolder                = `${scriptRepositorySubUrl}blob/${scriptVersion}/`,
+    scriptCoreLocalesRemoteFolder           = `${scriptBranchRemoteFolder}locales/`,
 
 
     prefixPrimary                           = `0_userdata.0.telegram_automenu.${telegramInstance}`,
@@ -2465,7 +2466,7 @@ const
 const translationsList = {};  // Localization translation
 const
     translationCommonFunctionsAttributesPrefix = `${idFunctions}.common`,
-    translationLocalesExtractRegExp = /<a.+?href="([^"]+)">locale_([^.]+).json<\/a>/g,
+    translationLocalesExtractRegExp = /<a.+?href="([^"]+)">.*locale_([^.]+).json<\/a>/g,
     translationVersion = '1.0',
     translationType = 'telegramMenuTranslation',
     cachedTranslationToUpload = 'translationToUpload',
@@ -2571,9 +2572,10 @@ function translationsLoad() {
 /**
  * This functions downloads locales from the repo and returns the translations object into the `callback` function.
  * @param {string} languageId - The language Id, like 'en', 'de', 'uk', ..., or 'all', to download all of them.
+ * @param {string} extensionId - The extension id, to download specific translations.
  * @param {function(object=, string|object=):void} callback - The callback function in format `callback(translation, error)`.
  */
-function translationsLoadLocalesFromRepository(languageId, callback) {
+function translationsLoadLocalesFromRepository(languageId, extensionId, callback) {
     /**
      * This functions process the list of locales links iterative way, and returns the translations object into the `callback` function.
      * @param {object} repo - The axios object, initiated to the repo main link.
@@ -2619,8 +2621,9 @@ function translationsLoadLocalesFromRepository(languageId, callback) {
         languageId = doAll;
     }
     if (languageId) {
-        console.log(scriptLocalesFolder);
-        github.get(scriptLocalesFolder)
+        const remoteFolder = extensionId && (extensionId !== translationCoreId) ? `${scriptBranchRemoteFolder}/extensions/${extensionId}/locales/`: scriptCoreLocalesRemoteFolder;
+        console.log(remoteFolder);
+        github.get(remoteFolder)
         .then(function(response) {
             if (response && response.data) {
                 let
@@ -2656,7 +2659,7 @@ function translationsLoadLocalesFromRepository(languageId, callback) {
  */
 async function translationsInitialLoadLocalesFromRepository(){
     return new Promise((resolve, reject) => {
-        translationsLoadLocalesFromRepository(doAll, (locales, error) => {
+        translationsLoadLocalesFromRepository(doAll, translationCoreId, (locales, error) => {
             if (error) {
                 console.warn(`Can't make an initial load of locales from repo! Error is '${error}'.`);
                 reject(error);
@@ -7221,7 +7224,7 @@ const
                                     icon: iconItemUpload,
                                     group: 'menuTranslationFile',
                                     id: doUploadFromRepo,
-                                    param:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadFromRepo),
+                                    param:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadFromRepo, translationCoreId),
                                     function: translationsUploadMenuItemDetails,
                                     submenu: translationsUploadMenuGenerate
                                 }
@@ -9346,7 +9349,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
                     case doUploadFromRepo: {
                         const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
-                        translationsLoadLocalesFromRepository(currentLanguageId, (locales, _error) => {
+                        translationsLoadLocalesFromRepository(currentLanguageId, currentParam, (locales, _error) => {
                             if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(currentLanguageId) && typeOf(locales[currentLanguageId], 'object')) {
                                 const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, '', '', '', locales[currentLanguageId]);
                                 if (isTranslationFileOk) {
@@ -9696,7 +9699,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             const newLanguageId = currentValue;
                             if (! translationsList.hasOwnProperty(newLanguageId)) {
                                 const menuPosition = currentMenuPosition;
-                                translationsLoadLocalesFromRepository(newLanguageId, (locales, _error) => {
+                                translationsLoadLocalesFromRepository(newLanguageId, translationCoreId, (locales, _error) => {
                                     translationsList[newLanguageId] = {};
                                     if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(newLanguageId) && typeOf(locales[newLanguageId], 'object')) {
                                         if (translationsCheckAndCacheUploadedFile(user, '', '', '', locales[newLanguageId])) {
