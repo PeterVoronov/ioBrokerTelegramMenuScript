@@ -1,4 +1,4 @@
-name: 'Upload source translation to crowdin for extensions'
+name: 'Upload extensions sources for translation to crowdin'
 on:
   push:
     paths:
