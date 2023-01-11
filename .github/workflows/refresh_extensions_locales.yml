@@ -10,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: checkout
+        name: Checkout current branch
         uses: actions/checkout@v3
       - id: crowdin-refresh
-        name: Push extensions locales sources to crowdin
+        name: Refresh extensions translations
         uses: crowdin/github-action@1.5.1
         with:
           upload_sources: true
