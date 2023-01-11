@@ -2,7 +2,7 @@
   "name": "iobroker-auto-telegram-menu-script",
   "version": "1.0.0",
   "description": "Script to auto generate and process Telegram menu",
-  "main": "TelegramMenu.js",
+  "main": "AutoTelegramMenuMainScript.js",
   "scripts": {
     "lint": "eslint .",
     "all": "npm run lint"
