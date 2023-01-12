@@ -2466,7 +2466,7 @@ const
 const translationsList = {};  // Localization translation
 const
     translationCommonFunctionsAttributesPrefix = `${idFunctions}.common`,
-    translationLocalesExtractRegExp = /<a.+?href="([^"]+)">.*locale_([^.]+).json<\/a>/g,
+    translationLocalesExtractRegExp = /<a.+?href="([^"]+)">locale_([^.]+).json<\/a>/g,
     translationVersion = '1.0',
     translationType = 'telegramMenuTranslation',
     cachedTranslationToUpload = 'translationToUpload',
