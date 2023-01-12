@@ -1,0 +1,53 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "ru",
+  "version": "1.0",
+  "translation": {
+    "functions": {
+      "external": {
+        "accuw": {
+          "translations": {
+            "Day": "День",
+            "ForecastDetailed": "Подробный прогноз",
+            "ForecastHourly": "Почасовой прогноз",
+            "ForecastLong": "Долгосрочный",
+            "ForecastTomorrow": "Завтра",
+            "Night": "Ночь",
+            "NoPrecipitation": "Без осадков",
+            "PossiblePrecipitationHours": "Возможные часы осадков",
+            "Precipitations": "Осадки",
+            "RealFeel": "Ощущается",
+            "RelativeHumidity": "Относительная влажность",
+            "Temperature": "Температура",
+            "WeatherForecast": "Прогноз погоды",
+            "Wind": "Ветер",
+            "dewPoint": "точка росы",
+            "from": "от",
+            "ice": "лёд",
+            "inShade": "в тени",
+            "metersPerSecondShort": "м/с.",
+            "millimetersShort": "мм.",
+            "mmHg": "мм рт.ст.",
+            "pressure": "давление",
+            "rain": "дождь",
+            "snow": "снег",
+            "thunderstormProbability": "вероятность грозы",
+            "to": "до",
+            "total": "всего",
+            "upTo": "вплоть до",
+            "windEast": "В",
+            "windGust": "порывы",
+            "windNorth": "С",
+            "windNorthEast": "С-В",
+            "windNorthWest": "С-З",
+            "windSouth": "Ю",
+            "windSouthEast": "Ю-В",
+            "windSouthWest": "Ю-З",
+            "windWest": "З",
+            "withProbability": "с вероятностью"
+          }
+        }
+      }
+    }
+  }
+}

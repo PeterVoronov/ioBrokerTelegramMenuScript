@@ -1,0 +1,53 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "de",
+  "version": "1.0",
+  "translation": {
+    "functions": {
+      "external": {
+        "accuw": {
+          "translations": {
+            "Day": "Tag",
+            "ForecastDetailed": "Detaillierte Vorhersage",
+            "ForecastHourly": "Stündliche Vorhersage",
+            "ForecastLong": "Langfristig",
+            "ForecastTomorrow": "Morgen",
+            "Night": "Nacht",
+            "NoPrecipitation": "Kein Niederschlag",
+            "PossiblePrecipitationHours": "Mögliche Niederschlagszeiten",
+            "Precipitations": "Niederschlag",
+            "RealFeel": "Gefühlt",
+            "RelativeHumidity": "Relative Luftfeuchtigkeit",
+            "Temperature": "Temperatur",
+            "WeatherForecast": "Wettervorhersage",
+            "Wind": "Wind",
+            "dewPoint": "Taupunkt",
+            "from": "von",
+            "ice": "eis",
+            "inShade": "im Schatten",
+            "metersPerSecondShort": "m/s.",
+            "millimetersShort": "mm.",
+            "mmHg": "mmHg.",
+            "pressure": "Druck",
+            "rain": "regen",
+            "snow": "schnee",
+            "thunderstormProbability": "Gewitterwahrscheinlichkeit",
+            "to": "zu",
+            "total": "insgesamt",
+            "upTo": "bis zu",
+            "windEast": "O",
+            "windGust": "windböen",
+            "windNorth": "N",
+            "windNorthEast": "NO",
+            "windNorthWest": "NW",
+            "windSouth": "S",
+            "windSouthEast": "SO",
+            "windSouthWest": "SW",
+            "windWest": "W",
+            "withProbability": "mit Wahrscheinlichkeit"
+          }
+        }
+      }
+    }
+  }
+}

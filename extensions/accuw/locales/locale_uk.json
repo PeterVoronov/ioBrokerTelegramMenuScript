@@ -1,0 +1,53 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "uk",
+  "version": "1.0",
+  "translation": {
+    "functions": {
+      "external": {
+        "accuw": {
+          "translations": {
+            "Day": "День",
+            "ForecastDetailed": "Детальний прогноз",
+            "ForecastHourly": "Погодинний прогноз",
+            "ForecastLong": "Довгостроковий",
+            "ForecastTomorrow": "Завтра",
+            "Night": "Ніч",
+            "NoPrecipitation": "Без опадів",
+            "PossiblePrecipitationHours": "Можливі години опадів",
+            "Precipitations": "Опади",
+            "RealFeel": "Відчувається як",
+            "RelativeHumidity": "Відносна вологість",
+            "Temperature": "Температура",
+            "WeatherForecast": "Прогноз погоди",
+            "Wind": "Вітер",
+            "dewPoint": "точка роси",
+            "from": "від",
+            "ice": "лід",
+            "inShade": "у тіні",
+            "metersPerSecondShort": "м/с.",
+            "millimetersShort": "мм.",
+            "mmHg": "мм рт.ст.",
+            "pressure": "тиск",
+            "rain": "дощ",
+            "snow": "сніг",
+            "thunderstormProbability": "ймовірність грози",
+            "to": "до",
+            "total": "загалом",
+            "upTo": "максимум",
+            "windEast": "Сх",
+            "windGust": "пориви",
+            "windNorth": "Пн",
+            "windNorthEast": "ПнСх",
+            "windNorthWest": "ПнЗх",
+            "windSouth": "Пд",
+            "windSouthEast": "ПдСх",
+            "windSouthWest": "ПдЗх",
+            "windWest": "Зх",
+            "withProbability": "з ймовірністю"
+          }
+        }
+      }
+    }
+  }
+}
