@@ -9,7 +9,8 @@ on:
   workflow_dispatch:  # click the button on Github repo!
 
 jobs:
-  crowdin:
+  crowdin_refresh:
+    name: 'Refresh with crowdin.com for core translations'
     runs-on: ubuntu-latest
     steps:
       - id: checkout
@@ -44,4 +45,4 @@ jobs:
         name: Push changes
         if: steps.transform.outputs.is_commit_available == 'true'
         run: |
-          git log -1
+          git push
