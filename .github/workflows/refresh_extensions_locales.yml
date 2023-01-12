@@ -32,7 +32,7 @@ jobs:
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
       - id: transform
         name: Transform and commit changes
-        uses: PetroSVoronov/action-prepare-locales@v2.0.0
+        uses: PetroSVoronov/action-prepare-locales@v2.0.2
         with:
           source_translations_pattern: 'extensions/*/locales/source/extension_(??).json'
           transformed_translations_relative_path_and_pattern: '../locale_$language$.json'
