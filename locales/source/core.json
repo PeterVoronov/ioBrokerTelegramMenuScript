@@ -204,7 +204,6 @@
     "textUserLastName": "Last name",
     "textUserUserId": "ID",
     "textUserUserName": "Nickname",
-    "textWrongValue": "Wrong value!",
-    "test": "1"
+    "textWrongValue": "Wrong value!"
   }
 }
