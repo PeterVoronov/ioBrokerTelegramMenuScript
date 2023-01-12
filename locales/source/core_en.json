@@ -26,7 +26,7 @@
     "cfgSummaryTextLengthMax": "Max text length in one line",
     "cfgTextLengthModifierForGChats": "Max length modifier for the group chats",
     "cfgThresholdsForNumericString": "Allow thresholds for a \"numeric\" string",
-    "cfgUpdateMessageTime": "Update the menu message at, HH:MM",
+    "cfgUpdateMessageTime": "Update the menu message at, hh:mm",
     "cfgUpdateMessagesOnStart": "Update the menu message on script start, with delay(min)",
     "cmdAckAlert": "Acknowledge alert",
     "cmdAckAllAlerts": "Acknowledge all alerts",

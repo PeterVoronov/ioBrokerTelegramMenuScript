@@ -26,7 +26,7 @@
     "cfgSummaryTextLengthMax": "Maximale Textlänge in einer Zeile",
     "cfgTextLengthModifierForGChats": "Modifikator für die maximale Länge der Gruppenchats",
     "cfgThresholdsForNumericString": "Schwellenwerte für eine \"Numerische\" Zeichenfolge zulassen",
-    "cfgUpdateMessageTime": "Aktualisieren Sie die Menümeldung um, HH:MM",
+    "cfgUpdateMessageTime": "Aktualisieren Sie die Menümeldung um, hh:mm",
     "cfgUpdateMessagesOnStart": "Aktualisiere die Menünachricht beim Start des Skripts, mit Verzögerung (min)",
     "cmdAckAlert": "Alarme bestätigen",
     "cmdAckAllAlerts": "Alle Alarme quittieren",

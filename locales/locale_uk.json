@@ -30,7 +30,7 @@
       "cfgSummaryTextLengthMax": "Максимальна довжина тексту в стрічці",
       "cfgTextLengthModifierForGChats": "Модифікатор довжини тексту для групових чатів",
       "cfgThresholdsForNumericString": "Використовувати граничні значення для \"числових\" строк",
-      "cfgUpdateMessageTime": "Оновлювати меню о, ЧЧ:ММ",
+      "cfgUpdateMessageTime": "Оновлювати меню о, гг:хх",
       "cfgUpdateMessagesOnStart": "Оновити повідомлення меню при старті скрипту, із затримкою (хв)",
       "cmdAckAlert": "Очистити",
       "cmdAckAllAlerts": "Очистити всі",
