@@ -32,16 +32,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-      #- id: transform
-      #  name: Transform and commit changes
-      #  uses: PetroSVoronov/action-prepare-locales@v1.0.4
-      #  with:
-      #    folder_with_simple_jsons: locales/core
-      #    folder_with_core_translations: locales
-      #    git_user_name: github-actions
-      #    git_user_email: github-actions@github.com
-      #- id: push
-      #  name: Push changes
-      #  if: steps.transform.outputs.is_commit_available == 'true'
-      #  run: |
-      #    git push
+      - id: transform
+        name: Transform and commit changes
+        uses: PetroSVoronov/action-prepare-locales@v2.0.0
+        with:
+          source_translations_pattern: 'locales/source/core_(??).json'
+          transformed_translations_relative_path_and_pattern: '../locale_$language$.json'
+          git_user_name: github-actions
+          git_user_email: github-actions@github.com
+      - id: push
+        name: Push changes
+        if: steps.transform.outputs.is_commit_available == 'true'
+        run: |
+          git log -1
