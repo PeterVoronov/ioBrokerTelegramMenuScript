@@ -3525,15 +3525,24 @@ function translationsExtensionsTranslationsItemsMenuGenerate(user, menuItemToPro
                 index: `${currentIndex}.${translationKeyIndex}`,
                 name: translationsItemGet(user, `${translationType}.${translationKey}`),
                 icon: iconItemTranslation,
-                text: ` (${translationKey})`,
-                submenu: new Array()
+                text: ` (${translationKey})`
             };
-        let subSubMenuIndex = 0;
         if (isCurrentAccessLevelAllowModify) {
-            subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
-            subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
+            subMenuItem.param = commandsPackParams(cmdEmptyCommand, `${translationType}.${translationKey}`);
+            subMenuItem.submenu = (user, menuItemToProcess) => {
+                const
+                    currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+                    [_cmdId, translationId] = commandUnpackParams(menuItemToProcess.param);
+                let
+                    subMenu = new Array(),
+                    subMenuIndex = 0;
+                subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataTypeTranslation, translationId));
+                subMenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}`, subMenuIndex, dataTypeTranslation, translationId));
+                return subMenu;
+            };
         }
         else {
+            subMenuItem.submenu = [];
             subMenuItem.param = cmdNoOperation;
         }
         subMenu.push(subMenuItem);
@@ -4431,19 +4440,24 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
 
             case 'name': {
                 if (isCurrentAccessLevelAllowModify) {
-                    subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataType, currentItem, 'names', enumerationsNamesMain));
-                    subMenuIndex = subMenu.push({
-                        index: `${currentIndex}.${subMenuIndex}`,
-                        name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
-                        param: commandsPackParams(cmdItemNameGet, dataType, currentItem, enumerationItemAttr),
-                        submenu: [],
-                    });
+                    if ((enumerationItemAttrs.includes('nameTranslationId')) && currentEnumerationItem['nameTranslationId']) {
+                        subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataTypeTranslation, translationsGetEnumId(user, dataType, currentItem, enumerationsNamesMain)));
+                    }
+                    else {
+                        subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataType, currentItem, 'names', enumerationsNamesMain));
+                        subMenuIndex = subMenu.push({
+                            index: `${currentIndex}.${subMenuIndex}`,
+                            name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
+                            param: commandsPackParams(cmdItemNameGet, dataType, currentItem, enumerationItemAttr),
+                            submenu: [],
+                        });
+                    }
                 }
                 break;
             }
 
             case 'names': {
-                if (typeOf(currentEnumerationItem.names) === 'array') {
+                if (typeOf(currentEnumerationItem.names, 'array') && ! ((enumerationItemAttrs.includes('nameTranslationId')) && currentEnumerationItem['nameTranslationId'])) {
                     let
                         namesItem = {
                             index: `${currentIndex}.${subMenuIndex}`,
@@ -4499,7 +4513,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
                             {
                                 name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
                                 id: currentItem,
-                                subMenu: translationsExtensionsTranslationsItemsMenuGenerate
+                                submenu: translationsExtensionsTranslationsItemsMenuGenerate
                             },
                             ...translationsDownloadUploadMenuPartGenerate(user, currentItem)], `${currentIndex}.${subMenuIndex}`)
                     });
@@ -5531,7 +5545,7 @@ function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates,
  * @param {function} callback - The callback function.
  */
 function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
-    const {id , name, nameTranslationId, icon, externalMenu, scriptName, translationsKeys} = extensionDetails;
+    const {id , nameTranslationId, icon, externalMenu, scriptName, translationsKeys} = extensionDetails;
     logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`);
     logs(`scriptName= ${JSON.stringify(scriptName)}`);
     const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
@@ -5548,9 +5562,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
             isAvailable: true,
             isExternal: true,
             enum: idExternal,
-            name: name,
             nameTranslationId: nameTranslationId,
-            names: [enumerationsNamesBasic, enumerationsNamesMany],
             order: Object.keys(functionsList).length,
             icon: icon,
             state: externalMenu,
@@ -5559,7 +5571,6 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
             translationsKeys: translationsKeys
         };
     }
-    // logs(`functionsList[${extensionId}] = ${JSON.stringify(functionsList[extensionId], null, 2)}`, _l);
     enumerationsSave(dataTypeFunction);
     callback({success: true});
 }
