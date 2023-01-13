@@ -2472,6 +2472,7 @@ const
     cachedTranslationToUpload = 'translationToUpload',
     translationPrimaryStateId = 'primaryState',
     translationExtensionsPrefix = 'extensions',
+    translationSubPrefix = 'translations',
     translationCoreId = 'core',
     translationTopItems = [translationCoreId, idFunctions, idDestinations, idSimpleReports],
     translationUpdateModes = ['replace', 'overwrite', 'enrich', 'template'];
@@ -2622,7 +2623,7 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
         languageId = doAll;
     }
     if (languageId) {
-        const remoteFolder = extensionId && (extensionId !== translationCoreId) ? `${scriptBranchRemoteFolder}/${extensionId.split('.').join('/')}/locales/`: scriptCoreLocalesRemoteFolder;
+        const remoteFolder = extensionId && (extensionId !== translationCoreId) ? `${scriptBranchRemoteFolder}${translationExtensionsPrefix}/${extensionId.replace(prefixExtensionId, '').toLowerCase()}/locales/`: scriptCoreLocalesRemoteFolder;
         console.log(remoteFolder);
         github.get(remoteFolder)
         .then(function(response) {
@@ -2793,22 +2794,22 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
             if (translationPossibleUpdateModes.includes(translationUpdateMode)) {
                 const translationInput = translationInputFull[idTranslation];
                 translationCurrentParts.forEach((translationPart) => {
-                    if (translationPart.indexOf(translationExtensionsPrefix) === 0) {
-                        const extensionId = translationPart.split('.').pop();
+                    if (translationPart.indexOf(prefixExtensionId) === 0) {
+                        const extensionId = translationPart.replace(prefixExtensionId, '').toLowerCase();
                         if (extensionId) {
                             if (! translationCurrent.hasOwnProperty(idFunctions)) translationCurrent[idFunctions] = {};
                             if (! translationCurrent[idFunctions].hasOwnProperty(idExternal)) translationCurrent[idFunctions][idExternal] = {};
-                            if (! translationCurrent[idFunctions][idExternal].hasOwnProperty(extensionId)) translationCurrent[idFunctions][idExternal][extensionId] = {};
-                            if (translationCurrent[idFunctions][idExternal][extensionId].hasOwnProperty('translations')) {
-                                translationCurrent[idFunctions][idExternal][extensionId].translations =
+                            if (! translationCurrent[idFunctions][idExternal].hasOwnProperty(translationPart)) translationCurrent[idFunctions][idExternal][translationPart] = {};
+                            if (translationCurrent[idFunctions][idExternal][translationPart].hasOwnProperty(translationSubPrefix)) {
+                                translationCurrent[idFunctions][idExternal][translationPart][translationSubPrefix] =
                                     translationsProcessUpdate(
-                                        translationCurrent[idFunctions][idExternal][extensionId].translations,
-                                        translationInput[idFunctions][idExternal][extensionId].translations,
+                                        translationCurrent[idFunctions][idExternal][translationPart][translationSubPrefix],
+                                        translationInput[idFunctions][idExternal][extensionId][translationSubPrefix],
                                         translationUpdateMode
                                     );
                             }
                             else {
-                                translationCurrent[idFunctions][idExternal][extensionId].translations = translationInput[idFunctions][idExternal][extensionId].translations;
+                                translationCurrent[idFunctions][idExternal][translationPart][translationSubPrefix] = translationInput[idFunctions][idExternal][extensionId][translationSubPrefix];
                             }
                         }
                     }
@@ -3104,15 +3105,25 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
  * @returns {string} The translation id string for the enum.
  */
 function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinationKey) {
+    let result ='';
     if (enumId) {
         enumId = enumId.includes(prefixEnums) ? enumId.split('.').slice(2).join('.') : enumId;
         if (enumerationType && (enumerationsList.hasOwnProperty(enumerationType)) && enumerationsList[enumerationType].list.hasOwnProperty(enumId)) {
-            const enumPrefix = `${enumerationsList[enumerationType].id}.${enumerationsList[enumerationType].list[enumId].enum}`;
-            if ((enumNameDeclinationKey === undefined) || (enumNameDeclinationKey === null)) enumNameDeclinationKey = enumerationNamesMain;
-            return `${enumPrefix}.${enumId.replace('.', '_')}.${enumerationNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
+            const
+                currentEnumerations = enumerationsList[enumerationType],
+                currentEnumerationList = enumerationsList[enumerationType].list,
+                currentEnum = currentEnumerationList[enumId],
+                enumPrefix = `${currentEnumerations.id}.${currentEnum.enum}.${enumId.replace('.', '_')}`;
+            if (currentEnum.isExternal && currentEnum.nameTranslationId && currentEnum.translationsKeys && currentEnum.translationsKeys.includes(currentEnum.nameTranslationId)) {
+                result = `${enumPrefix}.${translationSubPrefix}.${currentEnum.nameTranslationId}`;
+            }
+            else {
+                if ((enumNameDeclinationKey === undefined) || (enumNameDeclinationKey === null)) enumNameDeclinationKey = enumerationNamesMain;
+                result =  `${enumPrefix}.${enumerationNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
+            }
         }
     }
-    return '';
+    return result;
 }
 
 /**
@@ -3154,12 +3165,12 @@ function translationsGetForExtension(user, extensionId) {
             extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, '');
         }
         else {
-            extensionId = `${prefixExtensionId}.${extensionId}`;
+            extensionId = `${prefixExtensionId}.${stringCapitalize(extensionId)}`;
         }
-        if (enumerationsList[dataTypeFunction].hasOwnProperty(extensionId) && enumerationsList[dataTypeFunction][extensionId].isExternal) {
-            const currentExtension = enumerationsList[dataTypeFunction][extensionId];
+        if (enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) && enumerationsList[dataTypeFunction].list[extensionId].isExternal) {
+            const currentExtension = enumerationsList[dataTypeFunction].list[extensionId];
             if (currentExtension.hasOwnProperty('translationsKeys') && currentExtension.translationsKeys) {
-                const translationsKeyPrefix = `${idFunctions}.${idExternal}.${extensionId}.translations`;
+                const translationsKeyPrefix = `${idFunctions}.${idExternal}.${extensionId}.${translationSubPrefix}`;
                 currentExtension.translationsKeys.forEach(translationKey => {
                     const currentTranslation = translationsItemGet(user, `${translationsKeyPrefix}.${translationKey}`);
                     translations[translationKey] = currentTranslation !== 'No translation' ? currentTranslation : translationKey;
@@ -3247,17 +3258,17 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
             const translationParts = currentPart ? [currentPart] : [...translationTopItems, doAll];
             translationParts.forEach(translationPart => {
                 const
-                    isExtensionTranslation = translationPart.indexOf(translationExtensionsPrefix) === 0,
-                    extensionId = isExtensionTranslation ? translationPart.split('.').pop() : '',
+                    isExtensionTranslation = translationPart.indexOf(prefixExtensionId) === 0,
+                    extensionId = isExtensionTranslation ? translationPart.replace(prefixExtensionId, '').toLowerCase() : '',
                     isExtensionTranslationExists = isExtensionTranslation && extensionId
                         && inputTranslation.translation.hasOwnProperty(idFunctions)
                         && inputTranslation.translation[idFunctions].hasOwnProperty(idExternal)
                         && inputTranslation.translation[idFunctions][idExternal].hasOwnProperty(extensionId)
-                        && inputTranslation.translation[idFunctions][idExternal][extensionId].hasOwnProperty('translations')
-                        && inputTranslation.translation[idFunctions][idExternal][extensionId].translations;
+                        && inputTranslation.translation[idFunctions][idExternal][extensionId].hasOwnProperty(translationSubPrefix)
+                        && inputTranslation.translation[idFunctions][idExternal][extensionId][translationSubPrefix];
                 if (inputTranslation.translation.hasOwnProperty(translationPart) || (translationPart === doAll) || isExtensionTranslationExists) {
                     const
-                        translationPartName = translationsGetPartName(user, translationPart),
+                        translationPartName = isExtensionTranslationExists ? translationPart : translationsGetPartName(user, translationPart),
                         subMenuItem = {
                             index: `${currentIndex}.${subMenuIndex}`,
                             name: `${translationsItemMenuGet(user, 'ItemsProcess')} ${translationPartName}`,
@@ -3304,7 +3315,7 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
             _currentVersion = inputTranslation.version;
         currentItemDetailsList.push({label: translationsItemCoreGet(user, 'cfgMenuLanguage'), valueString: configOptions.getOption(cfgMenuLanguage, user)});
         currentItemDetailsList.push({label: translationsItemTextGet(user, 'languageInFile'), valueString: currentLanguage});
-        if (currentPart) currentItemDetailsList.push({label: translationsItemTextGet(user, 'translationPart'), valueString:translationsGetPartName(user, currentPart)});
+        if (currentPart) currentItemDetailsList.push({label: translationsItemTextGet(user, 'translationPart'), valueString: currentPart.indexOf(prefixExtensionId) === 0 ? currentPart : translationsGetPartName(user, currentPart)});
     }
     return currentItemDetailsList.length ? `<code>${menuPrintFixedLengthLinesForMenuItemDetails(user, currentItemDetailsList)}</code>` : '';
 }
@@ -3503,7 +3514,7 @@ function translationsExtensionsTranslationsItemsMenuGenerate(user, menuItemToPro
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
         extensionId = menuItemToProcess.id,
-        translationType = `${idFunctions}.${idExternal}.${extensionId}.translations`,
+        translationType = `${idFunctions}.${idExternal}.${extensionId}.${translationSubPrefix}`,
         _currentTranslation = translationsPointOnItemOwner(user, translationType, true),
         currentTranslationKeys = enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) ? enumerationsList[dataTypeFunction].list[extensionId].translationsKeys : [];
     // logs(`currentTranslation = ${JSON.stringify(currentTranslation)}, currentTranslationKeys = ${JSON.stringify(currentTranslationKeys)}`, _l);
@@ -4490,7 +4501,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                                 id: currentItem,
                                 subMenu: translationsExtensionsTranslationsItemsMenuGenerate
                             },
-                            ...translationsDownloadUploadMenuPartGenerate(user, [translationExtensionsPrefix, currentItem].join('.'))], `${currentIndex}.${subMenuIndex}`)
+                            ...translationsDownloadUploadMenuPartGenerate(user, currentItem)], `${currentIndex}.${subMenuIndex}`)
                     });
                 }
                 break;
@@ -5528,6 +5539,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
     if (functionsList.hasOwnProperty(extensionId) && (functionsList[extensionId] !== undefined)) {
         functionsList[extensionId].isAvailable = true;
         functionsList[extensionId].scriptName = scriptName;
+        functionsList[extensionId].state = externalMenu;
         functionsList[extensionId].nameTranslationId = nameTranslationId;
         functionsList[extensionId].translationsKeys = translationsKeys;
     }
@@ -5542,7 +5554,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
             order: Object.keys(functionsList).length,
             icon: icon,
             state: externalMenu,
-            deviceAttributes: {}/* '' */,
+            deviceAttributes: {},
             scriptName: scriptName,
             translationsKeys: translationsKeys
         };
@@ -8024,7 +8036,7 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
                     cmdPos = cmdPos ? cmdPos.slice(0, cmdPos.length-1) : [];
                     menuDrawMenuItem(user, cmdPos, clearBefore, clearUserMessage, isSilent);
                 }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
-                messageTo(menuItemToProcess.externalCommand, {user, data: menuItemToProcess.hasOwnProperty('externalCommandParams') ? menuItemToProcess.externalCommandParams : undefined, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function externalCommandExecuted(result){
+                messageTo(menuItemToProcess.externalCommand, {user, data: menuItemToProcess.hasOwnProperty('externalCommandParams') ? menuItemToProcess.externalCommandParams : undefined, funcEnum: menuItemToProcess.funcEnum, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function externalCommandExecuted(result){
                     if (result.success) {
                         stateSetSuccessfully();
                     }
@@ -8156,8 +8168,8 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
         }
     }
     if (menuItemToProcess.externalMenu) {
-        messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
-            logs('subMenu = ' + JSON.stringify(subMenu));
+        messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess, funcEnum: menuItemToProcess.funcEnum, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
+            // logs(`menuItemToProcess.externalMenu = ${menuItemToProcess.externalMenu}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.funcEnum))}`, _l);
             if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
                 logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
                 menuItemToProcess = menuMakeMenuIndexed(subMenu);
