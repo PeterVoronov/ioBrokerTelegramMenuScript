@@ -953,7 +953,7 @@ class ConfigOptions {
                                                 currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
                                                 [cfgItem, typeOfOption] = commandUnpackParams(menuItemToProcess.param);
                                             if (cachedExistsValue(user, cachedConfigNewLanguageId)) {
-                                                const newLanguageId = translationValidateLanguageId(cachedGetValue(user, cachedConfigNewLanguageId));
+                                                const newLanguageId = translationsValidateLanguageId(cachedGetValue(user, cachedConfigNewLanguageId));
                                                 if (newLanguageId && newLanguageId.length) {
                                                     subMenu.push(
                                                         {
@@ -1788,7 +1788,7 @@ class MenuRoles {
             const
                 currentItemId = parentItemId ? `${parentItemId}.${menuItemToProcess.id}` : menuItemToProcess.id,
                 enumId = isMenuFunctionsFirst ? 'funcEnum' : 'destEnum',
-                enumNameDeclinationKey = isMenuFunctionsFirst ? enumerationNamesMain : enumerationNamesMany,
+                enumNameDeclinationKey = isMenuFunctionsFirst ? enumerationsNamesMain : enumerationsNamesMany,
                 secondLevelDataType = isMenuFunctionsFirst ? dataTypeDestination : dataTypeFunction,
                 jumpArray = [jumpToUp, rootMenu.submenu.length],
                 secondLevelList = enumerationsList[secondLevelDataType].list,
@@ -2465,24 +2465,24 @@ const
  */
 const translationsList = {};  // Localization translation
 const
-    translationCommonFunctionsAttributesPrefix = `${idFunctions}.common`,
-    translationLocalesExtractRegExp = /<a.+?href="([^"]+)">locale_([^.]+).json<\/a>/g,
-    translationVersion = '1.0',
-    translationType = 'telegramMenuTranslation',
-    cachedTranslationToUpload = 'translationToUpload',
-    translationPrimaryStateId = 'primaryState',
-    translationExtensionsPrefix = 'extensions',
-    translationSubPrefix = 'translations',
-    translationCoreId = 'core',
-    translationTopItems = [translationCoreId, idFunctions, idDestinations, idSimpleReports],
-    translationUpdateModes = ['replace', 'overwrite', 'enrich', 'template'];
+    translationsCommonFunctionsAttributesPrefix = `${idFunctions}.common`,
+    translationsLocalesExtractRegExp = /<a.+?href="([^"]+)">locale_([^.]+).json<\/a>/g,
+    translationsVersion = '1.0',
+    translationsType = 'telegramMenuTranslation',
+    cachedTranslationsToUpload = 'translationToUpload',
+    translationsPrimaryStateId = 'primaryState',
+    translationsExtensionsPrefix = 'extensions',
+    translationsSubPrefix = 'translations',
+    translationsCoreId = 'core',
+    translationsTopItems = [translationsCoreId, idFunctions, idDestinations, idSimpleReports],
+    translationsUpdateModes = ['replace', 'overwrite', 'enrich', 'template'];
 
 /**
  * This function validates the language Id via `Intl.Collator.supportedLocalesOf()`.
  * @param {string} languageId - The language Id for validation.
  * @returns {string} - The language Id, if it is valid. `Undefined` in other case.
  */
-function translationValidateLanguageId(languageId){
+function translationsValidateLanguageId(languageId){
     let langId = '';
     try {
         const canonicalLang = Intl.Collator.supportedLocalesOf(languageId);
@@ -2552,7 +2552,7 @@ function translationsLoad() {
     $(`state[id=${prefixTranslationStates}.*]`).each( (translationId) => {
         const
             languageId = translationId.replace(`${prefixTranslationStates}.`, ''),
-            canonicalLang = translationValidateLanguageId(languageId);
+            canonicalLang = translationsValidateLanguageId(languageId);
         // logs(`languageId = ${languageId}, langId = ${langId}`);
         if (canonicalLang) {
             try {
@@ -2617,13 +2617,13 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
         timeout: 10000
     });
     if (languageId && (languageId !== doAll)) {
-        languageId = translationValidateLanguageId(languageId);
+        languageId = translationsValidateLanguageId(languageId);
     }
     else {
         languageId = doAll;
     }
     if (languageId) {
-        const remoteFolder = extensionId && (extensionId !== translationCoreId) ? `${scriptBranchRemoteFolder}${translationExtensionsPrefix}/${extensionId.replace(prefixExtensionId, '').toLowerCase()}/locales/`: scriptCoreLocalesRemoteFolder;
+        const remoteFolder = extensionId && (extensionId !== translationsCoreId) ? `${scriptBranchRemoteFolder}${translationsExtensionsPrefix}/${extensionId.replace(prefixExtensionId, '').toLowerCase()}/locales/`: scriptCoreLocalesRemoteFolder;
         console.log(remoteFolder);
         github.get(remoteFolder)
         .then(function(response) {
@@ -2631,7 +2631,7 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
                 let
                     localesLinks = {},
                     parsedLocale;
-                while ((parsedLocale = translationLocalesExtractRegExp.exec(response.data))) {
+                while ((parsedLocale = translationsLocalesExtractRegExp.exec(response.data))) {
                     console.log(`parsed = ${parsedLocale}`);
                     if (parsedLocale && parsedLocale.length && parsedLocale[1] && parsedLocale[2]) {
                         localesLinks[parsedLocale[2]] = parsedLocale[1].replace('/blob/', '/raw/');
@@ -2661,7 +2661,7 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
  */
 async function translationsInitialLoadLocalesFromRepository(){
     return new Promise((resolve, reject) => {
-        translationsLoadLocalesFromRepository(doAll, translationCoreId, (locales, error) => {
+        translationsLoadLocalesFromRepository(doAll, translationsCoreId, (locales, error) => {
             if (error) {
                 console.warn(`Can't make an initial load of locales from repo! Error is '${error}'.`);
                 reject(error);
@@ -2670,7 +2670,7 @@ async function translationsInitialLoadLocalesFromRepository(){
                 Object.keys(locales).forEach(languageId => {
                     if (typeOf(locales[languageId], 'object') && translationsCheckAndCacheUploadedFile(cachedCommonId, '', '', '', locales[languageId])) {
                         const newTranslation = locales[languageId];
-                        if (newTranslation && newTranslation.hasOwnProperty(idTranslation) && typeOf(newTranslation[idTranslation], 'object') && (Math.abs(translationCompareVersion(newTranslation['version'])) < 10)) {
+                        if (newTranslation && newTranslation.hasOwnProperty(idTranslation) && typeOf(newTranslation[idTranslation], 'object') && (Math.abs(translationsCompareVersion(newTranslation['version'])) < 10)) {
                             translationsList[languageId] = newTranslation[idTranslation];
                         }
                     }
@@ -2692,10 +2692,10 @@ async function translationsInitialLoadLocalesFromRepository(){
  * - < -10  - when versionToCompare has lower major version,
  * - \> 10 - when versionToCompare has higher major version,
  */
-function translationCompareVersion(versionToCompare) {
+function translationsCompareVersion(versionToCompare) {
     const
         [translationVersionToCompareMajor, translationVersionToCompareMinor] = (versionToCompare && versionToCompare.includes('.') ? versionToCompare : '0.0').split('.'),
-        [translationCurrentVersionMajor, translationCurrentVersionMinor] = translationVersion.split('.'),
+        [translationCurrentVersionMajor, translationCurrentVersionMinor] = translationsVersion.split('.'),
         majorVersionCompare = Number(translationVersionToCompareMajor) - Number(translationCurrentVersionMajor),
         minorVersionCompare = Number(translationVersionToCompareMinor) - Number(translationCurrentVersionMinor);
     return majorVersionCompare * 100 + minorVersionCompare;
@@ -2780,15 +2780,15 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
         return translationCurrentPart;
     }
     let result = '';
-    if (cachedExistsValue(user, cachedTranslationToUpload)) {
+    if (cachedExistsValue(user, cachedTranslationsToUpload)) {
         const
-            translationInputFull = cachedGetValue(user, cachedTranslationToUpload),
-            _translationInputLanguage = translationInputFull.hasOwnProperty('language') ? translationValidateLanguageId(translationInputFull.language) : '',
-            translationInputVersionCompare = translationCompareVersion(translationInputFull['version']);
+            translationInputFull = cachedGetValue(user, cachedTranslationsToUpload),
+            _translationInputLanguage = translationInputFull.hasOwnProperty('language') ? translationsValidateLanguageId(translationInputFull.language) : '',
+            translationInputVersionCompare = translationsCompareVersion(translationInputFull['version']);
         if (translationInputFull.hasOwnProperty(idTranslation) && typeOf(translationInputFull[idTranslation], 'object') && (Math.abs(translationInputVersionCompare) < 10)) {
             const
-                translationPossibleUpdateModes = translationInputVersionCompare ? ['overwrite'] : translationUpdateModes,
-                translationCurrentParts = translationPart === doAll ? translationTopItems : [translationPart],
+                translationPossibleUpdateModes = translationInputVersionCompare ? ['overwrite'] : translationsUpdateModes,
+                translationCurrentParts = translationPart === doAll ? translationsTopItems : [translationPart],
                 translationCurrentLanguage = configOptions.getOption(cfgMenuLanguage, user),
                 translationCurrent = objectDeepClone(translationsGetCurrentForUser(user));
             if (translationPossibleUpdateModes.includes(translationUpdateMode)) {
@@ -2800,16 +2800,16 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
                             if (! translationCurrent.hasOwnProperty(idFunctions)) translationCurrent[idFunctions] = {};
                             if (! translationCurrent[idFunctions].hasOwnProperty(idExternal)) translationCurrent[idFunctions][idExternal] = {};
                             if (! translationCurrent[idFunctions][idExternal].hasOwnProperty(translationPart)) translationCurrent[idFunctions][idExternal][translationPart] = {};
-                            if (translationCurrent[idFunctions][idExternal][translationPart].hasOwnProperty(translationSubPrefix)) {
-                                translationCurrent[idFunctions][idExternal][translationPart][translationSubPrefix] =
+                            if (translationCurrent[idFunctions][idExternal][translationPart].hasOwnProperty(translationsSubPrefix)) {
+                                translationCurrent[idFunctions][idExternal][translationPart][translationsSubPrefix] =
                                     translationsProcessUpdate(
-                                        translationCurrent[idFunctions][idExternal][translationPart][translationSubPrefix],
-                                        translationInput[idFunctions][idExternal][extensionId][translationSubPrefix],
+                                        translationCurrent[idFunctions][idExternal][translationPart][translationsSubPrefix],
+                                        translationInput[idFunctions][idExternal][extensionId][translationsSubPrefix],
                                         translationUpdateMode
                                     );
                             }
                             else {
-                                translationCurrent[idFunctions][idExternal][translationPart][translationSubPrefix] = translationInput[idFunctions][idExternal][extensionId][translationSubPrefix];
+                                translationCurrent[idFunctions][idExternal][translationPart][translationsSubPrefix] = translationInput[idFunctions][idExternal][extensionId][translationsSubPrefix];
                             }
                         }
                     }
@@ -2911,8 +2911,8 @@ function translationsItemGet(user, translationId) {
             currentTranslation[shortId] = translationId;
             translationsSave(user);
         }
-        else if (((translationId.indexOf(translationCommonFunctionsAttributesPrefix) !== 0) && (currentTranslation[shortId].indexOf(translationCommonFunctionsAttributesPrefix) === 0))
-            || (idPrefix && (translationId.indexOf(translationCommonFunctionsAttributesPrefix) !== 0) && (currentTranslation[shortId].indexOf(translationCommonFunctionsAttributesPrefix) === 0))) {
+        else if (((translationId.indexOf(translationsCommonFunctionsAttributesPrefix) !== 0) && (currentTranslation[shortId].indexOf(translationsCommonFunctionsAttributesPrefix) === 0))
+            || (idPrefix && (translationId.indexOf(translationsCommonFunctionsAttributesPrefix) !== 0) && (currentTranslation[shortId].indexOf(translationsCommonFunctionsAttributesPrefix) === 0))) {
             return translationsItemGet(user, currentTranslation[shortId]);
         }
         return currentTranslation[shortId];
@@ -2931,7 +2931,7 @@ function translationsItemGet(user, translationId) {
  * @returns {string} The translation value for the provided Id.
  */
  function translationsItemCoreGet(user, translationId) {
-    return translationsItemGet(user, `${translationCoreId}.${translationId}`);
+    return translationsItemGet(user, `${translationsCoreId}.${translationId}`);
  }
 
 /**
@@ -3034,7 +3034,7 @@ function translationsItemDelete(user, translationId) {
                     objectId = typeof(object) === 'string' ? object : object._id,
                     prefixId = objectId.split('.').slice(0, currentFunction.statesInFolders ? -2 : -1).join('.');
                 functionId = functionId.replace('.','_');
-                translationId = `${isCommon ? translationCommonFunctionsAttributesPrefix : `${idFunctions}.${funcEnum}.${functionId}`}.${destinationId ? `${idDestinations}.${destinationId}.${objectId.split('.').join('_')}` : objectId.replace(`${prefixId}.`, '').split('.').join('_')}`;
+                translationId = `${isCommon ? translationsCommonFunctionsAttributesPrefix : `${idFunctions}.${funcEnum}.${functionId}`}.${destinationId ? `${idDestinations}.${destinationId}.${objectId.split('.').join('_')}` : objectId.replace(`${prefixId}.`, '').split('.').join('_')}`;
             }
         }
     }
@@ -3115,11 +3115,11 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
                 currentEnum = currentEnumerationList[enumId],
                 enumPrefix = `${currentEnumerations.id}.${currentEnum.enum}.${enumId.replace('.', '_')}`;
             if (currentEnum.isExternal && currentEnum.nameTranslationId && currentEnum.translationsKeys && currentEnum.translationsKeys.includes(currentEnum.nameTranslationId)) {
-                result = `${enumPrefix}.${translationSubPrefix}.${currentEnum.nameTranslationId}`;
+                result = `${enumPrefix}.${translationsSubPrefix}.${currentEnum.nameTranslationId}`;
             }
             else {
-                if ((enumNameDeclinationKey === undefined) || (enumNameDeclinationKey === null)) enumNameDeclinationKey = enumerationNamesMain;
-                result =  `${enumPrefix}.${enumerationNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
+                if ((enumNameDeclinationKey === undefined) || (enumNameDeclinationKey === null)) enumNameDeclinationKey = enumerationsNamesMain;
+                result =  `${enumPrefix}.${enumerationsNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
             }
         }
     }
@@ -3147,7 +3147,7 @@ function translationsGetEnumName(user, enumerationType, enumId, enumNameDeclinat
  * @returns {string} The related name in current language.
  */
 function translationsGetPartName(user, translationPartId) {
-    const translationPartPrefix = [translationCoreId, doAll].includes(translationPartId) ? idTranslation : '';
+    const translationPartPrefix = [translationsCoreId, doAll].includes(translationPartId) ? idTranslation : '';
     return translationsItemMenuGet(user, translationPartPrefix, translationPartId);
 }
 
@@ -3170,7 +3170,7 @@ function translationsGetForExtension(user, extensionId) {
         if (enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) && enumerationsList[dataTypeFunction].list[extensionId].isExternal) {
             const currentExtension = enumerationsList[dataTypeFunction].list[extensionId];
             if (currentExtension.hasOwnProperty('translationsKeys') && currentExtension.translationsKeys) {
-                const translationsKeyPrefix = `${idFunctions}.${idExternal}.${extensionId}.${translationSubPrefix}`;
+                const translationsKeyPrefix = `${idFunctions}.${idExternal}.${extensionId}.${translationsSubPrefix}`;
                 currentExtension.translationsKeys.forEach(translationKey => {
                     const currentTranslation = translationsItemGet(user, `${translationsKeyPrefix}.${translationKey}`);
                     translations[translationKey] = currentTranslation !== 'No translation' ? currentTranslation : translationKey;
@@ -3201,13 +3201,13 @@ function translationsCheckAndCacheUploadedFile(user, translationFileFullPath, tr
                 let inputTranslation = translationObject === undefined ? nodeFS.readFileSync(translationFileFullPath) : translationObject;
                 try {
                     inputTranslation = typeOf(inputTranslation, 'string') ? JSON.parse(inputTranslation) : inputTranslation;
-                    const currentLanguage = translationValidateLanguageId(inputTranslation.language);
+                    const currentLanguage = translationsValidateLanguageId(inputTranslation.language);
                     translationFileName = translationFileName ? translationFileName : `locale_${currentLanguage}.json`;
                     // logs(`inputTranslation = ${JSON.stringify(inputTranslation, null, 2)}`, _l);
                     // logs(`${(inputTranslation.type === translationType)}, ${(inputTranslation.version === translationVersion)}, ${(currentLanguage)}, ${inputTranslation.translation}`, _l)
-                    if ((inputTranslation.type === translationType) && (inputTranslation.version === translationVersion)
+                    if ((inputTranslation.type === translationsType) && (inputTranslation.version === translationsVersion)
                         && (currentLanguage) && inputTranslation.translation) {
-                            cachedSetValue(user, cachedTranslationToUpload, inputTranslation);
+                            cachedSetValue(user, cachedTranslationsToUpload, inputTranslation);
                             translationFileIsOk = true;
                             console.warn(`Translation '${translationFileName}' for language '${inputTranslation.language}' is uploaded and can be processed!`);
                     }
@@ -3247,15 +3247,15 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
     let
         subMenuIndex = 0,
         subMenu = [];
-    if (isCurrentAccessLevelAllowModify && cachedExistsValue(user, cachedTranslationToUpload)) {
+    if (isCurrentAccessLevelAllowModify && cachedExistsValue(user, cachedTranslationsToUpload)) {
         const
-            inputTranslation = cachedGetValue(user, cachedTranslationToUpload),
+            inputTranslation = cachedGetValue(user, cachedTranslationsToUpload),
             [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.param),
-            currentLanguage = inputTranslation ? translationValidateLanguageId(inputTranslation.language) : '',
+            currentLanguage = inputTranslation ? translationsValidateLanguageId(inputTranslation.language) : '',
             currentUploadMode = menuItemToProcess.id,
             _currentVersion =  inputTranslation ? inputTranslation.version : '';
         if (currentLanguage && inputTranslation.translation) {
-            const translationParts = currentPart ? [currentPart] : [...translationTopItems, doAll];
+            const translationParts = currentPart ? [currentPart] : [...translationsTopItems, doAll];
             translationParts.forEach(translationPart => {
                 const
                     isExtensionTranslation = translationPart.indexOf(prefixExtensionId) === 0,
@@ -3264,8 +3264,8 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
                         && inputTranslation.translation.hasOwnProperty(idFunctions)
                         && inputTranslation.translation[idFunctions].hasOwnProperty(idExternal)
                         && inputTranslation.translation[idFunctions][idExternal].hasOwnProperty(extensionId)
-                        && inputTranslation.translation[idFunctions][idExternal][extensionId].hasOwnProperty(translationSubPrefix)
-                        && inputTranslation.translation[idFunctions][idExternal][extensionId][translationSubPrefix];
+                        && inputTranslation.translation[idFunctions][idExternal][extensionId].hasOwnProperty(translationsSubPrefix)
+                        && inputTranslation.translation[idFunctions][idExternal][extensionId][translationsSubPrefix];
                 if (inputTranslation.translation.hasOwnProperty(translationPart) || (translationPart === doAll) || isExtensionTranslationExists) {
                     const
                         translationPartName = isExtensionTranslationExists ? translationPart : translationsGetPartName(user, translationPart),
@@ -3278,7 +3278,7 @@ function translationsUploadMenuGenerate(user, menuItemToProcess) {
                             function: translationsUploadMenuItemDetails,
                             submenu: new Array()
                         };
-                    translationUpdateModes.forEach((translationUpdateMode, translationUpdateModeIndex) => {
+                    translationsUpdateModes.forEach((translationUpdateMode, translationUpdateModeIndex) => {
                         subMenuItem.submenu.push({
                             index: `${currentIndex}.${subMenuIndex}.${translationUpdateModeIndex}`,
                             name: translationsItemMenuGet(user, idTranslation, translationUpdateMode),
@@ -3308,10 +3308,10 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
     const
         [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.param),
         currentItemDetailsList = [];
-    if (cachedExistsValue(user, cachedTranslationToUpload)) {
+    if (cachedExistsValue(user, cachedTranslationsToUpload)) {
         const
-            inputTranslation = cachedGetValue(user, cachedTranslationToUpload),
-            currentLanguage = translationValidateLanguageId(inputTranslation.language),
+            inputTranslation = cachedGetValue(user, cachedTranslationsToUpload),
+            currentLanguage = translationsValidateLanguageId(inputTranslation.language),
             _currentVersion = inputTranslation.version;
         currentItemDetailsList.push({label: translationsItemCoreGet(user, 'cfgMenuLanguage'), valueString: configOptions.getOption(cfgMenuLanguage, user)});
         currentItemDetailsList.push({label: translationsItemTextGet(user, 'languageInFile'), valueString: currentLanguage});
@@ -3334,7 +3334,7 @@ function translationsBasicItemsMenuGenerate(user, menuItemToProcess) {
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
         translationType = menuItemToProcess.id,
-        currentTranslation = translationsPointOnItemOwner(user, translationCoreId, true);
+        currentTranslation = translationsPointOnItemOwner(user, translationsCoreId, true);
     let
         subMenuIndex = 0,
         subMenu = [];
@@ -3354,8 +3354,8 @@ function translationsBasicItemsMenuGenerate(user, menuItemToProcess) {
                         submenu: new Array()
                     };
                     if (isCurrentAccessLevelAllowModify) {
-                        subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
-                        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
+                        subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
+                        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
                     }
                     else {
                         subMenuItem.param = cmdNoOperation;
@@ -3399,8 +3399,8 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
             if (currentValue === currentTranslationId) {
                 currentValue += ' ' + iconItemNotFound;
             }
-            else if (currentValue.indexOf(translationCommonFunctionsAttributesPrefix) === 0) {
-                currentValue = `${translationsItemGet(user, `${translationCommonFunctionsAttributesPrefix}.${translationKey}`)} ${iconItemCommon}`;
+            else if (currentValue.indexOf(translationsCommonFunctionsAttributesPrefix) === 0) {
+                currentValue = `${translationsItemGet(user, `${translationsCommonFunctionsAttributesPrefix}.${translationKey}`)} ${iconItemCommon}`;
             }
             let
                 subSubMenuIndex = 0,
@@ -3408,7 +3408,7 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
                     index: `${currentIndex}.${translationKeyIndex}`,
                     name: `${currentValue}`,
                     text: ` [${currentTranslationId}]`,
-                    icon: translationType === translationCommonFunctionsAttributesPrefix ? iconItemCommon : '',
+                    icon: translationType === translationsCommonFunctionsAttributesPrefix ? iconItemCommon : '',
                     submenu: new Array()
                 };
             if (isCurrentAccessLevelAllowModify) {
@@ -3466,7 +3466,7 @@ function translationsFunctionDeviceItemsMenuGenerate(user, menuItemToProcess) {
             const
                 subMenuItem = {
                     index: `${currentIndex}.${translationKeyIndex}`,
-                    name: `${translationsGetEnumName(user, dataTypeDestination, translationKey, enumerationNamesMain)}`,
+                    name: `${translationsGetEnumName(user, dataTypeDestination, translationKey, enumerationsNamesMain)}`,
                     // text: ` [${currentTranslationId}]`,
                     // icon: currentIcon,\
                     submenu: new Array()
@@ -3514,7 +3514,7 @@ function translationsExtensionsTranslationsItemsMenuGenerate(user, menuItemToPro
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
         extensionId = menuItemToProcess.id,
-        translationType = `${idFunctions}.${idExternal}.${extensionId}.${translationSubPrefix}`,
+        translationType = `${idFunctions}.${idExternal}.${extensionId}.${translationsSubPrefix}`,
         _currentTranslation = translationsPointOnItemOwner(user, translationType, true),
         currentTranslationKeys = enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) ? enumerationsList[dataTypeFunction].list[extensionId].translationsKeys : [];
     // logs(`currentTranslation = ${JSON.stringify(currentTranslation)}, currentTranslationKeys = ${JSON.stringify(currentTranslationKeys)}`, _l);
@@ -3530,8 +3530,8 @@ function translationsExtensionsTranslationsItemsMenuGenerate(user, menuItemToPro
             };
         let subSubMenuIndex = 0;
         if (isCurrentAccessLevelAllowModify) {
-            subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
-            subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationCoreId}.${translationKey}`));
+            subSubMenuIndex = subMenuItem.submenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
+            subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
         }
         else {
             subMenuItem.param = cmdNoOperation;
@@ -3556,7 +3556,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
             icon: iconItemDownload,
             group: 'menuTranslationFile',
             id: doDownload,
-            param: commandsPackParams(cmdItemDownload, translationPartId === translationCoreId ? '' : translationPartId)
+            param: commandsPackParams(cmdItemDownload, translationPartId === translationsCoreId ? '' : translationPartId)
         },
         {
             name: translationsItemMenuGet(user, 'TranslationUpload'),
@@ -3569,7 +3569,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
                     icon: iconItemUpload,
                     group: 'menuTranslationFile',
                     id: doUploadDirectly,
-                    param:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadDirectly, translationPartId === translationCoreId ? '' : translationPartId),
+                    param:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadDirectly, translationPartId === translationsCoreId ? '' : translationPartId),
                     function: translationsUploadMenuItemDetails,
                     submenu: translationsUploadMenuGenerate
                 },
@@ -3946,22 +3946,22 @@ function sentImagesDelete(user) {
 //*** Enumerations - begin ***//
 
 const
-    enumerationNamesMain = 'Main',
-    enumerationNamesBasic = 'Basic',
-    enumerationNamesMany = 'Many',
-    enumerationNamesInside = 'Inside',
-    enumerationNamesEnterTo = 'EnterTo',
-    enumerationNamesExitFrom = 'ExitFrom',
-    enumerationNamesTranslationIdPrefix = 'names',
-    enumerationDeviceBasicAttributes = '-ts:lc:-ack:-q:-from:-user',
+    enumerationsNamesMain = 'Main',
+    enumerationsNamesBasic = 'Basic',
+    enumerationsNamesMany = 'Many',
+    enumerationsNamesInside = 'Inside',
+    enumerationsNamesEnterTo = 'EnterTo',
+    enumerationsNamesExitFrom = 'ExitFrom',
+    enumerationsNamesTranslationIdPrefix = 'names',
+    enumerationsDeviceBasicAttributes = '-ts:lc:-ack:-q:-from:-user',
     enumerationsSubTypes = [dataTypeDeviceAttributes, dataTypeDeviceButtons],
     enumerationsSubTypesExtended = [...enumerationsSubTypes, dataTypePrimaryEnums],
-    enumerationAccessLevelToShow = 'showAccessLevel',
-    enumerationAccessLevelToPress = 'pressAccessLevel',
-    enumerationDeviceButtonsAccessLevelAttrs  = [enumerationAccessLevelToShow, enumerationAccessLevelToPress],
-    enumerationExcludeForExternal = ['deviceAttributes', 'deviceButtons', 'devicesTranslation', 'deviceAttributesValuesTranslation', 'deviceButtonsValuesTranslation', 'simplifyMenuWithOneDevice', 'showDestNameOnSimplify', 'statesInFolders'],
-    enumerationFunctionNotFound = 'noFunction',
-    convertButtonToAttribute = 'useButtonAsAttribute',
+    enumerationsAccessLevelToShow = 'showAccessLevel',
+    enumerationsAccessLevelToPress = 'pressAccessLevel',
+    enumerationsDeviceButtonsAccessLevelAttrs  = [enumerationsAccessLevelToShow, enumerationsAccessLevelToPress],
+    enumerationsExcludeForExternal = ['deviceAttributes', 'deviceButtons', 'devicesTranslation', 'deviceAttributesValuesTranslation', 'deviceButtonsValuesTranslation', 'simplifyMenuWithOneDevice', 'showDestNameOnSimplify', 'statesInFolders'],
+    enumerationsFunctionNotFound = 'noFunction',
+    enumerationsConvertButtonToAttribute = 'useButtonAsAttribute',
     enumerationsEditEnums = 'editEnums',
     enumerationsList = {
         [dataTypeFunction]: {
@@ -3985,12 +3985,12 @@ const
                 availableState: '',
                 icon: '🔆',
                 enum: idFunctions,
-                name: enumerationNamesMain,
+                name: enumerationsNamesMain,
                 nameTranslationId: undefined,
-                names: [enumerationNamesBasic, enumerationNamesMany],
+                names: [enumerationsNamesBasic, enumerationsNamesMany],
                 translationsKeys: undefined,
                 group: '',
-                deviceAttributes: `state:${enumerationDeviceBasicAttributes}`,
+                deviceAttributes: `state:${enumerationsDeviceBasicAttributes}`,
                 deviceButtons: {},
                 simplifyMenuWithOneDevice: false,
                 showDestNameOnSimplify: true,
@@ -4021,8 +4021,8 @@ const
                 isEnabled : false,
                 enum: '',
                 icon: '',
-                name: enumerationNamesMain,
-                names: [enumerationNamesBasic, enumerationNamesInside, enumerationNamesEnterTo, enumerationNamesExitFrom],
+                name: enumerationsNamesMain,
+                names: [enumerationsNamesBasic, enumerationsNamesInside, enumerationsNamesEnterTo, enumerationsNamesExitFrom],
                 group: '',
                 order : 0,
             }
@@ -4043,7 +4043,7 @@ const
                 isAvailable : true,
                 isEnabled : false,
                 enum: idSimpleReports,
-                name: enumerationNamesMain,
+                name: enumerationsNamesMain,
                 group: '',
                 alwaysExpanded: false,
                 graphsEnabled: false,
@@ -4062,7 +4062,7 @@ const
  * @param {string} enumerationType - The string defines the enumerationItem type.
  * @returns {number} The result of compare [-1, 0, 1] used for the `Array.sort()`.
  */
-function enumerationCompareOrderOfItems(a, b, enumerationType) {
+function enumerationsCompareOrderOfItems(a, b, enumerationType) {
     if (enumerationsList.hasOwnProperty(enumerationType)) {
         const itemsList = enumerationsList[enumerationType].list;
         if (itemsList.hasOwnProperty(a) && itemsList.hasOwnProperty(b)) {
@@ -4125,7 +4125,7 @@ function enumerationsSave(enumerationType) {
  * @param {object} currentEnumeration - The `list` of `enumerationItems` to be processed.
  * @returns {number} - The number of items in the current `list`.
  */
-function enumerationReorderItems(currentEnumeration) {
+function enumerationsReorderItems(currentEnumeration) {
     logs(`  enumerationItems= ${JSON.stringify(currentEnumeration)}`);
     // let currentEnumeration = enumerationItems[enumerationType].list;
     let countItems = 0;
@@ -4149,7 +4149,7 @@ function enumerationReorderItems(currentEnumeration) {
 function enumerationsInit(enumerationType, withExtensions) {
     logs(`  enumerationItems= ${JSON.stringify(enumerationsList[enumerationType])}`);
     let currentEnumerationList = enumerationsList[enumerationType].list;
-    let countItems = enumerationReorderItems(currentEnumerationList);
+    let countItems = enumerationsReorderItems(currentEnumerationList);
     Object.keys(currentEnumerationList).forEach((currentItem) => {
         currentEnumerationList[currentItem] = objectAssignToTemplateLevelOne(enumerationsList[enumerationType].defaultObject, currentEnumerationList[currentItem]);
         if ((! currentEnumerationList[currentItem].isExternal) || withExtensions ) currentEnumerationList[currentItem].isAvailable = false;
@@ -4198,7 +4198,7 @@ function enumerationsInit(enumerationType, withExtensions) {
                         deviceAttributesList[deviceAttr] = {
                             isEnabled : isEnabled,
                             convertValueCode: "",
-                            nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), currentItem, undefined, enumerationDeviceBasicAttributes.includes(deviceAttr)),
+                            nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), currentItem, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr)),
                             order : stateIndex
                         };
                     });
@@ -4226,18 +4226,18 @@ function enumerationsUpdateItemName(user, enumerationType, enumerationItemId, en
         if (enumerationItem.hasOwnProperty('names') &&  (typeOf(enumerationItem.names) === 'array')) {
             newName = newName.trim();
             let tmpKeys = [...enumerationItem.names];
-            tmpKeys.unshift(enumerationNamesMain);
+            tmpKeys.unshift(enumerationsNamesMain);
             if (nameDeclinationKey) {
                 if (tmpKeys.includes(nameDeclinationKey)) translationsItemStore(user, `${translationIdPrefix}${nameDeclinationKey}`, newName);
             }
             else {
-                if (translationsItemGet(user, `${translationIdPrefix}${enumerationNamesMain}`) != newName)  {
-                    tmpKeys.forEach(nameKey => translationsItemStore(user, `${translationIdPrefix}${nameKey}`, nameKey === enumerationNamesMain ? newName : newName.toLowerCase()));
+                if (translationsItemGet(user, `${translationIdPrefix}${enumerationsNamesMain}`) != newName)  {
+                    tmpKeys.forEach(nameKey => translationsItemStore(user, `${translationIdPrefix}${nameKey}`, nameKey === enumerationsNamesMain ? newName : newName.toLowerCase()));
                 }
             }
         }
         else {
-            if (translationsItemGet(user, `${translationIdPrefix}${enumerationNamesMain}`) != newName) translationsItemStore(user, `${translationIdPrefix}${enumerationNamesMain}`, newName);
+            if (translationsItemGet(user, `${translationIdPrefix}${enumerationsNamesMain}`) != newName) translationsItemStore(user, `${translationIdPrefix}${enumerationsNamesMain}`, newName);
         }
     }
 }
@@ -4278,7 +4278,7 @@ function enumerationItemGroupsMenuGenerate(user, menuItemToProcess) {
     const
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
         [_cmdId, dataType, currentItem, dataTypeExtraId] = commandUnpackParams(menuItemToProcess.param),
-        currentEnumeration = enumerationGetList(dataType, dataTypeExtraId),
+        currentEnumeration = enumerationsGetList(dataType, dataTypeExtraId),
         currentMenuItem = currentEnumeration[currentItem],
         currentMenuItemGroup = currentMenuItem ? currentMenuItem.group : '',
         existingGroups = new Array();
@@ -4310,7 +4310,7 @@ function enumerationItemGroupsMenuGenerate(user, menuItemToProcess) {
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]}  Newly generated submenu.
  */
-function enumerationItemMenuGenerate(user, menuItemToProcess) {
+function enumerationsItemMenuGenerate(user, menuItemToProcess) {
     logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     let
         subMenuIndex = 0,
@@ -4320,7 +4320,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
         currentAccessLevel = menuItemToProcess.accessLevel,
         isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
         [_cmdId, dataType, currentItem, _paramToSkip, dataTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
-        currentEnumeration = enumerationGetList(dataType, dataTypeExtraId);
+        currentEnumeration = enumerationsGetList(dataType, dataTypeExtraId);
     const
         currentEnumerationItem = currentEnumeration[currentItem],
         currentEnumerationItemEnum = currentEnumerationItem.enum,
@@ -4360,7 +4360,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
     logs(` = ${JSON.stringify(enumerationItemAttrs)}`);
     let devicesMenuItem, devicesMenuIndex;
     for (let enumerationItemAttr of enumerationItemAttrs) {
-        if (currentEnumerationItem.isExternal && enumerationExcludeForExternal.includes(enumerationItemAttr)) {
+        if (currentEnumerationItem.isExternal && enumerationsExcludeForExternal.includes(enumerationItemAttr)) {
             continue;
         }
         switch (enumerationItemAttr) {
@@ -4431,7 +4431,7 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
 
             case 'name': {
                 if (isCurrentAccessLevelAllowModify) {
-                    subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataType, currentItem, 'names', enumerationNamesMain));
+                    subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataType, currentItem, 'names', enumerationsNamesMain));
                     subMenuIndex = subMenu.push({
                         index: `${currentIndex}.${subMenuIndex}`,
                         name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
@@ -4541,9 +4541,9 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                     currentFunction = enumerationsList[dataTypeFunction].list[dataTypeExtraId],
                     translationType = `${currentFunction.enum}.${dataTypeExtraId.replace('.', '_')}`,
                     currentTranslation = translationsPointOnItemOwner(user, translationType, true),
-                    currentIds = currentItem === currentFunction.state ? [currentItem, translationPrimaryStateId] : (enumerationDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
+                    currentIds = currentItem === currentFunction.state ? [currentItem, translationsPrimaryStateId] : (enumerationsDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
                 if (dataType === dataTypeDeviceButtons) {
-                    enumerationDeviceButtonsAccessLevelAttrs.forEach(accessLevelsAttr => {
+                    enumerationsDeviceButtonsAccessLevelAttrs.forEach(accessLevelsAttr => {
                         const subMenuItem = {
                             index: `${currentIndex}.${subMenuIndex}`,
                             name: `${translationsItemTextGet(user, 'set', accessLevelsAttr)}`,
@@ -4551,12 +4551,12 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                             submenu: new Array(),
                         };
                         let subSubMenuIndex = 0;
-                        if (accessLevelsAttr === enumerationAccessLevelToPress) {
+                        if (accessLevelsAttr === enumerationsAccessLevelToPress) {
                             subSubMenuIndex = subMenuItem.submenu.push({
                                 index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                                name: `[${translationsItemTextGet(user, convertButtonToAttribute)}]`,
-                                icon: currentEnumerationItem[accessLevelsAttr] === convertButtonToAttribute ? iconItemAttribute : iconItemButton,
-                                param: commandsPackParams(cmdItemPress, dataType, currentItem, accessLevelsAttr, dataTypeExtraId, convertButtonToAttribute),
+                                name: `[${translationsItemTextGet(user, enumerationsConvertButtonToAttribute)}]`,
+                                icon: currentEnumerationItem[accessLevelsAttr] === enumerationsConvertButtonToAttribute ? iconItemAttribute : iconItemButton,
+                                param: commandsPackParams(cmdItemPress, dataType, currentItem, accessLevelsAttr, dataTypeExtraId, enumerationsConvertButtonToAttribute),
                                 submenu: []
                             });
                         }
@@ -4591,8 +4591,8 @@ function enumerationItemMenuGenerate(user, menuItemToProcess) {
                     if ((currentValue === null || currentValue === undefined) || (currentId === currentTranslationId)) {
                         currentValue = `${currentTranslationId} ${iconItemNotFound}`;
                     }
-                    else if (currentValue.indexOf(translationCommonFunctionsAttributesPrefix) === 0) {
-                        currentValue = `${translationsItemGet(user, `${translationCommonFunctionsAttributesPrefix}.${currentId}`)} ${iconItemCommon}`;
+                    else if (currentValue.indexOf(translationsCommonFunctionsAttributesPrefix) === 0) {
+                        currentValue = `${translationsItemGet(user, `${translationsCommonFunctionsAttributesPrefix}.${currentId}`)} ${iconItemCommon}`;
                     }
                     else {
                         currentValue = `${translationsItemCoreGet(user, 'cmdItemRename')}: "${currentValue}"`;
@@ -4684,7 +4684,7 @@ function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, with
 function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
     const
         [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
-        currentEnumeration = enumerationGetList(enumerationType, enumerationTypeExtraId),
+        currentEnumeration = enumerationsGetList(enumerationType, enumerationTypeExtraId),
         currentEnumerationItem = currentEnumeration[currentItem];
     const currentItemDetailsList = [];
     enumerationItemDefaultDetails.forEach((item) => {
@@ -4708,7 +4708,7 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
             previousItem = Object.keys(currentEnumeration).find(item => currentEnumeration[item].order === (previousOrder));
         currentItemDetailsList.push({
             label: translationsItemTextGet(user, 'ListPrevious'),
-            valueString: previousItem ? enumerationItemName(user, enumerationType, previousItem, currentEnumeration[previousItem]) : ''
+            valueString: previousItem ? enumerationsItemName(user, enumerationType, previousItem, currentEnumeration[previousItem]) : ''
         });
     }
     if (currentEnumerationItem.order < (Object.keys(currentEnumeration).length - 1)) {
@@ -4717,7 +4717,7 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
             nextItem = Object.keys(currentEnumeration).find(item => currentEnumeration[item].order === (nextOrder));
         currentItemDetailsList.push({
             label: translationsItemTextGet(user, 'ListNext'),
-            valueString: nextItem ? enumerationItemName(user, enumerationType, nextItem, currentEnumeration[nextItem]) : ''
+            valueString: nextItem ? enumerationsItemName(user, enumerationType, nextItem, currentEnumeration[nextItem]) : ''
     });
     }
     if (enumerationType === dataTypePrimaryEnums) {
@@ -4739,8 +4739,8 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
  * @param {object} enumerationItem - The current enumerationItem object.
  * @returns {string} The enumerations item name.
  */
-function enumerationItemName(user, enumerationType, enumerationItemId, enumerationItem) {
-    const currentItemTranslationId = translationsGetEnumId(user, enumerationType, enumerationItemId, enumerationNamesMain);
+function enumerationsItemName(user, enumerationType, enumerationItemId, enumerationItem) {
+    const currentItemTranslationId = translationsGetEnumId(user, enumerationType, enumerationItemId, enumerationsNamesMain);
     // logs(`enumerationType = ${enumerationType}, enumerationItemId = ${enumerationItemId}, currentItemTranslationId = ${currentItemTranslationId}`, _l)
     if (enumerationItem.hasOwnProperty('name') && (enumerationItem.name !== undefined) && (translationsItemGet(user, currentItemTranslationId) === currentItemTranslationId) ) {
         // logs(`currentItemTranslationId ${currentItemTranslationId}`);
@@ -4754,7 +4754,7 @@ function enumerationItemName(user, enumerationType, enumerationItemId, enumerati
         );
     if (enumerationItem.name && enumerationItemId.includes('.')) {
         const parentId = enumerationItemId.split('.').shift();
-        result = `${translationsGetEnumName(user, enumerationType, parentId, enumerationNamesMain)} ${iconItemToSubItemByArrow} ${result}`;
+        result = `${translationsGetEnumName(user, enumerationType, parentId, enumerationsNamesMain)} ${iconItemToSubItemByArrow} ${result}`;
     }
     return result;
 }
@@ -4779,10 +4779,10 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
     }
     if (enumerationsSubTypes.includes(enumerationType)) {
         if (Object.keys(enumerationsList[dataTypeFunction].list[enumerationTypeExtraId][enumerationType]).length === 0) {
-            enumerationRefreshFunctionDeviceStates(enumerationTypeExtraId, enumerationType, false);
+            enumerationsRefreshFunctionDeviceStates(enumerationTypeExtraId, enumerationType, false);
         }
     }
-    const currentEnumeration = enumerationGetList(enumerationType, enumerationTypeExtraId);
+    const currentEnumeration = enumerationsGetList(enumerationType, enumerationTypeExtraId);
     let
         subMenu = [],
         subMenuIndex = 0;
@@ -4796,12 +4796,12 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
             // logs(`currentEnumerationItem = ${JSON.stringify(currentEnumerationItem)}`, _l);
             const currentMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}`,
-                    name: `${enumerationItemName(user, enumerationType, currentItem, currentEnumerationItem)}${currentEnumerationItem.isExternal ? ` ${iconItemIsExternal}`: ''}`,
+                    name: `${enumerationsItemName(user, enumerationType, currentItem, currentEnumerationItem)}${currentEnumerationItem.isExternal ? ` ${iconItemIsExternal}`: ''}`,
                     icon: currentIcon,
                     accessLevel: currentAccessLevel,
                     function: enumerationsItemMenuItemDetails,
                     param: commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationsSubTypesExtended.includes(enumerationType) ? '' : undefined, enumerationsSubTypesExtended.includes(enumerationType) ? enumerationTypeExtraId : undefined),
-                    submenu: enumerationItemMenuGenerate
+                    submenu: enumerationsItemMenuGenerate
             };
             switch (enumerationType) {
                 case dataTypeDeviceAttributes:
@@ -4826,7 +4826,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
                         name: `${translationsItemMenuGet(user, 'commonStatesTranslation')}`,
                         icon: iconItemCommon,
                         accessLevel: currentAccessLevel,
-                        id: `${translationCommonFunctionsAttributesPrefix}`,
+                        id: `${translationsCommonFunctionsAttributesPrefix}`,
                         submenu: translationsFunctionStatesItemsMenuGenerate,
                     });
                     break;
@@ -4934,7 +4934,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
  * @param {string} historyAdapterId - The history adapter Id.
  * @returns {boolean} 'True' if history is enabled for state.
  */
-function enumerationIsHistoryEnabledForState(stateObject, historyAdapterId) {
+function enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) {
     return stateObject.common && stateObject.common.hasOwnProperty('custom')
         && stateObject.common.custom && stateObject.common.custom.hasOwnProperty(historyAdapterId)
         && stateObject.common.custom[historyAdapterId];
@@ -4946,7 +4946,7 @@ function enumerationIsHistoryEnabledForState(stateObject, historyAdapterId) {
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]} Newly generated submenu.
  */
-function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
+function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
     const
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
         currentDestinationId = menuItemToProcess.destEnum,
@@ -4992,7 +4992,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                 logs('itemObject.common = ' + JSON.stringify(stateObject.common));
                 if (stateObject && stateObject.hasOwnProperty('common') && stateObject.common) {
                     const currentStateType = stateObject.common['type'];
-                    if (enumerationIsHistoryEnabledForState(stateObject, historyAdapterId) && (currentStateType === 'number')) {
+                    if (enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) && (currentStateType === 'number')) {
                         statesForGraphs.set(stateIdFull, translationsGetObjectName(user, stateObject, currentFunctionId));
                     }
                 }
@@ -5042,7 +5042,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                             subMenuItem.state = stateIdFull;
                         }
                         else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
-                            states = enumerationExtractPossibleValueStates(stateObject.common['states']);
+                            states = enumerationsExtractPossibleValueStates(stateObject.common['states']);
                             logs('states = ' + JSON.stringify(states));
                             if ((states !== undefined) && Object.keys(states).length > 0) {
                                 subMenuItem.icon = '';
@@ -5051,7 +5051,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                         logs(`possibleValue = ${JSON.stringify(possibleValue)}, possibleName = ${JSON.stringify(possibleName)}`);
                                         const subSubMenuItem = {
                                             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                                            name: `${enumerationStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString'] /*  possibleName !== undefined ? possibleName : possibleValue */}`,
+                                            name: `${enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString'] /*  possibleName !== undefined ? possibleName : possibleValue */}`,
                                             state: commandsPackParams(stateIdFull, possibleValue),
                                             funcEnum: currentFunctionId,
                                             icon: stateValue == possibleValue ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user),
@@ -5060,7 +5060,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                         subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
                                     }
                                     if (stateValue == possibleValue) {
-                                        subMenuItem.name += ` (${(enumerationStateValueDetails(user, stateObject, currentFunctionId, currentState)['valueString'])})`;
+                                        subMenuItem.name += ` (${(enumerationsStateValueDetails(user, stateObject, currentFunctionId, currentState)['valueString'])})`;
                                     }
                                 }
                                 logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2));
@@ -5112,7 +5112,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
                                 subMenuIndex = subMenu.unshift(subMenuItem);
                             }
                         }
-                        if (isGraphsEnabled && enumerationIsHistoryEnabledForState(stateObject, historyAdapterId) && (currentStateType === 'number')) {
+                        if (isGraphsEnabled && enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) && (currentStateType === 'number')) {
                             statesForGraphs.set(stateIdFull, stateName);
                         }
                     }
@@ -5133,7 +5133,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
             funcEnum: currentFunctionId,
             accessLevel: currentAccessLevel,
             icon: iconItemAlerts,
-            function: enumerationDeviceAttributesMenuItemDetails,
+            function: enumerationsDeviceAttributesMenuItemDetails,
             group: 'alerts',
             submenu: alertsMenuGenerateExtraSubscription
         });
@@ -5202,7 +5202,7 @@ function enumerationMenuGenerateDeviceButtons(user, menuItemToProcess) {
  * @param {*} inputStates
  * @returns
  */
-function enumerationExtractPossibleValueStates(inputStates) {
+function enumerationsExtractPossibleValueStates(inputStates) {
     logs('inputStates = ' + JSON.stringify(inputStates));
     let states = {};
     if (typeof(inputStates) === 'string') {
@@ -5230,7 +5230,7 @@ function enumerationExtractPossibleValueStates(inputStates) {
  * @param {string} convertValueCode - The string, contained converting code.
  * @returns {any} The result of conversion.
  */
-function enumerationEvaluateValueConversionCode(user, inputValue, convertValueCode) {
+function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueCode) {
     // logs(`value = ${value}, convertValueCode = ${convertValueCode}`)
     const printDate = 'printDate(value)';
     if (typeOf(convertValueCode, 'string')) {
@@ -5273,7 +5273,7 @@ function enumerationEvaluateValueConversionCode(user, inputValue, convertValueCo
  * @param {object=} currentState - The object, contained the current state information.
  * @returns {object} The resulted object contained the formatted string.
  */
-function enumerationStateValueDetails(user, stateIdOrObject, functionId, currentState) {
+function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState) {
     const currObject = ((typeof(stateIdOrObject) === 'string') && existsObject(stateIdOrObject)) ? getObject(stateIdOrObject) : stateIdOrObject;
     let valueString = '';
     let lengthModifier = 0;
@@ -5286,7 +5286,7 @@ function enumerationStateValueDetails(user, stateIdOrObject, functionId, current
             stateTranslationIdSuffix = currentId.split('.').slice( - currentFunction.state.split('.').length).join('_'),
             currObjectType = currObject.common['type'],
             currObjectUnit = currObject.common.hasOwnProperty('unit') ? currObject.common['unit'] : '',
-            currStateVal = enumerationEvaluateValueConversionCode(user, (currentState && currentState.hasOwnProperty('val')) ? currentState.val : (existsState(currentId) ? getState(currentId).val : undefined), convertValueCode),
+            currStateVal = enumerationsEvaluateValueConversionCode(user, (currentState && currentState.hasOwnProperty('val')) ? currentState.val : (existsState(currentId) ? getState(currentId).val : undefined), convertValueCode),
             currStateValType = currStateVal == undefined ? currObjectType : typeof(currStateVal),
             currStateValueId = `${stateTranslationIdSuffix}_${currStateVal}`;
         logs('currObject = ' + JSON.stringify(currObject));
@@ -5306,7 +5306,7 @@ function enumerationStateValueDetails(user, stateIdOrObject, functionId, current
             }
         }
         else if (currObject.common.hasOwnProperty('states') && (['string','number'].includes(currObject.common['type']) )) {
-            const states = enumerationExtractPossibleValueStates(currObject.common['states']);
+            const states = enumerationsExtractPossibleValueStates(currObject.common['states']);
             if (currStateVal !== undefined) {
                 if (states.hasOwnProperty(currStateVal)) {
                     valueString =  translationsGetObjectName(user, currStateValueId, functionId);
@@ -5335,7 +5335,7 @@ function enumerationStateValueDetails(user, stateIdOrObject, functionId, current
  * @param {object} menuItemToProcess - The menu item, for which the description will be generated.
  * @returns {string} A formatted string.
 */
-function enumerationDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
+function enumerationsDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
     logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess, null, 2)}`);
     logs(`user = ${JSON.stringify(user)}`);
     let text = '';
@@ -5399,7 +5399,7 @@ function enumerationDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
                         logs(`deviceAttributeId = ${JSON.stringify(deviceAttributeId)}`);
                         if (existsObject(deviceAttributeId)) {
                             const currObject = deviceAttributeId === primaryStateId ? primaryObject : getObject(deviceAttributeId);
-                            deviceAttributesArray.push({label: translationsGetObjectName(user, deviceAttributeId === primaryStateId ? translationPrimaryStateId : currObject, currentFunctionId), ...enumerationStateValueDetails(user, currObject, currentFunctionId, deviceAttributeId === primaryStateId ? primaryState : null)});
+                            deviceAttributesArray.push({label: translationsGetObjectName(user, deviceAttributeId === primaryStateId ? translationsPrimaryStateId : currObject, currentFunctionId), ...enumerationsStateValueDetails(user, currObject, currentFunctionId, deviceAttributeId === primaryStateId ? primaryState : null)});
                         }
                         break;
                     }
@@ -5418,7 +5418,7 @@ function enumerationDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
  * @param {string} enumerationTypeExtraId - The secondary (subordinated) enumerationType.
  * @returns {object} The appropriate enumerations object.
  */
-function enumerationGetList(enumerationType, enumerationTypeExtraId) {
+function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
     // logs(`dataType = ${dataType}, dataTypeExtraId = ${dataTypeExtraId}`);
     return enumerationTypeExtraId ?
         (enumerationsSubTypes.includes(enumerationType) ?
@@ -5442,7 +5442,7 @@ function enumerationGetList(enumerationType, enumerationTypeExtraId) {
  * @param {boolean} isOnlyEnabled - The selector to filter only Enabled Attributes or Buttons.
  * @returns
  */
-function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, isOnlyEnabled) {
+function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, isOnlyEnabled) {
     if (enumerationsList[dataTypeFunction].list.hasOwnProperty(functionId) && enumerationsSubTypes.includes(typeOfDeviceStates)) {
         isOnlyEnabled = typeOf(isOnlyEnabled, 'boolean') ? isOnlyEnabled : false;
         const
@@ -5452,12 +5452,12 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
             destinationsList = enumerationsList[dataTypeDestination].list,
             destinationsListKeys = Object.keys(destinationsList).filter((destId) => (destinationsList[destId].isEnabled && destinationsList[destId].isAvailable)).sort((a, b) => (destinationsList[a].order - destinationsList[b].order));
         if (typeOfDeviceStates === dataTypeDeviceAttributes) {
-            enumerationDeviceBasicAttributes.split(':').forEach((deviceAttr) => {
+            enumerationsDeviceBasicAttributes.split(':').forEach((deviceAttr) => {
                 deviceAttr = deviceAttr.indexOf('-') === 0 ? deviceAttr.slice(1) : deviceAttr;
                 if (! Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
                     currentDeviceStatesList[deviceAttr] = {
                         isEnabled : false,
-                        nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationDeviceBasicAttributes.includes(deviceAttr)),
+                        nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr)),
                         order : Object.keys(currentDeviceStatesList).length
                     };
                 }
@@ -5484,7 +5484,7 @@ function enumerationRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, 
                                             if (! Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
                                                 currentDeviceStatesList[deviceAttr] = {
                                                     isEnabled : isOnlyEnabled,
-                                                    nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationDeviceBasicAttributes.includes(deviceAttr)),
+                                                    nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr)),
                                                     order : Object.keys(currentDeviceStatesList).length,
                                                 };
                                                 if (typeOfDeviceStates === dataTypeDeviceAttributes) {
@@ -5550,7 +5550,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
             enum: idExternal,
             name: name,
             nameTranslationId: nameTranslationId,
-            names: [enumerationNamesBasic, enumerationNamesMany],
+            names: [enumerationsNamesBasic, enumerationsNamesMany],
             order: Object.keys(functionsList).length,
             icon: icon,
             state: externalMenu,
@@ -5852,15 +5852,15 @@ function alertsOnSubscribedState(object) {
                     alertMessages = new Array(),
                     alertObject = getObject(objectId, true),
                     alertDestinationId = alerts[objectId].destination,
-                    alertDestinationName = translationsGetEnumName(user, dataTypeDestination, alertDestinationId, enumerationNamesInside),
+                    alertDestinationName = translationsGetEnumName(user, dataTypeDestination, alertDestinationId, enumerationsNamesInside),
                     alertFunctionId = alerts[objectId].function,
                     functionsList = enumerationsList[dataTypeFunction].list,
                     alertFunction = functionsList && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
                     isStatesInFolders = alertFunction && alertFunction.statesInFolders,
                     isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
-                    alertFuncName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationNamesMain),
-                    alertStatus = alertFunctionId ? enumerationStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
-                    _alertOldStatus = alertFunctionId ? enumerationStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
+                    alertFuncName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
+                    alertStatus = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
+                    _alertOldStatus = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
                     alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
                     alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
                     alertStateType = alertObject.common['type'];
@@ -6088,7 +6088,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                         }
                         logs(`funcsList[${alertFirstLevelId}] = ${JSON.stringify(funcsList[alertFuncId], null, 2)}`);
                         alertsBy[alertFirstLevelId][alertSecondLevelId][alertTopId][alertId] =
-                            translationsGetObjectName(user, alertIdShort === funcsList[alertFuncId].state ? translationPrimaryStateId : alertObject, alertFuncId);
+                            translationsGetObjectName(user, alertIdShort === funcsList[alertFuncId].state ? translationsPrimaryStateId : alertObject, alertFuncId);
                         logs(`alertsByFunctions[${alertFirstLevelId}][${alertSecondLevelId}][${alertTopId}] = ${JSON.stringify(alertsBy[alertFirstLevelId][alertSecondLevelId][alertTopId], null, 2)}`);
                     }
                 }
@@ -6417,7 +6417,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
         subMenu = [],
         subMenuIndex = 0;
         currentDeviceStates.forEach((shortStateId, stateIndex) => {
-            if (! enumerationDeviceBasicAttributes.includes(shortStateId)  && (currentDeviceStates.indexOf(shortStateId) === stateIndex)) {
+            if (! enumerationsDeviceBasicAttributes.includes(shortStateId)  && (currentDeviceStates.indexOf(shortStateId) === stateIndex)) {
                 const currentStateId = [idPrefix, shortStateId].join('.');
                 if (currentDeviceAttributes.includes(shortStateId) ||
                     (currentDeviceButtons.includes(shortStateId) && (MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[shortStateId].showAccessLevel) <= 0))) {
@@ -7039,7 +7039,7 @@ function simpleReportPrepareStructure(reportStatesList) {
                 let stateFuncs = currentObject['enumIds'].filter(key => (funcsEnums.find(enumId => (key.indexOf(`${prefixEnums}.${enumId}`) === 0)))).map(key => key.split('.').pop());
                 stateDests.forEach(stateDest => {
                     if (! stateFuncs.length) {
-                        stateFuncs.push(enumerationFunctionNotFound);
+                        stateFuncs.push(enumerationsFunctionNotFound);
                     }
                     else if (stateFuncs.length > 1) {
                         if (! Object.keys(objectToFunctionList).length) {
@@ -7118,13 +7118,13 @@ function simpleReportGenerate(user, menuItemToProcess) {
                 reportStatesStructure = simpleReportPrepareStructure(reportStatesList);
             logs(`reportStatesStructure = ${JSON.stringify(reportStatesStructure, null, 2)}`);
             let reportLines = new Array();
-            Object.keys(reportStatesStructure).sort((a, b) => (enumerationCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
+            Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
                 const linePrefix = '- ';
-                reportLines.push({label: `${linePrefix}${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationNamesInside)}`});
+                reportLines.push({label: `${linePrefix}${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationsNamesInside)}`});
                 const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
-                currentFuncs.sort((a, b) => (enumerationCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
+                currentFuncs.sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
                     if (isAlwaysExpanded || (currentFuncs.length > 1)) {
-                        reportLines.push({label: ` ${linePrefix}${stringCapitalize(translationsGetEnumName(user, dataTypeFunction, currentFuncId, enumerationNamesMany))}`});
+                        reportLines.push({label: ` ${linePrefix}${stringCapitalize(translationsGetEnumName(user, dataTypeFunction, currentFuncId, enumerationsNamesMany))}`});
                     }
                     const currentDeviceObjects = Object.keys(reportStatesStructure[currentDestId][currentFuncId]);
                     currentDeviceObjects.forEach(currentDeviceObject => {
@@ -7136,7 +7136,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
                             if (isAlwaysExpanded || (currentStateObjects.length > 1)) {
                                 reportLines.push({label: `   ${linePrefix}${translationsGetObjectName(user, currentStateObject, currentFuncId)}`});
                             }
-                            reportLines[reportLines.length - 1] = {...reportLines[reportLines.length - 1], ...enumerationStateValueDetails(user, currentStateObject, currentFuncId)};
+                            reportLines[reportLines.length - 1] = {...reportLines[reportLines.length - 1], ...enumerationsStateValueDetails(user, currentStateObject, currentFuncId)};
                         });
                     });
                 });
@@ -7239,7 +7239,7 @@ const
             .sort((a, b) => (destinationsList[a].order - destinationsList[b].order)),
         currentDataType = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
         currentEnumId = isFunctionsFirst ? 'funcEnum' : 'destEnum',
-        currentNameId = isFunctionsFirst ? enumerationNamesMany : enumerationNamesMain,
+        currentNameId = isFunctionsFirst ? enumerationsNamesMany : enumerationsNamesMain,
         currentList = isFunctionsFirst ? functionsList : destinationsList,
         currentListIds =  isFunctionsFirst ? functionsListIds : destinationsListIds;
 
@@ -7290,7 +7290,7 @@ const
                             id: 'text',
                             submenu: translationsBasicItemsMenuGenerate
                         },
-                        ...translationsDownloadUploadMenuPartGenerate(user, translationCoreId)
+                        ...translationsDownloadUploadMenuPartGenerate(user, translationsCoreId)
                     ]
                 },
                 {
@@ -7505,7 +7505,7 @@ const
         });
         if (! isFunctionsFirst) {
             functionsListIds.filter(itemId => (functionsList[itemId].isExternal)).forEach(itemId => {
-                const menuItem = menuRootEnumerationMenuItemGenerate(user, dataTypeFunction, functionsList, itemId, enumerationNamesMany);
+                const menuItem = menuRootEnumerationMenuItemGenerate(user, dataTypeFunction, functionsList, itemId, enumerationsNamesMany);
                 if (menuItem) {
                     rootMenu.submenu.push(menuItem);
                 }
@@ -7711,7 +7711,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
             primaryEnumId =  isFunctionsFirst ? 'funcEnum' : 'destEnum',
             secondaryEnumId =  isFunctionsFirst ? 'destEnum' : 'funcEnum',
             secondaryInputType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
-            namesCurrent = isFunctionsFirst ? enumerationNamesMain : enumerationNamesMany,
+            namesCurrent = isFunctionsFirst ? enumerationsNamesMain : enumerationsNamesMany,
             isFunctionsFirstGlobal = configOptions.getOption(cfgMenuFunctionsFirst),
             inverseMasks = isFunctionsFirst !== isFunctionsFirstGlobal,
             primaryMenuItem = primaryMenuItemsList[primaryLevelMenuItemId],
@@ -7802,10 +7802,10 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
                         [primaryEnumId]: primaryLevelMenuItemId,
                         [secondaryEnumId]: currentLevelMenuItemId,
                         accessLevel: currentAccessLevel,
-                        function: enumerationDeviceAttributesMenuItemDetails,
+                        function: enumerationsDeviceAttributesMenuItemDetails,
                         icons: currentIcons,
                         icon: currentIcon,
-                        submenu: enumerationMenuGenerateDeviceButtons
+                        submenu: enumerationsMenuGenerateDeviceButtons
                     };
                     logs('deviceMenuItem = ' + JSON.stringify(deviceMenuItem, null, 2));
                     currentMenuItem.submenu.push(deviceMenuItem);
@@ -7986,7 +7986,7 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
                             setState(currState, ! getState(currState).val, stateSetSuccessfully );
                         }
                         else if (currObject.common.hasOwnProperty('states') && (['string','number'].includes(currObjectType) )) {
-                                const currObjectStates = enumerationExtractPossibleValueStates(currObject.common['states']);
+                                const currObjectStates = enumerationsExtractPossibleValueStates(currObject.common['states']);
                                 logs('possibleValue = ' + JSON.stringify(possibleValue));
                                 logs('Object.keys(states). = ' + JSON.stringify(Object.keys(currObjectStates)));
                                 if (Object.keys(currObjectStates).includes(possibleValue) ) {
@@ -8299,7 +8299,7 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
                 }
                 const
                     currentObject = currentSubMenuItem.destEnum && currentSubMenuItem.state && currentSubMenuItem.funcEnum ? getObject(currentSubMenuItem.state) : undefined,
-                    currentValue =  currentObject && (currentObject.common['type'] !== 'boolean') ? ` (${enumerationStateValueDetails(user, currentObject, currentSubMenuItem.funcEnum).valueString})`: '',
+                    currentValue =  currentObject && (currentObject.common['type'] !== 'boolean') ? ` (${enumerationsStateValueDetails(user, currentObject, currentSubMenuItem.funcEnum).valueString})`: '',
                     currentIcon = (currentValue && isFunctionsFirst) ? '' :  menuGetMenuItemIcon(user, currentSubMenuItem);
                 preparedMessageObject.buttons.push({
                     text:  `${currentIcon}${currentSubMenuItem.name}${currentValue}`,
@@ -8814,7 +8814,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     const currentDeviceAttributes = enumerationsList[currentType].list[currentItem].deviceAttributes;
                                     if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(currentParam)) {
                                         currentDeviceAttributes[userInputToProcess] = objectDeepClone(currentDeviceAttributes[currentParam]);
-                                        currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(translationsGetObjectId(userInputToProcess.split('.').join('_'), currentItem, undefined, enumerationDeviceBasicAttributes.includes(userInputToProcess)));
+                                        currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(translationsGetObjectId(userInputToProcess.split('.').join('_'), currentItem, undefined, enumerationsDeviceBasicAttributes.includes(userInputToProcess)));
                                         delete currentDeviceAttributes[currentParam];
                                     }
                                     break;
@@ -8830,7 +8830,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     break;
 
                                 case 'names':
-                                    enumerationsUpdateItemName(user, currentType, currentItem, enumerationsList[currentType].list[currentItem], userInputToProcess, currentValue !== enumerationNamesMain ? currentValue : '');
+                                    enumerationsUpdateItemName(user, currentType, currentItem, enumerationsList[currentType].list[currentItem], userInputToProcess, currentValue !== enumerationsNamesMain ? currentValue : '');
                                     break;
 
                                 default:
@@ -8851,7 +8851,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         }
 
                         case dataTypeGroups: {
-                            const currentEnumeration = enumerationGetList(currentParam, currentValue);
+                            const currentEnumeration = enumerationsGetList(currentParam, currentValue);
                             if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
                                 currentEnumeration[currentItem].group = userInputToProcess;
                             }
@@ -9260,14 +9260,14 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
                 const currentList = enumerationsSubTypes.includes(currentType) && currentValue ? enumerationsList[dataTypeFunction].list[currentValue][currentType] : enumerationsList[currentType].list;
-                if (enumerationsSubTypes.includes(currentType) && enumerationDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
+                if (enumerationsSubTypes.includes(currentType) && enumerationsDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
                     currentList[currentItem][currentParam] = currentSubParam;
                 }
                 else {
                     currentList[currentItem][currentParam] = ! currentList[currentItem][currentParam];
                     if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[currentItem][currentParam]) {
-                        enumerationRefreshFunctionDeviceStates(currentItem, dataTypeDeviceAttributes, false);
-                        enumerationRefreshFunctionDeviceStates(currentItem, dataTypeDeviceButtons, true);
+                        enumerationsRefreshFunctionDeviceStates(currentItem, dataTypeDeviceAttributes, false);
+                        enumerationsRefreshFunctionDeviceStates(currentItem, dataTypeDeviceButtons, true);
                     }
                 }
                 enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
@@ -9291,7 +9291,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             }
 
             case dataTypeGroups: {
-                const currentEnumeration = enumerationGetList(currentParam, currentSubParam ? currentSubParam : '');
+                const currentEnumeration = enumerationsGetList(currentParam, currentSubParam ? currentSubParam : '');
                 if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
                     currentEnumeration[currentItem].group = currentEnumeration[currentItem].group === currentValue ? '' : currentValue;
                 }
@@ -9385,7 +9385,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     languageId = configOptions.getOption(cfgMenuLanguage),
                     tmpFileName = nodePath.join(tmpDirectory, `menuTranslation_${languageId}.json`),
                     currentTranslation = translationsGetCurrentForUser(user);
-                nodeFS.writeFile(tmpFileName, JSON.stringify({type: translationType, language: languageId, version: translationVersion, translation: currentTranslation}, null, 2), err => {
+                nodeFS.writeFile(tmpFileName, JSON.stringify({type: translationsType, language: languageId, version: translationsVersion, translation: currentTranslation}, null, 2), err => {
                     if (err) {
                         console.warn(`Can't create temporary file '${tmpFileName}'! Error: '${JSON.stringify(err)}'.`);
                     }
@@ -9402,7 +9402,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 switch (currentItem) {
                     case doUploadDirectly: {
                         cachedSetValue(user, cachedIsWaitForInput, userInputToProcess);
-                        cachedDelValue(user, cachedTranslationToUpload);
+                        cachedDelValue(user, cachedTranslationsToUpload);
                         telegramMessagesFormatAndPushToQueueMessage(user, {menutext: translationsItemTextGet(user, 'UploadTranslationFile')}, false, false, false);
                         break;
                     }
@@ -9467,7 +9467,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeDeviceButtons: {
                 const currentList = enumerationsSubTypes.includes(currentType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list;
                 delete currentList[currentItem];
-                enumerationReorderItems(currentList);
+                enumerationsReorderItems(currentList);
                 enumerationsSave(enumerationsSubTypes.includes(currentType)  && currentParam ? dataTypeFunction : currentType);
                 currentMenuPosition.splice(-2, 2);
                 logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
@@ -9705,12 +9705,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
-                if (enumerationRefreshFunctionDeviceStates(currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
+                if (enumerationsRefreshFunctionDeviceStates(currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
                 break;
             }
 
             case dataTypeTranslation: {
-                if (cachedExistsValue(user, cachedTranslationToUpload)) {
+                if (cachedExistsValue(user, cachedTranslationsToUpload)) {
                     const updateTranslationResult = translationsProcessLanguageUpdate(user, currentParam, currentValue);
                     telegramMessagesDisplayPopUpMessage(user, updateTranslationResult ? updateTranslationResult : translationsItemTextGet(user, 'MsgSuccess'));
                 }
@@ -9759,12 +9759,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             const newLanguageId = currentValue;
                             if (! translationsList.hasOwnProperty(newLanguageId)) {
                                 const menuPosition = currentMenuPosition;
-                                translationsLoadLocalesFromRepository(newLanguageId, translationCoreId, (locales, _error) => {
+                                translationsLoadLocalesFromRepository(newLanguageId, translationsCoreId, (locales, _error) => {
                                     translationsList[newLanguageId] = {};
                                     if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(newLanguageId) && typeOf(locales[newLanguageId], 'object')) {
                                         if (translationsCheckAndCacheUploadedFile(user, '', '', '', locales[newLanguageId])) {
                                             const newTranslation = locales[newLanguageId];
-                                            if (newTranslation && newTranslation.hasOwnProperty(idTranslation) && typeOf(newTranslation[idTranslation], 'object') && (Math.abs(translationCompareVersion(newTranslation['version'])) < 10)) {
+                                            if (newTranslation && newTranslation.hasOwnProperty(idTranslation) && typeOf(newTranslation[idTranslation], 'object') && (Math.abs(translationsCompareVersion(newTranslation['version'])) < 10)) {
                                                 translationsList[newLanguageId] = newTranslation[idTranslation];
                                             }
                                         }
@@ -9848,9 +9848,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                 templateLine.instance = historyAdapter;
                                 // logs(`templateLine ${typeOf(templateLine)} = ${JSON.stringify(templateLine, null, 2)}`);
                                 let currentUnit;
-                                Object.keys(reportStatesStructure).sort((a, b) => (enumerationCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
+                                Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
                                     const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
-                                    currentFuncs.sort((a, b) => (enumerationCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
+                                    currentFuncs.sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
                                         const currentDeviceObjects = Object.keys(reportStatesStructure[currentDestId][currentFuncId]);
                                         currentDeviceObjects.forEach(currentDeviceObject => {
                                             const currentStateObjects = reportStatesStructure[currentDestId][currentFuncId][currentDeviceObject];
@@ -9859,7 +9859,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                                 if (currentUnit === undefined) currentUnit = currentStateObject.common && currentStateObject.common.unit ? currentStateObject.common.unit : '';
                                                 currentLine.unit = currentUnit;
                                                 currentLine.id = currentStateObject._id;
-                                                currentLine.name = `${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationNamesInside)}`;
+                                                currentLine.name = `${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationsNamesInside)}`;
                                                 if (graphLines.length > 0) currentLine.commonYAxis = "0";
                                                 currentLine.lineStyle = (graphLines.length % 3) === 0 ? 'solid' : ((graphLines.length % 3) === 1 ? 'dashed' : 'dotted');
                                                 graphLines.push(currentLine);
@@ -9878,7 +9878,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                             currentLine.name = currentParam;
                             currentLine.unit = currentStateObject.common && currentStateObject.common.unit ? currentStateObject.common.unit : '';
                             currentLine.instance = historyAdapter;
-                            graphTemplate.native.data.title = `${translationsGetEnumName(user, dataTypeFunction, currentSubParam, enumerationNamesMain)} ${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentSubValue, enumerationNamesInside)}`;
+                            graphTemplate.native.data.title = `${translationsGetEnumName(user, dataTypeFunction, currentSubParam, enumerationsNamesMain)} ${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentSubValue, enumerationsNamesInside)}`;
                         }
                         graphTemplate.native.data.range = currentValue;
                         const newTemplateId = `${graphAdapter}.${graphsTemporaryFolder}.${user.userId}.${user.chatId}`;
@@ -10075,7 +10075,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
     }
     else if (currentCommand === cmdUseCommonTranslation) {
         const
-            commonTranslationId = `${translationCommonFunctionsAttributesPrefix}.${currentItem.split('.').pop()}`,
+            commonTranslationId = `${translationsCommonFunctionsAttributesPrefix}.${currentItem.split('.').pop()}`,
             currentTranslationIdValue = translationsItemGet(user, currentItem);
         if ((translationsItemGet(user, commonTranslationId) === commonTranslationId) && (currentTranslationIdValue !== currentItem)) {
             translationsItemStore(user, commonTranslationId, currentTranslationIdValue);
