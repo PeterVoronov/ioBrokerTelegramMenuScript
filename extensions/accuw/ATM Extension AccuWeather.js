@@ -277,7 +277,7 @@ function getDetailedForecast(day, translations) {
     // @ts-ignore
     const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
     let text = ` ${getForecastDate(currentDate)} :`;
-    text += `\r\n * ${getState(`accuweather.0.Summary.WeatherText_d${day}`).val}${precipitation}${day === 1 ? possiblePrecipitationHours() : ''}`;
+    text += `\r\n * ${getState(`accuweather.0.Summary.WeatherText_d${day}`).val}${precipitation}${day === 1 ? possiblePrecipitationHours(translations) : ''}`;
     text += `\r\n * ${translations['Temperature']}: ${translations['from']} ${getState(`accuweather.0.Summary.TempMin_d${day}`).val}${degrees} ${translations['to']} ${getState(`accuweather.0.Summary.TempMax_d${day}`).val}${degrees}`;
     text += `\r\n * ${translations['RealFeel']}: ${translations['from']} ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val}${degrees} ${translations['to']} ${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val}${degrees}`;
     for (const dayNight of ['Day', 'Night']) {
@@ -324,7 +324,7 @@ function getHourlyForecast(hour, translations) {
     }
     text += `\r\n * ${getState(`accuweather.0.Hourly.h${hour}.IconPhrase`).val}${precipitation}`;
     text += `\r\n * ${translations['Temperature']}: ${getState(`accuweather.0.Hourly.h${hour}.Temperature`).val}${degrees}, ${translations['RealFeel']}: ${getState(`accuweather.0.Hourly.h${hour}.RealFeelTemperature`).val}${degrees}`;
-    text += `\r\n * ${translations['Wind']}: ${convertDirection(getState(`accuweather.0.Hourly.h${hour}.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindSpeed`).val)}  ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindGust`).val)} ${translations['metersPerSecondShort']}`;
+    text += `\r\n * ${translations['Wind']}: ${convertDirection(getState(`accuweather.0.Hourly.h${hour}.WindDirection`).val, translations)} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindSpeed`).val)}  ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindGust`).val)} ${translations['metersPerSecondShort']}`;
     return text;
 }
 
@@ -367,22 +367,22 @@ function getTodaysForecast(translations) {
     const _day = 1;
     const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val);
     const hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val;
-    let precipitation = hasPrecipitation ? `\r\n * ${translations['Precipitations']}: ${getState(`accuweather.0.Current.PrecipitationType`).val}` : translations['noPrecipitation'];
+    let precipitation = hasPrecipitation ? `\r\n * ${translations['Precipitations']}: ${getState(`accuweather.0.Current.PrecipitationType`).val}` : translations['NoPrecipitation'];
     // @ts-ignore
     const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
     let text = ` ${getForecastDate(currentDate)} на ${getForecastTime(currentDate)}:`;
-    text += `\r\n * ${getState(`accuweather.0.Current.WeatherText`).val}. ${precipitation}${possiblePrecipitationHours()}`;
+    text += `\r\n * ${getState(`accuweather.0.Current.WeatherText`).val}. ${precipitation}${possiblePrecipitationHours(translations)}`;
     text += `\r\n * ${translations['Temperature']}: ${getState(`accuweather.0.Current.Temperature`).val}${degrees}`;
     text += `\r\n * ${translations['RealFeel']}: ${getState(`accuweather.0.Current.RealFeelTemperature`).val}${degrees}, ${translations['inShade']}: ${getState(`accuweather.0.Current.RealFeelTemperatureShade`).val}${degrees}`;
     text += `\r\n * ${translations['RelativeHumidity']}: ${getState(`accuweather.0.Current.RelativeHumidity`).val}%, ${translations['dewPoint']}: ${getState(`accuweather.0.Current.DewPoint`).val}${degrees}`;
     text += `\r\n * ${getState(`accuweather.0.Current.PressureTendency`).val} ${translations['pressure']}: ${convertPressure(getState(`accuweather.0.Current.Pressure`).val)} ${translations['mmHg']}`;
-    text += `\r\n * ${translations['Wind']}: ${convertDirection(getState(`accuweather.0.Current.WindDirection`).val)} ${convertSpeed(getState(`accuweather.0.Current.WindSpeed`).val)} ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Current.WindGust`).val)} ${translations['metersPerSecondShort']}`;
+    text += `\r\n * ${translations['Wind']}: ${convertDirection(getState(`accuweather.0.Current.WindDirection`).val, translations)} ${convertSpeed(getState(`accuweather.0.Current.WindSpeed`).val)} ${translations['metersPerSecondShort']}, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Current.WindGust`).val)} ${translations['metersPerSecondShort']}`;
     return text;
 }
 
 
-onMessage('accuweatherForecast', ({user: _user, data, translations}, callback) => {
-    //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
+onMessage('menuAccuweatherForecast', ({user: _user, data, funcEnum, translations}, callback) => {
+    // console.log(`Received translations for weatherForecast: ${JSON.stringify(translations, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
         const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
@@ -390,28 +390,28 @@ onMessage('accuweatherForecast', ({user: _user, data, translations}, callback) =
         data.text = getTodaysForecast(translations);
         data.submenu = [{
                 "name": translations['ForecastDetailed'],
-                "funcEnum": autoTelegramMenuExtensionId,
+                "funcEnum": funcEnum,
                 "icon": data.icon,
                 "externalMenu": 'menuAccuweatherForecastDetailed',
                 "submenu": [],
             },
             {
                 "name": translations['ForecastHourly'],
-                "funcEnum": autoTelegramMenuExtensionId,
+                "funcEnum": funcEnum,
                 "icon": accuweatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
                 "externalMenu": 'menuAccuweatherForecastHourly',
                 "submenu": [],
             },
             {
                 "name": `${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Minimum`).val} ${degrees} .. ${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Maximum`).val} ${degrees} - ${translations['ForecastTomorrow']}`,
-                "funcEnum": autoTelegramMenuExtensionId,
+                "funcEnum": funcEnum,
                 "icon": accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
                 "externalMenu": 'menuAccuweatherForecastTomorrow',
                 "submenu": [],
             },
             {
                 "name": `- ${translations['ForecastLong']}`,
-                "funcEnum": autoTelegramMenuExtensionId,
+                "funcEnum": funcEnum,
                 "icon": accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d3').val].icon + ' ' + accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d4').val].icon + ' ' + accuweatherIcons[getState('accuweather.0.Summary.WeatherIcon_d5').val].icon,
                 "externalMenu": 'menuAccuweatherForecastLong',
                 "submenu": [],
@@ -422,7 +422,7 @@ onMessage('accuweatherForecast', ({user: _user, data, translations}, callback) =
     }
 });
 
-onMessage('accuweatherForecastDetailed', ({user: _user, data, translations}, callback) => {
+onMessage('menuAccuweatherForecastDetailed', ({user: _user, data, funcEnum: _funcEnum, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.text = getDetailedForecast(1, translations);
@@ -432,7 +432,7 @@ onMessage('accuweatherForecastDetailed', ({user: _user, data, translations}, cal
     }
 });
 
-onMessage('accuweatherForecastTomorrow', ({user: _user, data, translations}, callback) => {
+onMessage('menuAccuweatherForecastTomorrow', ({user: _user, data, funcEnum: _funcEnum, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.text = getDetailedForecast(2, translations);
@@ -442,7 +442,7 @@ onMessage('accuweatherForecastTomorrow', ({user: _user, data, translations}, cal
     }
 });
 
-onMessage('accuweatherForecastHourly', ({user: _user, data, translations}, callback) => {
+onMessage('menuAccuweatherForecastHourly', ({user: _user, data, funcEnum: _funcEnum, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
@@ -467,7 +467,7 @@ onMessage('accuweatherForecastHourly', ({user: _user, data, translations}, callb
     }
 });
 
-onMessage('accuweatherForecastLong', ({user: _user, data, translations}, callback) => {
+onMessage('menuAccuweatherForecastLong', ({user: _user, data, funcEnum: _funcEnum, translations}, callback) => {
     //console.log(`Received data for weatherForecast: ${JSON.stringify(data, null, ' ')}`);
     if ((typeof (data) === 'object') && data.hasOwnProperty('submenu')) {
         data.icon = accuweatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
