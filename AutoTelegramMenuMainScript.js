@@ -5866,9 +5866,9 @@ function alertsProcessMessageTemplate(user, template, variables) {
         }
         else if (variables.hasOwnProperty(stringToProcess)) {
             result = `${variables[stringToProcess]}`;
-        } else if (stringToProcess.includes('?') && stringToProcess.includes(':')) {
+        }
+        else if (stringToProcess.includes('?') && stringToProcess.includes(':')) {
             const ifClause = stringToProcess.match(/^(\w+?)\?(.*?)\:(.*?)$/);
-            logs(`ifClause = ${ifClause}`, _l)
             if (ifClause && typeOf(ifClause, 'array') && (ifClause.length === 4) && variables.hasOwnProperty(ifClause[1])) {
                 const conditionParam = variables[ifClause[1]];
                 result = ifClause[conditionParam ? 2 : 3].replace(/\$value/g, conditionParam);
@@ -5877,16 +5877,16 @@ function alertsProcessMessageTemplate(user, template, variables) {
         if (result) {
            switch (postProcess) {
                 case 'toLowerCase': {
-                    result = result.toLowerCase()
+                    result = result.toLowerCase();
                     break;
                 }
                 case 'toUpperCase': {
-                    result = result.toUpperCase()
+                    result = result.toUpperCase();
                     break;
                 }
             }
         }
-        return result
+        return result;
     });
 }
 
