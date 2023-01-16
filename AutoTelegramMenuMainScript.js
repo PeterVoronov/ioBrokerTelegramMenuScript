@@ -245,6 +245,8 @@ const
     cfgMenuRefreshInterval                  = `${cfgPrefix}MenuRefreshInterval`,
     cfgAllowToDeleteEmptyEnums              = `${cfgPrefix}AllowToDeleteEmptyEnums`,
     cfgConfigBackupCopiesCount              = `${cfgPrefix}ConfigBackupCopiesCount`,
+    cfgAlertMessageTemplateMain             = `${cfgPrefix}AlertMessageTemplateMain`,
+    cfgAlertMessageTemplateThreshold        = `${cfgPrefix}AlertMessageTemplateThreshold`,
     cfgCheckAlertStatesOnStartUp            = `${cfgPrefix}CheckAlertStatesOnStartUp`,
     cfgThresholdsForNumericString           = `${cfgPrefix}ThresholdsForNumericString`,
     cfgMenuLanguage                         = `${cfgPrefix}MenuLanguage`,
@@ -261,6 +263,8 @@ const
     cfgUpdateMessageTime                    = `${cfgPrefix}UpdateMessageTime`,
     cfgUpdateMessagesOnStart                = `${cfgPrefix}UpdateMessagesOnStart`,
     cfgDebugMode                            = `${cfgPrefix}DebugMode`;
+const
+    alertMessageTemplateDefault             = '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStatus}';
 
 const
     configDefaultOptions = {
@@ -274,6 +278,8 @@ const
         [cfgGraphsTemplates]                : '',                               // Folder with e-charts templates
         [cfgAllowToDeleteEmptyEnums]        : true,                             // Allow to delete an empty enums (functions, destinations, reports)
         [cfgConfigBackupCopiesCount]        : 7,                                // Max backup copies of config to be stored. If 0 - automatic backup will not work
+        [cfgAlertMessageTemplateMain]       : alertMessageTemplateDefault,
+        [cfgAlertMessageTemplateThreshold]  : alertMessageTemplateDefault + " ${alertStatus} [${alertThresholdIcon}${alertThresholdValue}]",
         [cfgCheckAlertStatesOnStartUp]      : false,                            // Check stored states values on the start of script, to raise an alert
         [cfgThresholdsForNumericString]     : false,                            // Make possible to set thresholds for states of string type, which is really numeric
         [cfgDebugMode]                      : false,                            // Enable debug mode - huge amount of logs
@@ -5839,6 +5845,52 @@ function alertsStoreMessagesToCache(user, alertMessages) {
 }
 
 /**
+ *
+ * @param {object} user - The user object.
+ * @param {string} template - The message template.
+ * @param {object} variables - The object contained default variables.
+ * @returns {string} The result of interpretation of the template.
+ */
+function alertsProcessMessageTemplate(user, template, variables) {
+// alertMessageTemplateDefaultPrefix= '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"',
+// alertMessageTemplateDefault = alertMessageTemplateDefaultPrefix + " ${alertStatus}",
+// alertMessageTemplateDefaultThreshold = alertMessageTemplateDefaultPrefix + " ${alertStatus} [${alertThresholdIcon}${alertThresholdValue}]",
+    return template.replace(/\${(.+?)}/g, (_matchedString, stringToProcess) => {
+        let
+            result = '',
+            postProcess = '';
+        if (stringToProcess.includes('.')) [stringToProcess, postProcess] = stringToProcess.split('.');
+        const translations = stringToProcess.match(/^translations\((\S+?)\)$/);
+        if (translations && typeOf(translations, 'array') && (translations.length === 2)) {
+            result = translationsItemTextGet(user, translations[1]);
+        }
+        else if (variables.hasOwnProperty(stringToProcess)) {
+            result = `${variables[stringToProcess]}`;
+        } else if (stringToProcess.includes('?') && stringToProcess.includes(':')) {
+            const ifClause = stringToProcess.match(/^(\w+?)\?(.*?)\:(.*?)$/);
+            logs(`ifClause = ${ifClause}`, _l)
+            if (ifClause && typeOf(ifClause, 'array') && (ifClause.length === 4) && variables.hasOwnProperty(ifClause[1])) {
+                const conditionParam = variables[ifClause[1]];
+                result = ifClause[conditionParam ? 2 : 3].replace(/\$value/g, conditionParam);
+            }
+        }
+        if (result) {
+           switch (postProcess) {
+                case 'toLowerCase': {
+                    result = result.toLowerCase()
+                    break;
+                }
+                case 'toUpperCase': {
+                    result = result.toUpperCase()
+                    break;
+                }
+            }
+        }
+        return result
+    });
+}
+
+/**
  * This function is called when state of any subscribed for alert objects is changed.
  * @param {object} object - This object contained all information about changed state.
  */
@@ -5869,13 +5921,13 @@ function alertsOnSubscribedState(object) {
                     alertFunction = functionsList && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
                     isStatesInFolders = alertFunction && alertFunction.statesInFolders,
                     isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
-                    alertFuncName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
+                    alertFunctionName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
                     alertStatus = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
                     _alertOldStatus = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
                     alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
                     alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
                     alertStateType = alertObject.common['type'];
-                let alertTextMain = `${alertFuncName} "${alertDeviceName} ${translationsItemTextGet(user, 'In').toLowerCase()} ${alertDestinationName}"`;
+                let alertTextMain = `${alertFunctionName} "${alertDeviceName} ${translationsItemTextGet(user, 'In').toLowerCase()} ${alertDestinationName}"`;
                 if (! isAlertStatePrimary) alertTextMain += ` ${alertStateName} -`;
                 logs(`alertDestId = ${alertDestinationId}, alertDestName = ${JSON.stringify(alertDestinationName)}`);
                 if ((alertStateType === 'boolean')
