@@ -162,6 +162,7 @@
       "textMany": "Множественное число",
       "textMask": "Маска",
       "textMax": "Максимум",
+      "textMessageTemplate": "core.textMessageTemplate",
       "textMin": "Минимум",
       "textMsgError": "Ошибка!",
       "textMsgErrorNoResponse": "Ошибка! Нет ответа!",

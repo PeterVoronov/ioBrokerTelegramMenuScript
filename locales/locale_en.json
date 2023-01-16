@@ -162,6 +162,7 @@
       "textMany": "Many",
       "textMask": "Mask",
       "textMax": "Max",
+      "textMessageTemplate": "core.textMessageTemplate",
       "textMin": "Min",
       "textMsgError": "Error!",
       "textMsgErrorNoResponse": "Error! No response!",
