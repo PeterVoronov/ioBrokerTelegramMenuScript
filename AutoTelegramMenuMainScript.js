@@ -264,7 +264,7 @@ const
     cfgUpdateMessagesOnStart                = `${cfgPrefix}UpdateMessagesOnStart`,
     cfgDebugMode                            = `${cfgPrefix}DebugMode`;
 const
-    alertMessageTemplateDefault             = '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStatus}';
+    alertMessageTemplateDefault             = '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}';
 
 const
     configDefaultOptions = {
@@ -279,7 +279,7 @@ const
         [cfgAllowToDeleteEmptyEnums]        : true,                             // Allow to delete an empty enums (functions, destinations, reports)
         [cfgConfigBackupCopiesCount]        : 7,                                // Max backup copies of config to be stored. If 0 - automatic backup will not work
         [cfgAlertMessageTemplateMain]       : alertMessageTemplateDefault,
-        [cfgAlertMessageTemplateThreshold]  : alertMessageTemplateDefault + " ${alertStatus} [${alertThresholdIcon}${alertThresholdValue}]",
+        [cfgAlertMessageTemplateThreshold]  : alertMessageTemplateDefault + " [${alertThresholdIcon}${alertThresholdValue}]",
         [cfgCheckAlertStatesOnStartUp]      : false,                            // Check stored states values on the start of script, to raise an alert
         [cfgThresholdsForNumericString]     : false,                            // Make possible to set thresholds for states of string type, which is really numeric
         [cfgDebugMode]                      : false,                            // Enable debug mode - huge amount of logs
@@ -5614,6 +5614,7 @@ const
     alertThresholdSet = 'alertThresholdSet',
     alertThresholdId = 'threshold',
     alertThresholdOnTimeIntervalId = 'onTimeInterval',
+    alertMessageTemplateId = 'messageTemplate',
     alertsStoredVariables = new Map();
 
 let alertsRules = {};
@@ -5922,25 +5923,25 @@ function alertsOnSubscribedState(object) {
                     isStatesInFolders = alertFunction && alertFunction.statesInFolders,
                     isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
                     alertFunctionName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
-                    alertStatus = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
-                    _alertOldStatus = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
+                    alertStateValue = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
+                    _alertStateOldValue = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
                     alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
                     alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
-                    alertStateType = alertObject.common['type'];
-                let alertTextMain = `${alertFunctionName} "${alertDeviceName} ${translationsItemTextGet(user, 'In').toLowerCase()} ${alertDestinationName}"`;
-                if (! isAlertStatePrimary) alertTextMain += ` ${alertStateName} -`;
+                    alertStateType = alertObject.common['type'],
+                    alertMessageValues = {alertFunctionName, alertDeviceName, alertDestinationName, alertStateName, alertStateValue};
                 logs(`alertDestId = ${alertDestinationId}, alertDestName = ${JSON.stringify(alertDestinationName)}`);
                 if ((alertStateType === 'boolean')
                     ||
                     (alertObject.common.hasOwnProperty('states') && (['string','number'].includes(alertStateType)))
                     ) {
                     const
+                        alertMessageTemplate = detailsOrThresholds.hasOwnProperty(alertMessageTemplateId) ? detailsOrThresholds[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user),
                         onTimeInterval = detailsOrThresholds.hasOwnProperty(alertThresholdOnTimeIntervalId) ? detailsOrThresholds[alertThresholdOnTimeIntervalId] : 0,
                         idStoredTimerOn = [objectId, chatId, 'timerOn'].join(itemsDelimiter),
                         idStoredTimerValue = [objectId, chatId, 'timerValue'].join(itemsDelimiter),
                         storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
                         [storedTimerValue, storedTimerOldValue] = (storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)) ? alertsStoredVariables.get(idStoredTimerValue) : [undefined, undefined],
-                        alertMessageText = `${alertTextMain}  ${alertStatus}`;
+                        alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
                     if (onTimeInterval) {
                         if (storedTimerOn) {
                             if (currentStateValue !== storedTimerValue) {
@@ -5963,22 +5964,26 @@ function alertsOnSubscribedState(object) {
                     }
                 }
                 else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
+                    const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
                     Object.keys(detailsOrThresholds)
                         .sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB)))
-                        .forEach(threshold => {
+                        .forEach(alertThresholdValue => {
                             const
-                                currentThreshold = detailsOrThresholds[threshold],
+                                currentThreshold = detailsOrThresholds[alertThresholdValue],
                                 onAbove = currentThreshold.onAbove,
                                 onLess = currentThreshold.onLess,
-                                thresholdValue = Number(threshold),
+                                thresholdValue = Number(alertThresholdValue),
                                 onTimeInterval = currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0,
-                                idStoredTimerOn = [objectId, chatId, threshold, 'timerOn'].join(itemsDelimiter),
-                                idStoredTimerStatus = [objectId, chatId, threshold, 'timerStatus'].join(itemsDelimiter),
+                                idStoredTimerOn = [objectId, chatId, alertThresholdValue, 'timerOn'].join(itemsDelimiter),
+                                idStoredTimerStatus = [objectId, chatId, alertThresholdValue, 'timerStatus'].join(itemsDelimiter),
                                 storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
                                 storedTimerStatus = (storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)) ? alertsStoredVariables.get(idStoredTimerStatus) : 0,
                                 isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue)  || (storedTimerOn && (storedTimerStatus < 0))),
                                 isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || (storedTimerOn && (storedTimerStatus < 0))),
-                                alertMessageText = `${alertTextMain} ${alertStatus} [${isLess ? iconItemLess : iconItemAbove}${threshold}]`;
+                                alertMessageTemplate = currentThreshold.hasOwnProperty(alertMessageTemplateId) ? currentThreshold[alertMessageTemplateId] : alertDefaultTemplate;
+                            alertMessageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
+                            alertMessageValues['alertThresholdValue'] = alertThresholdValue;
+                            const alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
                             if (onTimeInterval) {
                                 if (storedTimerOn) {
                                     const currentTimerStatus = storedTimerStatus + (storedTimerStatus > 0 ? (isLess ? -1 :  0) : (isAbove ? 1 : 0));
@@ -6321,17 +6326,32 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
                         currentName = menuItemToProcess.name,
                         [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
                         [currentAlertDetails, currentStateAlertDetails] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true),
-                        currentOnTimeInterval = `${currentAlertDetails.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentAlertDetails[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`;
+                        currentOnTimeInterval = `${currentAlertDetails.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentAlertDetails[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`,
+                        currentMessageTemplate = currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? currentAlertDetails[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user);
                     let
                         subMenu = [],
                         subMenuIndex = 0;
+                    subMenuIndex = subMenu.push(
+                        menuEditItemMenuItemGenerate(user, currentIndex, subMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, '', dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval)
+                        // {
+                        // index: `${currentIndex}.${subMenuIndex}.${subMenuIndex}`,
+                        // name: `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`,
+                        // icon: iconItemEdit,
+                        // group: 'thresholdOn',
+                        // param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval),
+                        // submenu: [],
+                        // }
+                    );
                     subMenuIndex = subMenu.push({
-                        index: `${currentIndex}.${subMenuIndex}.${subMenuIndex}`,
-                        name: `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`,
+                        index: `${currentIndex}.${subMenuIndex}`,
+                        name: `${translationsItemTextGet(user, alertMessageTemplateId)}`,
                         icon: iconItemEdit,
-                        group: 'thresholdOn',
-                        param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval),
-                        submenu: [],
+                        group: alertMessageTemplateId,
+                        param: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
+                        submenu: [
+                            menuEditItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
+                            menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
+                        ],
                     });
                     const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
                     subMenu.push(
@@ -6385,46 +6405,60 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
         const
             currentThreshold = currentThresholds[currentThresholdNumber],
             currentOnTimeInterval = `${currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`,
+            currentThresholdMessageTemplate = currentThreshold.hasOwnProperty(alertMessageTemplateId) ? currentThreshold[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateThreshold, user),
             subMenuItem = {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${currentThresholdNumber}${currentStateUnits} [${currentThreshold.onAbove ? iconItemAbove : ''}${currentThreshold.onLess ? iconItemLess : ''}]({currentOnTimeInterval})`,
                 icon: iconItemEdit,
                 submenu: new Array()
             };
-            let subSubMenuIndex = 0;
-            subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${currentThresholdNumber}${currentStateUnits}`,
-                icon: iconItemEdit,
-                group: 'value',
-                param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId, `${currentThresholdNumber}${currentStateUnits}`),
-                submenu: [],
-            });
-            subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${currentThresholdNumber}${currentStateUnits} ${iconItemAbove}`,
-                icon: currentThreshold.onAbove ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
-                group: 'borders',
-                param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
-                submenu: [],
-            });
-            subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${currentThresholdNumber}${currentStateUnits} ${iconItemLess}`,
-                icon: currentThreshold.onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
-                group: 'borders',
-                param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
-                submenu: [],
-            });
-            subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`,
-                icon: iconItemEdit,
-                group: 'thresholdOn',
-                param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnTimeIntervalId, currentOnTimeInterval),
-                submenu: [],
-            });
-            subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex));
+        let subSubMenuIndex = 0;
+        subSubMenuIndex = subMenuItem.submenu.push(menuEditItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${currentThresholdNumber}${currentStateUnits}`, 'value', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId, `${currentThresholdNumber}${currentStateUnits}`));
+            /* {
+            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+            name: `${currentThresholdNumber}${currentStateUnits}`,
+            icon: iconItemEdit,
+            group: 'value',
+            param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId, `${currentThresholdNumber}${currentStateUnits}`),
+            submenu: [],
+        } */
+        subSubMenuIndex = subMenuItem.submenu.push({
+            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+            name: `${currentThresholdNumber}${currentStateUnits} ${iconItemAbove}`,
+            icon: currentThreshold.onAbove ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
+            group: 'borders',
+            param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
+            submenu: [],
+        });
+        subSubMenuIndex = subMenuItem.submenu.push({
+            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+            name: `${currentThresholdNumber}${currentStateUnits} ${iconItemLess}`,
+            icon: currentThreshold.onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
+            group: 'borders',
+            param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
+            submenu: [],
+        });
+        /* subSubMenuIndex = subMenuItem.submenu.push({
+            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+            name: `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`,
+            icon: iconItemEdit,
+            group: 'thresholdOn',
+            param: commandsPackParams(cmdGetInput, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnTimeIntervalId, currentOnTimeInterval),
+            submenu: [],
+        }); */
+        subSubMenuIndex = subMenuItem.submenu.push(menuEditItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, 'thresholdOn', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
+        subSubMenuIndex = subMenuItem.submenu.push({
+            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+            name: `${translationsItemTextGet(user, alertMessageTemplateId)}`,
+            icon: iconItemEdit,
+            group: alertMessageTemplateId,
+            param: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
+            submenu: [
+                menuEditItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
+                menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId)
+            ],
+        });
+        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex));
         subMenuIndex = subMenu.push(subMenuItem);
     });
     subMenuIndex = subMenu.push(menuAddItemMenuItemGenerate(user, currentIndex, subMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId));
@@ -7595,7 +7629,8 @@ const
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {string} dataType - The type of the item, which will be deleted.
- * @param {*} dataItem - The primary item or collection of items identification. * @param {*=} dataId - The secondary id for the item.
+ * @param {*} dataItem - The primary item or collection of items identification.
+ * @param {*=} dataId - The secondary id for the item.
  * @param  {...any} dataValues - The additional parameters of an item, required for the `cmdItemDeleteConfirm`
  * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
  */
@@ -7636,6 +7671,28 @@ function menuRenameItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemInd
         param: commandsPackParams(cmdGetInput, ...commandParams),
         submenu: [],
     };
+}
+
+/**
+ * Generates menu item which call the user input for the Rename.
+ * @param {object} user - The user object.
+ * @param {string} upperMenuItemIndex - The upper level item menu index.
+ * @param {number} subMenuItemIndex - The index of an item to be created.
+ * @param {string} itemName - The name of the menu item.
+ * @param {string} itemGroup - The name of the menu item.
+ * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}
+ */
+function menuEditItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, ...commandParams) {
+    const result = {
+        index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+        name: itemName,
+        icon: iconItemEdit,
+        param: commandsPackParams(cmdGetInput, ...commandParams),
+        submenu: [],
+    };
+    if (itemGroup) result.group = itemGroup;
+    return result;
 }
 
 /**
@@ -9022,9 +9079,15 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         }
 
                         case dataTypeAlertSubscribed: {
-                            // @ts-ignore
-                            userInputToProcess = Number(userInputToProcess);
-                            if (Number.isNaN(userInputToProcess)) {
+                            switch (currentValue) {
+                                case alertThresholdId:
+                                case alertThresholdOnTimeIntervalId:{
+                                    // @ts-ignore
+                                    userInputToProcess = Number(userInputToProcess);
+                                    break;
+                                }
+                            }
+                            if (Number.isNaN(userInputToProcess) && (currentValue !== alertMessageTemplateId)) {
                                 console.warn(`Unacceptable value '${userInputToProcess}' for number conditions`);
                                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                             }
@@ -9050,7 +9113,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
                                     currentDetailsOrThreshold[currentValue] = userInputToProcess;
                                 }
                                 cachedSetValue(user, alertThresholdSet, alertDetailsOrThresholds);
-                                cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, currentThresholdIndex >= 0  ? -2 : -1).join('.'), alertThresholdSet);
+                                const backStepsForCacheDelete = (currentThresholdIndex >= 0  ? -2 : -1) + (currentValue === alertMessageTemplateId ? -1 : 0);
+                                cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, backStepsForCacheDelete).join('.'), alertThresholdSet);
                                 menuClearCachedMenuItemsAndRows(user);
                             }
                             break;
