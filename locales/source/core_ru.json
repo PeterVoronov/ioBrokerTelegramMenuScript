@@ -1,6 +1,8 @@
 {
   "core": {
     "cfgAlertMessagesHistoryDepth": "Глубина истории уведомлений",
+    "cfgAlertMessageTemplateMain": "",
+    "cfgAlertMessageTemplateThreshold": "",
     "cfgAllowToDeleteEmptyEnums": "Удалять \"пустые\" категории",
     "cfgCheckAlertStatesOnStartUp": "Проверять статусы уведомлений при запуске",
     "cfgClearMenuCall": "Очищать строку вызова",

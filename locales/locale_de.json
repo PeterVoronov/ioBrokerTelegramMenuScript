@@ -4,6 +4,8 @@
   "version": "1.0",
   "translation": {
     "core": {
+      "cfgAlertMessageTemplateMain": "core.cfgAlertMessageTemplateMain",
+      "cfgAlertMessageTemplateThreshold": "core.cfgAlertMessageTemplateThreshold",
       "cfgAlertMessagesHistoryDepth": "Tiefe der Historie der Alarmmeldungen",
       "cfgAllowToDeleteEmptyEnums": "Erlaubt das Löschen von leeren Aufzählungen",
       "cfgCheckAlertStatesOnStartUp": "Beim Starten auf mögliche Alarmzustände prüfen",

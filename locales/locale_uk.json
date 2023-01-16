@@ -4,6 +4,8 @@
   "version": "1.0",
   "translation": {
     "core": {
+      "cfgAlertMessageTemplateMain": "core.cfgAlertMessageTemplateMain",
+      "cfgAlertMessageTemplateThreshold": "core.cfgAlertMessageTemplateThreshold",
       "cfgAlertMessagesHistoryDepth": "Глибина історії повідомлень",
       "cfgAllowToDeleteEmptyEnums": "Видаляти \"порожні\" категорії",
       "cfgCheckAlertStatesOnStartUp": "Перевіряти статуси повідомлень під час запуску",

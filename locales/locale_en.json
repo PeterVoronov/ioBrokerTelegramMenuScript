@@ -4,6 +4,8 @@
   "version": "1.0",
   "translation": {
     "core": {
+      "cfgAlertMessageTemplateMain": "core.cfgAlertMessageTemplateMain",
+      "cfgAlertMessageTemplateThreshold": "core.cfgAlertMessageTemplateThreshold",
       "cfgAlertMessagesHistoryDepth": "Alert messages history depth",
       "cfgAllowToDeleteEmptyEnums": "Allow to delete an empty Enums",
       "cfgCheckAlertStatesOnStartUp": "Check for possible alert states on startup",

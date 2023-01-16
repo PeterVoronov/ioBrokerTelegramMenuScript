@@ -1,6 +1,8 @@
 {
   "core": {
     "cfgAlertMessagesHistoryDepth": "Tiefe der Historie der Alarmmeldungen",
+    "cfgAlertMessageTemplateMain": "",
+    "cfgAlertMessageTemplateThreshold": "",
     "cfgAllowToDeleteEmptyEnums": "Erlaubt das Löschen von leeren Aufzählungen",
     "cfgCheckAlertStatesOnStartUp": "Beim Starten auf mögliche Alarmzustände prüfen",
     "cfgClearMenuCall": "Menüaufruf-Benutzermeldung löschen",
