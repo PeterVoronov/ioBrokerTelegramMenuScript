@@ -150,6 +150,7 @@
       "textForReportQuery": "for Report Query",
       "textForReps": "for Reports",
       "textForRole": "for Role",
+      "textGlobal": "core.textGlobal",
       "textIn": "in",
       "textInside": "Inside ...",
       "textLanguageInFile": "Language in file",

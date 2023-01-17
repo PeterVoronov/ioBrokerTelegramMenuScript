@@ -1,8 +1,8 @@
 {
   "core": {
-    "cfgAlertMessagesHistoryDepth": "Глубина истории уведомлений",
     "cfgAlertMessageTemplateMain": "",
     "cfgAlertMessageTemplateThreshold": "",
+    "cfgAlertMessagesHistoryDepth": "Глубина истории уведомлений",
     "cfgAllowToDeleteEmptyEnums": "Удалять \"пустые\" категории",
     "cfgCheckAlertStatesOnStartUp": "Проверять статусы уведомлений при запуске",
     "cfgClearMenuCall": "Очищать строку вызова",
@@ -146,6 +146,7 @@
     "textForReportQuery": "запросов",
     "textForReps": "отчетов",
     "textForRole": "роли",
+    "textGlobal": "",
     "textIn": "в",
     "textInside": "Внутри ...",
     "textLanguageInFile": "Язык в файле",
