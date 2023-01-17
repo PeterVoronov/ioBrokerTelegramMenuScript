@@ -47,13 +47,6 @@ Object.defineProperty(RegExp.prototype, "toJSON", {
     value: RegExp.prototype.toString
 });
 
-/**
-* todo - to make possible external buttons for a functions, i.e. - to call a function via messageTo, with param - desired state, and show result as separate message
-**/
-
-
-
-
 //*** Commands - begin ***//
 const
     cmdPrefix                               = 'cmd',
@@ -3048,10 +3041,6 @@ function translationsItemDelete(user, translationId) {
 }
 
 /**
- * todo - to add possibility to configure method of assigning the default names for the devices
- */
-
-/**
  * This function retrieve a string with name of the object.
  * @param {object} user - The user object.
  * @param {object|string} object - The ioBroker object or Id of object.
@@ -3436,17 +3425,6 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
     return subMenu;
 }
 
-
-/**
- * ! fix extra items as devices under destinations
- * like:
- * boxroom": {
-          "nut_0": "Back-UPS XS 650CI",
-          "nut_0_info": "functions.network_ups.destinations.boxroom.nut_0_info",
-          "nut_0_input": "functions.network_ups.destinations.boxroom.nut_0_input",
-          "nut_0_status": "functions.network_ups.destinations.boxroom.nut_0_status"
-        },
- */
 
 /**
  * This function generates a submenu to manage the functions devices related Translation items.
@@ -6794,9 +6772,6 @@ async function backupRestore(fileName, restoreItem) {
 }
 
 
-/**
- * ! fix - to rewrite with promise
- */
 /**
  * This function delete an old (as it configured) backup files.
  * @param {*} mode - The filter of files, based on a creation mode (`manual` or `auto`).
