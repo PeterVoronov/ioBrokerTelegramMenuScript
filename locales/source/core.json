@@ -1,8 +1,8 @@
 {
   "core": {
-    "cfgAlertMessagesHistoryDepth": "Alert messages history depth",
     "cfgAlertMessageTemplateMain" : "Alert messages default template",
     "cfgAlertMessageTemplateThreshold" : "Alert messages default template for thresholds",
+    "cfgAlertMessagesHistoryDepth": "Alert messages history depth",
     "cfgAllowToDeleteEmptyEnums": "Allow to delete an empty Enums",
     "cfgCheckAlertStatesOnStartUp": "Check for possible alert states on startup",
     "cfgClearMenuCall": "Clear menu call user message",
@@ -146,6 +146,7 @@
     "textForReportQuery": "for Report Query",
     "textForReps": "for Reports",
     "textForRole": "for Role",
+    "textGlobal": "global",
     "textIn": "in",
     "textInside": "Inside ...",
     "textLanguageInFile": "Language in file",
