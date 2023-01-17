@@ -5604,9 +5604,6 @@ function extensionsInit() {
 //*** Extensions - end ***//
 
 //*** Alerts - begin ***//
-/**
- * todo - add alert messages templates
- */
 
 const
     alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
