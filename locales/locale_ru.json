@@ -150,6 +150,7 @@
       "textForReportQuery": "запросов",
       "textForReps": "отчетов",
       "textForRole": "роли",
+      "textGlobal": "core.textGlobal",
       "textIn": "в",
       "textInside": "Внутри ...",
       "textLanguageInFile": "Язык в файле",

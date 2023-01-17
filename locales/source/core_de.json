@@ -1,8 +1,8 @@
 {
   "core": {
-    "cfgAlertMessagesHistoryDepth": "Tiefe der Historie der Alarmmeldungen",
     "cfgAlertMessageTemplateMain": "",
     "cfgAlertMessageTemplateThreshold": "",
+    "cfgAlertMessagesHistoryDepth": "Tiefe der Historie der Alarmmeldungen",
     "cfgAllowToDeleteEmptyEnums": "Erlaubt das Löschen von leeren Aufzählungen",
     "cfgCheckAlertStatesOnStartUp": "Beim Starten auf mögliche Alarmzustände prüfen",
     "cfgClearMenuCall": "Menüaufruf-Benutzermeldung löschen",
@@ -146,6 +146,7 @@
     "textForReportQuery": "für Berichtsabfrage",
     "textForReps": "für Berichte",
     "textForRole": "für Rolle",
+    "textGlobal": "",
     "textIn": "im",
     "textInside": "Innerhalb von ...",
     "textLanguageInFile": "Sprache in der Datei",

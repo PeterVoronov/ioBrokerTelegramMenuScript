@@ -1,8 +1,8 @@
 {
   "core": {
-    "cfgAlertMessagesHistoryDepth": "Глибина історії повідомлень",
     "cfgAlertMessageTemplateMain": "",
     "cfgAlertMessageTemplateThreshold": "",
+    "cfgAlertMessagesHistoryDepth": "Глибина історії повідомлень",
     "cfgAllowToDeleteEmptyEnums": "Видаляти \"порожні\" категорії",
     "cfgCheckAlertStatesOnStartUp": "Перевіряти статуси повідомлень під час запуску",
     "cfgClearMenuCall": "Очищати команду виклику меню",
@@ -146,6 +146,7 @@
     "textForReportQuery": "запитів",
     "textForReps": "звітів",
     "textForRole": "ролі",
+    "textGlobal": "",
     "textIn": "в",
     "textInside": "Всередині ...",
     "textLanguageInFile": "Мова у файлі",

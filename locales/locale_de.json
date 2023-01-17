@@ -150,6 +150,7 @@
       "textForReportQuery": "für Berichtsabfrage",
       "textForReps": "für Berichte",
       "textForRole": "für Rolle",
+      "textGlobal": "core.textGlobal",
       "textIn": "im",
       "textInside": "Innerhalb von ...",
       "textLanguageInFile": "Sprache in der Datei",
