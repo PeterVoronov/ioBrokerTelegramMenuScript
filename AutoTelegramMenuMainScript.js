@@ -6596,9 +6596,10 @@ function backupRestoreMenuGenerate(user, menuItemToProcess) {
 
 /**
  * This function deletes an backup file from the server.
- * @param {string=} backupFileName - The file name of the backup file.
+ * @param {string} backupFileName - The file name of the backup file.
+ * @returns {promise} The result promise.
  */
-async function backupFileDelete(backupFileName){
+function backupFileDelete(backupFileName){
   const fileToDelete = `${backupFolder}/${backupFileName}`;
   return new Promise((resolve, reject) => {
     delFile('', fileToDelete, (error) => {
@@ -6660,7 +6661,7 @@ async function backupFileRead(backupFileName){
  * the backup file on the server.
  * @param {string} backupMode - The backup mode - `manual' or 'auto`(scheduled).
  */
-async function backupCreate(backupMode) {
+function backupCreate(backupMode) {
   const backupData = {
     [backupItemConfigOptions]: configOptions.getDataForBackup(),
   };
@@ -6679,9 +6680,14 @@ async function backupCreate(backupMode) {
     // @ts-ignore
     dateNow = formatDate(new Date(), 'YYYY-MM-DD-hh-mm-ss'),
     backupFileName = nodePath.join(backupFolder,`${backupPrefix}-${dateNow}-${backupMode}.json`);
-  return await backupFileWrite(backupFileName, backupDataJSON, backupMode)
-    .then(await backupDeleteOldFiles)
-    .catch(_error => {});
+  return  new Promise((resolve, reject) => {
+    backupFileWrite(backupFileName, backupDataJSON, backupMode)
+    .then((backupMode) => {
+        backupDeleteOldFiles(backupMode)
+          .finally(() => resolve(true));
+      })
+    .catch(reject);
+  });
   // logs(`Files: ${JSON.stringify(backupGetFolderList(), null, 1)}`, _l);
 }
 
@@ -6690,103 +6696,120 @@ async function backupCreate(backupMode) {
  * replace appropriate configuration items, depending on `restoreItem` value.
  * @param {string} fileName - The file name of the backup file.
  * @param {string=} restoreItem - The selector of the configuration part to restore.
+ * @returns {promise} The result promise.
  */
-async function backupRestore(fileName, restoreItem) {
-  let result = false;
-  if (backupFileMask.test(fileName)) {
-    const
-      backupFileName = nodePath.join(backupFolder, fileName),
-      backupData = await backupFileRead(backupFileName).catch(_error => {});
-    let restoreData;
-    if (backupData) {
-      result = true;
-      try {
-        restoreData = JSON.parse(backupData, mapReviver);
-      }
-      catch (error) {
-        console.warn(`Can't parse data from file ${backupFileName}! Error is '${JSON.stringify(error)}'.\nData in file is '${backupData}'`);
-      }
-      const restoreItems = Object.keys(backupRestoreItemsList);
-      if (restoreData &&
-        (restoreItems.filter(backupItem => (restoreData.hasOwnProperty(backupItem) && restoreData[backupItem])).length === (restoreItems.length - 1))) {
-        let itemsToRestore = [restoreItem];
-        if (restoreItem === backupItemAll) {
-          itemsToRestore = Object.keys(backupRestoreItemsList);
-          itemsToRestore.shift();
-        }
-        itemsToRestore.forEach(itemToRestore => {
-          switch (itemToRestore) {
-            case backupItemConfigOptions:
-              // logs(`1 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
-              if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
-                configOptions.restoreDataFromBackup(restoreData[backupItemConfigOptions]);
-                rolesInMenu.refresh();
-                usersInMenu.refresh();
-              }
-              break;
+function backupRestore(fileName, restoreItem) {
+  return  new Promise((resolve, reject) => {
+    if (backupFileMask.test(fileName)) {
+      const
+        backupFileName = nodePath.join(backupFolder, fileName);
+      backupFileRead(backupFileName)
+        .then((backupData) => {
+          if (backupData) {
+            try {
+              let restoreData;
+              restoreData = JSON.parse(backupData, mapReviver);
+              const restoreItems = Object.keys(backupRestoreItemsList);
+              if (restoreData &&
+                (restoreItems.filter(backupItem => (restoreData.hasOwnProperty(backupItem) && restoreData[backupItem])).length === (restoreItems.length - 1))) {
+                let itemsToRestore = [restoreItem];
+                if (restoreItem === backupItemAll) {
+                  itemsToRestore = Object.keys(backupRestoreItemsList);
+                  itemsToRestore.shift();
+                }
+                itemsToRestore.forEach(itemToRestore => {
+                  switch (itemToRestore) {
+                    case backupItemConfigOptions:
+                      // logs(`1 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
+                      if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
+                        configOptions.restoreDataFromBackup(restoreData[backupItemConfigOptions]);
+                        rolesInMenu.refresh();
+                        usersInMenu.refresh();
+                      }
+                      break;
 
-            case backupItemMenuListItems:
-              // logs(`2 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
-              if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
-                const enumerationItemsBackup = restoreData[itemToRestore];
-                Object.keys(enumerationsList).forEach(dataType => {
-                  if (enumerationItemsBackup.hasOwnProperty(dataType) && typeOf(enumerationItemsBackup[dataType], 'object')
-                    && enumerationItemsBackup[dataType].hasOwnProperty('enums') && enumerationItemsBackup[dataType].enums
-                    && enumerationItemsBackup[dataType].hasOwnProperty('list') && enumerationItemsBackup[dataType].list ) {
-                    // logs(`enumerationItems[${dataType}] = ${JSON.stringify(
-                    //   {
-                    //     enums: enumerationItemsBackup[dataType].enums,
-                    //     list: enumerationItemsBackup[dataType].list
-                    //   }
-                    // )}`, _l)
-                    enumerationsList[dataType].enums = enumerationItemsBackup[dataType].enums;
-                    enumerationsList[dataType].list = enumerationItemsBackup[dataType].list;
-                    enumerationsInit(dataType);
-                    enumerationsSave(dataType);
+                    case backupItemMenuListItems:
+                      // logs(`2 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
+                      if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
+                        const enumerationItemsBackup = restoreData[itemToRestore];
+                        Object.keys(enumerationsList).forEach(dataType => {
+                          if (enumerationItemsBackup.hasOwnProperty(dataType) && typeOf(enumerationItemsBackup[dataType], 'object')
+                            && enumerationItemsBackup[dataType].hasOwnProperty('enums') && enumerationItemsBackup[dataType].enums
+                            && enumerationItemsBackup[dataType].hasOwnProperty('list') && enumerationItemsBackup[dataType].list ) {
+                            // logs(`enumerationItems[${dataType}] = ${JSON.stringify(
+                            //   {
+                            //     enums: enumerationItemsBackup[dataType].enums,
+                            //     list: enumerationItemsBackup[dataType].list
+                            //   }
+                            // )}`, _l)
+                            enumerationsList[dataType].enums = enumerationItemsBackup[dataType].enums;
+                            enumerationsList[dataType].list = enumerationItemsBackup[dataType].list;
+                            enumerationsInit(dataType);
+                            enumerationsSave(dataType);
+                          }
+                        });
+                      }
+                      break;
+
+                    case backupItemAlerts:
+                      // logs(`3 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
+                      if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
+                        alertsStore(restoreData[itemToRestore]);
+                        alertsInit();
+                      }
+                      break;
+
+                      default:
+                      break;
                   }
                 });
+                resolve(true);
               }
-              break;
-
-            case backupItemAlerts:
-              // logs(`3 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
-              if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
-                alertsStore(restoreData[itemToRestore]);
-                alertsInit();
+              else {
+                console.warn(`Inconsistent data from file ${backupFileName}!\nData in file is '${backupData}'`);
+                reject(false);
               }
-              break;
-
-
-            default:
-              break;
+            }
+            catch (error) {
+              console.warn(`Can't parse data from file ${backupFileName}! Error is '${JSON.stringify(error)}'.\nData in file is '${backupData}'`);
+              reject(error);
+            }
           }
-        });
-      }
-      else {
-        result = false;
-        console.warn(`Inconsistent data from file ${backupFileName}!\nData in file is '${backupData}'`);
-      }
+          else {
+            reject(false);
+          }
+        })
+        .catch(error => {reject(error)});
     }
-  }
-  return result;
+    else {
+      reject(false);
+    }
+  });
 }
 
 
 /**
  * This function delete an old (as it configured) backup files.
  * @param {*} mode - The filter of files, based on a creation mode (`manual` or `auto`).
- * //@returns {boolean} result of
+ * @returns {promise} The result of deletion.
  */
-async function backupDeleteOldFiles(mode) {
-  if (mode === backupModeAuto) {
-    const
-      backupFiles = backupGetFolderList(),
-      maxBackupFiles = configOptions.getOption(cfgConfigBackupCopiesCount);
-    while (backupFiles.length > maxBackupFiles) {
-      await backupFileDelete(backupFiles.shift()).catch(_error => {});
-    }
-  }
-  return true;
+function backupDeleteOldFiles(mode) {
+  const
+    backupFiles = mode === backupModeAuto ? backupGetFolderList() : [],
+    maxBackupFiles = mode === backupModeAuto ? configOptions.getOption(cfgConfigBackupCopiesCount) : 0,
+    deleteNextBackupFile = (resolve, reject) => {
+      if (backupFiles.length > maxBackupFiles) {
+        const backupFileName = backupFiles.shift();
+        if (backupFileName) backupFileDelete(backupFileName)
+          .finally(() => {deleteNextBackupFile(resolve, reject)});
+      }
+      else {
+        resolve(true);
+      }
+    };
+  return new Promise((resolve, reject) => {
+    deleteNextBackupFile(resolve, reject);
+  });
 }
 
 /**
@@ -9699,8 +9722,16 @@ async function commandUserInputCallback(user, userInputToProcess) {
       }
 
       case dataTypeBackup: {
-        await backupFileDelete(currentItem).catch();
-        currentMenuPosition.splice(-2, 2);
+        backupFileDelete(currentItem)
+          .then(() => {
+            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+            currentMenuPosition.splice(-2, 2);
+            menuProcessMenuItem(user, undefined, currentMenuPosition);
+          })
+          .catch((_error) => {
+            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
+          });
+        currentMenuPosition = undefined;
         break;
       }
 
@@ -9708,7 +9739,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         break;
       }
     }
-    menuProcessMenuItem(user, undefined, currentMenuPosition);
+    if (currentMenuPosition) menuProcessMenuItem(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemMark) {
     switch (currentType) {
@@ -10010,28 +10041,32 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
       case dataTypeBackup: {
         switch (currentItem) {
-          case backupModeCreate:
-            if (await backupCreate(backupModeManual)) {
-              menuClearCachedMenuItemsAndRows(user);
-              currentMenuPosition.push(1);
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-            }
-            else {
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
-            }
+          case backupModeCreate: {
+            backupCreate(backupModeManual)
+              .then(() => {
+                  menuClearCachedMenuItemsAndRows(user);
+                  currentMenuPosition.push(1);
+                  telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                  menuProcessMenuItem(user, undefined, currentMenuPosition);
+                })
+              .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
+            currentMenuPosition = undefined;
             break;
-
-          case backupModeRestore:
-            if (await backupRestore(currentParam, currentValue)) {
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-              if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
-            }
-            else {
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
-            }
+          }
+          case backupModeRestore: {
+            backupRestore(currentParam, currentValue)
+              .then(() => {
+                telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
+                menuProcessMenuItem(user, undefined, currentMenuPosition);
+            })
+            .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
+            currentMenuPosition = undefined;
             break;
-          default:
+          }
+          default: {
             break;
+          }
         }
         break;
       }
