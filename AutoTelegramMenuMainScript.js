@@ -6682,11 +6682,13 @@ function backupCreate(backupMode) {
     backupFileName = nodePath.join(backupFolder,`${backupPrefix}-${dateNow}-${backupMode}.json`);
   return  new Promise((resolve, reject) => {
     backupFileWrite(backupFileName, backupDataJSON, backupMode)
-    .then((backupMode) => {
-        backupDeleteOldFiles(backupMode)
-          .finally(() => resolve(true));
-      })
-    .catch(reject);
+      .then((backupMode) => {
+          backupDeleteOldFiles(backupMode)
+            .finally(() => {
+              resolve(true);
+            });
+        })
+      .catch(reject);
   });
   // logs(`Files: ${JSON.stringify(backupGetFolderList(), null, 1)}`, _l);
 }
@@ -9725,6 +9727,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         backupFileDelete(currentItem)
           .then(() => {
             telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+            const currentMenuPosition = cachedGetValue(user, cachedMenuItem);
             currentMenuPosition.splice(-2, 2);
             menuProcessMenuItem(user, undefined, currentMenuPosition);
           })
@@ -10042,26 +10045,31 @@ async function commandUserInputCallback(user, userInputToProcess) {
       case dataTypeBackup: {
         switch (currentItem) {
           case backupModeCreate: {
+            currentMenuPosition = undefined;
             backupCreate(backupModeManual)
-              .then(() => {
+              .then((_result) => {
                   menuClearCachedMenuItemsAndRows(user);
+                  const currentMenuPosition = cachedGetValue(user, cachedMenuItem);
                   currentMenuPosition.push(1);
                   telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
                   menuProcessMenuItem(user, undefined, currentMenuPosition);
                 })
-              .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
+              .catch((_error) => {
+                telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
+              });
             currentMenuPosition = undefined;
             break;
           }
           case backupModeRestore: {
+            currentMenuPosition = undefined;
             backupRestore(currentParam, currentValue)
               .then(() => {
                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                const currentMenuPosition = cachedGetValue(user, cachedMenuItem);
                 if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
                 menuProcessMenuItem(user, undefined, currentMenuPosition);
             })
             .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
-            currentMenuPosition = undefined;
             break;
           }
           default: {
