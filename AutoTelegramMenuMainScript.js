@@ -49,173 +49,173 @@ Object.defineProperty(RegExp.prototype, "toJSON", {
 
 //*** Commands - begin ***//
 const
-  cmdPrefix                 = 'cmd',
-  cmdBack                 = `${cmdPrefix}Back`,
-  cmdClose                = `${cmdPrefix}Close`,
-  cmdHome                 = `${cmdPrefix}Home`,
-  cmdAcknowledgeAlert           = `${cmdPrefix}AckAlert`,
-  cmdAcknowledgeAllAlerts         = `${cmdPrefix}AckAllAlerts`,
+  cmdPrefix                             = 'cmd',
+  cmdBack                               = `${cmdPrefix}Back`,
+  cmdClose                              = `${cmdPrefix}Close`,
+  cmdHome                               = `${cmdPrefix}Home`,
+  cmdAcknowledgeAlert                   = `${cmdPrefix}AckAlert`,
+  cmdAcknowledgeAllAlerts               = `${cmdPrefix}AckAllAlerts`,
   cmdAcknowledgeAndUnsubscribeAlert     = `${cmdPrefix}AckAndUnsAlert`,
-  cmdAlertSubscribe             = `${cmdPrefix}AlertSubscribe`,
-  cmdGetInput               = `${cmdPrefix}GetInput`,
-  cmdUseCommonTranslation         = `${cmdPrefix}UseCTransl`,
-  cmdItemAdd                = `${cmdPrefix}ItemAdd`,
-  cmdItemPress              = `${cmdPrefix}ItemPress`,
-  cmdItemMoveUp               = `${cmdPrefix}ItemMoveUp`,
-  cmdItemMoveDown             = `${cmdPrefix}ItemMoveDown`,
-  cmdItemNameGet              = `${cmdPrefix}ItemNameGet`,
-  cmdItemDownload             = `${cmdPrefix}ItemDownload`,
-  cmdItemUpload               = `${cmdPrefix}ItemUpload`,
-  cmdItemDelete               = `${cmdPrefix}ItemDel`,
-  cmdItemDeleteConfirm          = `${cmdPrefix}ItemDelConfirm`,
-  cmdItemMark               = `${cmdPrefix}ItemMark`,
-  cmdItemsProcess             = `${cmdPrefix}ItemsProcess`,
-  cmdItemJumpTo               = `${cmdPrefix}ItemsJumpTo`,
-  cmdCreateReportEnum           = `${cmdPrefix}CreateReportEnum`,
-  cmdSetOffset              = `${cmdPrefix}SetOffset`,
-  cmdDeleteAllSentImages          = `${cmdPrefix}DelAllSentImages`,
-  cmdItemReset              = `${cmdPrefix}ItemReset`,
-  cmdCached                 = `${cmdPrefix}Cached`,
-  cmdNoOperation              = `${cmdPrefix}NoOp`,
-  cmdEmptyCommand             = 'emptyCmd',
+  cmdAlertSubscribe                     = `${cmdPrefix}AlertSubscribe`,
+  cmdGetInput                           = `${cmdPrefix}GetInput`,
+  cmdUseCommonTranslation               = `${cmdPrefix}UseCTransl`,
+  cmdItemAdd                            = `${cmdPrefix}ItemAdd`,
+  cmdItemPress                          = `${cmdPrefix}ItemPress`,
+  cmdItemMoveUp                         = `${cmdPrefix}ItemMoveUp`,
+  cmdItemMoveDown                       = `${cmdPrefix}ItemMoveDown`,
+  cmdItemNameGet                        = `${cmdPrefix}ItemNameGet`,
+  cmdItemDownload                       = `${cmdPrefix}ItemDownload`,
+  cmdItemUpload                         = `${cmdPrefix}ItemUpload`,
+  cmdItemDelete                         = `${cmdPrefix}ItemDel`,
+  cmdItemDeleteConfirm                  = `${cmdPrefix}ItemDelConfirm`,
+  cmdItemMark                           = `${cmdPrefix}ItemMark`,
+  cmdItemsProcess                       = `${cmdPrefix}ItemsProcess`,
+  cmdItemJumpTo                         = `${cmdPrefix}ItemsJumpTo`,
+  cmdCreateReportEnum                   = `${cmdPrefix}CreateReportEnum`,
+  cmdSetOffset                          = `${cmdPrefix}SetOffset`,
+  cmdDeleteAllSentImages                = `${cmdPrefix}DelAllSentImages`,
+  cmdItemReset                          = `${cmdPrefix}ItemReset`,
+  cmdCached                             = `${cmdPrefix}Cached`,
+  cmdNoOperation                        = `${cmdPrefix}NoOp`,
+  cmdEmptyCommand                       = 'emptyCmd',
 //*** Commands - end ***//
 
   telegramAdapter = `telegram.${telegramInstance}`,
 
   //*** Various prefixes for ioBroker states ***//
-  scriptRepositorySite          = 'https://github.com/',
-  scriptRepositorySubUrl          = '/PeterVoronov/ioBrokerTelegramMenuScript/',
-  scriptVersion               = 'v0.9.5-dev',
-  scriptBranchRemoteFolder        = `${scriptRepositorySubUrl}blob/${scriptVersion}/`,
-  scriptCoreLocalesRemoteFolder       = `${scriptBranchRemoteFolder}locales/`,
+  scriptRepositorySite                  = 'https://github.com/',
+  scriptRepositorySubUrl                = '/PeterVoronov/ioBrokerTelegramMenuScript/',
+  scriptVersion                         = 'v0.9.5-dev',
+  scriptBranchRemoteFolder              = `${scriptRepositorySubUrl}blob/${scriptVersion}/`,
+  scriptCoreLocalesRemoteFolder         = `${scriptBranchRemoteFolder}locales/`,
 
 
-  prefixPrimary               = `0_userdata.0.telegram_automenu.${telegramInstance}`,
-  prefixConfigStates            = `${prefixPrimary}.config`,
-  prefixTranslationStates         = `${prefixPrimary}.translations`,
-  prefixCacheStates             = `${prefixPrimary}.cache`,
-  prefixExtensionId             = 'ext',
-  prefixExternalStates          = 'external',
-  prefixEnums               = 'enum',
+  prefixPrimary                         = `0_userdata.0.telegram_automenu.${telegramInstance}`,
+  prefixConfigStates                    = `${prefixPrimary}.config`,
+  prefixTranslationStates               = `${prefixPrimary}.translations`,
+  prefixCacheStates                     = `${prefixPrimary}.cache`,
+  prefixExtensionId                     = 'ext',
+  prefixExternalStates                  = 'external',
+  prefixEnums                           = 'enum',
 
   //*** Bot message identification stamp ***//
-  botMessageStamp = '\u200B\uFEFF\uFEFF\uFEFF\u200B',
+  botMessageStamp                       = '\u200B\uFEFF\uFEFF\uFEFF\u200B',
 
   //*** Graphs related constants ***//
-  graphsDefaultTemplate           = 'default',
-  graphsTemporaryFolder           = '_temp_',
+  graphsDefaultTemplate                 = 'default',
+  graphsTemporaryFolder                 = '_temp_',
 
-  temporaryFolderPrefix           = 'autoTelegramTemporary-',
+  temporaryFolderPrefix                 = 'autoTelegramTemporary-',
 
   //*** Data type constants ***//
-  dataTypeTranslation           = 'transl',
-  dataTypePrimaryEnums          = 'enums',
-  dataTypeDestination           = 'dest',
-  dataTypeFunction            = 'funcs',
-  dataTypeConfig              = 'conf',
-  dataTypeReport              = 'reps',
-  dataTypeReportMember          = 'repMemb',
-  dataTypeAlertSubscribed         = 'alertS',
-  dataTypeDeviceAttributes        = 'deviceAttributes',
-  dataTypeDeviceButtons           = 'deviceButtons',
-  dataTypeStateValue            = 'stateV',
-  dataTypeMenuRoles             = 'mRoles',
-  dataTypeMenuRoleRules           = 'mRoleR',
-  dataTypeMenuUsers             = 'mUsers',
-  dataTypeMenuUserRoles           = 'mUserR',
-  dataTypeGraph               = 'graph',
-  dataTypeBackup              = 'backup',
-  dataTypeGroups              = 'groups',
-  dataTypeIgnoreInput           = '=====',
+  dataTypeTranslation                   = 'transl',
+  dataTypePrimaryEnums                  = 'enums',
+  dataTypeDestination                   = 'dest',
+  dataTypeFunction                      = 'funcs',
+  dataTypeConfig                        = 'conf',
+  dataTypeReport                        = 'reps',
+  dataTypeReportMember                  = 'repMemb',
+  dataTypeAlertSubscribed               = 'alertS',
+  dataTypeDeviceAttributes              = 'deviceAttributes',
+  dataTypeDeviceButtons                 = 'deviceButtons',
+  dataTypeStateValue                    = 'stateV',
+  dataTypeMenuRoles                     = 'mRoles',
+  dataTypeMenuRoleRules                 = 'mRoleR',
+  dataTypeMenuUsers                     = 'mUsers',
+  dataTypeMenuUserRoles                 = 'mUserR',
+  dataTypeGraph                         = 'graph',
+  dataTypeBackup                        = 'backup',
+  dataTypeGroups                        = 'groups',
+  dataTypeIgnoreInput                   = '=====',
 
   //*** Time interval constants ***//
-  timeDelta24               = '23:59:00',
-  timeDelta48               = '47:59:00',
-  timeDelta96               = '95:59:00',
+  timeDelta24                           = '23:59:00',
+  timeDelta48                           = '47:59:00',
+  timeDelta96                           = '95:59:00',
 
   //*** ID constants ***//
-  idEnumerations              = 'enumerations',
-  idFunctions               = 'functions',
-  idDestinations              = 'destinations',
-  idSimpleReports             = 'simpleReports',
-  idConfig                = 'config',
-  idTranslation               = 'translation',
-  idExternal                = prefixExternalStates,
-  idAlerts                = 'alerts',
+  idEnumerations                        = 'enumerations',
+  idFunctions                           = 'functions',
+  idDestinations                        = 'destinations',
+  idSimpleReports                       = 'simpleReports',
+  idConfig                              = 'config',
+  idTranslation                         = 'translation',
+  idExternal                            = prefixExternalStates,
+  idAlerts                              = 'alerts',
 
   //*** Items default delimiter ***//
-  itemsDelimiter              = '::',
+  itemsDelimiter                        = '::',
 
   //*** Do commands ***//
-  doAll                   = 'all',
-  doUpload                = 'upload',
-  doUploadDirectly            = 'uploadD',
-  doUploadFromRepo            = 'uploadR',
-  doDownload                = 'download',
+  doAll                                 = 'all',
+  doUpload                              = 'upload',
+  doUploadDirectly                      = 'uploadD',
+  doUploadFromRepo                      = 'uploadR',
+  doDownload                            = 'download',
 
   //*** Time intervals ***//
-  timeIntervalsInMinutes               = {
-    'm'                 : 1,
-    'h'                 : 60,
-    'D'                 : 24*60,
-    'W'                 : 7*24*60,
-    'M'                 : 30*24*60,
-    'Y'                 : 365*24*60
+  timeIntervalsInMinutes                = {
+    'm'                                 : 1,
+    'h'                                 : 60,
+    'D'                                 : 24*60,
+    'W'                                 : 7*24*60,
+    'M'                                 : 30*24*60,
+    'Y'                                 : 365*24*60
   },
-  timeIntervalsIndexList          = Object.keys(timeIntervalsInMinutes).join(''),
+  timeIntervalsIndexList                = Object.keys(timeIntervalsInMinutes).join(''),
 
   //*** Jump to commands ***//
-  jumpToUp                = '@up',
-  jumpToLeft                = '@left',
-  jumpToRight               = '@right',
+  jumpToUp                              = '@up',
+  jumpToLeft                            = '@left',
+  jumpToRight                           = '@right',
 
   //*** Icons ***//
-  iconItemDelete              = '🗑️',
-  iconItemEdit              = '✍️',
-  iconItemDisabled            = '🚫',
-  iconItemReadOnly            = '👁️',
-  iconItemNotFound            = '❓',
-  iconItemOn                = '✅',
-  iconItemOff               = '❌',
-  iconItemUser              = '👤',
-  iconItemUsers               = '👥',
-  iconItemRole              = '🎭',
-  iconItemAlertOn             = '🔔',
-  iconItemAlertOff            = '🔕',
-  iconItemAlerts              = '📣',
-  iconItemTranslation           = '📖',
-  iconItemCommon              = '🌐',
-  iconItemButton              = '🔘',
-  iconItemCheckMark             = '✔️',
-  iconItemSquareButton          = '🔳',
-  iconItemSquareButtonBlack         = '🔲',
-  iconItemFull              = '💯',
-  iconItemMoveUp              = '👆',
-  iconItemMoveDown            = '👇',
-  iconItemMoveLeft            = '👈',
-  iconItemMoveRight             = '👉',
-  iconItemPinching            = '🤏',
-  iconItemDownload            = '⏬',
-  iconItemUpload              = '⏫',
-  iconItemDevice              = '📺',
-  iconItemChart               = '📈',
-  iconItemAttribute             = '📑',
-  iconItemFastLeft            = '⏪',
-  iconItemFastRight             = '⏩',
-  iconItemPlus              = '➕',
-  iconItemRefresh             = '🔃',
-  iconItemApply               = '🆗',
-  iconItemToSubItem             = '↳',
-  iconItemToSubItemByArrow        = '❱',
-  iconItemIsExternal            = '👾',
-  iconItemBackup              = '🗃️',
-  iconItemBackupCreate          = '⤵️',
-  iconItemBackupRestore           = '⤴️',
-  iconItemAbove               = '⤒',
-  iconItemLess              = '⤓',
-  iconItemHistory             = '📃',
-  iconItemReset               = '↺',
-  iconItemUnavailable           = '🆘'
+  iconItemDelete                        = '🗑️',
+  iconItemEdit                          = '✍️',
+  iconItemDisabled                      = '🚫',
+  iconItemReadOnly                      = '👁️',
+  iconItemNotFound                      = '❓',
+  iconItemOn                            = '✅',
+  iconItemOff                           = '❌',
+  iconItemUser                          = '👤',
+  iconItemUsers                         = '👥',
+  iconItemRole                          = '🎭',
+  iconItemAlertOn                       = '🔔',
+  iconItemAlertOff                      = '🔕',
+  iconItemAlerts                        = '📣',
+  iconItemTranslation                   = '📖',
+  iconItemCommon                        = '🌐',
+  iconItemButton                        = '🔘',
+  iconItemCheckMark                     = '✔️',
+  iconItemSquareButton                  = '🔳',
+  iconItemSquareButtonBlack             = '🔲',
+  iconItemFull                          = '💯',
+  iconItemMoveUp                        = '👆',
+  iconItemMoveDown                      = '👇',
+  iconItemMoveLeft                      = '👈',
+  iconItemMoveRight                     = '👉',
+  iconItemPinching                      = '🤏',
+  iconItemDownload                      = '⏬',
+  iconItemUpload                        = '⏫',
+  iconItemDevice                        = '📺',
+  iconItemChart                         = '📈',
+  iconItemAttribute                     = '📑',
+  iconItemFastLeft                      = '⏪',
+  iconItemFastRight                     = '⏩',
+  iconItemPlus                          = '➕',
+  iconItemRefresh                       = '🔃',
+  iconItemApply                         = '🆗',
+  iconItemToSubItem                     = '↳',
+  iconItemToSubItemByArrow              = '❱',
+  iconItemIsExternal                    = '👾',
+  iconItemBackup                        = '🗃️',
+  iconItemBackupCreate                  = '⤵️',
+  iconItemBackupRestore                 = '⤴️',
+  iconItemAbove                         = '⤒',
+  iconItemLess                          = '⤓',
+  iconItemHistory                       = '📃',
+  iconItemReset                         = '↺',
+  iconItemUnavailable                   = '🆘'
   ;
 
 
@@ -223,94 +223,94 @@ const
 //*** ConfigOptions - begin ***//
 
 const
-  cfgPrefix                 = 'cfg',
-  cfgDefaultIconOn            = `${cfgPrefix}DefaultIconOn`,
-  cfgDefaultIconOff             = `${cfgPrefix}DefaultIconOff`,
-  cfgMaxButtonsOnScreen           = `${cfgPrefix}MaxButtonsOnScreen`,
-  cfgSummaryTextLengthMax         = `${cfgPrefix}SummaryTextLengthMax`,
-  cfgTextLengthModifierForGChats      = `${cfgPrefix}TextLengthModifierForGChats`,
-  cfgMenuUsers              = `${cfgPrefix}MenuUsers`,
-  cfgMenuRoles              = `${cfgPrefix}MenuRoles`,
-  cfgMessagesForMenuCall          = `${cfgPrefix}MessagesForMenuCall`,
-  cfgClearMenuCall            = `${cfgPrefix}ClearMenuCall`,
-  cfgShowHomeButton             = `${cfgPrefix}ShowHomeButton`,
-  cfgShowResultMessages           = `${cfgPrefix}ShowResultMessages`,
-  cfgMenuRefreshInterval          = `${cfgPrefix}MenuRefreshInterval`,
-  cfgAllowToDeleteEmptyEnums        = `${cfgPrefix}AllowToDeleteEmptyEnums`,
-  cfgConfigBackupCopiesCount        = `${cfgPrefix}ConfigBackupCopiesCount`,
-  cfgAlertMessageTemplateMain       = `${cfgPrefix}AlertMessageTemplateMain`,
-  cfgAlertMessageTemplateThreshold    = `${cfgPrefix}AlertMessageTemplateThreshold`,
-  cfgCheckAlertStatesOnStartUp      = `${cfgPrefix}CheckAlertStatesOnStartUp`,
-  cfgThresholdsForNumericString       = `${cfgPrefix}ThresholdsForNumericString`,
-  cfgMenuLanguage             = `${cfgPrefix}MenuLanguage`,
-  cfgMenuFunctionsFirst           = `${cfgPrefix}MenuFunctionsFirst`,
-  cfgMenuFastGeneration           = `${cfgPrefix}MenuFastGeneration`,
-  cfgDateTimeTemplate           = `${cfgPrefix}DateTimeTemplate`,
-  cfgExternalMenuTimeout          = `${cfgPrefix}ExternalMenuTimeout`,
-  cfgHierarchicalCaption          = `${cfgPrefix}HierarchicalCaption`,
-  cfgHistoryAdapter             = `${cfgPrefix}HistoryAdapter`,
-  cfgGraphsTemplates            = `${cfgPrefix}GraphsTemplates`,
-  cfgGraphsScale              = `${cfgPrefix}GraphsScale`,
-  cfgGraphsIntervals            = `${cfgPrefix}GraphsIntervals`,
-  cfgAlertMessagesHistoryDepth      = `${cfgPrefix}AlertMessagesHistoryDepth`,
-  cfgUpdateMessageTime          = `${cfgPrefix}UpdateMessageTime`,
-  cfgUpdateMessagesOnStart        = `${cfgPrefix}UpdateMessagesOnStart`,
-  cfgDebugMode              = `${cfgPrefix}DebugMode`;
+  cfgPrefix                             = 'cfg',
+  cfgDefaultIconOn                      = `${cfgPrefix}DefaultIconOn`,
+  cfgDefaultIconOff                     = `${cfgPrefix}DefaultIconOff`,
+  cfgMaxButtonsOnScreen                 = `${cfgPrefix}MaxButtonsOnScreen`,
+  cfgSummaryTextLengthMax               = `${cfgPrefix}SummaryTextLengthMax`,
+  cfgTextLengthModifierForGChats        = `${cfgPrefix}TextLengthModifierForGChats`,
+  cfgMenuUsers                          = `${cfgPrefix}MenuUsers`,
+  cfgMenuRoles                          = `${cfgPrefix}MenuRoles`,
+  cfgMessagesForMenuCall                = `${cfgPrefix}MessagesForMenuCall`,
+  cfgClearMenuCall                      = `${cfgPrefix}ClearMenuCall`,
+  cfgShowHomeButton                     = `${cfgPrefix}ShowHomeButton`,
+  cfgShowResultMessages                 = `${cfgPrefix}ShowResultMessages`,
+  cfgMenuRefreshInterval                = `${cfgPrefix}MenuRefreshInterval`,
+  cfgAllowToDeleteEmptyEnums            = `${cfgPrefix}AllowToDeleteEmptyEnums`,
+  cfgConfigBackupCopiesCount            = `${cfgPrefix}ConfigBackupCopiesCount`,
+  cfgAlertMessageTemplateMain           = `${cfgPrefix}AlertMessageTemplateMain`,
+  cfgAlertMessageTemplateThreshold      = `${cfgPrefix}AlertMessageTemplateThreshold`,
+  cfgCheckAlertStatesOnStartUp          = `${cfgPrefix}CheckAlertStatesOnStartUp`,
+  cfgThresholdsForNumericString         = `${cfgPrefix}ThresholdsForNumericString`,
+  cfgMenuLanguage                       = `${cfgPrefix}MenuLanguage`,
+  cfgMenuFunctionsFirst                 = `${cfgPrefix}MenuFunctionsFirst`,
+  cfgMenuFastGeneration                 = `${cfgPrefix}MenuFastGeneration`,
+  cfgDateTimeTemplate                   = `${cfgPrefix}DateTimeTemplate`,
+  cfgExternalMenuTimeout                = `${cfgPrefix}ExternalMenuTimeout`,
+  cfgHierarchicalCaption                = `${cfgPrefix}HierarchicalCaption`,
+  cfgHistoryAdapter                     = `${cfgPrefix}HistoryAdapter`,
+  cfgGraphsTemplates                    = `${cfgPrefix}GraphsTemplates`,
+  cfgGraphsScale                        = `${cfgPrefix}GraphsScale`,
+  cfgGraphsIntervals                    = `${cfgPrefix}GraphsIntervals`,
+  cfgAlertMessagesHistoryDepth          = `${cfgPrefix}AlertMessagesHistoryDepth`,
+  cfgUpdateMessageTime                  = `${cfgPrefix}UpdateMessageTime`,
+  cfgUpdateMessagesOnStart              = `${cfgPrefix}UpdateMessagesOnStart`,
+  cfgDebugMode                          = `${cfgPrefix}DebugMode`;
 const
-  alertMessageTemplateDefault       = '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}';
+  alertMessageTemplateDefault           = '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}';
 
 const
   configDefaultOptions = {
-    [cfgMenuUsers]            : {},
-    [cfgMenuRoles]            : {},
-    [cfgMaxButtonsOnScreen]       : 24,                 // maximum buttons on one screen except alerts and global menu related
-    [cfgMessagesForMenuCall]      : ['/menu'],            // List of commands to show the menu
-    [cfgMenuRefreshInterval]      : 0,                // Interval to refresh current menu screen(forcibly from script for all users, disabled if '0')
-    [cfgExternalMenuTimeout]      : 500,                // Timeout to wait an answer from extensions
-    [cfgHistoryAdapter]         : '',                 // History adapter for eCharts
-    [cfgGraphsTemplates]        : '',                 // Folder with e-charts templates
-    [cfgAllowToDeleteEmptyEnums]    : true,               // Allow to delete an empty enums (functions, destinations, reports)
-    [cfgConfigBackupCopiesCount]    : 7,                // Max backup copies of config to be stored. If 0 - automatic backup will not work
-    [cfgAlertMessageTemplateMain]     : alertMessageTemplateDefault,
+    [cfgMenuUsers]                      : {},
+    [cfgMenuRoles]                      : {},
+    [cfgMaxButtonsOnScreen]             : 24,                           // maximum buttons on one screen except alerts and global menu related
+    [cfgMessagesForMenuCall]            : ['/menu'],                    // List of commands to show the menu
+    [cfgMenuRefreshInterval]            : 0,                            // Interval to refresh current menu screen(forcibly from script for all users, disabled if '0')
+    [cfgExternalMenuTimeout]            : 500,                          // Timeout to wait an answer from extensions
+    [cfgHistoryAdapter]                 : '',                           // History adapter for eCharts
+    [cfgGraphsTemplates]                : '',                           // Folder with e-charts templates
+    [cfgAllowToDeleteEmptyEnums]        : true,                         // Allow to delete an empty enums (functions, destinations, reports)
+    [cfgConfigBackupCopiesCount]        : 7,                            // Max backup copies of config to be stored. If 0 - automatic backup will not work
+    [cfgAlertMessageTemplateMain]       : alertMessageTemplateDefault,
     [cfgAlertMessageTemplateThreshold]  : alertMessageTemplateDefault + " [${alertThresholdIcon}${alertThresholdValue}]",
-    [cfgCheckAlertStatesOnStartUp]    : false,              // Check stored states values on the start of script, to raise an alert
-    [cfgThresholdsForNumericString]   : false,              // Make possible to set thresholds for states of string type, which is really numeric
-    [cfgDebugMode]            : false,              // Enable debug mode - huge amount of logs
-    [cfgMenuLanguage]           : "ru",               // Menu display language
-    [cfgMenuFunctionsFirst]       : true,               // Menu display functions on top (or destinations)
-    [cfgMenuFastGeneration]       : true,               // Menu generation buster - less checks, possible empty submenus
-    [cfgSummaryTextLengthMax]       : 30,                 // Maximum numbers of symbols per line (approximate, for )
-    [cfgTextLengthModifierForGChats]  : -4,                 // Modifier for the max of symbols per line for a group chats
-    [cfgClearMenuCall]          : true,               // Delete command, after menu is shown
-    [cfgHierarchicalCaption]      : 0,                // show caption of the current menu hierarchically
-    [cfgShowHomeButton]         : true,               // Alway show 'Home' button
-    [cfgShowResultMessages]       : true,               // Show alert messages, as reactions on some input
-    [cfgGraphsScale]          : 1,                // Scale for e-charts graphs
-    [cfgGraphsIntervals]        : [
-                        {id: '2h',  minutes: timeIntervalsInMinutes.h * 2},
-                        {id: '6h',  minutes: timeIntervalsInMinutes.h * 6},
-                        {id: '12h', minutes: timeIntervalsInMinutes.h * 12},
-                        {id: '1D',  minutes: timeIntervalsInMinutes.D},
-                        {id: '3D',  minutes: timeIntervalsInMinutes.D * 3},
-                        {id: '1W',  minutes: timeIntervalsInMinutes.W},
-                        {id: '2W',  minutes: timeIntervalsInMinutes.W * 2},
-                        {id: '1M',  minutes: timeIntervalsInMinutes.M},
-                        {id: '3M',  minutes: timeIntervalsInMinutes.M * 3},
-                        {id: '6M',  minutes: timeIntervalsInMinutes.M * 6},
-                        {id: '1Y',  minutes: timeIntervalsInMinutes.Y },
-                      ],                 // Time ranges back from now, in minutes
-    [cfgDefaultIconOn]          : iconItemOn,
-    [cfgDefaultIconOff]         : iconItemOff,
-    [cfgAlertMessagesHistoryDepth]    : 48,                 // Alert messages history depth in hours
-    [cfgUpdateMessageTime]        : '12:05',
-    [cfgUpdateMessagesOnStart]      : 5,                // Refresh menu messages after script start. If 0 - will not refresh.
-    [cfgDateTimeTemplate]         : "DD.MM hh:mm:ss",         // Template for date and time in Menu
+    [cfgCheckAlertStatesOnStartUp]      : false,                        // Check stored states values on the start of script, to raise an alert
+    [cfgThresholdsForNumericString]     : false,                        // Make possible to set thresholds for states of string type, which is really numeric
+    [cfgDebugMode]                      : false,                        // Enable debug mode - huge amount of logs
+    [cfgMenuLanguage]                   : "ru",                         // Menu display language
+    [cfgMenuFunctionsFirst]             : true,                         // Menu display functions on top (or destinations)
+    [cfgMenuFastGeneration]             : true,                         // Menu generation buster - less checks, possible empty submenus
+    [cfgSummaryTextLengthMax]           : 30,                           // Maximum numbers of symbols per line (approximate, for )
+    [cfgTextLengthModifierForGChats]    : -4,                           // Modifier for the max of symbols per line for a group chats
+    [cfgClearMenuCall]                  : true,                         // Delete command, after menu is shown
+    [cfgHierarchicalCaption]            : 0,                            // show caption of the current menu hierarchically
+    [cfgShowHomeButton]                 : true,                         // Alway show 'Home' button
+    [cfgShowResultMessages]             : true,                         // Show alert messages, as reactions on some input
+    [cfgGraphsScale]                    : 1,                          // Scale for e-charts graphs
+    [cfgGraphsIntervals]                : [
+      {id: '2h',  minutes: timeIntervalsInMinutes.h * 2},
+      {id: '6h',  minutes: timeIntervalsInMinutes.h * 6},
+      {id: '12h', minutes: timeIntervalsInMinutes.h * 12},
+      {id: '1D',  minutes: timeIntervalsInMinutes.D},
+      {id: '3D',  minutes: timeIntervalsInMinutes.D * 3},
+      {id: '1W',  minutes: timeIntervalsInMinutes.W},
+      {id: '2W',  minutes: timeIntervalsInMinutes.W * 2},
+      {id: '1M',  minutes: timeIntervalsInMinutes.M},
+      {id: '3M',  minutes: timeIntervalsInMinutes.M * 3},
+      {id: '6M',  minutes: timeIntervalsInMinutes.M * 6},
+      {id: '1Y',  minutes: timeIntervalsInMinutes.Y },
+    ],                                                                  // Time ranges back from now, in minutes
+    [cfgDefaultIconOn]                  : iconItemOn,
+    [cfgDefaultIconOff]                 : iconItemOff,
+    [cfgAlertMessagesHistoryDepth]      : 48,                           // Alert messages history depth in hours
+    [cfgUpdateMessageTime]              : '12:05',
+    [cfgUpdateMessagesOnStart]          : 5,                            // Refresh menu messages after script start. If 0 - will not refresh.
+    [cfgDateTimeTemplate]               : "DD.MM hh:mm:ss",             // Template for date and time in Menu
 
   },
 
   configDefaultOptionMasks = {
-    [cfgUpdateMessageTime]        : {text: 'hh:mm', rule:/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/},
-    [cfgGraphsIntervals]        : {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)}
+    [cfgUpdateMessageTime]              : {text: 'hh:mm', rule:/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/},
+    [cfgGraphsIntervals]                : {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)}
   }
 ;
 
