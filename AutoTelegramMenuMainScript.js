@@ -6596,9 +6596,10 @@ function backupRestoreMenuGenerate(user, menuItemToProcess) {
 
 /**
  * This function deletes an backup file from the server.
- * @param {string=} backupFileName - The file name of the backup file.
+ * @param {string} backupFileName - The file name of the backup file.
+ * @returns {promise} The result promise.
  */
-async function backupFileDelete(backupFileName){
+function backupFileDelete(backupFileName){
   const fileToDelete = `${backupFolder}/${backupFileName}`;
   return new Promise((resolve, reject) => {
     delFile('', fileToDelete, (error) => {
@@ -6660,7 +6661,7 @@ async function backupFileRead(backupFileName){
  * the backup file on the server.
  * @param {string} backupMode - The backup mode - `manual' or 'auto`(scheduled).
  */
-async function backupCreate(backupMode) {
+function backupCreate(backupMode) {
   const backupData = {
     [backupItemConfigOptions]: configOptions.getDataForBackup(),
   };
@@ -6679,9 +6680,14 @@ async function backupCreate(backupMode) {
     // @ts-ignore
     dateNow = formatDate(new Date(), 'YYYY-MM-DD-hh-mm-ss'),
     backupFileName = nodePath.join(backupFolder,`${backupPrefix}-${dateNow}-${backupMode}.json`);
-  return await backupFileWrite(backupFileName, backupDataJSON, backupMode)
-    .then(await backupDeleteOldFiles)
-    .catch(_error => {});
+  return  new Promise((resolve, reject) => {
+    backupFileWrite(backupFileName, backupDataJSON, backupMode)
+    .then((backupMode) => {
+        backupDeleteOldFiles(backupMode)
+          .finally(() => resolve(true));
+      })
+    .catch(reject);
+  });
   // logs(`Files: ${JSON.stringify(backupGetFolderList(), null, 1)}`, _l);
 }
 
@@ -6775,18 +6781,25 @@ async function backupRestore(fileName, restoreItem) {
 /**
  * This function delete an old (as it configured) backup files.
  * @param {*} mode - The filter of files, based on a creation mode (`manual` or `auto`).
- * //@returns {boolean} result of
+ * @returns {promise} The result of deletion.
  */
-async function backupDeleteOldFiles(mode) {
-  if (mode === backupModeAuto) {
-    const
-      backupFiles = backupGetFolderList(),
-      maxBackupFiles = configOptions.getOption(cfgConfigBackupCopiesCount);
-    while (backupFiles.length > maxBackupFiles) {
-      await backupFileDelete(backupFiles.shift()).catch(_error => {});
-    }
-  }
-  return true;
+function backupDeleteOldFiles(mode) {
+  const
+    backupFiles = mode === backupModeAuto ? backupGetFolderList() : [],
+    maxBackupFiles = mode === backupModeAuto ? configOptions.getOption(cfgConfigBackupCopiesCount) : 0,
+    deleteNextBackupFile = (resolve, reject) => {
+      if (backupFiles.length > maxBackupFiles) {
+        const backupFileName = backupFiles.shift();
+        if (backupFileName) backupFileDelete(backupFileName)
+          .finally(() => {deleteNextBackupFile(resolve, reject)});
+      }
+      else {
+        resolve(true);
+      }
+    };
+  return new Promise((resolve, reject) => {
+    deleteNextBackupFile(resolve, reject);
+  });
 }
 
 /**
@@ -9699,8 +9712,16 @@ async function commandUserInputCallback(user, userInputToProcess) {
       }
 
       case dataTypeBackup: {
-        await backupFileDelete(currentItem).catch();
-        currentMenuPosition.splice(-2, 2);
+        backupFileDelete(currentItem)
+          .then(() => {
+            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+            currentMenuPosition.splice(-2, 2);
+            menuProcessMenuItem(user, undefined, currentMenuPosition);
+          })
+          .catch((_error) => {
+            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
+          });
+        currentMenuPosition = undefined;
         break;
       }
 
@@ -9708,7 +9729,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         break;
       }
     }
-    menuProcessMenuItem(user, undefined, currentMenuPosition);
+    if (currentMenuPosition) menuProcessMenuItem(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemMark) {
     switch (currentType) {
@@ -10011,14 +10032,15 @@ async function commandUserInputCallback(user, userInputToProcess) {
       case dataTypeBackup: {
         switch (currentItem) {
           case backupModeCreate:
-            if (await backupCreate(backupModeManual)) {
-              menuClearCachedMenuItemsAndRows(user);
-              currentMenuPosition.push(1);
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-            }
-            else {
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
-            }
+            backupCreate(backupModeManual)
+              .then(() => {
+                  menuClearCachedMenuItemsAndRows(user);
+                  currentMenuPosition.push(1);
+                  telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                  menuProcessMenuItem(user, undefined, currentMenuPosition);
+                })
+              .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
+            currentMenuPosition = undefined;
             break;
 
           case backupModeRestore:
