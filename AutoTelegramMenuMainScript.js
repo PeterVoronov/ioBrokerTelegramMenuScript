@@ -236,6 +236,7 @@ const
   cfgShowHomeButton                     = `${cfgPrefix}ShowHomeButton`,
   cfgShowResultMessages                 = `${cfgPrefix}ShowResultMessages`,
   cfgMenuRefreshInterval                = `${cfgPrefix}MenuRefreshInterval`,
+  cfgUseAliasOriginForCommonAttrs       = `${cfgPrefix}UseAliasOriginForCommonAttrs`,
   cfgAllowToDeleteEmptyEnums            = `${cfgPrefix}AllowToDeleteEmptyEnums`,
   cfgConfigBackupCopiesCount            = `${cfgPrefix}ConfigBackupCopiesCount`,
   cfgAlertMessageTemplateMain           = `${cfgPrefix}AlertMessageTemplateMain`,
@@ -269,6 +270,7 @@ const
     [cfgExternalMenuTimeout]            : 500,                          // Timeout to wait an answer from extensions
     [cfgHistoryAdapter]                 : '',                           // History adapter for eCharts
     [cfgGraphsTemplates]                : '',                           // Folder with e-charts templates
+    [cfgUseAliasOriginForCommonAttrs]   : true,                         // Get object 'common' description from alias "source".
     [cfgAllowToDeleteEmptyEnums]        : true,                         // Allow to delete an empty enums (functions, destinations, reports)
     [cfgConfigBackupCopiesCount]        : 7,                            // Max backup copies of config to be stored. If 0 - automatic backup will not work
     [cfgAlertMessageTemplateMain]       : alertMessageTemplateDefault,
@@ -317,6 +319,7 @@ const
 const
   configGlobalOptions = [ cfgMenuUsers, cfgMenuRoles, cfgMessagesForMenuCall, cfgMaxButtonsOnScreen,
               cfgMenuRefreshInterval, cfgExternalMenuTimeout, cfgHistoryAdapter, cfgGraphsTemplates,
+              cfgUseAliasOriginForCommonAttrs,
               cfgAllowToDeleteEmptyEnums, cfgConfigBackupCopiesCount, cfgCheckAlertStatesOnStartUp,
               cfgThresholdsForNumericString, cfgDebugMode],
   configHiddenOptions = [cfgMenuUsers, cfgMenuRoles],
@@ -4350,7 +4353,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
     default:
       break;
   }
-  logs(` = ${JSON.stringify(enumerationItemAttrs)}`);
+  // logs(` = ${JSON.stringify(enumerationItemAttrs)}`, _l);
   let devicesMenuItem, devicesMenuIndex;
   for (let enumerationItemAttr of enumerationItemAttrs) {
     if (currentEnumerationItem.isExternal && enumerationsExcludeForExternal.includes(enumerationItemAttr)) {
@@ -4537,7 +4540,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
       case dataTypeDeviceButtons: {
         const
           currentFunction = enumerationsList[dataTypeFunction].list[dataTypeExtraId],
-          translationType = `${currentFunction.enum}.${dataTypeExtraId.replace('.', '_')}`,
+          translationType = `${enumerationsList[dataTypeFunction].id}.${currentFunction.enum}.${dataTypeExtraId.replace('.', '_')}`,
           currentTranslation = translationsPointOnItemOwner(user, translationType, true),
           currentIds = currentItem === currentFunction.state ? [currentItem, translationsPrimaryStateId] : (enumerationsDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
         if (dataType === dataTypeDeviceButtons) {
@@ -4986,7 +4989,7 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
         stateIdFull = `${idPrefix}.${deviceAttributeId}`,
         stateShortIdSectionsCount = deviceAttributeId.split('.').length;
       if (existsObject(stateIdFull) && (( stateShortIdSectionsCount == 1) || (isStatesInFolders && ( stateShortIdSectionsCount == 2)))) {
-        const stateObject = getObject(stateIdFull, '*');
+        const stateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateIdFull, '*') : getObject(stateIdFull, '*');
         logs('itemObject.common = ' + JSON.stringify(stateObject.common));
         if (stateObject && stateObject.hasOwnProperty('common') && stateObject.common) {
           const currentStateType = stateObject.common['type'];
@@ -5007,7 +5010,7 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
     // logs(`deviceButtonId = ${deviceButtonId}, isButtonAllowedToShow = ${isButtonAllowedToShow}, isButtonAllowedToPress = ${isButtonAllowedToPress}, stateIdFull ${stateIdFull}`);
     /* to process only right devices */
     if (isButtonAllowedToShow && existsObject(stateIdFull) && (( stateShortIdSectionsCount == 1) || (isStatesInFolders && ( stateShortIdSectionsCount == 2)))) {
-      const stateObject = getObject(stateIdFull, '*');
+      const stateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateIdFull, '*') : getObject(stateIdFull, '*');
       // logs('itemObject.common = ' + JSON.stringify(stateObject.common));
       if (stateObject && stateObject.hasOwnProperty('common') && stateObject.common) {
         const
@@ -5272,7 +5275,7 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
  * @returns {object} The resulted object contained the formatted string.
  */
 function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState) {
-  const currObject = ((typeof(stateIdOrObject) === 'string') && existsObject(stateIdOrObject)) ? getObject(stateIdOrObject) : stateIdOrObject;
+  const currObject = ((typeof(stateIdOrObject) === 'string') && existsObject(stateIdOrObject)) ? (configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateIdOrObject) : getObject(stateIdOrObject)) : stateIdOrObject;
   let valueString = '';
   let lengthModifier = 0;
   if (currObject && (typeof(currObject) === 'object') && currObject.hasOwnProperty('_id') && currObject.hasOwnProperty('common')) {
@@ -5328,7 +5331,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
 
 
 /**
- * This function a string containing formatted details/properties of current role.
+ * This function a string containing formatted details/properties of current device attributes.
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, for which the description will be generated.
  * @returns {string} A formatted string.
@@ -5347,7 +5350,7 @@ function enumerationsDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
       idPrefix = primaryStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.');
     if (functionsList.hasOwnProperty(menuItemToProcess.funcEnum) && currentFunction.hasOwnProperty('deviceAttributes')) {
       const
-        primaryObject = getObject(primaryStateId),
+        primaryObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(primaryStateId) : getObject(primaryStateId),
         primaryState = getState(primaryStateId),
         deviceAttributesList = currentFunction.deviceAttributes,
         deviceAttributesArray = [],
@@ -5396,7 +5399,7 @@ function enumerationsDeviceAttributesMenuItemDetails(user, menuItemToProcess) {
             const deviceAttributeId = `${idPrefix}.${deviceAttribute}`;
             logs(`deviceAttributeId = ${JSON.stringify(deviceAttributeId)}`);
             if (existsObject(deviceAttributeId)) {
-              const currObject = deviceAttributeId === primaryStateId ? primaryObject : getObject(deviceAttributeId);
+              const currObject = deviceAttributeId === primaryStateId ? primaryObject : (configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(deviceAttributeId) : getObject(deviceAttributeId));
               deviceAttributesArray.push({label: translationsGetObjectName(user, deviceAttributeId === primaryStateId ? translationsPrimaryStateId : currObject, currentFunctionId), ...enumerationsStateValueDetails(user, currObject, currentFunctionId, deviceAttributeId === primaryStateId ? primaryState : null)});
             }
             break;
@@ -5438,7 +5441,7 @@ function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
  * - `dataTypeDeviceAttributes` - the states with RO access to the value,
  * - `dataTypeDeviceButtons` - the states with RW access to the value,
  * @param {boolean} isOnlyEnabled - The selector to filter only Enabled Attributes or Buttons.
- * @returns
+ * @returns {boolean} True if new states are found.
  */
 function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, isOnlyEnabled) {
   if (enumerationsList[dataTypeFunction].list.hasOwnProperty(functionId) && enumerationsSubTypes.includes(typeOfDeviceStates)) {
@@ -5464,7 +5467,7 @@ function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates,
     $(`state[id=*${currentFunction.state}](${currentFunction.enum}=${functionId})`).each( (mainId) =>  {
       if (existsObject(mainId)) {
         const
-          mainObject = getObject(mainId, '*'),
+          mainObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(mainId, '*') : getObject(mainId, '*'),
           idPrefix = mainId.split('.').slice(0, currentFunction.statesInFolders ? -2 : -1).join('.'),
           fullFuncId = `enum.${currentFunction.enum}.${functionId}`;
         if (mainObject.hasOwnProperty('enumIds') ) {
@@ -5474,24 +5477,27 @@ function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates,
             if (mainObject['enumIds'] && mainObject['enumIds'].includes(fullDestId)) {
               $(`state[id=${idPrefix}.*](${currentFunction.enum}=${functionId})`).each((stateId) => {
                 if (existsObject(stateId)) {
-                  const currentObject = getObject(stateId, '*');
+                  const currentObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateId, '*') : getObject(stateId, '*');
                   if (currentObject['enumIds'] && currentObject['enumIds'].includes(fullFuncId) && currentObject['enumIds'].includes(fullDestId)) {
-                    if ((currentObject.common) && (((typeOfDeviceStates === dataTypeDeviceAttributes) && (! currentObject.common.write)) || ((typeOfDeviceStates === dataTypeDeviceButtons) && currentObject.common.write))) {
-                      const deviceAttr = stateId.replace(`${idPrefix}.`, '');
-                      logs(`deviceAttr = ${deviceAttr}`);
-                      if (! Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
-                        currentDeviceStatesList[deviceAttr] = {
-                          isEnabled : isOnlyEnabled,
-                          nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr)),
-                          order : Object.keys(currentDeviceStatesList).length,
-                        };
-                        if (typeOfDeviceStates === dataTypeDeviceAttributes) {
-                          currentDeviceStatesList[deviceAttr].convertValueCode = "";
-                        }
-                        else {
-                          currentDeviceStatesList[deviceAttr].group = '';
-                          currentDeviceStatesList[deviceAttr].showAccessLevel = rolesAccessLevelReadOnly;
-                          currentDeviceStatesList[deviceAttr].pressAccessLevel = rolesAccessLevelSelective;
+                    if (currentObject.common) {
+                      let currentObjectCommon = currentObject.common;
+                      if ((((typeOfDeviceStates === dataTypeDeviceAttributes) && (! currentObjectCommon.write)) || ((typeOfDeviceStates === dataTypeDeviceButtons) && currentObjectCommon.write))) {
+                        const deviceAttr = stateId.replace(`${idPrefix}.`, '');
+                        // logs(`deviceAttr = ${deviceAttr}`, _l);
+                        if (! Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
+                          currentDeviceStatesList[deviceAttr] = {
+                            isEnabled : isOnlyEnabled,
+                            nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr)),
+                            order : Object.keys(currentDeviceStatesList).length,
+                          };
+                          if (typeOfDeviceStates === dataTypeDeviceAttributes) {
+                            currentDeviceStatesList[deviceAttr].convertValueCode = "";
+                          }
+                          else {
+                            currentDeviceStatesList[deviceAttr].group = '';
+                            currentDeviceStatesList[deviceAttr].showAccessLevel = rolesAccessLevelReadOnly;
+                            currentDeviceStatesList[deviceAttr].pressAccessLevel = rolesAccessLevelSelective;
+                          }
                         }
                       }
                     }
@@ -5889,7 +5895,7 @@ function alertsOnSubscribedState(object) {
         logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
         const
           alertMessages = new Array(),
-          alertObject = getObject(objectId, true),
+          alertObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(objectId, '*') : getObject(objectId, '*'),
           alertDestinationId = alerts[objectId].destination,
           alertDestinationName = translationsGetEnumName(user, dataTypeDestination, alertDestinationId, enumerationsNamesInside),
           alertFunctionId = alerts[objectId].function,
@@ -5898,8 +5904,8 @@ function alertsOnSubscribedState(object) {
           isStatesInFolders = alertFunction && alertFunction.statesInFolders,
           isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
           alertFunctionName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
-          alertStateValue = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.state)['valueString'] : object.state.val,
-          _alertStateOldValue = alertFunctionId ? enumerationsStateValueDetails(user, objectId, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
+          alertStateValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.state)['valueString'] : object.state.val,
+          _alertStateOldValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
           alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
           alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
           alertStateType = alertObject.common['type'],
@@ -6102,7 +6108,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     Object.keys(alertsList).forEach((alertId, alertIndex) => {
       if (alertsList[alertId].chatIds.has(user.chatId) && existsObject(alertId)) {
         const
-          alertObject = getObject(alertId),
+          alertObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(alertId) : getObject(alertId),
           alertFuncId = alertsList[alertId].function,
           alertDestId = alertsList[alertId].destination,
           alertFirstLevelId = isFunctionsFirst ?  alertFuncId : alertDestId,
@@ -6267,7 +6273,7 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth) {
  */
 function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, itemStateObject, itemParam, isExtraMenu) {
   let menuItem;
-  if ((itemStateObject === undefined) || (itemStateObject === null)) itemStateObject = getObject(itemState);
+  if ((itemStateObject === undefined) || (itemStateObject === null)) itemStateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(itemState) : getObject(itemState);
   if (itemStateObject && itemStateObject.hasOwnProperty('common') && itemStateObject.common) {
     const itemStateType = itemStateObject.common['type'];
     menuItem = {
@@ -6360,7 +6366,7 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
-    currentStateObject = getObject(currentStateId),
+    currentStateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(currentStateId) : getObject(currentStateId),
     currentStateUnits = currentStateObject && currentStateObject.hasOwnProperty('common') && currentStateObject.common && currentStateObject.common.hasOwnProperty('unit') && currentStateObject.common.unit ? ` ${currentStateObject.common.unit}` : '',
     [currentThresholds, currentStateAlertThresholds] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true);
   let
@@ -6468,7 +6474,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
         if (currentDeviceAttributes.includes(shortStateId) ||
           (currentDeviceButtons.includes(shortStateId) && (MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[shortStateId].showAccessLevel) <= 0))) {
           if (existsObject(currentStateId)) {
-            const currentStateObject = getObject(currentStateId, '*');
+            const currentStateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(currentStateId, '*') : getObject(currentStateId, '*');
             if (currentStateObject && currentStateObject.hasOwnProperty('common') && currentStateObject.common) {
               const
                 stateObjectEnums = currentStateObject.hasOwnProperty('enumIds') ? currentStateObject['enumIds'] : undefined,
@@ -7090,7 +7096,7 @@ function simpleReportPrepareStructure(reportStatesList) {
   reportStatesList.forEach(stateId => {
     if (existsObject(stateId)) {
       const
-        currentObject = getObject(stateId, '*');
+        currentObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateId, '*') : getObject(stateId, '*');
       if (currentObject.hasOwnProperty('enumIds')) {
         const
           topStateId = stateId.split('.').slice(0, -1).join('.'),
@@ -7826,7 +7832,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
     // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess, null, 2)}`)
     $(`state[id=*${isFunctionsFirst ? `.${primaryState}` : ''}](${primaryMenuItem.enum}=${primaryLevelMenuItemId})`).each( (stateId) =>  {
       if (existsObject(stateId)) {
-        const currentObject = getObject(stateId, '*');
+        const currentObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateId, '*') : getObject(stateId, '*');
         let shortStateId = primaryState ? stateId.split('.').slice(- primaryStateSectionsCount).join('.') : '';
         if (currentObject.hasOwnProperty('enumIds') ) {
           secondaryMenuItemsIndex.forEach((currentLevelMenuItemId) => {
@@ -8059,7 +8065,7 @@ function menuProcessMenuItem(user, cmd, cmdPos, clearBefore, clearUserMessage, i
     if( (cmd) && (menuItemToProcess) && (menuItemToProcess.submenu.length === 0) && ! menuItemToProcess.hasOwnProperty('function')) {
       if ( menuItemToProcess.hasOwnProperty('state') && (menuItemToProcess.state)) {
         let [currState, possibleValue] = commandUnpackParams(menuItemToProcess.state);
-        const currObject = getObject(currState);
+        const currObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(currState) : getObject(currState);
         logs('currObject = ' + JSON.stringify(currObject));
         const _role = currObject.common['role'];
         if (currObject.common['write']) {
@@ -8389,7 +8395,8 @@ function menuGetMenuRowToProcess(user, menuItemToProcess, targetMenuPos, prepare
           callbackData = cmdNoOperation;
         }
         const
-          currentObject = currentSubMenuItem.destEnum && currentSubMenuItem.state && currentSubMenuItem.funcEnum ? getObject(currentSubMenuItem.state) : undefined,
+          currentState = currentSubMenuItem.state,
+          currentObject = currentSubMenuItem.destEnum && currentState && currentSubMenuItem.funcEnum ? (configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(currentState) : getObject(currentState)) : undefined,
           currentValue =  currentObject && (currentObject.common['type'] !== 'boolean') ? ` (${enumerationsStateValueDetails(user, currentObject, currentSubMenuItem.funcEnum).valueString})`: '',
           currentIcon = (currentValue && isFunctionsFirst) ? '' :  menuGetMenuItemIcon(user, currentSubMenuItem);
         preparedMessageObject.buttons.push({
@@ -9030,7 +9037,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeStateValue: {
               if (existsObject(currentParam)) {
                 const
-                  stateObject = getObject(currentParam);
+                  stateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(currentParam) : getObject(currentParam);
                 if (stateObject.common.type === 'number') {
                   // @ts-ignore
                   if (! isNaN(userInputToProcess)
@@ -9244,7 +9251,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
       case dataTypeStateValue: {
         if (existsObject(currentParam)) {
           const
-            stateObject = getObject(currentParam),
+            stateObject = configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(currentParam) : getObject(currentParam),
             currentName = translationsGetObjectName(user, stateObject, currentItem),
             currentValue = existsState(currentParam) ? getState(currentParam).val : null;
           menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${currentValue ? currentValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }))`;
@@ -11170,6 +11177,61 @@ function stringCapitalize(string) {
     return string[0].toUpperCase() + string.slice(1);
   }
   return '';
+}
+
+const attributesToCopyFromOriginToAlias = [
+  'read',
+  'write',
+  'min',
+  'max',
+  'step',
+  'states',
+  'unit'
+];
+
+/**
+ * This function extends standard `getObject`. If current object is an 'alias', it will enrich the `common`
+ * property of it by the data from the 'origin' object.
+ * @param {string} id - The object ID.
+ * @param {string=} enumId - Which enum should be included in the returned object. true to return all enums.
+ * @returns {object} The result object.
+ */
+function getObjectEnriched(id, enumId) {
+  const currentObject = enumId ? getObject(id, enumId) : getObject(id);
+  if (currentObject.hasOwnProperty('common') && currentObject.common) {
+    const currentObjectCommon = currentObject.common;
+    if (currentObjectCommon.hasOwnProperty('alias')) {
+      const currentObjectAlias = currentObjectCommon.alias;
+      let originObjectId = '';
+      if (currentObjectAlias.hasOwnProperty('id') && typeOf(currentObjectAlias.id, 'string')) {
+        originObjectId = currentObjectAlias.id;
+      }
+      else if (currentObjectAlias.id.hasOwnProperty('write')) {
+        originObjectId = currentObjectAlias.write;
+      }
+      else if (currentObjectAlias.id.hasOwnProperty('read')) {
+        originObjectId = currentObjectAlias.read;
+      }
+      if (originObjectId) {
+        if (currentObjectAlias.hasOwnProperty('read') || currentObjectAlias.hasOwnProperty('write')) {
+          if (! currentObjectCommon.hasOwnProperty('read')) currentObjectCommon.read = true;
+          currentObjectCommon.write = currentObjectAlias.hasOwnProperty('write') || currentObjectAlias.id.hasOwnProperty('write');
+        }
+        else {
+          const originObject = getObject(originObjectId);
+          if (originObject.hasOwnProperty('common') && originObject.common) {
+            const originObjectCommon = originObject.common;
+            attributesToCopyFromOriginToAlias.forEach(attributeId => {
+              if ((! currentObjectCommon.hasOwnProperty(attributeId)) && originObjectCommon.hasOwnProperty(attributeId)) {
+                currentObjectCommon[attributeId] = originObjectCommon[attributeId];
+              }
+            });
+          }
+        }
+      }
+    }
+  }
+  return currentObject;
 }
 
 /**
