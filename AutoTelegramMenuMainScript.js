@@ -5106,8 +5106,9 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
                 });
               }
             }
+            // logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2), _l);
             if ((subMenuItem.icon !== undefined) || subMenuItem.icons) {
-              logs('subMenuItem.icon = ' + JSON.stringify(subMenuItem.icon));
+              // logs('subMenuItem.icon = ' + JSON.stringify(subMenuItem.icon), _l);
               if (! isButtonAllowedToPress) subMenuItem.param = cmdNoOperation;
               if (deviceButtonId !== primaryStateShortId) {
                 subMenuIndex = subMenu.push(subMenuItem);
@@ -5309,12 +5310,12 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         // logs(`valueString = ${valueString}, currStateValueId = ${currStateValueId}`)
         if ((valueString === 'Undefined') || (valueString.includes(currentStateValueId))) {
           valueString = currentStateValue ? currentIconOn : currentIconOff;
-          lengthModifier = 1;
+          lengthModifier = valueString.length === 1 ? 1 : 0;
         }
       }
       else {
         valueString = currentIconOff;
-        lengthModifier = 1;
+        lengthModifier = valueString.length === 1 ? 1 : 0;
       }
     }
     else if (currObject.common.hasOwnProperty('states') && (['string','number'].includes(currObject.common['type']) )) {
