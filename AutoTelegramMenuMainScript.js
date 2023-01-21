@@ -3418,7 +3418,7 @@ function translationsFunctionStatesItemsMenuGenerate(user, menuItemToProcess) {
           param: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
           submenu: [],
         });
-        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, translationKey));
+        subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
       }
       else {
         subMenuItem.param = cmdNoOperation;
@@ -4616,7 +4616,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
             param: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
             submenu: [],
           });
-          subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, dataTypeTranslation, currentTranslationId));
+          subMenuItem.submenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
           subMenuIndex = subMenu.push(subMenuItem);
         });
         break;
