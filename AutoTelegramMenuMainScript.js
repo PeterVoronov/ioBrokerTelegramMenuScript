@@ -4961,7 +4961,6 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
     currentFunctionEnum = currentFunction.enum,
     fullFunctionId = `enum.${currentFunctionEnum}.${currentFunctionId}`,
     isStatesInFolders = currentFunction.statesInFolders,
-    currentIcons = {on: currentFunction.iconOn, off: currentFunction.iconOff},
     deviceAttributesList = currentFunction.deviceAttributes,
     currentDeviceAttributes = deviceAttributesList ? Object.keys(deviceAttributesList).filter((deviceAttr) => (deviceAttributesList[deviceAttr].isEnabled)).sort((a, b) => (deviceAttributesList[a].order - deviceAttributesList[b].order)) : [],
     deviceButtonsList = currentFunction.deviceButtons,
@@ -4975,6 +4974,8 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
     historyAdapterId = configOptions.getOption(cfgHistoryAdapter, user),
     graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
     isGraphsEnabled = historyAdapterId && existsObject(`${graphsTemplatesFolder}.${graphsDefaultTemplate}`),
+    defaultIconOn = configOptions.getOption(cfgDefaultIconOn, user),
+    defaultIconOff = configOptions.getOption(cfgDefaultIconOff, user),
     statesForGraphs = new Map();
   let
     subMenuIndex = 0,
@@ -5005,6 +5006,7 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
       stateIdFull = `${idPrefix}.${deviceButtonId}`,
       stateShortIdSectionsCount = deviceButtonId.split('.').length,
       currentButton = deviceButtonsList[deviceButtonId],
+      convertValueCode = currentFunction.deviceAttributes.hasOwnProperty(deviceButtonId) ? currentFunction.deviceAttributes[deviceButtonId].convertValueCode : "",
       isButtonAllowedToShow = MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.showAccessLevel) <= 0,
       isButtonAllowedToPress = isCurrentAccessLevelAllowModify && (MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0) && menuItemIsAvailable(currentFunction, primaryStateId);
     // logs(`deviceButtonId = ${deviceButtonId}, isButtonAllowedToShow = ${isButtonAllowedToShow}, isButtonAllowedToPress = ${isButtonAllowedToPress}, stateIdFull ${stateIdFull}`);
@@ -5028,18 +5030,19 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
               subSubMenuIndex = 0,
               currentState = existsState(stateIdFull) ? getState(stateIdFull): undefined,
               stateValue = currentState !== undefined ? currentState.val : undefined,
-              states = [],
-              subMenuItem = {
-                index: `${currentIndex}.${subMenuIndex}`,
-                name: `${stateName}`,
-                funcEnum: currentFunctionId,
-                group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
-                submenu: new Array()
-              };
+              states = [];
+            const subMenuItem = {
+              index: `${currentIndex}.${subMenuIndex}`,
+              name: `${stateName}`,
+              funcEnum: currentFunctionId,
+              group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
+              submenu: new Array()
+            };
+            stateValue = enumerationsEvaluateValueConversionCode(user, stateValue, convertValueCode);
             logs('stateObject = ' + JSON.stringify(stateObject, null, 2));
             if (currentStateType === 'boolean') {
               if (stateValue === undefined) stateValue = false;
-              subMenuItem.icons = currentIcons;
+              subMenuItem.icons = deviceButtonId === primaryStateId ?  {on: currentFunction.iconOn, off: currentFunction.iconOff} :  {on: defaultIconOn, off: defaultIconOff};
               subMenuItem.state = stateIdFull;
             }
             else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
@@ -5055,7 +5058,7 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
                       name: `${enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString'] /*  possibleName !== undefined ? possibleName : possibleValue */}`,
                       state: commandsPackParams(stateIdFull, possibleValue),
                       funcEnum: currentFunctionId,
-                      icon: stateValue == possibleValue ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user),
+                      icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
                       submenu: []
                     };
                     subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
@@ -5087,7 +5090,7 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
                     name: `${possibleValue}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }`,
                     state: commandsPackParams(stateIdFull, possibleValue),
                     funcEnum: currentFunctionId,
-                    icon: stateValue == possibleValue ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff,),
+                    icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
                     submenu: []
                   };
                   subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
@@ -5233,33 +5236,35 @@ function enumerationsExtractPossibleValueStates(inputStates) {
  */
 function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueCode) {
   // logs(`value = ${value}, convertValueCode = ${convertValueCode}`)
-  const printDate = 'printDate(value)';
-  if (typeOf(convertValueCode, 'string')) {
-    if ((convertValueCode === printDate) || (convertValueCode === `${printDate};`)) {
-      try {
-        inputValue = formatDate(new Date(inputValue), configOptions.getOption(cfgDateTimeTemplate, user));
-      }
-      catch (error) {
-        console.warn(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
-      }
-    }
-    else if (convertValueCode.length > 0) {
-      const sandbox = { value: inputValue, result: undefined };
-      nodeVm.createContext(sandbox); // Contextify the sandbox.
-      try {
-        if (convertValueCode.includes('return')) {
-          nodeVm.runInContext(`const func = () => {${convertValueCode}}; result = func()`, sandbox);
+  if (convertValueCode && (inputValue !== undefined) && (inputValue !== null)) {
+    const printDate = 'printDate(value)';
+    if (typeOf(convertValueCode, 'string') && (convertValueCode.length > 0)) {
+      if ((convertValueCode === printDate) || (convertValueCode === `${printDate};`)) {
+        try {
+          inputValue = formatDate(new Date(inputValue), configOptions.getOption(cfgDateTimeTemplate, user));
         }
-        else {
-          nodeVm.runInContext(`const func = () => (${convertValueCode}); result = func()`, sandbox);
+        catch (error) {
+          console.warn(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
         }
-        /**
-         * ! fix - to check!
-         */
-        inputValue = sandbox.result;
       }
-      catch (error) {
-        console.warn(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
+      else {
+        const sandbox = { value: inputValue, result: undefined };
+        nodeVm.createContext(sandbox); // Contextify the sandbox.
+        try {
+          if (convertValueCode.includes('return')) {
+            nodeVm.runInContext(`const func = () => {${convertValueCode}}; result = func()`, sandbox);
+          }
+          else {
+            nodeVm.runInContext(`const func = () => (${convertValueCode}); result = func()`, sandbox);
+          }
+          /**
+           * ! fix - to check!
+           */
+          inputValue = sandbox.result;
+        }
+        catch (error) {
+          console.warn(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
+        }
       }
     }
   }
@@ -5272,58 +5277,64 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
  * @param {string|object} stateIdOrObject - The id of the state or the it's object representation.
  * @param {string} functionId - The id of the associated function.
  * @param {object=} currentState - The object, contained the current state information.
+ * @param {boolean=} skipCodeConversion - The selector to skip code conversion.
  * @returns {object} The resulted object contained the formatted string.
  */
-function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState) {
+function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState, skipCodeConversion) {
   const currObject = ((typeof(stateIdOrObject) === 'string') && existsObject(stateIdOrObject)) ? (configOptions.getOption(cfgUseAliasOriginForCommonAttrs) ? getObjectEnriched(stateIdOrObject) : getObject(stateIdOrObject)) : stateIdOrObject;
   let valueString = '';
   let lengthModifier = 0;
   if (currObject && (typeof(currObject) === 'object') && currObject.hasOwnProperty('_id') && currObject.hasOwnProperty('common')) {
+    skipCodeConversion = skipCodeConversion ? skipCodeConversion : false;
     const
       currentId = currObject._id,
       currentFunction = enumerationsList[dataTypeFunction].list[functionId],
       currentAttributeId = currentId.split('.').slice( - currentFunction.state.split('.').length).join('.'),
       convertValueCode = currentFunction.deviceAttributes.hasOwnProperty(currentAttributeId) ? currentFunction.deviceAttributes[currentAttributeId].convertValueCode : "",
       stateTranslationIdSuffix = currentId.split('.').slice( - currentFunction.state.split('.').length).join('_'),
-      currObjectType = currObject.common['type'],
+      currentObjectType = currObject.common['type'],
       currObjectUnit = currObject.common.hasOwnProperty('unit') ? currObject.common['unit'] : '',
-      currStateVal = enumerationsEvaluateValueConversionCode(user, (currentState && currentState.hasOwnProperty('val')) ? currentState.val : (existsState(currentId) ? getState(currentId).val : undefined), convertValueCode),
-      currStateValType = currStateVal == undefined ? currObjectType : typeof(currStateVal),
-      currStateValueId = `${stateTranslationIdSuffix}_${currStateVal}`;
+      currentStateVal = (currentState && currentState.hasOwnProperty('val')) ? currentState.val : (existsState(currentId) ? getState(currentId).val : undefined),
+      currentStateValue = skipCodeConversion ? currentStateVal : enumerationsEvaluateValueConversionCode(user, currentStateVal, convertValueCode),
+      currentStateValueType = currentStateValue == undefined ? currentObjectType : typeof(currentStateValue),
+      currentStateValueId = `${stateTranslationIdSuffix}_${currentStateValue}`;
     logs('currObject = ' + JSON.stringify(currObject));
     // logs(`${currentFunction.enum}.${functionId}, currState = ${JSON.stringify(currStateVal)}, currStateValType = ${currStateValType}`);
-    if ( (currObjectType === 'boolean') &&  (currStateValType === 'boolean')) {
-      if (currStateVal !== undefined) {
-        valueString = translationsGetObjectName(user, currStateValueId, functionId);
+    if ( (currentObjectType === 'boolean') &&  (currentStateValueType === 'boolean')) {
+      const
+        currentIconOn = currentAttributeId === currentFunction.state ? currentFunction.iconOn : configOptions.getOption(cfgDefaultIconOn, user),
+        currentIconOff = currentAttributeId === currentFunction.state ? currentFunction.iconOff : configOptions.getOption(cfgDefaultIconOff, user);
+      if (currentStateValue !== undefined) {
+        valueString = translationsGetObjectName(user, currentStateValueId, functionId);
         // logs(`valueString = ${valueString}, currStateValueId = ${currStateValueId}`)
-        if ((valueString === 'Undefined') || (valueString.includes(currStateValueId))) {
-          valueString = currStateVal ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user);
+        if ((valueString === 'Undefined') || (valueString.includes(currentStateValueId))) {
+          valueString = currentStateValue ? currentIconOn : currentIconOff;
           lengthModifier = 1;
         }
       }
       else {
-        valueString = configOptions.getOption(cfgDefaultIconOff, user);
+        valueString = currentIconOff;
         lengthModifier = 1;
       }
     }
     else if (currObject.common.hasOwnProperty('states') && (['string','number'].includes(currObject.common['type']) )) {
       const states = enumerationsExtractPossibleValueStates(currObject.common['states']);
-      if (currStateVal !== undefined) {
-        if (states.hasOwnProperty(currStateVal)) {
-          valueString =  translationsGetObjectName(user, currStateValueId, functionId);
-          if ((valueString === 'Undefined') || (valueString.includes(currStateValueId))) valueString = states[currStateVal];
-          if (valueString === undefined) valueString = currStateVal;
+      if (currentStateValue !== undefined) {
+        if (states.hasOwnProperty(currentStateValue)) {
+          valueString =  translationsGetObjectName(user, currentStateValueId, functionId);
+          if ((valueString === 'Undefined') || (valueString.includes(currentStateValueId))) valueString = states[currentStateValue];
+          if (valueString === undefined) valueString = currentStateValue;
         }
         else {
-          valueString = `${currStateVal}`;
+          valueString = `${currentStateValue}`;
         }
       }
     }
-    else if ( (currObjectType === 'number') &&  (currStateValType === 'number')) {
-      valueString = (currStateVal === undefined ? '' : (Number.isInteger(currStateVal) ? currStateVal : currStateVal.toFixed(2))) + (currObjectUnit ?  ' ' + currObjectUnit : '');
+    else if ( (currentObjectType === 'number') &&  (currentStateValueType === 'number')) {
+      valueString = (currentStateValue === undefined ? '' : (Number.isInteger(currentStateValue) ? currentStateValue : currentStateValue.toFixed(2))) + (currObjectUnit ?  ' ' + currObjectUnit : '');
     }
-    else if (currStateValType === 'string') {
-      valueString = (currStateVal === undefined ? '' : currStateVal) + (currObjectUnit ?  ' ' + currObjectUnit : '');
+    else if (currentStateValueType === 'string') {
+      valueString = (currentStateValue === undefined ? '' : currentStateValue) + (currObjectUnit ?  ' ' + currObjectUnit : '');
     }
   }
   return {valueString, lengthModifier};
@@ -5884,9 +5895,6 @@ function alertsOnSubscribedState(object) {
   if ((alerts !== undefined) && alerts.hasOwnProperty(objectId)) {
     // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
     let alertIsRaised = false;
-    const
-      currentStateValue = object.state.val,
-      oldStateValue = object.oldState.val;
     alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
       chatId = Number(chatId);
       const user = chatId > 0 ? telegramUsersGenerateUserObjectFromId(chatId) : telegramUsersGenerateUserObjectFromId(undefined, chatId);
@@ -5904,8 +5912,11 @@ function alertsOnSubscribedState(object) {
           isStatesInFolders = alertFunction && alertFunction.statesInFolders,
           isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
           alertFunctionName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
-          alertStateValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.state)['valueString'] : object.state.val,
-          _alertStateOldValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.oldState)['valueString'] : object.oldState.val,
+          convertValueCode = alertFunction.deviceAttributes.hasOwnProperty(isAlertStatePrimary) ? alertFunction.deviceAttributes[isAlertStatePrimary].convertValueCode : "",
+          currentStateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
+          oldStateValue = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
+          alertStateValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.state)['valueString'] : currentStateValue,
+          _alertStateOldValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.oldState)['valueString'] : oldStateValue,
           alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
           alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
           alertStateType = alertObject.common['type'],
@@ -6379,7 +6390,7 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
       currentThresholdMessageTemplate = currentThreshold.hasOwnProperty(alertMessageTemplateId) ? currentThreshold[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateThreshold, user),
       subMenuItem = {
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${currentThresholdNumber}${currentStateUnits} [${currentThreshold.onAbove ? iconItemAbove : ''}${currentThreshold.onLess ? iconItemLess : ''}]({currentOnTimeInterval})`,
+        name: `${currentThresholdNumber}${currentStateUnits} [${currentThreshold.onAbove ? iconItemAbove : ''}${currentThreshold.onLess ? iconItemLess : ''}](${currentOnTimeInterval})`,
         icon: iconItemEdit,
         submenu: new Array()
       };
@@ -8483,14 +8494,21 @@ function menuGetMenuItemIcon(user, menuItemToProcess) {
   // logs(`\nsubMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
   let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '';
   if (menuItemToProcess !== undefined) {
-    const currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined;
-    if (currentFunction && menuItemToProcess.hasOwnProperty('state') && menuItemToProcess.state) {
-      if (! menuItemIsAvailable(currentFunction, menuItemToProcess.state)) icon = iconItemUnavailable;
+    const
+      currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined,
+      currentStateId = menuItemToProcess.hasOwnProperty('state') && menuItemToProcess.state ? menuItemToProcess.state : '';
+
+    if (currentFunction && currentStateId) {
+      if (! menuItemIsAvailable(currentFunction, currentStateId)) icon = iconItemUnavailable;
     }
     if (icon !== iconItemUnavailable) {
       if (typeOf(menuItemToProcess.icons,'object')) {
-        if (menuItemToProcess.hasOwnProperty('state') && existsObject(menuItemToProcess.state) && (getObject(menuItemToProcess.state).common.type === 'boolean')) {
-          icon = existsState(menuItemToProcess.state) ? (getState(menuItemToProcess.state).val ? menuItemToProcess.icons.on : menuItemToProcess.icons.off) : menuItemToProcess.icons.off;
+        if (currentStateId && existsObject(currentStateId) && (getObject(currentStateId).common.type === 'boolean')) {
+          const
+            currentAttributeId = currentStateId.split('.').slice( - currentFunction.state.split('.').length).join('.'),
+            convertValueCode = currentFunction.deviceAttributes.hasOwnProperty(currentAttributeId) ? currentFunction.deviceAttributes[currentAttributeId].convertValueCode : "",
+            currentValue = existsState(currentStateId) ? getState(currentStateId).val : false;
+          icon = enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode) ? menuItemToProcess.icons.on : menuItemToProcess.icons.off;
         }
       }
       else if (typeOf(menuItemToProcess.icons, 'function')) {
