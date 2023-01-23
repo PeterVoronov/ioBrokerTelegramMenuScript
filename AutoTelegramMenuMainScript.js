@@ -4551,7 +4551,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
           currentFunction = enumerationsList[dataTypeFunction].list[dataTypeExtraId],
           translationType = `${enumerationsList[dataTypeFunction].id}.${currentFunction.enum}.${dataTypeExtraId.replace('.', '_')}`,
           currentTranslation = translationsPointOnItemOwner(user, translationType, true),
-          currentIds = currentItem === currentFunction.state ? [currentItem, translationsPrimaryStateId] : (enumerationsDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
+          currentIds = currentItem === currentFunction.state ? ( dataType === dataTypeDeviceButtons ? [currentItem, translationsPrimaryStateId] : [currentItem]) : (enumerationsDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
         if (dataType === dataTypeDeviceButtons) {
           enumerationsDeviceButtonsAccessLevelAttrs.forEach(accessLevelsAttr => {
             const subMenuItem = {
@@ -4607,6 +4607,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
           else {
             currentValue = `${translationsItemCoreGet(user, 'cmdItemRename')}: "${currentValue}"`;
           }
+          if (currentId === translationsPrimaryStateId) currentValue += ` (${translationsItemMenuGet(user, 'state')})`;
           let
             subSubMenuIndex = 0,
             subMenuItem = {
@@ -4649,7 +4650,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
       subMenuIndex = subMenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}`, subMenuIndex, dataType, currentItem, dataTypeExtraId));
   }
   [subMenu,  subMenuIndex] = menuNavigationLeftRightMenuPartGenerate(user, subMenu, currentIndex, subMenuIndex, currentEnumerationItem.order, lastItemIndex);
-  logs(`subMenu = ${JSON.stringify(subMenu)}`);
+  // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
   return subMenu;
 }
 
@@ -4803,7 +4804,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
       const
         currentEnumerationItem = currentEnumeration[currentItem],
         currentIcon = currentEnumerationItem.isEnabled ? (currentEnumerationItem.hasOwnProperty('icon') ? currentEnumerationItem.icon : '') : iconItemDisabled;
-      // logs(`currentEnumerationItem = ${JSON.stringify(currentEnumerationItem)}`, _l);
+      // logs(`currentItem = ${JSON.stringify(currentItem)}, currentEnumerationItem = ${JSON.stringify(currentEnumerationItem)}`, _l);
       const currentMenuItem = {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${enumerationsItemName(user, enumerationType, currentItem, currentEnumerationItem)}${currentEnumerationItem.isExternal ? ` ${iconItemIsExternal}`: ''}`,
@@ -8940,7 +8941,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                   const currentDeviceAttributes = enumerationsList[currentType].list[currentItem].deviceAttributes;
                   if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(currentParam)) {
                     currentDeviceAttributes[userInputToProcess] = objectDeepClone(currentDeviceAttributes[currentParam]);
-                    currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(translationsGetObjectId(userInputToProcess.split('.').join('_'), currentItem, undefined, enumerationsDeviceBasicAttributes.includes(userInputToProcess)));
+                    currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(userInputToProcess.split('.').join('_'), currentItem, undefined, enumerationsDeviceBasicAttributes.includes(userInputToProcess));
                     delete currentDeviceAttributes[currentParam];
                   }
                   break;
