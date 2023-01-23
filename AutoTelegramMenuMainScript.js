@@ -4790,7 +4790,7 @@ function enumerationsListMenuGenerate(user, menuItemToProcess) {
   }
   if (enumerationsSubTypes.includes(enumerationType)) {
     if (Object.keys(enumerationsList[dataTypeFunction].list[enumerationTypeExtraId][enumerationType]).length === 0) {
-      enumerationsRefreshFunctionDeviceStates(enumerationTypeExtraId, enumerationType, false);
+      enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType, false);
     }
   }
   const currentEnumeration = enumerationsGetList(enumerationType, enumerationTypeExtraId);
@@ -5458,6 +5458,7 @@ function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
  * This function go thru the all ioBroker states, which are linked with
  * appropriate `functionId` enum, and gathers all fills their unique id's
  * in appropriate list(`Object`) of `Attributes` or `Devices` for this `functionId`.
+ * @param {object} user - The user object.
  * @param {string} functionId - The enum Id (enumerationItem.Id).
  * @param {string} typeOfDeviceStates - The one of the possible values:
  * - `dataTypeDeviceAttributes` - the states with RO access to the value,
@@ -5465,7 +5466,7 @@ function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
  * @param {boolean} isOnlyEnabled - The selector to filter only Enabled Attributes or Buttons.
  * @returns {boolean} True if new states are found.
  */
-function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates, isOnlyEnabled) {
+function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceStates, isOnlyEnabled) {
   if (enumerationsList[dataTypeFunction].list.hasOwnProperty(functionId) && enumerationsSubTypes.includes(typeOfDeviceStates)) {
     isOnlyEnabled = typeOf(isOnlyEnabled, 'boolean') ? isOnlyEnabled : false;
     const
@@ -5507,9 +5508,10 @@ function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates,
                         const deviceAttr = stateId.replace(`${idPrefix}.`, '');
                         // logs(`deviceAttr = ${deviceAttr}`, _l);
                         if (! Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
+                          const currentDeviceAttrTranslationId = translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr));
                           currentDeviceStatesList[deviceAttr] = {
                             isEnabled : isOnlyEnabled,
-                            nameTranslationId: translationsGetObjectId(deviceAttr.split('.').join('_'), functionId, undefined, enumerationsDeviceBasicAttributes.includes(deviceAttr)),
+                            nameTranslationId: currentDeviceAttrTranslationId,
                             order : Object.keys(currentDeviceStatesList).length,
                           };
                           if (typeOfDeviceStates === dataTypeDeviceAttributes) {
@@ -5519,6 +5521,30 @@ function enumerationsRefreshFunctionDeviceStates(functionId, typeOfDeviceStates,
                             currentDeviceStatesList[deviceAttr].group = '';
                             currentDeviceStatesList[deviceAttr].showAccessLevel = rolesAccessLevelReadOnly;
                             currentDeviceStatesList[deviceAttr].pressAccessLevel = rolesAccessLevelSelective;
+                          }
+                          if (currentDeviceAttrTranslationId && (translationsItemGet(user, currentDeviceAttrTranslationId) === currentDeviceAttrTranslationId)) {
+                            translationsItemStore(user, currentDeviceAttrTranslationId, translationsGetObjectName(user, currentObject));
+                          }
+                        }
+                        /**
+                         * Small overhead, to store all possible values to translation keys
+                         */
+                        if (currentObjectCommon.hasOwnProperty('type') && currentObjectCommon.type) {
+                          const currentDeviceAttrTranslationId = currentDeviceStatesList[deviceAttr].nameTranslationId;
+                          if (currentDeviceAttrTranslationId) {
+                            const currentObjectType = currentObjectCommon.type;
+                            if (currentObjectType === 'boolean') {
+                              translationsItemGet(user, [currentDeviceAttrTranslationId, 'true'].join('_'));
+                              translationsItemGet(user, [currentDeviceAttrTranslationId, 'false'].join('_'));
+                            }
+                            else if (currentObjectCommon.hasOwnProperty('states') && currentObjectCommon.states && typeOf(currentObjectCommon.states, 'object')) {
+                              Object.entries(currentObjectCommon.states).forEach(([possibleValue, possibleName]) => {
+                                const currentPossibleStateTranslationId = [currentDeviceAttrTranslationId, possibleValue].join('_');
+                                if (translationsItemGet(user, currentPossibleStateTranslationId) === currentPossibleStateTranslationId) {
+                                  translationsItemStore(user, currentPossibleStateTranslationId, possibleName);
+                                }
+                              });
+                            }
                           }
                         }
                       }
@@ -6457,7 +6483,7 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
 }
 
 /**
- * This function generates a submenu with all possible states, on which the
+ * This function generates a submenu with all possible attributes, on which the
  * alert subscription can be made for the appropriate menuItem.
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
@@ -9400,8 +9426,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
         else {
           currentList[currentItem][currentParam] = ! currentList[currentItem][currentParam];
           if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[currentItem][currentParam]) {
-            enumerationsRefreshFunctionDeviceStates(currentItem, dataTypeDeviceAttributes, false);
-            enumerationsRefreshFunctionDeviceStates(currentItem, dataTypeDeviceButtons, true);
+            enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceAttributes, false);
+            enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceButtons, true);
           }
         }
         enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
@@ -9854,7 +9880,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
       case dataTypeDeviceAttributes:
       case dataTypeDeviceButtons: {
-        if (enumerationsRefreshFunctionDeviceStates(currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
+        if (enumerationsRefreshFunctionDeviceStates(user, currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
         break;
       }
 
