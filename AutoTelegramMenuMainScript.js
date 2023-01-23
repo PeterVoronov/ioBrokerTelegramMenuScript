@@ -4510,7 +4510,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
 
       default: {
         switch (typeof(currentEnumerationItem[enumerationItemAttr])) {
-          case 'boolean':
+          case 'boolean': {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)} (${currentEnumerationItem[enumerationItemAttr] ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user) })`,
@@ -4518,17 +4518,26 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
               submenu: [],
             });
             break;
+          }
 
-          default:
-            subMenuIndex = subMenu.push({
+          default: {
+            const subMenuItem = {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`,
               icon: isCurrentAccessLevelAllowModify ? iconItemEdit : '',
-              param: commandsPackParams(isCurrentAccessLevelAllowModify ? cmdGetInput : cmdNoOperation, dataType, currentItem, enumerationItemAttr, dataTypeExtraId),
+              param: commandsPackParams(isCurrentAccessLevelAllowModify ? (enumerationItemAttr === 'convertValueCode' ? cmdEmptyCommand : cmdGetInput) : cmdNoOperation, dataType, currentItem, enumerationItemAttr, dataTypeExtraId),
               group: enumerationItemAttr.indexOf('icon') === 0 ? 'icon' : menuButtonsDefaultGroup,
-              submenu: [],
-            });
+              submenu: new Array(),
+            };
+            if (isCurrentAccessLevelAllowModify && (enumerationItemAttr === 'convertValueCode')) {
+              let subSubMenuIndex = 0;
+              const currentSubMenuIndex = `${currentIndex}.${subMenuIndex}`;
+              subSubMenuIndex = subMenuItem.submenu.push(menuEditItemMenuItemGenerate(user, currentSubMenuIndex, subSubMenuIndex, `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`, '', dataType, currentItem, enumerationItemAttr, dataTypeExtraId));
+              subMenuItem.submenu.push(menuResetItemMenuItemGenerate(user, currentSubMenuIndex, subSubMenuIndex, dataType, currentItem, enumerationItemAttr, dataTypeExtraId));
+            }
+            subMenuIndex = subMenu.push(subMenuItem);
             break;
+          }
         }
         break;
       }
@@ -7664,7 +7673,7 @@ function menuRenameItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemInd
 
 /**
  * Generates menu item which call the user input for the Rename.
- * @param {object} user - The user object.
+ * @param {object} _user - The user object.
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {string} itemName - The name of the menu item.
@@ -7672,7 +7681,7 @@ function menuRenameItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemInd
  * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}
  */
-function menuEditItemMenuItemGenerate(user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, ...commandParams) {
+function menuEditItemMenuItemGenerate(_user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, ...commandParams) {
   const result = {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: itemName,
@@ -10113,16 +10122,30 @@ async function commandUserInputCallback(user, userInputToProcess) {
   }
   else if (currentCommand === cmdItemReset) {
     switch (currentType) {
-      case dataTypeConfig:
+      case dataTypeConfig: {
         if (! configGlobalOptions.includes(currentItem)) {
           configOptions.deleteUserOption(currentItem, user);
           // logs(`exists = ${JSON.stringify(configOptions.existsOption(currentItem, user))}, currentItem = ${JSON.stringify(configOptions.getOption(currentItem, user))}`, _l)
           menuClearCachedMenuItemsAndRows(user);
         }
         break;
+      }
 
-      default:
+      case dataTypeDeviceAttributes:
+      case dataTypeDeviceButtons: {
+        if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
+          if (typeOf(enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam], 'string')) {
+            enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = '';
+          }
+        }
+        enumerationsSave(dataTypeFunction);
+        menuClearCachedMenuItemsAndRows(user);
         break;
+      }
+
+      default: {
+        break;
+      }
     }
     menuProcessMenuItem(user, undefined, currentMenuPosition);
   }
