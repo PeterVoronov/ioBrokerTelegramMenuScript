@@ -7609,7 +7609,7 @@ const
       else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
         menuItem.submenu = menuFirstLevelMenuGenerate;
-        const subordinatedIds = currentListIds.filter(itemListId => ((itemListId !== itemId) && (itemListId.indexOf(itemId) === 0)));
+        const subordinatedIds = currentListIds.filter(itemListId => (currentList[itemListId].holder ===itemId));
         subordinatedIds.forEach(itemSubordinatedId => {
           const menuSubordinatedItem = menuRootEnumerationMenuItemGenerate(user, enumerationType, currentList, itemSubordinatedId, nameDeclinationKey, true);
           if (menuSubordinatedItem) {
