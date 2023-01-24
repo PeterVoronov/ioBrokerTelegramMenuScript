@@ -4319,12 +4319,12 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     [_cmdId, dataType, currentItem, _paramToSkip, dataTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
-    currentEnumeration = enumerationsGetList(dataType, dataTypeExtraId);
+    currentEnumerationList = enumerationsGetList(dataType, dataTypeExtraId);
   const
-    currentEnumerationItem = currentEnumeration[currentItem],
+    currentEnumerationItem = currentEnumerationList[currentItem],
     currentEnumerationItemEnum = currentEnumerationItem.enum,
     currentIcon = currentEnumerationItem.isEnabled ? (currentEnumerationItem.hasOwnProperty('icon') ? currentEnumerationItem.icon : '') : iconItemDisabled,
-    lastItemIndex = Object.keys(currentEnumeration).length - 1;
+    lastItemIndex = Object.keys(currentEnumerationList).length - 1;
   if (isCurrentAccessLevelAllowModify) {
     if (dataType !== dataTypePrimaryEnums) {
       subMenuIndex = subMenu.push({
@@ -4513,7 +4513,32 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
 
       case 'holder': {
         if (isCurrentAccessLevelAllowModify && currentEnumerationItem.isExternal) {
-          //
+          const
+            subMenuItem = {
+              index: `${currentIndex}.${subMenuIndex}`,
+              name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
+              icon: iconItemEdit,
+              group: enumerationItemAttr.indexOf('icon') === 0 ? 'icon' : menuButtonsDefaultGroup,
+              submenu: new Array(),
+            },
+            currentHolder = currentEnumerationItem[enumerationItemAttr];
+          let subSubMenuIndex = 0;
+          enumerationsGetActiveSubItemsCount(idFunctions).filter(itemId => (! itemId.includes('.'))).forEach(itemId => {
+            const
+              isCurrentHolder = itemId === currentHolder,
+              currentItemName = enumerationsItemName(user, idFunctions, itemId, currentEnumerationList[itemId]),
+              defaultIconOn = configOptions.getOption(cfgDefaultIconOn, user),
+              defaultIconOff = configOptions.getOption(cfgDefaultIconOff, user);
+            subSubMenuIndex = subMenuItem.submenu.push({
+              index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+              name: currentItemName,
+              icon: isCurrentHolder ? defaultIconOn : defaultIconOff,
+              param:  commandsPackParams(cmdItemPress, dataType, currentItem, enumerationItemAttr, dataTypeExtraId, itemId),
+              submenu: [],
+            });
+            if (isCurrentHolder) subMenuItem.name += ` "${currentItemName}`;
+          });
+          subMenuIndex = subMenu.push(subMenuItem);
         }
         break;
       }
@@ -4667,12 +4692,12 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
  * This function return a count of  enabled enumerations items for appropriate
  * primary enum(like `functions', `rooms`, etc)
  * @param {string} enumerationType  - The string defines the enumerationItem type.
- * @param {string} primaryEnumId - The appropriate primary enum Id.
+ * @param {string=} primaryEnumId - The appropriate primary enum Id.
  * @returns {number} The count of items.
  */
 function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
   const extraMenuList = enumerationsList[enumerationType].list;
-  return Object.keys(extraMenuList).filter(itemId => (extraMenuList[itemId].isEnabled  && (extraMenuList[itemId].enum === primaryEnumId))).length;
+  return Object.keys(extraMenuList).filter(itemId => (extraMenuList[itemId].isEnabled  && ((primaryEnumId === undefined) || (extraMenuList[itemId].enum === primaryEnumId)))).length;
 }
 
 /**
@@ -7733,6 +7758,7 @@ function menuEditItemMenuItemGenerate(_user, upperMenuItemIndex, subMenuItemInde
   if (itemGroup) result.group = itemGroup;
   return result;
 }
+
 
 /**
  * Generates menu item which call the user input for Add new item (i.e. set name).
