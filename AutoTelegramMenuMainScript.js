@@ -1422,11 +1422,11 @@ class MenuRoles {
             [ruleMaskPrefix, ruleMaskSuffix] = currentRule.mask.split(rolesIdAndMaskDelimiter),
             isPrefixAny = ruleMaskPrefix === rolesMaskAnyValue,
             isSuffixAny = ruleMaskSuffix === rolesMaskAnyValue,
-            [ruleMaskPrefixParentId, ruleMaskPrefixDescendantId] = ruleMaskPrefix.split('.'),
-            [ruleMaskSuffixParentId, ruleMaskSuffixDescendantId] = ruleMaskSuffix.split('.');
+            [ruleMaskPrefixParentId, ruleMaskPrefixSubordinatedId] = ruleMaskPrefix.split('.'),
+            [ruleMaskSuffixParentId, ruleMaskSuffixSubordinatedId] = ruleMaskSuffix.split('.');
           if (! (isPrefixAny  && isSuffixAny)) {
             if (! isPrefixAny) {
-              if (ruleMaskPrefixDescendantId && (MenuRoles.compareAccessLevels(currentRule.accessLevel, rolesAccessLevelForbidden) < 0) ) {
+              if (ruleMaskPrefixSubordinatedId && (MenuRoles.compareAccessLevels(currentRule.accessLevel, rolesAccessLevelForbidden) < 0) ) {
                 const
                   parentMask = `${ruleMaskPrefixParentId}${rolesIdAndMaskDelimiter}${rolesMaskAnyValue}`,
                   currentParent = compiledData.find(rule => (rule.mask === parentMask));
@@ -1442,7 +1442,7 @@ class MenuRoles {
               }
             }
             if (! isSuffixAny) {
-              if (ruleMaskSuffixDescendantId && (MenuRoles.compareAccessLevels(currentRule.accessLevel, rolesAccessLevelForbidden) < 0)) {
+              if (ruleMaskSuffixSubordinatedId && (MenuRoles.compareAccessLevels(currentRule.accessLevel, rolesAccessLevelForbidden) < 0)) {
                 const
                   parentMask = `${ruleMaskPrefix}${rolesIdAndMaskDelimiter}${ruleMaskSuffixParentId}`,
                   currentParent = compiledData.find(rule => (rule.mask === parentMask));
@@ -1467,10 +1467,10 @@ class MenuRoles {
             [ruleMaskPrefix, ruleMaskSuffix] = currentRule.mask.split(rolesIdAndMaskDelimiter),
             isPrefixAny = ruleMaskPrefix === rolesMaskAnyValue,
             isSuffixAny = ruleMaskSuffix === rolesMaskAnyValue,
-            [ruleMaskPrefixParentId, ruleMaskPrefixDescendantId] = ruleMaskPrefix.split('.'),
-            [ruleMaskSuffixParentId, ruleMaskSuffixDescendantId] = ruleMaskSuffix.split('.'),
-            regexpPrefix = isPrefixAny ? `${regexpAny}+?` : (ruleMaskPrefixDescendantId ? `${ruleMaskPrefixParentId}\\.${ruleMaskPrefixDescendantId}` :  `${ruleMaskPrefixParentId}${regexpAny}*?`),
-            regexpSuffix = isSuffixAny ? `${regexpAny}+?` : (ruleMaskSuffixDescendantId ? `${ruleMaskSuffixParentId}\\.${ruleMaskSuffixDescendantId}` : `${ruleMaskSuffixParentId}${regexpAny}*?`);
+            [ruleMaskPrefixParentId, ruleMaskPrefixSubordinatedId] = ruleMaskPrefix.split('.'),
+            [ruleMaskSuffixParentId, ruleMaskSuffixSubordinatedId] = ruleMaskSuffix.split('.'),
+            regexpPrefix = isPrefixAny ? `${regexpAny}+?` : (ruleMaskPrefixSubordinatedId ? `${ruleMaskPrefixParentId}\\.${ruleMaskPrefixSubordinatedId}` :  `${ruleMaskPrefixParentId}${regexpAny}*?`),
+            regexpSuffix = isSuffixAny ? `${regexpAny}+?` : (ruleMaskSuffixSubordinatedId ? `${ruleMaskSuffixParentId}\\.${ruleMaskSuffixSubordinatedId}` : `${ruleMaskSuffixParentId}${regexpAny}*?`);
         currentRule.maskInverted = `${ruleMaskSuffix}${rolesIdAndMaskDelimiter}${ruleMaskPrefix}`;
         currentRule.regexpDirect = new RegExp(`^${regexpPrefix}\\${rolesIdAndMaskDelimiter}${regexpSuffix}$`);
         currentRule.regexpDirectHalf = new RegExp(isPrefixAny ?  `${regexpAny}+?` : (isSuffixAny || (MenuRoles.compareAccessLevels(currentRule.accessLevel, rolesAccessLevelForbidden) !== 0) ? `^${regexpPrefix}$` : '^$'));
@@ -1611,18 +1611,18 @@ class MenuRoles {
     const rootMenu = menuRootMenuItemGenerate(null);
     let [maskPrefix, maskSuffix] = mask.split(rolesIdAndMaskDelimiter);
     if (maskPrefix !== rolesMaskAnyValue) {
-      const [maskPrefixParentId, maskPrefixDescendantId] = maskPrefix.split('.');
+      const [maskPrefixParentId, maskPrefixSubordinatedId] = maskPrefix.split('.');
       let menuItem = rootMenu.submenu.find(item => item.id === maskPrefixParentId);
       if (menuItem && menuItem.hasOwnProperty('name')) {
         maskPrefix = menuItem.name;
-        if (maskPrefixDescendantId) {
-          const menuItemDescendant = menuItem.descendants.find(item => item.id === maskPrefixDescendantId);
-          if (menuItemDescendant && menuItemDescendant.hasOwnProperty('name')) {
-            maskPrefix += `.${menuItemDescendant.name}`;
-            menuItem = menuItemDescendant;
+        if (maskPrefixSubordinatedId) {
+          const menuItemSubordinated = menuItem.subordinates.find(item => item.id === maskPrefixSubordinatedId);
+          if (menuItemSubordinated && menuItemSubordinated.hasOwnProperty('name')) {
+            maskPrefix += `.${menuItemSubordinated.name}`;
+            menuItem = menuItemSubordinated;
           }
           else {
-            maskPrefix += `.${maskPrefixDescendantId}`;
+            maskPrefix += `.${maskPrefixSubordinatedId}`;
           }
         }
       }
@@ -1632,16 +1632,16 @@ class MenuRoles {
         isMenuFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst),
         secondLevelDataType = isMenuFunctionsFirst ? dataTypeDestination : dataTypeFunction,
         secondLevelList = enumerationsList[secondLevelDataType].list,
-        [maskSuffixParentId, maskSuffixDescendantId] = maskSuffix.split('.');
+        [maskSuffixParentId, maskSuffixSubordinatedId] = maskSuffix.split('.');
       if (Object.keys(secondLevelList).includes(maskSuffixParentId)) {
-        if (maskSuffixDescendantId) {
+        if (maskSuffixSubordinatedId) {
           maskSuffix = Object.keys(secondLevelList).includes(maskSuffix) && secondLevelList[maskSuffix].hasOwnProperty('name')
             ? translationsGetEnumName(user, secondLevelDataType, maskSuffix)
-            : maskSuffixDescendantId;
+            : maskSuffixSubordinatedId;
         }
         maskSuffix = `${(secondLevelList[maskSuffixParentId].hasOwnProperty('name')
           ? translationsGetEnumName(user, secondLevelDataType, maskSuffixParentId)
-          : maskSuffixParentId)}${maskSuffixDescendantId ? `.${maskSuffix}` : ''}`;
+          : maskSuffixParentId)}${maskSuffixSubordinatedId ? `.${maskSuffix}` : ''}`;
 
       }
       else {
@@ -1798,9 +1798,9 @@ class MenuRoles {
       if (parentItemId) jumpArray.unshift(jumpToUp);
       let subIndex = 0;
       if (menuItemToProcess.hasOwnProperty(enumId)) {
-        if (menuItemToProcess.hasOwnProperty('descendants')) {
-          menuItemToProcess.descendants.forEach(descendantItem => {
-            subIndex = resultItem.submenu.push(menuGenerateItemWithSubMenus(user, descendantItem, `${currentIndex}.${subIndex}`, menuItemToProcess.id));
+        if (menuItemToProcess.hasOwnProperty('subordinates')) {
+          menuItemToProcess.subordinates.forEach(subordinatedItem => {
+            subIndex = resultItem.submenu.push(menuGenerateItemWithSubMenus(user, subordinatedItem, `${currentIndex}.${subIndex}`, menuItemToProcess.id));
           });
         }
         secondLevelListIds.forEach(itemId => {
@@ -7548,18 +7548,18 @@ const
    * @param {object} currentEnumeration - The list of menu items for the appropriate enumerationType.
    * @param {string} itemId - The Id of the menu item.
    * @param {string} nameDeclinationKey - The "declination" key for the Name (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
-   * @param {boolean=} isDescendant - The indicator, if this menu item has a parent one.
+   * @param {boolean=} isSubordinated - The indicator, if this menu item has a parent one.
    * @returns {object} Newly generated root menu item.
    */
-  function menuRootEnumerationMenuItemGenerate(user, enumerationType, currentEnumeration, itemId, nameDeclinationKey, isDescendant) {
-    if (isDescendant || (! itemId.includes('.')) ) {
+  function menuRootEnumerationMenuItemGenerate(user, enumerationType, currentEnumeration, itemId, nameDeclinationKey, isSubordinated) {
+    if (isSubordinated || (! itemId.includes('.')) ) {
       const
         currentItem = currentEnumeration[itemId],
         menuItem = {
           icon: currentItem.icon,
-          id: isDescendant ? itemId.split('.').pop() : itemId,
+          id: isSubordinated ? itemId.split('.').pop() : itemId,
           [currentEnumId]: itemId,
-          descendants: new Array(),
+          subordinates: new Array(),
           group: currentItem.group ? currentItem.group : menuButtonsDefaultGroup,
         };
       if (currentItem.isExternal) {
@@ -7570,16 +7570,16 @@ const
       else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
         menuItem.submenu = menuFirstLevelMenuGenerate;
-        const descendantIds = currentListIds.filter(itemListId => ((itemListId !== itemId) && (itemListId.indexOf(itemId) === 0)));
-        descendantIds.forEach(itemDescendantId => {
-          const menuDescendantItem = menuRootEnumerationMenuItemGenerate(user, enumerationType, currentList, itemDescendantId, nameDeclinationKey, true);
-          if (menuDescendantItem) {
-            menuItem.descendants.push(menuDescendantItem);
+        const subordinatedIds = currentListIds.filter(itemListId => ((itemListId !== itemId) && (itemListId.indexOf(itemId) === 0)));
+        subordinatedIds.forEach(itemSubordinatedId => {
+          const menuSubordinatedItem = menuRootEnumerationMenuItemGenerate(user, enumerationType, currentList, itemSubordinatedId, nameDeclinationKey, true);
+          if (menuSubordinatedItem) {
+            menuItem.subordinates.push(menuSubordinatedItem);
           }
         });
       }
       const menuItemAccessLevel = user && user.userId  ? usersInMenu.getMenuItemAccess(user.userId, itemId, (! currentItem.isExternal) && inverseMasks) : '';
-      if ((menuItem.descendants.length > 0) || (user === null) || ((isMenuFastGeneration ) && menuItemAccessLevel && (MenuRoles.compareAccessLevels(menuItemAccessLevel, rolesAccessLevelForbidden) < 0))) {
+      if ((menuItem.subordinates.length > 0) || (user === null) || ((isMenuFastGeneration ) && menuItemAccessLevel && (MenuRoles.compareAccessLevels(menuItemAccessLevel, rolesAccessLevelForbidden) < 0))) {
         return menuItem;
       }
       else if (menuItemAccessLevel && (! MenuRoles.accessLevelsPreventToShow.includes(menuItemAccessLevel))) {
@@ -7869,10 +7869,10 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
       currentIcons = isFunctionsFirst ? {on: primaryMenuItem.iconOn, off: primaryMenuItem.iconOff} : {},
       currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
     // logs(`currentLevelMenuItemsList = ${JSON.stringify(currentLevelMenuItemsList)}`);
-    if (menuItemToProcess.hasOwnProperty('descendants') && typeOf(menuItemToProcess.descendants, 'array') && menuItemToProcess.descendants.length) {
-      const currentMenuItemDescendants = menuMakeMenuIndexed(menuItemToProcess.descendants, currentIndex);
-      if (currentMenuItemDescendants && typeOf(currentMenuItemDescendants, 'array') && currentMenuItemDescendants.length)
-        currentMenuItemDescendants.forEach(descendantItem => subMenu.push({...descendantItem, parentId: primaryLevelMenuItemId, group: 'descendants'}));
+    if (menuItemToProcess.hasOwnProperty('subordinates') && typeOf(menuItemToProcess.subordinates, 'array') && menuItemToProcess.subordinates.length) {
+      const currentMenuItemSubordinates = menuMakeMenuIndexed(menuItemToProcess.subordinates, currentIndex);
+      if (currentMenuItemSubordinates && typeOf(currentMenuItemSubordinates, 'array') && currentMenuItemSubordinates.length)
+        currentMenuItemSubordinates.forEach(subordinatedItem => subMenu.push({...subordinatedItem, parentId: primaryLevelMenuItemId, group: 'subordinates'}));
     }
     /** this way to find an objects only by function and then filter by dest/destEnum, is a ten times faster than include destEnum in search pattern
      like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`) */
@@ -7899,7 +7899,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
     // logs(`deviceList = ${JSON.stringify(deviceList, null, 2)}`, _l)
     Object.keys(deviceList).sort((a, b) => (secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)).forEach((currentLevelMenuItemId) => {
       if (currentLevelMenuItemId && currentLevelMenuItemId.includes('.')) {
-        const [parentId, _descendantId] = currentLevelMenuItemId.split('.');
+        const [parentId, _subordinatedId] = currentLevelMenuItemId.split('.');
         if (! Object.keys(deviceList).includes(parentId)) {
           deviceList[parentId] = [];
         }
@@ -7968,13 +7968,13 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
         }
         currentMenuItem.submenu = menuAddNavigationLeftRightToSubMenu(user, currentMenuItem.submenu);
         if (currentLevelMenuItemId.includes('.')) {
-          const [parentId, descendantId] = currentLevelMenuItemId.split('.');
+          const [parentId, subordinatedId] = currentLevelMenuItemId.split('.');
           let parentItem = subMenu.find(subMenuItem => ((subMenuItem[secondaryEnumId] === parentId)));
           if (parentItem ) {
             const parentSubMenu = parentItem.submenu;
             currentMenuItem.parentId = parentId;
-            currentMenuItem.id = descendantId;
-            currentMenuItem.group += 'descendants';
+            currentMenuItem.id = subordinatedId;
+            currentMenuItem.group += 'subordinates';
             let firstDeviceIndex = 0;
             for(firstDeviceIndex; firstDeviceIndex < parentSubMenu.length; firstDeviceIndex++) {
               if (! parentSubMenu[firstDeviceIndex].parentId) {
@@ -8801,8 +8801,8 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
       if (inputMenu[key].hasOwnProperty('externalMenuParams') ) {
         newMenuRowItem.externalMenuParams = inputMenu[key].externalMenuParams;
       }
-      if (inputMenu[key].hasOwnProperty('descendants') ) {
-        newMenuRowItem.descendants = [...inputMenu[key].descendants];
+      if (inputMenu[key].hasOwnProperty('subordinates') ) {
+        newMenuRowItem.subordinates = [...inputMenu[key].subordinates];
       }
       if (inputMenu[key].hasOwnProperty('navigationParams') ) {
         newMenuRowItem.navigationParams = [...inputMenu[key].navigationParams];
