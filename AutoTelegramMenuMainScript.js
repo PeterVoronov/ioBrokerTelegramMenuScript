@@ -4318,29 +4318,29 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    [_cmdId, dataType, currentItem, _paramToSkip, dataTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
-    currentEnumerationList = enumerationsGetList(dataType, dataTypeExtraId);
+    [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
+    currentEnumerationList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
   const
     currentEnumerationItem = currentEnumerationList[currentItem],
     currentEnumerationItemEnum = currentEnumerationItem.enum,
     currentIcon = currentEnumerationItem.isEnabled ? (currentEnumerationItem.hasOwnProperty('icon') ? currentEnumerationItem.icon : '') : iconItemDisabled,
     lastItemIndex = Object.keys(currentEnumerationList).length - 1;
   if (isCurrentAccessLevelAllowModify) {
-    if (dataType !== dataTypePrimaryEnums) {
+    if (enumerationType !== dataTypePrimaryEnums) {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${translationsItemTextGet(user, currentEnumerationItem.isEnabled ? 'SwitchOff' : 'SwitchOn')}`,
         icon: currentIcon,
-        param: commandsPackParams(cmdItemPress, dataType, currentItem, 'isEnabled', dataTypeExtraId),
+        param: commandsPackParams(cmdItemPress, enumerationType, currentItem, 'isEnabled', enumerationTypeExtraId),
         group: 'topRows',
         submenu: [],
       } );
     }
-    [subMenu,  subMenuIndex] = menuMoveItemUpDownMenuPartGenerate(user, subMenu, currentIndex, subMenuIndex, currentEnumerationItem.order, lastItemIndex, 'topRows', dataType, currentItem, dataTypeExtraId);
+    [subMenu,  subMenuIndex] = menuMoveItemUpDownMenuPartGenerate(user, subMenu, currentIndex, subMenuIndex, currentEnumerationItem.order, lastItemIndex, 'topRows', enumerationType, currentItem, enumerationTypeExtraId);
   }
   // logs(` = ${JSON.stringify(currentEnumerationItem)}`, _l);
   let enumerationItemAttrs = Object.keys(currentEnumerationItem);
-  switch (dataType) {
+  switch (enumerationType) {
     case dataTypeFunction:
       if (! currentEnumerationItem.isExternal) {
         enumerationItemAttrs.splice(enumerationItemAttrs.indexOf('deviceAttributes'), 0, 'devicesTranslation');
@@ -4431,14 +4431,14 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
       case 'name': {
         if (isCurrentAccessLevelAllowModify) {
           if ((enumerationItemAttrs.includes('nameTranslationId')) && currentEnumerationItem['nameTranslationId']) {
-            subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataTypeTranslation, translationsGetEnumId(user, dataType, currentItem, enumerationsNamesMain)));
+            subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataTypeTranslation, translationsGetEnumId(user, enumerationType, currentItem, enumerationsNamesMain)));
           }
           else {
-            subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, dataType, currentItem, 'names', enumerationsNamesMain));
+            subMenuIndex = subMenu.push(menuRenameItemMenuItemGenerate(user,`${currentIndex}`, subMenuIndex, enumerationType, currentItem, 'names', enumerationsNamesMain));
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
-              param: commandsPackParams(cmdItemNameGet, dataType, currentItem, enumerationItemAttr),
+              param: commandsPackParams(cmdItemNameGet, enumerationType, currentItem, enumerationItemAttr),
               submenu: [],
             });
           }
@@ -4462,9 +4462,9 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
             tmpKeys.forEach(namesKey => {
               namesSub = namesItem.submenu.push({
                 index: `${currentIndex}.${subMenuIndex}.${namesSub}`,
-                name: `${translationsItemCoreGet(user, 'cmdItemRename')} "${translationsItemTextGet(user, namesKey)}" (${translationsGetEnumName(user, dataType, currentItem, namesKey)})`,
+                name: `${translationsItemCoreGet(user, 'cmdItemRename')} "${translationsItemTextGet(user, namesKey)}" (${translationsGetEnumName(user, enumerationType, currentItem, namesKey)})`,
                 icon: isCurrentAccessLevelAllowModify ? iconItemEdit : '',
-                param: commandsPackParams(isCurrentAccessLevelAllowModify ? cmdGetInput : cmdNoOperation, dataType, currentItem, 'names', namesKey),
+                param: commandsPackParams(isCurrentAccessLevelAllowModify ? cmdGetInput : cmdNoOperation, enumerationType, currentItem, 'names', namesKey),
                 submenu: [],
               });
             });
@@ -4481,7 +4481,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
           icon: iconItemEdit,
         };
         if (isCurrentAccessLevelAllowModify) {
-          groupItem.param = commandsPackParams(cmdEmptyCommand, dataType, currentItem, dataTypeExtraId);
+          groupItem.param = commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationTypeExtraId);
           groupItem.submenu = enumerationItemGroupsMenuGenerate;
         }
         else {
@@ -4523,17 +4523,15 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
             },
             currentHolder = currentEnumerationItem[enumerationItemAttr];
           let subSubMenuIndex = 0;
-          enumerationsGetActiveSubItemsCount(idFunctions).filter(itemId => (! itemId.includes('.'))).forEach(itemId => {
+          Object.keys(currentEnumerationList).filter(itemId => (! itemId.includes('.') && (itemId !== currentItem) && currentEnumerationList[itemId].isEnabled)).forEach(itemId => {
             const
               isCurrentHolder = itemId === currentHolder,
-              currentItemName = enumerationsItemName(user, idFunctions, itemId, currentEnumerationList[itemId]),
-              defaultIconOn = configOptions.getOption(cfgDefaultIconOn, user),
-              defaultIconOff = configOptions.getOption(cfgDefaultIconOff, user);
+              currentItemName = enumerationsItemName(user, enumerationType, itemId, currentEnumerationList[itemId]);
             subSubMenuIndex = subMenuItem.submenu.push({
               index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
               name: currentItemName,
-              icon: isCurrentHolder ? defaultIconOn : defaultIconOff,
-              param:  commandsPackParams(cmdItemPress, dataType, currentItem, enumerationItemAttr, dataTypeExtraId, itemId),
+              icon: isCurrentHolder ? iconItemCheckMark : '',
+              param:  commandsPackParams(cmdItemPress, enumerationType, currentItem, enumerationItemAttr, '', itemId),
               submenu: [],
             });
             if (isCurrentHolder) subMenuItem.name += ` "${currentItemName}`;
@@ -4548,7 +4546,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)} (${currentEnumerationItem[enumerationItemAttr] ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user) })`,
-              param:  commandsPackParams(isCurrentAccessLevelAllowModify ? cmdItemPress : cmdNoOperation, dataType, currentItem, enumerationItemAttr, dataTypeExtraId),
+              param:  commandsPackParams(isCurrentAccessLevelAllowModify ? cmdItemPress : cmdNoOperation, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId),
               submenu: [],
             });
             break;
@@ -4559,15 +4557,15 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`,
               icon: isCurrentAccessLevelAllowModify ? iconItemEdit : '',
-              param: commandsPackParams(isCurrentAccessLevelAllowModify ? (enumerationItemAttributesWithReset.includes(enumerationItemAttr) ? cmdEmptyCommand : cmdGetInput) : cmdNoOperation, dataType, currentItem, enumerationItemAttr, dataTypeExtraId),
+              param: commandsPackParams(isCurrentAccessLevelAllowModify ? (enumerationItemAttributesWithReset.includes(enumerationItemAttr) ? cmdEmptyCommand : cmdGetInput) : cmdNoOperation, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId),
               group: enumerationItemAttr.indexOf('icon') === 0 ? 'icon' : menuButtonsDefaultGroup,
               submenu: new Array(),
             };
             if (isCurrentAccessLevelAllowModify && (enumerationItemAttributesWithReset.includes(enumerationItemAttr))) {
               let subSubMenuIndex = 0;
               const currentSubMenuIndex = `${currentIndex}.${subMenuIndex}`;
-              subSubMenuIndex = subMenuItem.submenu.push(menuEditItemMenuItemGenerate(user, currentSubMenuIndex, subSubMenuIndex, `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`, '', dataType, currentItem, enumerationItemAttr, dataTypeExtraId));
-              subMenuItem.submenu.push(menuResetItemMenuItemGenerate(user, currentSubMenuIndex, subSubMenuIndex, dataType, currentItem, enumerationItemAttr, dataTypeExtraId));
+              subSubMenuIndex = subMenuItem.submenu.push(menuEditItemMenuItemGenerate(user, currentSubMenuIndex, subSubMenuIndex, `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`, '', enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId));
+              subMenuItem.submenu.push(menuResetItemMenuItemGenerate(user, currentSubMenuIndex, subSubMenuIndex, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId));
             }
             subMenuIndex = subMenu.push(subMenuItem);
             break;
@@ -4578,15 +4576,15 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
     }
   }
   if (isCurrentAccessLevelAllowModify){
-    switch (dataType) {
+    switch (enumerationType) {
       case dataTypeDeviceAttributes:
       case dataTypeDeviceButtons: {
         const
-          currentFunction = enumerationsList[dataTypeFunction].list[dataTypeExtraId],
-          translationType = `${enumerationsList[dataTypeFunction].id}.${currentFunction.enum}.${dataTypeExtraId.replace('.', '_')}`,
+          currentFunction = enumerationsList[dataTypeFunction].list[enumerationTypeExtraId],
+          translationType = `${enumerationsList[dataTypeFunction].id}.${currentFunction.enum}.${enumerationTypeExtraId.replace('.', '_')}`,
           currentTranslation = translationsPointOnItemOwner(user, translationType, true),
-          currentIds = currentItem === currentFunction.state ? ( dataType === dataTypeDeviceButtons ? [currentItem, translationsPrimaryStateId] : [currentItem]) : (enumerationsDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
-        if (dataType === dataTypeDeviceButtons) {
+          currentIds = currentItem === currentFunction.state ? ( enumerationType === dataTypeDeviceButtons ? [currentItem, translationsPrimaryStateId] : [currentItem]) : (enumerationsDeviceBasicAttributes.includes(currentItem) ? [] : [currentItem]);
+        if (enumerationType === dataTypeDeviceButtons) {
           enumerationsDeviceButtonsAccessLevelAttrs.forEach(accessLevelsAttr => {
             const subMenuItem = {
               index: `${currentIndex}.${subMenuIndex}`,
@@ -4600,7 +4598,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
                 index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                 name: `[${translationsItemTextGet(user, enumerationsConvertButtonToAttribute)}]`,
                 icon: currentEnumerationItem[accessLevelsAttr] === enumerationsConvertButtonToAttribute ? iconItemAttribute : iconItemButton,
-                param: commandsPackParams(cmdItemPress, dataType, currentItem, accessLevelsAttr, dataTypeExtraId, enumerationsConvertButtonToAttribute),
+                param: commandsPackParams(cmdItemPress, enumerationType, currentItem, accessLevelsAttr, enumerationTypeExtraId, enumerationsConvertButtonToAttribute),
                 submenu: []
               });
             }
@@ -4610,7 +4608,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
                   index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                   name: `[${translationsItemTextGet(user, 'AccessLevel', accessLevel)}]`,
                   icon: accessLevel === currentEnumerationItem[accessLevelsAttr] ? MenuRoles.accessLevelsIcons[levelIndex] : iconItemButton,
-                  param: commandsPackParams(cmdItemPress, dataType, currentItem, accessLevelsAttr, dataTypeExtraId, accessLevel),
+                  param: commandsPackParams(cmdItemPress, enumerationType, currentItem, accessLevelsAttr, enumerationTypeExtraId, accessLevel),
                   submenu: []
                 });
               }
@@ -4676,12 +4674,12 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
         break;
       }
     }
-    if (((dataType === dataTypePrimaryEnums) && (enumerationsGetActiveSubItemsCount(dataTypeExtraId, currentItem) === 0)) ||
-      ((dataType !== dataTypePrimaryEnums) &&
-      ((configOptions.getOption(cfgAllowToDeleteEmptyEnums) && enumerationsIsItemCanBeDeleted(dataType, currentItem, true)) || (enumerationsIsItemCanBeDeleted(dataType, currentItem, false))
+    if (((enumerationType === dataTypePrimaryEnums) && (enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, currentItem) === 0)) ||
+      ((enumerationType !== dataTypePrimaryEnums) &&
+      ((configOptions.getOption(cfgAllowToDeleteEmptyEnums) && enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) || (enumerationsIsItemCanBeDeleted(enumerationType, currentItem, false))
       ))
       )
-      subMenuIndex = subMenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}`, subMenuIndex, dataType, currentItem, dataTypeExtraId));
+      subMenuIndex = subMenu.push(menuDeleteItemMenuItemGenerate(user, `${currentIndex}`, subMenuIndex, enumerationType, currentItem, enumerationTypeExtraId));
   }
   [subMenu,  subMenuIndex] = menuNavigationLeftRightMenuPartGenerate(user, subMenu, currentIndex, subMenuIndex, currentEnumerationItem.order, lastItemIndex);
   // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
@@ -4767,7 +4765,7 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
   }
   currentItemDetailsList.push({
     label: translationsItemTextGet(user, 'holder'),
-    valueString: currentEnumerationItem.holder && currentEnumerationItem.hasOwnProperty(currentEnumerationItem.holder) ? enumerationsItemName(user, enumerationType, currentEnumerationItem.holder, currentEnumeration[currentEnumerationItem.holder]) : ''
+    valueString: currentEnumerationItem.holder && currentEnumeration.hasOwnProperty(currentEnumerationItem.holder) ? enumerationsItemName(user, enumerationType, currentEnumerationItem.holder, currentEnumeration[currentEnumerationItem.holder]) : ''
   });
 
   if (enumerationType === dataTypePrimaryEnums) {
@@ -7591,9 +7589,10 @@ const
    * @returns {object} Newly generated root menu item.
    */
   function menuRootEnumerationMenuItemGenerate(user, enumerationType, currentEnumeration, itemId, nameDeclinationKey, isSubordinated) {
-    if (isSubordinated || (! itemId.includes('.')) ) {
+    let result = null;
+    const currentItem = currentEnumeration[itemId];
+    if (isSubordinated || (! currentItem.holder)) {
       const
-        currentItem = currentEnumeration[itemId],
         menuItem = {
           icon: currentItem.icon,
           id: isSubordinated ? itemId.split('.').pop() : itemId,
@@ -7601,6 +7600,10 @@ const
           subordinates: new Array(),
           group: currentItem.group ? currentItem.group : menuButtonsDefaultGroup,
         };
+      if (currentItem.holder) {
+        menuItem.holderId = currentItem.holder;
+        menuItem.group = 'subordinates';
+      }
       if (currentItem.isExternal) {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId));
         menuItem.externalMenu = currentItem.state;
@@ -7609,7 +7612,7 @@ const
       else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
         menuItem.submenu = menuFirstLevelMenuGenerate;
-        const subordinatedIds = currentListIds.filter(itemListId => (currentList[itemListId].holder ===itemId));
+        const subordinatedIds = currentListIds.filter(itemListId => (currentList[itemListId].holder === itemId));
         subordinatedIds.forEach(itemSubordinatedId => {
           const menuSubordinatedItem = menuRootEnumerationMenuItemGenerate(user, enumerationType, currentList, itemSubordinatedId, nameDeclinationKey, true);
           if (menuSubordinatedItem) {
@@ -7619,18 +7622,18 @@ const
       }
       const menuItemAccessLevel = user && user.userId  ? usersInMenu.getMenuItemAccess(user.userId, itemId, (! currentItem.isExternal) && inverseMasks) : '';
       if ((menuItem.subordinates.length > 0) || (user === null) || ((isMenuFastGeneration ) && menuItemAccessLevel && (MenuRoles.compareAccessLevels(menuItemAccessLevel, rolesAccessLevelForbidden) < 0))) {
-        return menuItem;
+        result = menuItem;
       }
       else if (menuItemAccessLevel && (! MenuRoles.accessLevelsPreventToShow.includes(menuItemAccessLevel))) {
         if (typeOf(menuItem.submenu) === 'function') {
           const subMenu = menuItem.submenu(user, menuItem);
           if (subMenu.length) {
-            return menuItem;
+            result =  menuItem;
           }
         }
       }
     }
-    return null;
+    return result;
   }
 
 
@@ -7910,9 +7913,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
       currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
     // logs(`currentLevelMenuItemsList = ${JSON.stringify(currentLevelMenuItemsList)}`);
     if (menuItemToProcess.hasOwnProperty('subordinates') && typeOf(menuItemToProcess.subordinates, 'array') && menuItemToProcess.subordinates.length) {
-      const currentMenuItemSubordinates = menuMakeMenuIndexed(menuItemToProcess.subordinates, currentIndex);
-      if (currentMenuItemSubordinates && typeOf(currentMenuItemSubordinates, 'array') && currentMenuItemSubordinates.length)
-        currentMenuItemSubordinates.forEach(subordinatedItem => subMenu.push({...subordinatedItem, holderId: primaryLevelMenuItemId, group: 'subordinates'}));
+      subMenu = menuMakeMenuIndexed(menuItemToProcess.subordinates, currentIndex);
     }
     /** this way to find an objects only by function and then filter by dest/destEnum, is a ten times faster than include destEnum in search pattern
      like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`) */
@@ -8041,9 +8042,13 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
   // logs(`subMenu Pre = ${JSON.stringify(subMenu, null, 1)}`, _l);
   if (subMenu.length) {
     for (const subMenuIndex of subMenu.keys()) {
-      const currentSubMenu = subMenu[subMenuIndex].submenu;
-      if (typeOf(currentSubMenu) === 'array' && (currentSubMenu.length === 0)) {
-        delete subMenu[subMenuIndex];
+      const
+        currentSubMenuItem = subMenu[subMenuIndex],
+        currentSubMenuItemSubmenu = currentSubMenuItem.submenu;
+      if (typeOf(currentSubMenuItemSubmenu,'array') && (currentSubMenuItemSubmenu.length === 0)) {
+        if (! (currentSubMenuItem.hasOwnProperty('externalMenu')) || (! currentSubMenuItem.externalMenu)) {
+          delete subMenu[subMenuIndex];
+        }
       }
     }
     subMenu = subMenu.filter(item => (item));
@@ -8844,6 +8849,9 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
       if (inputMenu[key].hasOwnProperty('subordinates') ) {
         newMenuRowItem.subordinates = [...inputMenu[key].subordinates];
       }
+      if (inputMenu[key].hasOwnProperty('holderId') ) {
+        newMenuRowItem.holderId = inputMenu[key].holderId;
+      }
       if (inputMenu[key].hasOwnProperty('navigationParams') ) {
         newMenuRowItem.navigationParams = [...inputMenu[key].navigationParams];
       }
@@ -9459,18 +9467,37 @@ async function commandUserInputCallback(user, userInputToProcess) {
       case dataTypeReport:
       case dataTypeDeviceAttributes:
       case dataTypeDeviceButtons: {
-        const currentList = enumerationsSubTypes.includes(currentType) && currentValue ? enumerationsList[dataTypeFunction].list[currentValue][currentType] : enumerationsList[currentType].list;
-        if (enumerationsSubTypes.includes(currentType) && enumerationsDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
-          currentList[currentItem][currentParam] = currentSubParam;
-        }
-        else {
-          currentList[currentItem][currentParam] = ! currentList[currentItem][currentParam];
-          if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[currentItem][currentParam]) {
-            enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceAttributes, false);
-            enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceButtons, true);
+        const
+          currentList = enumerationsGetList(currentType, currentValue),
+          currentDataItem = currentList[currentItem];
+        if (currentParam !== undefined) {
+          if (enumerationsSubTypes.includes(currentType) && enumerationsDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
+            currentDataItem[currentParam] = currentSubParam;
           }
+          else {
+            switch (typeOf(currentDataItem[currentParam])) {
+              case 'boolean': {
+                if (currentSubParam === undefined) {
+                  currentDataItem[currentParam] = ! currentDataItem[currentParam];
+                }
+
+                break;
+              }
+
+              default: {
+                if (currentSubParam) {
+                  currentDataItem[currentParam] = currentDataItem[currentParam] === currentSubParam ? '' : currentSubParam;
+                }
+                break;
+              }
+            }
+            if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[currentItem][currentParam]) {
+              enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceAttributes, false);
+              enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceButtons, true);
+            }
+          }
+          enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
         }
-        enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
         break;
       }
 
