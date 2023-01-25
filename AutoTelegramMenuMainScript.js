@@ -110,8 +110,9 @@ const
   //*** Data type constants ***//
   dataTypeTranslation                   = 'transl',
   dataTypePrimaryEnums                  = 'enums',
-  dataTypeDestination                   = 'dest',
+  dataTypeDestination                   = 'dests',
   dataTypeFunction                      = 'funcs',
+  dataTypeExtension                     = 'extensions',
   dataTypeConfig                        = 'conf',
   dataTypeReport                        = 'reps',
   dataTypeReportMember                  = 'repMemb',
@@ -140,7 +141,7 @@ const
   idSimpleReports                       = 'simpleReports',
   idConfig                              = 'config',
   idTranslation                         = 'translation',
-  idExternal                            = prefixExternalStates,
+  idExternal                            = dataTypeExtension,
   idAlerts                              = 'alerts',
 
   //*** Items default delimiter ***//
@@ -3112,6 +3113,7 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
         currentEnumerationList = enumerationsList[enumerationType].list,
         currentEnum = currentEnumerationList[enumId],
         enumPrefix = `${currentEnumerations.id}.${currentEnum.enum}.${enumId.replace('.', '_')}`;
+        // logs(`currentEnum.isExternal = ${currentEnum.isExternal}, ${currentEnum.nameTranslationId}, currentEnum.translationsKeys ${currentEnum.translationsKeys}`, _l)
       if (currentEnum.isExternal && currentEnum.nameTranslationId && currentEnum.translationsKeys && currentEnum.translationsKeys.includes(currentEnum.nameTranslationId)) {
         result = `${enumPrefix}.${translationsSubPrefix}.${currentEnum.nameTranslationId}`;
       }
@@ -3959,6 +3961,63 @@ const
   enumerationsFunctionNotFound = 'noFunction',
   enumerationsConvertButtonToAttribute = 'useButtonAsAttribute',
   enumerationsEditEnums = 'editEnums',
+  enumerationsDefaultObjects = {
+    [dataTypeFunction] : {
+      isAvailable : true,
+      isEnabled : false,
+      isExternal: false,
+      order : 0,
+      holder: '',
+      state: 'state',
+      availableState: '',
+      icon: '🔆',
+      enum: idFunctions,
+      name: enumerationsNamesMain,
+      names: [enumerationsNamesBasic, enumerationsNamesMany],
+      group: '',
+      deviceAttributes: `state:${enumerationsDeviceBasicAttributes}`,
+      deviceButtons: {},
+      simplifyMenuWithOneDevice: false,
+      showDestNameOnSimplify: true,
+      statesInFolders: false,
+      iconOn: configOptions.getOption(cfgDefaultIconOn),
+      iconOff: configOptions.getOption(cfgDefaultIconOff)
+    },
+    [dataTypeExtension] : {
+      isAvailable : true,
+      isEnabled : false,
+      isExternal: false,
+      order : 0,
+      holder: '',
+      state: 'state',
+      icon: '👾',
+      enum: idExternal,
+      translationsKeys: [],
+      nameTranslationId: '',
+      group: '',
+    },
+    [dataTypeDestination]: {
+      isAvailable : true,
+      isEnabled : false,
+      enum: '',
+      icon: '',
+      name: enumerationsNamesMain,
+      names: [enumerationsNamesBasic, enumerationsNamesInside, enumerationsNamesEnterTo, enumerationsNamesExitFrom],
+      group: '',
+      order : 0,
+    },
+    [dataTypeReport]: {
+      isAvailable : true,
+      isEnabled : false,
+      enum: idSimpleReports,
+      name: enumerationsNamesMain,
+      group: '',
+      alwaysExpanded: false,
+      graphsEnabled: false,
+      order : 0,
+      icon: 'ℹ️'
+    }
+  },
   enumerationsList = {
     [dataTypeFunction]: {
       list: {},
@@ -3972,29 +4031,6 @@ const
       },
       state: `${prefixPrimary}.${idFunctions}`,
       icon: '⚛️',
-      defaultObject: {
-        isAvailable : true,
-        isEnabled : false,
-        isExternal: false,
-        order : 0,
-        holder: '',
-        state: 'state',
-        availableState: '',
-        icon: '🔆',
-        enum: idFunctions,
-        name: enumerationsNamesMain,
-        nameTranslationId: undefined,
-        names: [enumerationsNamesBasic, enumerationsNamesMany],
-        translationsKeys: undefined,
-        group: '',
-        deviceAttributes: `state:${enumerationsDeviceBasicAttributes}`,
-        deviceButtons: {},
-        simplifyMenuWithOneDevice: false,
-        showDestNameOnSimplify: true,
-        statesInFolders: false,
-        iconOn: configOptions.getOption(cfgDefaultIconOn),
-        iconOff: configOptions.getOption(cfgDefaultIconOff)
-      }
     },
     [dataTypeDestination]: {
       list: {},
@@ -4013,16 +4049,6 @@ const
       },
       state: `${prefixPrimary}.${idDestinations}`,
       icon: '🏢',
-      defaultObject: {
-        isAvailable : true,
-        isEnabled : false,
-        enum: '',
-        icon: '',
-        name: enumerationsNamesMain,
-        names: [enumerationsNamesBasic, enumerationsNamesInside, enumerationsNamesEnterTo, enumerationsNamesExitFrom],
-        group: '',
-        order : 0,
-      }
     },
     [dataTypeReport]: {
       list: {},
@@ -4035,18 +4061,7 @@ const
         }
       },
       state: `${prefixPrimary}.${idSimpleReports}`,
-      icon: 'ℹ️',
-      defaultObject: {
-        isAvailable : true,
-        isEnabled : false,
-        enum: idSimpleReports,
-        name: enumerationsNamesMain,
-        group: '',
-        alwaysExpanded: false,
-        graphsEnabled: false,
-        order : 0,
-        icon: 'ℹ️'
-      }
+      icon: 'ℹ️'
     }
   },
   enumerationItemDefaultDetails = ['itemId', 'isAvailable', 'state', 'order'],
@@ -4104,7 +4119,7 @@ function enumerationsLoad(enumerationType) {
  */
 function enumerationsSave(enumerationType) {
   logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`);
-  const listToSave = JSON.stringify({enums: enumerationsList[enumerationType].enums/* , icons: enumerationItems[enumerationType].icons */, list: enumerationsList[enumerationType].list});
+  const listToSave = JSON.stringify({enums: enumerationsList[enumerationType].enums, list: enumerationsList[enumerationType].list});
   if (existsState(enumerationsList[enumerationType].state)) {
     logs(`  save ${enumerationsList[enumerationType].state}`);
     setState(enumerationsList[enumerationType].state, listToSave, true);
@@ -4120,17 +4135,16 @@ function enumerationsSave(enumerationType) {
  * This function change an `order` property of `enumerationItems` in current
  * list(`Object`), to eliminate a gap in sequence (for example - after deleting
  * or adding items).
- * @param {object} currentEnumeration - The `list` of `enumerationItems` to be processed.
+ * @param {object} currentEnumerations - The `list` of `enumerationItems` to be processed.
  * @returns {number} - The number of items in the current `list`.
  */
-function enumerationsReorderItems(currentEnumeration) {
-  logs(`  enumerationItems= ${JSON.stringify(currentEnumeration)}`);
-  // let currentEnumeration = enumerationItems[enumerationType].list;
+function enumerationsReorderItems(currentEnumerations) {
+  logs(`  enumerationItems= ${JSON.stringify(currentEnumerations)}`);
   let countItems = 0;
-  Object.keys(currentEnumeration)
-    .sort((a, b) => (currentEnumeration[a].order - currentEnumeration[b].order))
+  Object.keys(currentEnumerations)
+    .sort((a, b) => (currentEnumerations[a].order - currentEnumerations[b].order))
     .forEach((currentItem) => {
-      currentEnumeration[currentItem].order = countItems;
+      currentEnumerations[currentItem].order = countItems;
       countItems++;
     });
   return countItems;
@@ -4149,7 +4163,8 @@ function enumerationsInit(enumerationType, withExtensions) {
   let currentEnumerationList = enumerationsList[enumerationType].list;
   let countItems = enumerationsReorderItems(currentEnumerationList);
   Object.keys(currentEnumerationList).forEach((currentItem) => {
-    currentEnumerationList[currentItem] = objectAssignToTemplateLevelOne(enumerationsList[enumerationType].defaultObject, currentEnumerationList[currentItem]);
+    // logs(`currentItem = ${currentItem}, currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType ${currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType}`, _l)
+    currentEnumerationList[currentItem] = objectAssignToTemplateLevelOne(enumerationsDefaultObjects[currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType], currentEnumerationList[currentItem]);
     if ((! currentEnumerationList[currentItem].isExternal) || withExtensions ) currentEnumerationList[currentItem].isAvailable = false;
   });
   if ((enumerationType === dataTypeFunction) && withExtensions)  extensionsInit();
@@ -4164,7 +4179,7 @@ function enumerationsInit(enumerationType, withExtensions) {
         compositeHolderEnum = currentItemSectionsCount === 2 ? `${enumType}.${holderItemId}` : '',
         isCurrentItemAcceptable = (currentItemSectionsCount === 1) || ((currentItemSectionsCount === 2) && (getEnums(compositeHolderEnum).length > 0));
       if (isCurrentItemAcceptable) {
-        logs(`currentItem = ${currentItem}, \n has = ${currentEnumerationList.hasOwnProperty(currentItem)}, currentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`);
+        // logs(`currentItem = ${currentItem}, \n has = ${currentEnumerationList.hasOwnProperty(currentItem)}, currentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`, _l);
         if (currentEnumerationList.hasOwnProperty(currentItem) && (currentEnumerationList[currentItem] !== undefined)) {
           currentEnumerationList[currentItem].isAvailable = true;
           if (holderItemId) currentEnumerationList[currentItem].holder = holderItemId;
@@ -4183,8 +4198,8 @@ function enumerationsInit(enumerationType, withExtensions) {
               }
             }
           }
-          currentEnumerationList[currentItem] = {...enumerationsList[enumerationType].defaultObject, order: currentItemPosition, holder: holderItemId, enum: enumType, icon: enumerationsList[enumerationType].enums[enumType].icon};
-          logs(`\ncurrentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`);
+          currentEnumerationList[currentItem] = {...enumerationsDefaultObjects[currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType], order: currentItemPosition, holder: holderItemId, enum: enumType, icon: enumerationsList[enumerationType].enums[enumType].icon};
+          // logs(`\ncurrentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`);
           countItems++;
         }
         if ((enumerationType === dataTypeFunction) && currentEnumerationList[currentItem].hasOwnProperty('deviceAttributes') && (typeOf(currentEnumerationList[currentItem].deviceAttributes, 'string'))) {
@@ -4794,7 +4809,7 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
     // logs(`currentItemTranslationId ${currentItemTranslationId}`);
     enumerationsRereadItemName(user, enumerationType, enumerationItemId);
   }
-  let result = enumerationItem.name ?
+  let result = enumerationItem.name || enumerationItem.isExternal ?
     translationsItemGet(user, currentItemTranslationId) :
     (enumerationType === dataTypePrimaryEnums ?
       `${stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumerationItemId}`))} [${enumerationItemId}]` :
@@ -5621,7 +5636,7 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
  */
 function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
   const {id , nameTranslationId, icon, externalMenu, scriptName, translationsKeys} = extensionDetails;
-  logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`);
+  // logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`, _l);
   logs(`scriptName= ${JSON.stringify(scriptName)}`);
   const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
   const functionsList = enumerationsList[dataTypeFunction].list;
@@ -5631,9 +5646,9 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
     functionsList[extensionId].state = externalMenu;
     functionsList[extensionId].nameTranslationId = nameTranslationId;
     functionsList[extensionId].translationsKeys = translationsKeys;
-  }
+}
   else {
-    functionsList[extensionId] = {...enumerationsList[dataTypeFunction].defaultObject,
+    functionsList[extensionId] = {...enumerationsDefaultObjects[dataTypeExtension],
       isAvailable: true,
       isExternal: true,
       enum: idExternal,
@@ -5643,7 +5658,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
       state: externalMenu,
       deviceAttributes: {},
       scriptName: scriptName,
-      translationsKeys: translationsKeys
+      translationsKeys: translationsKeys,
     };
   }
   enumerationsSave(dataTypeFunction);
