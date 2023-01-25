@@ -5696,6 +5696,16 @@ const
   alertThresholdId = 'threshold',
   alertThresholdOnTimeIntervalId = 'onTimeInterval',
   alertMessageTemplateId = 'messageTemplate',
+  alertPropagateDistributions = [
+    'alertPropagateFuncAndDest',
+    'alertPropagateDestination',
+    'alertPropagateFunction',
+    'alertPropagateGlobal'
+  ],
+  alertPropagateOptions = [
+    'alertPropagateOverwrite',
+    'alertPropagateSkip'
+  ],
   alertsStoredVariables = new Map();
 
 let alertsRules = {};
@@ -6354,8 +6364,6 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth) {
     alerts = alertsGet(),
     currentStateAlert = alerts.hasOwnProperty(alertId) ? alerts[alertId] : undefined,
     currentStateAlertThresholds = currentStateAlert && currentStateAlert.hasOwnProperty('chatIds') && currentStateAlert.chatIds  && currentStateAlert.chatIds.has(user.chatId) ? objectDeepClone(currentStateAlert.chatIds.get(user.chatId)) : {},
-    /* cachedThresholds = existsCachedValue(user, alertThresholdSet) ? getCachedValue(user, alertThresholdSet) : {},
-    currentThresholds = {...currentStateAlertThresholds, ...cachedThresholds}; */
     currentThresholds = cachedExistsValue(user, alertThresholdSet) ? cachedGetValue(user, alertThresholdSet) : currentStateAlertThresholds;
   return returnBoth ? [currentThresholds, currentStateAlertThresholds] : currentThresholds;
 }
@@ -6401,43 +6409,7 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
     ) {
       if (isExtraMenu) {
         menuItem.param = commandsPackParams(cmdEmptyCommand, ...commandUnpackParams(itemParam).slice(1));
-        menuItem['submenu'] = (user, menuItemToProcess) => {
-          const
-            currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-            currentName = menuItemToProcess.name,
-            [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
-            [currentAlertDetails, currentStateAlertDetails] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true),
-            currentOnTimeInterval = `${currentAlertDetails.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentAlertDetails[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`,
-            currentMessageTemplate = currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? currentAlertDetails[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user);
-          let
-            subMenu = [],
-            subMenuIndex = 0;
-          subMenuIndex = subMenu.push(menuEditItemMenuItemGenerate(user, currentIndex, subMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, '', dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
-          subMenuIndex = subMenu.push({
-            index: `${currentIndex}.${subMenuIndex}`,
-            name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
-            icon: iconItemEdit,
-            group: alertMessageTemplateId,
-            param: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
-            submenu: [
-              menuEditItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
-              menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
-            ],
-          });
-          const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
-          subMenu.push(
-            {
-              index: `${currentIndex}.${subMenuIndex}`,
-              name: `${currentName}${isAlertDetailsSetChanged ?  ` (${iconItemEdit})` : ''}`,
-              icons: alertsGetIcon,
-              group: cmdItemsProcess,
-              state: currentStateId,
-              param: commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
-              submenu: [],
-            }
-          );
-          return subMenu;
-        };
+        menuItem['submenu'] = alertsMenuGenerateManageBoolean;
       }
       else {
         menuItem['submenu'] = [];
@@ -6445,13 +6417,62 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
     }
     else if ((itemStateType === 'number') || isNumericString) {
       menuItem.param = commandsPackParams(cmdEmptyCommand, ...commandUnpackParams(itemParam).slice(1));
-      menuItem['submenu'] = alertsMenuGenerateManageThresholds;
+      menuItem['submenu'] = alertsMenuGenerateManageNumeric;
     }
     else {
       menuItem = undefined;
     }
   }
   return menuItem;
+}
+
+
+/**
+ * This function generates a submenu to manage thresholds, on which the
+ * alert subscription can be made for the appropriate menuItem.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
+  const
+    currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    currentName = menuItemToProcess.name,
+    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
+    [currentAlertDetails, currentStateAlertDetails] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true),
+    currentOnTimeInterval = `${currentAlertDetails.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentAlertDetails[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`,
+    currentMessageTemplate = currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? currentAlertDetails[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user);
+  let
+    subMenu = [],
+    subMenuIndex = 0;
+  subMenuIndex = subMenu.push(menuEditItemMenuItemGenerate(user, currentIndex, subMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, '', dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+    name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
+    icon: iconItemEdit,
+    group: alertMessageTemplateId,
+    param: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
+    submenu: [
+      menuEditItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
+      menuDeleteItemMenuItemGenerate(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
+    ],
+  });
+  const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
+  subMenuIndex = subMenu.push(
+    {
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: `${currentName}${isAlertDetailsSetChanged ?  ` (${iconItemEdit})` : ''}`,
+      icons: alertsGetIcon,
+      group: cmdItemsProcess,
+      state: currentStateId,
+      param: commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
+      submenu: [],
+    }
+  );
+  if ((! isAlertDetailsSetChanged) && Object.keys(currentStateAlertDetails).length) {
+    subMenu.push(alertPropagationMenuItemGenerate(user, currentIndex, subMenuIndex, currentStateId, currentFunctionId, currentDestinationId));
+  }
+  return subMenu;
 }
 
 /**
@@ -6461,7 +6482,7 @@ function alertsSubscribedOnMenuItemGenerate(itemIndex, itemName, itemState, item
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]} - The array of menuItem objects.
  */
-function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
+function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
@@ -6531,7 +6552,51 @@ function alertsMenuGenerateManageThresholds(user, menuItemToProcess) {
       }
     );
   }
+  if ((! isThresholdsSetChanged) || Object.keys(currentStateAlertThresholds).length) {
+    subMenu.push(alertPropagationMenuItemGenerate(user, currentIndex, subMenuIndex, currentStateId, currentFunctionId, currentDestinationId));
+  }
   return subMenu;
+}
+
+/**
+ * Generates menu item which options submenu to propagate current `Alert` configuration
+ * to other `Devices`, inside one `Destination`, `Function`, `Destination` & `Function` or
+ * on any `Device`, with the same `Attribute`.
+ * @param {object} user - The user object.
+ * @param {string} upperMenuItemIndex - The upper level item menu index.
+ * @param {number} subMenuItemIndex - The index of an item to be created.
+ * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
+ */
+function alertPropagationMenuItemGenerate(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
+  const subMenuItem =  {
+    index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+    name: `${translationsItemMenuGet(user, 'alertPropagate')}`,
+    icon: '',
+    group: 'propagate',
+    submenu: new Array()
+  };
+  let subSubMenuItemIndex = 0;
+  alertPropagateDistributions.forEach(alertPropagateDistribution => {
+    const subSubMenuItem = {
+      index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuItemIndex}`,
+      name: `${translationsItemMenuGet(user, alertPropagateDistribution)}`,
+      icon: '',
+      submenu: new Array()
+    };
+    let subSubSubMenuItemIndex = 0;
+    alertPropagateOptions.forEach(alertPropagateOption => {
+      subSubSubMenuItemIndex = subSubMenuItem.submenu.push({
+        index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuItemIndex}.${subSubSubMenuItemIndex}`,
+        name: `${translationsItemMenuGet(user, alertPropagateOption)}`,
+        icon: '',
+        param: commandsPackParams(cmdAlertSubscribe, cmdItemsProcess, dataTypeAlertSubscribed, ...commandParams),
+        submenu: []
+      });
+    });
+    subSubMenuItemIndex = subMenuItem.submenu.push();
+  });
+  return subMenuItem;
 }
 
 /**
