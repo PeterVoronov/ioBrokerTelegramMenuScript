@@ -5016,12 +5016,12 @@ function enumerationsMenuGenerateDeviceButtons(user, menuItemToProcess) {
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[currentDestinationId],
     currentDestinationEnum = currentDestination.enum,
-    fullDestinationId = `enum.${currentDestinationEnum}.${currentDestinationId}`,
+    fullDestinationId = `${prefixEnums}.${currentDestinationEnum}.${currentDestinationId}`,
     currentFunctionId = menuItemToProcess.funcEnum,
     functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[currentFunctionId],
     currentFunctionEnum = currentFunction.enum,
-    fullFunctionId = `enum.${currentFunctionEnum}.${currentFunctionId}`,
+    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${currentFunctionId}`,
     isStatesInFolders = currentFunction.statesInFolders,
     deviceAttributesList = currentFunction.deviceAttributes,
     currentDeviceAttributes = deviceAttributesList ? Object.keys(deviceAttributesList).filter((deviceAttr) => (deviceAttributesList[deviceAttr].isEnabled)).sort((a, b) => (deviceAttributesList[a].order - deviceAttributesList[b].order)) : [],
@@ -5544,10 +5544,10 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
         const
           mainObject = getObjectEnriched(mainId, '*'),
           idPrefix = mainId.split('.').slice(0, currentFunction.statesInFolders ? -2 : -1).join('.'),
-          fullFuncId = `enum.${currentFunction.enum}.${functionId}`;
+          fullFuncId = `${prefixEnums}.${currentFunction.enum}.${functionId}`;
         if (mainObject.hasOwnProperty('enumIds') ) {
           for (const destId of destinationsListKeys) {
-            const fullDestId = `enum.${destinationsList[destId].enum}.${destId}`;
+            const fullDestId = `${prefixEnums}.${destinationsList[destId].enum}.${destId}`;
             // logs(`idPrefix = ${idPrefix}, fullDestId = ${fullDestId}`, _l);
             if (mainObject['enumIds'] && mainObject['enumIds'].includes(fullDestId)) {
               $(`state[id=${idPrefix}.*](${currentFunction.enum}=${functionId})`).each((stateId) => {
@@ -6614,12 +6614,12 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[currentDestinationId],
     currentDestinationEnum = currentDestination.enum,
-    fullDestinationId = `enum.${currentDestinationEnum}.${currentDestinationId}`,
+    fullDestinationId = `${prefixEnums}.${currentDestinationEnum}.${currentDestinationId}`,
     currentFunctionId = menuItemToProcess.funcEnum,
     functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[currentFunctionId],
     currentFunctionEnum = currentFunction.enum,
-    fullFunctionId = `enum.${currentFunctionEnum}.${currentFunctionId}`,
+    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${currentFunctionId}`,
     isStatesInFolders = currentFunction.statesInFolders,
     _currentIcons = {on: currentFunction.iconOn, off: currentFunction.iconOff},
     deviceAttributesList = currentFunction.deviceAttributes,
@@ -8008,7 +8008,7 @@ function menuFirstLevelMenuGenerate(user, menuItemToProcess) {
             const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId];
             if (! isFunctionsFirst ) shortStateId = stateId.split('.').slice(- currentLevelMenuItem.state.split('.').length).join('.');
             //  logs(`\n shortStateId = ${shortStateId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentLevelMenuItem = ${JSON.stringify(currentLevelMenuItem)}`, _l);
-            //  logs(`currentObject(${stateId})['enumIds'].includes(${enumsPrefix}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}) = ${currentObject['enumIds'].includes(`enum.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)}`)
+            //  logs(`currentObject(${stateId})['enumIds'].includes(${enumsPrefix}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}) = ${currentObject['enumIds'].includes(`${prefixEnums}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)}`)
             if ((isFunctionsFirst || (currentLevelMenuItem.state === shortStateId)) && currentObject['enumIds'].includes(`${prefixEnums}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)) {
               if (! deviceList.hasOwnProperty(currentLevelMenuItemId)) deviceList[currentLevelMenuItemId] = [];
               if (! deviceList[currentLevelMenuItemId].includes(stateId)) deviceList[currentLevelMenuItemId].push(stateId);
@@ -10046,23 +10046,55 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
       case dataTypeAlertSubscribed: {
         if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
-
+          cachedDelValue(user, alertThresholdSet);
           const
-            functionsList = enumerationsList[dataTypeFunction].list,
+            functionsList = enumerationsList[dataTypeFunction].list.filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)),
             alertFunctionId = currentSubParam,
             alertFunction = functionsList && currentSubParam && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
             isStatesInFolders = alertFunction && alertFunction.statesInFolders,
-            destinationsList = enumerationsList[dataTypeDestination].list,
+            destinationsList = enumerationsList[dataTypeDestination].list.filter(itemId => (functionsList[itemId].isEnabled)),
             alertDestinationId = currentSubValue,
             alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
             alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
-            currentStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, currentValue),
+            alertStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, currentValue),
             filterId = `state[id=*${alertStateShortId}]`,
             filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
             filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
             filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(currentItem) ? filterFunction : (currentItem === 'alertPropagateDestination' ? filterDestination : '');
 
-            $(`${filterId}${filterEnum}`).each((stateId) =>{
+            $(`${filterId}${filterEnum}`).each((stateId) => {
+              if (stateId !== currentValue) {
+                const currentStateObject = getObject(stateId, currentItem === 'alertPropagateFuncAndDest' ? alertDestination.enum : (currentItem === 'alertPropagateGlobal' ? '*' : undefined));
+                let toProcessState = false;
+                switch (currentItem) {
+                  case 'alertPropagateFuncAndDest': {
+                    if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
+                      toProcessState = currentStateObject['enumIds'].includes(`${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`);
+                    }
+                    break;
+                  }
+                  case 'alertPropagateGlobal': {
+                    if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
+                      const currentItemEnums = currentStateObject['enumIds'];
+                      toProcessState = functionsList.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length &&
+                        destinationsList.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length;
+                    }
+                    break;
+                  }
+                  default: {
+                    toProcessState = true;
+                    break;
+                  }
+                }
+                if (toProcessState) {
+                  const currentStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, stateId);
+                  if (JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails)) {
+                    if ((Object.keys(currentStateAlertDetails).length && (currentParam === 'alertPropagateOverwrite')) || (Object.keys(currentStateAlertDetails).length === 0)) {
+                      alertsManage(user, currentType, currentItem, currentParam, alertStateAlertDetails);
+                    }
+                  }
+                }
+              }
             });
             currentMenuPosition.splice(-2);
         }
