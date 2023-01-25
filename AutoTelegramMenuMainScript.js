@@ -6439,7 +6439,9 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
-    [currentAlertDetails, currentStateAlertDetails] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true),
+    alerts = alertsGet(),
+    alertIsOn = alerts && alerts.hasOwnProperty(currentStateId) && alerts[currentStateId].chatIds.has(user.chatId),
+    [currentAlertDetails, currentStateAlertDetails] = alertIsOn ? alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true) : [{}, {}],
     currentOnTimeInterval = `${currentAlertDetails.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentAlertDetails[alertThresholdOnTimeIntervalId] : 0} ${translationsItemTextGet(user, 'secondsShort')}`,
     currentMessageTemplate = currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? currentAlertDetails[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user);
   let
@@ -6469,7 +6471,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
       submenu: [],
     }
   );
-  if ((! isAlertDetailsSetChanged) && Object.keys(currentStateAlertDetails).length) {
+  if (alertIsOn) {
     subMenu.push(alertPropagationMenuItemGenerate(user, currentIndex, subMenuIndex, currentStateId, currentFunctionId, currentDestinationId));
   }
   return subMenu;
@@ -6552,7 +6554,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       }
     );
   }
-  if ((! isThresholdsSetChanged) || Object.keys(currentStateAlertThresholds).length) {
+  if ((! isThresholdsSetChanged) && Object.keys(currentStateAlertThresholds).length) {
     subMenu.push(alertPropagationMenuItemGenerate(user, currentIndex, subMenuIndex, currentStateId, currentFunctionId, currentDestinationId));
   }
   return subMenu;
@@ -6590,11 +6592,11 @@ function alertPropagationMenuItemGenerate(user, upperMenuItemIndex, subMenuItemI
         index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuItemIndex}.${subSubSubMenuItemIndex}`,
         name: `${translationsItemMenuGet(user, alertPropagateOption)}`,
         icon: '',
-        param: commandsPackParams(cmdAlertSubscribe, cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, ...commandParams),
+        param: commandsPackParams(cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, ...commandParams),
         submenu: []
       });
     });
-    subSubMenuItemIndex = subMenuItem.submenu.push();
+    subSubMenuItemIndex = subMenuItem.submenu.push(subSubMenuItem);
   });
   return subMenuItem;
 }
@@ -10048,20 +10050,19 @@ async function commandUserInputCallback(user, userInputToProcess) {
         if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
           cachedDelValue(user, alertThresholdSet);
           const
-            functionsList = enumerationsList[dataTypeFunction].list.filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)),
+            functionsList = enumerationsList[dataTypeFunction].list,
             alertFunctionId = currentSubParam,
             alertFunction = functionsList && currentSubParam && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
             isStatesInFolders = alertFunction && alertFunction.statesInFolders,
-            destinationsList = enumerationsList[dataTypeDestination].list.filter(itemId => (functionsList[itemId].isEnabled)),
+            destinationsList = enumerationsList[dataTypeDestination].list,
             alertDestinationId = currentSubValue,
             alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
             alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
             alertStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, currentValue),
-            filterId = `state[id=*${alertStateShortId}]`,
+            filterId = `state[id=*.${alertStateShortId}]`,
             filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
             filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
             filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(currentItem) ? filterFunction : (currentItem === 'alertPropagateDestination' ? filterDestination : '');
-
             $(`${filterId}${filterEnum}`).each((stateId) => {
               if (stateId !== currentValue) {
                 const currentStateObject = getObject(stateId, currentItem === 'alertPropagateFuncAndDest' ? alertDestination.enum : (currentItem === 'alertPropagateGlobal' ? '*' : undefined));
@@ -10076,8 +10077,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
                   case 'alertPropagateGlobal': {
                     if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
                       const currentItemEnums = currentStateObject['enumIds'];
-                      toProcessState = functionsList.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length &&
-                        destinationsList.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length;
+                      toProcessState = (Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
+                      (Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
                     }
                     break;
                   }
@@ -10088,11 +10089,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 }
                 if (toProcessState) {
                   const currentStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, stateId);
-                  if (JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails)) {
+                  // if (JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails)) {
                     if ((Object.keys(currentStateAlertDetails).length && (currentParam === 'alertPropagateOverwrite')) || (Object.keys(currentStateAlertDetails).length === 0)) {
-                      alertsManage(user, currentType, currentItem, currentParam, alertStateAlertDetails);
+                      logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l);
+                      // alertsManage(user, stateId, currentItem, currentParam, alertStateAlertDetails);
                     }
-                  }
+                  // }
                 }
               }
             });
