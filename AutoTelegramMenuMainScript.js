@@ -4764,7 +4764,7 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
     });
   }
   currentItemDetailsList.push({
-    label: translationsItemTextGet(user, 'holder'),
+    label: translationsItemMenuGet(user, 'holder'),
     valueString: currentEnumerationItem.holder && currentEnumeration.hasOwnProperty(currentEnumerationItem.holder) ? enumerationsItemName(user, enumerationType, currentEnumerationItem.holder, currentEnumeration[currentEnumerationItem.holder]) : ''
   });
 
