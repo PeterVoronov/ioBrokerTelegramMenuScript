@@ -6590,7 +6590,7 @@ function alertPropagationMenuItemGenerate(user, upperMenuItemIndex, subMenuItemI
         index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuItemIndex}.${subSubSubMenuItemIndex}`,
         name: `${translationsItemMenuGet(user, alertPropagateOption)}`,
         icon: '',
-        param: commandsPackParams(cmdAlertSubscribe, cmdItemsProcess, dataTypeAlertSubscribed, ...commandParams),
+        param: commandsPackParams(cmdAlertSubscribe, cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, ...commandParams),
         submenu: []
       });
     });
@@ -10041,6 +10041,31 @@ async function commandUserInputCallback(user, userInputToProcess) {
         }
         // logs(`currentMenuItem = ${currentMenuItem}`);
         currentMenuPosition.splice(-2);
+        break;
+      }
+
+      case dataTypeAlertSubscribed: {
+        if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
+
+          const
+            functionsList = enumerationsList[dataTypeFunction].list,
+            alertFunctionId = currentSubParam,
+            alertFunction = functionsList && currentSubParam && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
+            isStatesInFolders = alertFunction && alertFunction.statesInFolders,
+            destinationsList = enumerationsList[dataTypeDestination].list,
+            alertDestinationId = currentSubValue,
+            alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
+            alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
+            currentStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, currentValue),
+            filterId = `state[id=*${alertStateShortId}]`,
+            filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
+            filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
+            filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(currentItem) ? filterFunction : (currentItem === 'alertPropagateDestination' ? filterDestination : '');
+
+            $(`${filterId}${filterEnum}`).each((stateId) =>{
+            });
+            currentMenuPosition.splice(-2);
+        }
         break;
       }
 
