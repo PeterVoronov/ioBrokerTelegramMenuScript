@@ -59,7 +59,7 @@
       "menuAlertsHistory": "Alarm-Historie",
       "menuAlertsSubscriptionExtended": "Verwaltung zusätzlicher Alarme",
       "menuAlwaysExpanded": "Immer erweitert",
-      "menuAvailableState": "core.menuAvailableState",
+      "menuAvailableState": "Geräteverfügbarkeitsstatus",
       "menuBackup": "Sicherung",
       "menuBackupCreate": "Sicherung erstellen",
       "menuBackupRestore": "Vom Backup wiederherstellen",
