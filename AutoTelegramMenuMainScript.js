@@ -6471,7 +6471,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
       submenu: [],
     }
   );
-  if (alertIsOn) {
+  if ((! isAlertDetailsSetChanged) && alertIsOn) {
     subMenu.push(alertPropagationMenuItemGenerate(user, currentIndex, subMenuIndex, currentStateId, currentFunctionId, currentDestinationId));
   }
   return subMenu;
@@ -9273,7 +9273,14 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 }
                 else {
                   const currentDetailsOrThreshold = currentThresholdIndex >= 0 ? alertDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]] : alertDetailsOrThresholds;
-                  currentDetailsOrThreshold[currentValue] = userInputToProcess;
+                  if ((currentValue === alertThresholdOnTimeIntervalId) &&
+                    // @ts-ignore
+                    (userInputToProcess === 0)) {
+                    delete currentDetailsOrThreshold[currentValue];
+                  }
+                  else {
+                    currentDetailsOrThreshold[currentValue] = userInputToProcess;
+                  }
                 }
                 cachedSetValue(user, alertThresholdSet, alertDetailsOrThresholds);
                 const backStepsForCacheDelete = (currentThresholdIndex >= 0  ? -2 : -1) + (currentValue === alertMessageTemplateId ? -1 : 0);
@@ -10048,7 +10055,6 @@ async function commandUserInputCallback(user, userInputToProcess) {
 
       case dataTypeAlertSubscribed: {
         if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
-          cachedDelValue(user, alertThresholdSet);
           const
             functionsList = enumerationsList[dataTypeFunction].list,
             alertFunctionId = currentSubParam,
@@ -10058,47 +10064,55 @@ async function commandUserInputCallback(user, userInputToProcess) {
             alertDestinationId = currentSubValue,
             alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
             alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
-            alertStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, currentValue),
+            alerts = alertsGet(),
+            alertIsOn = alerts && alerts.hasOwnProperty(currentValue) && alerts[currentValue].chatIds.has(user.chatId),
+            alertStateAlertDetails = alertIsOn  ? alerts[currentValue].chatIds.get(user.chatId) : undefined,
             filterId = `state[id=*.${alertStateShortId}]`,
             filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
             filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
             filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(currentItem) ? filterFunction : (currentItem === 'alertPropagateDestination' ? filterDestination : '');
+          if (alertIsOn) {
             $(`${filterId}${filterEnum}`).each((stateId) => {
               if (stateId !== currentValue) {
                 const currentStateObject = getObject(stateId, currentItem === 'alertPropagateFuncAndDest' ? alertDestination.enum : (currentItem === 'alertPropagateGlobal' ? '*' : undefined));
-                let toProcessState = false;
-                switch (currentItem) {
-                  case 'alertPropagateFuncAndDest': {
-                    if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
-                      toProcessState = currentStateObject['enumIds'].includes(`${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`);
+                if (currentStateObject) {
+                  let toProcessState = false;
+                  switch (currentItem) {
+                    case 'alertPropagateFuncAndDest': {
+                      if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
+                        toProcessState = currentStateObject['enumIds'].includes(`${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`);
+                      }
+                      break;
                     }
-                    break;
-                  }
-                  case 'alertPropagateGlobal': {
-                    if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
-                      const currentItemEnums = currentStateObject['enumIds'];
-                      toProcessState = (Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
-                      (Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
+                    case 'alertPropagateGlobal': {
+                      if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
+                        const currentItemEnums = currentStateObject['enumIds'];
+                        toProcessState = (Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
+                        (Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
+                      }
+                      break;
                     }
-                    break;
-                  }
-                  default: {
-                    toProcessState = true;
-                    break;
-                  }
-                }
-                if (toProcessState) {
-                  const currentStateAlertDetails = alertsGetStateAlertDetailsOrThresholds(user, stateId);
-                  // if (JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails)) {
-                    if ((Object.keys(currentStateAlertDetails).length && (currentParam === 'alertPropagateOverwrite')) || (Object.keys(currentStateAlertDetails).length === 0)) {
-                      logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l);
-                      // alertsManage(user, stateId, currentItem, currentParam, alertStateAlertDetails);
+                    default: {
+                      toProcessState = true;
+                      break;
                     }
-                  // }
+                  }
+                  if (toProcessState) {
+                    const
+                      currentStateAlertDetails = alerts && alerts.hasOwnProperty(stateId) && alerts[stateId].chatIds.has(user.chatId) ? alerts[stateId].chatIds.get(user.chatId) : undefined,
+                      isDifferentAlertDetails = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails);
+                    if (isDifferentAlertDetails) {
+                      if ((currentStateAlertDetails && currentStateAlertDetails && (currentParam === 'alertPropagateOverwrite')) || (currentStateAlertDetails === undefined)) {
+                        // logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l)
+                        alertsManage(user, stateId, currentItem, currentParam, alertStateAlertDetails);
+                      }
+                    }
+                  }
                 }
               }
             });
             currentMenuPosition.splice(-2);
+          }
         }
         break;
       }
