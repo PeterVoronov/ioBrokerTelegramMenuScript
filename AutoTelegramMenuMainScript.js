@@ -4534,7 +4534,7 @@ function enumerationsItemMenuGenerate(user, menuItemToProcess) {
               param:  commandsPackParams(cmdItemPress, enumerationType, currentItem, enumerationItemAttr, '', itemId),
               submenu: [],
             });
-            if (isCurrentHolder) subMenuItem.name += ` "${currentItemName}`;
+            if (isCurrentHolder) subMenuItem.name += ` "${currentItemName}"`;
           });
           subMenuIndex = subMenu.push(subMenuItem);
         }
