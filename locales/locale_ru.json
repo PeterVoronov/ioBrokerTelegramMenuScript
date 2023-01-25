@@ -59,6 +59,7 @@
       "menuAlertsHistory": "История уведомлений",
       "menuAlertsSubscriptionExtended": "Расширенные уведомления",
       "menuAlwaysExpanded": "Развернуто",
+      "menuAvailableState": "core.menuAvailableState",
       "menuBackup": "Резервное копирование",
       "menuBackupCreate": "Резервировать",
       "menuBackupRestore": "Восстановить",

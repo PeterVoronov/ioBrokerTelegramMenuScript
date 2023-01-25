@@ -59,6 +59,7 @@
       "menuAlertsHistory": "Alerts history",
       "menuAlertsSubscriptionExtended": "Extra alerts management",
       "menuAlwaysExpanded": "Always expanded",
+      "menuAvailableState": "core.menuAvailableState",
       "menuBackup": "Backup",
       "menuBackupCreate": "Create backup",
       "menuBackupRestore": "Restore from backup",
