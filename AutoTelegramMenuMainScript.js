@@ -5073,7 +5073,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       stateIdFull = `${idPrefix}.${deviceButtonId}`,
       stateShortIdSectionsCount = deviceButtonId.split('.').length,
       currentButton = deviceButtonsList[deviceButtonId],
-      convertValueCode = currentFunction.deviceAttributes.hasOwnProperty(deviceButtonId) ? currentFunction.deviceAttributes[deviceButtonId].convertValueCode : "",
+      convertValueCode = currentButton.convertValueCode,
       isButtonAllowedToShow = MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.showAccessLevel) <= 0,
       isButtonAllowedToPress = isCurrentAccessLevelAllowModify && (MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0) && menuItemIsAvailable(currentFunction, primaryStateId);
     // logs(`deviceButtonId = ${deviceButtonId}, isButtonAllowedToShow = ${isButtonAllowedToShow}, isButtonAllowedToPress = ${isButtonAllowedToPress}, stateIdFull ${stateIdFull}`);
@@ -5394,7 +5394,8 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
       currentId = currObject._id,
       currentFunction = enumerationsList[dataTypeFunction].list[functionId],
       currentAttributeId = currentId.split('.').slice( - currentFunction.state.split('.').length).join('.'),
-      convertValueCode = currentFunction.deviceAttributes.hasOwnProperty(currentAttributeId) ? currentFunction.deviceAttributes[currentAttributeId].convertValueCode : "",
+      currentDeviceButtonsAndAttributes = {...currentFunction.deviceAttributes, ...currentFunction.deviceButtons},
+      convertValueCode = currentDeviceButtonsAndAttributes.hasOwnProperty(currentAttributeId) ? currentDeviceButtonsAndAttributes[currentAttributeId].convertValueCode : "",
       stateTranslationIdSuffix = currentId.split('.').slice( - currentFunction.state.split('.').length).join('_'),
       currentObjectType = currObject.common['type'],
       currObjectUnit = currObject.common.hasOwnProperty('unit') ? currObject.common['unit'] : '',
@@ -5404,7 +5405,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
       currentStateValueId = `${stateTranslationIdSuffix}_${currentStateValue}`;
     logs('currObject = ' + JSON.stringify(currObject));
     // logs(`${currentFunction.enum}.${functionId}, currState = ${JSON.stringify(currStateVal)}, currStateValType = ${currStateValType}`);
-    if ( (currentObjectType === 'boolean') &&  (currentStateValueType === 'boolean')) {
+    if ( currentStateValueType === 'boolean') {
       const
         currentIconOn = currentAttributeId === currentFunction.state ? currentFunction.iconOn : configOptions.getOption(cfgDefaultIconOn, user),
         currentIconOff = currentAttributeId === currentFunction.state ? currentFunction.iconOff : configOptions.getOption(cfgDefaultIconOff, user);
@@ -5434,8 +5435,8 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         }
       }
     }
-    else if ( (currentObjectType === 'number') &&  (currentStateValueType === 'number')) {
-      valueString = (currentStateValue === undefined ? '' : (Number.isInteger(currentStateValue) ? currentStateValue : currentStateValue.toFixed(2))) + (currObjectUnit ?  ' ' + currObjectUnit : '');
+    else if ( currentStateValueType === 'number') {
+      valueString = (currentStateValue === undefined ? '' : `${Number.isInteger(currentStateValue) ? currentStateValue : currentStateValue.toFixed(2)}`) + (currObjectUnit ?  ' ' + currObjectUnit : '');
     }
     else if (currentStateValueType === 'string') {
       valueString = (currentStateValue === undefined ? '' : currentStateValue) + (currObjectUnit ?  ' ' + currObjectUnit : '');
@@ -5937,7 +5938,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
     itemPos = cachedGetValue(user, cachedMenuItem),
     isMenuOn = cachedGetValue(user, cachedMenuOn),
     [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, '95:59:00');
-  if (isMenuOn && itemPos && (! isUserMessageOldOrNotExists) && (! isAcknowledged)) menuProcessOnPosition(user, undefined, undefined, true);
+  if (isMenuOn && itemPos && (! isUserMessageOldOrNotExists) && (! isAcknowledged)) menuProcessActionOnPosition(user, undefined, undefined, true);
 }
 
 /**
@@ -6035,124 +6036,130 @@ function alertsOnSubscribedState(object) {
   if ((alerts !== undefined) && alerts.hasOwnProperty(objectId)) {
     // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
     let alertIsRaised = false;
-    alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
-      chatId = Number(chatId);
-      const user = chatId > 0 ? telegramUsersGenerateUserObjectFromId(chatId) : telegramUsersGenerateUserObjectFromId(undefined, chatId);
-      if ((chatId > 0) || (activeChatGroups.includes(chatId))) {
-        let currentState = cachedGetValue(user, cachedCurrentState);
-        logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
-        const
-          alertMessages = new Array(),
-          alertObject = getObjectEnriched(objectId, '*'),
-          alertDestinationId = alerts[objectId].destination,
-          alertDestinationName = translationsGetEnumName(user, dataTypeDestination, alertDestinationId, enumerationsNamesInside),
-          alertFunctionId = alerts[objectId].function,
-          functionsList = enumerationsList[dataTypeFunction].list,
-          alertFunction = functionsList && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
-          isStatesInFolders = alertFunction && alertFunction.statesInFolders,
-          isAlertStatePrimary = alertFunction && (objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.') === alertFunction.state),
-          alertFunctionName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
-          convertValueCode = alertFunction.deviceAttributes.hasOwnProperty(isAlertStatePrimary) ? alertFunction.deviceAttributes[isAlertStatePrimary].convertValueCode : "",
-          currentStateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
-          oldStateValue = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
-          alertStateValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.state)['valueString'] : currentStateValue,
-          _alertStateOldValue = alertFunctionId ? enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.oldState)['valueString'] : oldStateValue,
-          alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
-          alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
-          alertStateType = alertObject.common['type'],
-          alertMessageValues = {alertFunctionName, alertDeviceName, alertDestinationName, alertStateName, alertStateValue};
-        logs(`alertDestId = ${alertDestinationId}, alertDestName = ${JSON.stringify(alertDestinationName)}`);
-        if ((alertStateType === 'boolean')
-          ||
-          (alertObject.common.hasOwnProperty('states') && (['string','number'].includes(alertStateType)))
-          ) {
+    const
+      alertMessages = new Array(),
+      alertObject = getObjectEnriched(objectId, '*'),
+      alertDestinationId = alerts[objectId].destination,
+      alertFunctionId = alerts[objectId].function,
+      functionsList = enumerationsList[dataTypeFunction].list,
+      alertFunction = functionsList && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined;
+    if (alertFunction) {
+      const
+        isStatesInFolders = alertFunction.statesInFolders,
+        alertStateShortId = objectId.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
+        isAlertStatePrimary = alertFunction && (alertStateShortId === alertFunction.state),
+        alertFunctionDeviceButtonsAndAttributes = {...alertFunction.deviceAttributes, ...alertFunction.deviceButtons},
+        convertValueCode = alertFunctionDeviceButtonsAndAttributes.hasOwnProperty(alertStateShortId) ? alertFunctionDeviceButtonsAndAttributes[alertStateShortId].convertValueCode : "",
+        alertStateType = alertObject.common['type'];
+      alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
+        chatId = Number(chatId);
+        const user = chatId > 0 ? telegramUsersGenerateUserObjectFromId(chatId) : telegramUsersGenerateUserObjectFromId(undefined, chatId);
+        if ((chatId > 0) || (activeChatGroups.includes(chatId))) {
+          let currentState = cachedGetValue(user, cachedCurrentState);
+          logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
           const
-            alertMessageTemplate = detailsOrThresholds.hasOwnProperty(alertMessageTemplateId) ? detailsOrThresholds[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user),
-            onTimeInterval = detailsOrThresholds.hasOwnProperty(alertThresholdOnTimeIntervalId) ? detailsOrThresholds[alertThresholdOnTimeIntervalId] : 0,
-            idStoredTimerOn = [objectId, chatId, 'timerOn'].join(itemsDelimiter),
-            idStoredTimerValue = [objectId, chatId, 'timerValue'].join(itemsDelimiter),
-            storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
-            [storedTimerValue, storedTimerOldValue] = (storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)) ? alertsStoredVariables.get(idStoredTimerValue) : [undefined, undefined],
-            alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
-          if (onTimeInterval) {
-            if (storedTimerOn) {
-              if (currentStateValue !== storedTimerValue) {
-                clearTimeout(storedTimerOn);
-                alertsStoredVariables.delete(idStoredTimerOn);
-                alertsStoredVariables.delete(idStoredTimerValue);
+            currentStateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
+            oldStateValue = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
+            alertStateValue = enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.state)['valueString'],
+            _alertStateOldValue = enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.oldState)['valueString'],
+            alertDeviceName = translationsGetObjectName(user, objectId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'), alertFunctionId, alertDestinationId),
+            alertStateName = isAlertStatePrimary ? '' : translationsGetObjectName(user, alertObject, alertFunctionId),
+            alertDestinationName = translationsGetEnumName(user, dataTypeDestination, alertDestinationId, enumerationsNamesInside),
+            alertFunctionName = translationsGetEnumName(user, dataTypeFunction, alertFunctionId, enumerationsNamesMain),
+            alertMessageValues = {alertFunctionName, alertDeviceName, alertDestinationName, alertStateName, alertStateValue};
+          logs(`alertDestId = ${alertDestinationId}, alertDestName = ${JSON.stringify(alertDestinationName)}`);
+          if ((alertStateType === 'boolean')
+            ||
+            (alertObject.common.hasOwnProperty('states') && (['string','number'].includes(alertStateType)))
+            ) {
+            const
+              alertMessageTemplate = detailsOrThresholds.hasOwnProperty(alertMessageTemplateId) ? detailsOrThresholds[alertMessageTemplateId] : configOptions.getOption(cfgAlertMessageTemplateMain, user),
+              onTimeInterval = detailsOrThresholds.hasOwnProperty(alertThresholdOnTimeIntervalId) ? detailsOrThresholds[alertThresholdOnTimeIntervalId] : 0,
+              idStoredTimerOn = [objectId, chatId, 'timerOn'].join(itemsDelimiter),
+              idStoredTimerValue = [objectId, chatId, 'timerValue'].join(itemsDelimiter),
+              storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
+              [storedTimerValue, storedTimerOldValue] = (storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)) ? alertsStoredVariables.get(idStoredTimerValue) : [undefined, undefined],
+              alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
+            if (onTimeInterval) {
+              if (storedTimerOn) {
+                if (currentStateValue !== storedTimerValue) {
+                  clearTimeout(storedTimerOn);
+                  alertsStoredVariables.delete(idStoredTimerOn);
+                  alertsStoredVariables.delete(idStoredTimerValue);
+                }
+              }
+              if ((storedTimerOn === undefined) || (currentStateValue !== storedTimerOldValue)) {
+                alertsStoredVariables.set(idStoredTimerValue, [currentStateValue, oldStateValue]);
+                alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
+                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                  alertsStoredVariables.delete(idStoredTimerOn);
+                  alertsStoredVariables.delete(idStoredTimerValue);
+                }, onTimeInterval * 1000));
               }
             }
-            if ((storedTimerOn === undefined) || (currentStateValue !== storedTimerOldValue)) {
-              alertsStoredVariables.set(idStoredTimerValue, [currentStateValue, oldStateValue]);
-              alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
-                alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
-                alertsStoredVariables.delete(idStoredTimerOn);
-                alertsStoredVariables.delete(idStoredTimerValue);
-              }, onTimeInterval * 1000));
+            else {
+              alertMessages.push(alertMessageText);
             }
           }
-          else {
-            alertMessages.push(alertMessageText);
-          }
-        }
-        else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
-          const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
-          Object.keys(detailsOrThresholds)
-            .sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB)))
-            .forEach(alertThresholdValue => {
-              const
-                currentThreshold = detailsOrThresholds[alertThresholdValue],
-                onAbove = currentThreshold.onAbove,
-                onLess = currentThreshold.onLess,
-                thresholdValue = Number(alertThresholdValue),
-                onTimeInterval = currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0,
-                idStoredTimerOn = [objectId, chatId, alertThresholdValue, 'timerOn'].join(itemsDelimiter),
-                idStoredTimerStatus = [objectId, chatId, alertThresholdValue, 'timerStatus'].join(itemsDelimiter),
-                storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
-                storedTimerStatus = (storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)) ? alertsStoredVariables.get(idStoredTimerStatus) : 0,
-                isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue)  || (storedTimerOn && (storedTimerStatus < 0))),
-                isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || (storedTimerOn && (storedTimerStatus < 0))),
-                alertMessageTemplate = currentThreshold.hasOwnProperty(alertMessageTemplateId) ? currentThreshold[alertMessageTemplateId] : alertDefaultTemplate;
-              alertMessageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
-              alertMessageValues['alertThresholdValue'] = alertThresholdValue;
-              const alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
-              if (onTimeInterval) {
-                if (storedTimerOn) {
-                  const currentTimerStatus = storedTimerStatus + (storedTimerStatus > 0 ? (isLess ? -1 :  0) : (isAbove ? 1 : 0));
-                  if (currentTimerStatus === 0) {
-                    clearTimeout(storedTimerOn);
-                    alertsStoredVariables.delete(idStoredTimerOn);
-                    alertsStoredVariables.delete(idStoredTimerStatus);
+          else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
+            const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
+            Object.keys(detailsOrThresholds)
+              .sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB)))
+              .forEach(alertThresholdValue => {
+                const
+                  currentThreshold = detailsOrThresholds[alertThresholdValue],
+                  onAbove = currentThreshold.onAbove,
+                  onLess = currentThreshold.onLess,
+                  thresholdValue = Number(alertThresholdValue),
+                  onTimeInterval = currentThreshold.hasOwnProperty(alertThresholdOnTimeIntervalId) ? currentThreshold[alertThresholdOnTimeIntervalId] : 0,
+                  idStoredTimerOn = [objectId, chatId, alertThresholdValue, 'timerOn'].join(itemsDelimiter),
+                  idStoredTimerStatus = [objectId, chatId, alertThresholdValue, 'timerStatus'].join(itemsDelimiter),
+                  storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
+                  storedTimerStatus = (storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)) ? alertsStoredVariables.get(idStoredTimerStatus) : 0,
+                  isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue)  || (storedTimerOn && (storedTimerStatus < 0))),
+                  isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || (storedTimerOn && (storedTimerStatus < 0))),
+                  alertMessageTemplate = currentThreshold.hasOwnProperty(alertMessageTemplateId) ? currentThreshold[alertMessageTemplateId] : alertDefaultTemplate;
+                alertMessageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
+                alertMessageValues['alertThresholdValue'] = alertThresholdValue;
+                const alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
+                if (onTimeInterval) {
+                  if (storedTimerOn) {
+                    const currentTimerStatus = storedTimerStatus + (storedTimerStatus > 0 ? (isLess ? -1 :  0) : (isAbove ? 1 : 0));
+                    if (currentTimerStatus === 0) {
+                      clearTimeout(storedTimerOn);
+                      alertsStoredVariables.delete(idStoredTimerOn);
+                      alertsStoredVariables.delete(idStoredTimerStatus);
+                    }
+                  }
+                  else {
+                    const currentTimerStatus =  isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0);
+                    if (currentTimerStatus !== 0) {
+                      alertsStoredVariables.set(idStoredTimerStatus, isLess ? -1 :  1);
+                      alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
+                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                        alertsStoredVariables.delete(idStoredTimerOn);
+                        alertsStoredVariables.delete(idStoredTimerStatus);
+                      }, onTimeInterval * 1000));
+                    }
                   }
                 }
                 else {
-                  const currentTimerStatus =  isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0);
-                  if (currentTimerStatus !== 0) {
-                    alertsStoredVariables.set(idStoredTimerStatus, isLess ? -1 :  1);
-                    alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
-                      alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
-                      alertsStoredVariables.delete(idStoredTimerOn);
-                      alertsStoredVariables.delete(idStoredTimerStatus);
-                    }, onTimeInterval * 1000));
-                  }
+                  alertMessages.push(alertMessageText);
                 }
-              }
-              else {
-                alertMessages.push(alertMessageText);
-              }
-            });
+              });
+          }
+          alertMessages.forEach(alertMessageText => alertsMessagePush(user, objectId, alertMessageText, objectId === currentState));
+          if ((alertMessages.length > 0) && (! alertIsRaised)) {
+            alertIsRaised = true;
+          }
         }
-        alertMessages.forEach(alertMessageText => alertsMessagePush(user, objectId, alertMessageText, objectId === currentState));
-        if ((alertMessages.length > 0) && (! alertIsRaised)) {
-          alertIsRaised = true;
+        else {
+          logs(`Current chatId = ${chatId} is belong to non active chat`);
         }
+      });
+      if (alertIsRaised && configOptions.getOption(cfgCheckAlertStatesOnStartUp)) {
+        alertsStoreStateValue(object.id, object.state.val);
       }
-      else {
-        logs(`Current chatId = ${chatId} is belong to non active chat`);
-      }
-    });
-    if (alertIsRaised && configOptions.getOption(cfgCheckAlertStatesOnStartUp)) {
-      alertsStoreStateValue(object.id, object.state.val);
     }
   }
 }
@@ -8233,6 +8240,238 @@ function menuPrintFixedLengthLinesForMenuItemDetails(user, linesArray) {
 //*** menu items related functions - end ***//
 
 
+const
+  cachedMenuItemsAndRows = 'menuItemsAndRows',
+  cachedMenuLongCommandsWithParams = 'longCommandsWithParams',
+  cachedMenuButtonsOffset = 'buttonsOffset';
+
+/**
+ * This function deletes the cached pre-drawn state of the user's menu items and rows.
+ * @param {object} user - The user that is currently logged in.
+ */
+function menuClearCachedMenuItemsAndRows(user) {
+  cachedDelValue(user, cachedMenuItemsAndRows);
+}
+
+/**
+ * This function go from the root level down to the target menu item (by `targetMenuPos`) iterative way, filling on each turn the appropriate information, as to the
+ * text part of Telegram message, as for the buttons part, to prepare it for "draw" to user.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which have to be processed, to reach the final destination item by `targetMenuPos`.
+ * @param {string[]} targetMenuPos - The position of the menu item in the menu tree, each item of array describes the position of item on each level of hierarchy of menu.
+ * @param {object} preparedMessageObject - The prepared for "draw" the Telegram message object related to the the `targetMenuPos`. Will be filled additionally on each iteration.
+ * @param {string} currentIndent - The current indent on this step of iteration for the text part of Telegram message.
+ * @param {function} callback - The function, which will receive a result of calculation - function(preparedMessageObject, menuItemToProcess).
+ */
+function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback) {
+  logs('user = ' + JSON.stringify(user));
+  logs('currentMenuItem = ' + JSON.stringify(menuItemToProcess));
+  logs('currentMenuPos = ' + JSON.stringify(targetMenuPos));
+  logs('preparedMessageObject = ' + JSON.stringify(preparedMessageObject, null, 2));
+  logs('currentTab = ' + JSON.stringify(currentIndent));
+  logs('callback = ' + JSON.stringify(callback));
+  if (! preparedMessageObject) {
+    const
+      [savedMenu, savedRows, savedTab] = cachedExistsValue(user, cachedMenuItemsAndRows) ?  cachedGetValue(user, cachedMenuItemsAndRows) : [null, null, 0],
+      savedPos = savedMenu && savedMenu.index ? savedMenu.index.split('.') : null;
+    logs(`currentMenuPos: ${JSON.stringify(targetMenuPos)}, savedPos: ${JSON.stringify(savedPos)}, savedMenu: ${JSON.stringify(savedMenu)}`);
+    if (savedPos && (targetMenuPos.join('.').indexOf(savedPos.join('.')) === 0)) {
+      targetMenuPos = targetMenuPos.slice(savedPos.length);
+      menuItemToProcess = savedMenu;
+      preparedMessageObject = {...savedRows};
+      currentIndent = savedTab;
+      logs(`New subMenuPos: ${JSON.stringify(targetMenuPos)}, preparedMessageObject: ${JSON.stringify(preparedMessageObject)}`);
+    }
+    else {
+      preparedMessageObject = {
+        menutext: '',
+        state: '',
+        buttons: []
+      };
+    }
+  }
+  if (menuItemToProcess.externalMenu) {
+    messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess, funcEnum: menuItemToProcess.funcEnum, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
+      // logs(`menuItemToProcess.externalMenu = ${menuItemToProcess.externalMenu}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.funcEnum))}`, _l);
+      if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
+        logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
+        menuItemToProcess = menuMakeMenuIndexed(subMenu);
+        logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`);
+      }
+      else {
+        if ((typeof(subMenu) === 'object') && subMenu.hasOwnProperty('error')) {
+          console.warn(`Can't update subMenu from externalMenu ${menuItemToProcess.externalMenu}! No result. Error is ${subMenu.error}`);
+        }
+        targetMenuPos = [];
+      }
+      menuItemToProcess.externalMenu = null;
+      menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback);
+    });
+  }
+  else if (menuItemToProcess.submenu && (typeof(menuItemToProcess.submenu) === 'function')) {
+    logs('currentMenuItem.submenu = ' + JSON.stringify(menuItemToProcess.submenu));
+    menuItemToProcess.submenu = menuItemToProcess.submenu(user, menuItemToProcess);
+    logs('currentMenuItem = ' + JSON.stringify(menuItemToProcess));
+    logs('currentMenuItem.submenu = ' + JSON.stringify(menuItemToProcess.submenu));
+    menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback);
+  }
+  else {
+    const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
+    if (hierarchicalCaption) {
+      currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
+    }
+    let currentSubMenuPos;
+    // logs('currentMenuItem = ' + JSON.stringify(currentMenuItem, null, 2));
+    if ((menuItemToProcess.submenu.length > 0) && (targetMenuPos.length > 0)) {
+      logs(`typeof(currentMenuPos[0]) = ${typeof(targetMenuPos[0])}`);
+      logs(`Number(currentMenuPos[0]) = ${Number(targetMenuPos[0])}`);
+      logs(`(typeof(currentMenuPos[0]) === 'string') && (Number(currentMenuPos[0]) == NaN) = ${(typeof(targetMenuPos[0]) === 'string') && isNaN(Number(targetMenuPos[0]))}`);
+      currentSubMenuPos = targetMenuPos.shift();
+      if ((typeof(currentSubMenuPos) === 'string') && isNaN(Number(currentSubMenuPos))) {
+        logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}`);
+        currentSubMenuPos = menuItemToProcess.submenu.findIndex((item) => {
+          logs(`item = ${JSON.stringify(item)}`);
+          return ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos));
+        });
+        logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`);
+      }
+    }
+    if ((currentSubMenuPos !== undefined) && (currentSubMenuPos >= 0) && (menuItemToProcess.submenu.length > 0) && (currentSubMenuPos < menuItemToProcess.submenu.length)) {
+      logs(`currentSubMenuPos = ${currentSubMenuPos}, currentMenuItem = ${JSON.stringify(menuItemToProcess, null, 2)}`);
+      preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ' ' + iconItemToSubItemByArrow + ' ' : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
+      const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
+      logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`);
+      preparedMessageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
+      logs(`(1) subMenuRow.submenu[${currentSubMenuPos}] = ${JSON.stringify(subMenuItem)}`);
+      preparedMessageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
+      preparedMessageObject.state = subMenuItem.hasOwnProperty('state') ? subMenuItem.state : undefined;
+      preparedMessageObject.type = subMenuItem.hasOwnProperty('type') ? subMenuItem.type : undefined;
+      preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
+      preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
+      preparedMessageObject.count = menuItemToProcess.submenu.length;
+      preparedMessageObject.index = currentSubMenuPos;
+      menuPrepareOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, callback);
+    }
+    else {
+      logs(`currentMenuItem 2 = ${JSON.stringify(menuItemToProcess/* , null, 2 */)}`);
+      logs(`preparedMessageObject 2 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
+      logs(`currentMenuPos 2 = ${JSON.stringify(targetMenuPos/* , null, 2 */)}`);
+      logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos/* , null, 2 */)}`);
+      if (currentSubMenuPos >= menuItemToProcess.submenu.length) {
+        let savedPos = cachedGetValue(user, cachedMenuItem);
+        logs(`savedPos = ${JSON.stringify(savedPos/* , null, 2 */)}`);
+        if (targetMenuPos.length) {
+          for (let i = targetMenuPos.length -1; i >=0 ; i-- ) {
+            if (savedPos[savedPos.length - 1] === targetMenuPos[i]) {
+              savedPos.pop();
+            }
+          }
+        }
+        if (savedPos[savedPos.length - 1] === currentSubMenuPos) {
+          savedPos.pop();
+        }
+        cachedSetValue(user, cachedMenuItem, savedPos);
+        logs(`savedPos 2 = ${JSON.stringify(savedPos/* , null, 2 */)}`);
+      }
+      if (menuItemToProcess.submenu.length) {
+        cachedSetValue(user, cachedMenuItemsAndRows, [menuItemToProcess, {...preparedMessageObject}, currentIndent]);
+      }
+      preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ` ${iconItemToSubItemByArrow} ` : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
+      preparedMessageObject.buttons = [];
+      const
+        currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+        currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '' ,
+        maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
+      let buttonsCount = menuItemToProcess.submenu.length;
+      let buttonsOffset = 0;
+      if (buttonsCount > maxButtonsCount) {
+        if (cachedExistsValue(user, cachedMenuButtonsOffset)) {
+          if (currentIndex) cachedAddToDelCachedOnBack(user, currentBackIndex, cachedMenuButtonsOffset);
+          const [forIndex, currentOffset] = commandUnpackParams(cachedGetValue(user, cachedMenuButtonsOffset));
+          if (currentIndex === forIndex) {
+            buttonsOffset = Number(currentOffset);
+            buttonsCount = buttonsCount - buttonsOffset;
+          }
+          else {
+            cachedDelValue(user, cachedMenuButtonsOffset);
+          }
+        }
+      }
+      if (currentIndex) preparedMessageObject.backIndex = currentBackIndex;
+      // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
+      const
+        isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
+        callbackDataToCache = new Map();
+      // currentMenuItem.submenu.forEach(currentSubMenuItem => {
+      for (let buttonsIndex = 0; buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount); buttonsIndex++) {
+        const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
+        // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`);
+        logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
+        const currentSubIndex = currentSubMenuItem.index;
+        let callbackData = menuItemButtonPrefix + currentSubIndex;
+        if (currentSubMenuItem.hasOwnProperty('param') && (typeof(currentSubMenuItem.param) === 'string') && (currentSubMenuItem.param.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.param !== cmdPrefix)) {
+          if (currentSubMenuItem.param.length > 64) {
+            callbackDataToCache.set(currentSubIndex, currentSubMenuItem.param);
+            callbackData = commandsPackParams(cmdCached, currentSubIndex);
+          }
+          else {
+            callbackData = currentSubMenuItem.param;
+          }
+        }
+        if (callbackData.length > 64) {
+          console.error(`Callback_data max possible length exceed! subMenuItem: \n${JSON.stringify(currentSubMenuItem, null, 2)}`);
+          callbackData = cmdNoOperation;
+        }
+        const
+          currentState = currentSubMenuItem.state,
+          currentObject = currentSubMenuItem.destEnum && currentState && currentSubMenuItem.funcEnum ? getObjectEnriched(currentState) : undefined,
+          currentValue =  currentObject && (currentObject.common['type'] !== 'boolean') ? ` (${enumerationsStateValueDetails(user, currentObject, currentSubMenuItem.funcEnum).valueString})`: '',
+          currentIcon = (currentValue && isFunctionsFirst) ? '' :  menuMenuItemGetIcon(user, currentSubMenuItem);
+        preparedMessageObject.buttons.push({
+          text:  `${currentIcon}${currentSubMenuItem.name}${currentValue}`,
+          icon: currentIcon,
+          group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
+          callback_data: callbackData
+        });
+      }
+      if (buttonsOffset > 0) {
+        preparedMessageObject.buttons.push({
+          text:  `${iconItemFastLeft}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
+          icon: iconItemFastLeft,
+          group: 'offset',
+          callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset - maxButtonsCount)
+        });
+      }
+      if (buttonsCount > maxButtonsCount) {
+        preparedMessageObject.buttons.push({
+          text:  `${iconItemFastRight}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
+          icon: iconItemFastRight,
+          group: 'offset',
+          callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
+        });
+      }
+      // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
+      if (callbackDataToCache.size) {
+        // logs(`callbackDataToCache.size = ${callbackDataToCache.size}`);
+        cachedSetValue(user, cachedMenuLongCommandsWithParams, callbackDataToCache);
+      }
+      if ( preparedMessageObject.hasOwnProperty('function') && (typeof preparedMessageObject.function === "function") ) {
+        const functionResult = preparedMessageObject.function(user, menuItemToProcess);
+        if (typeof functionResult === 'string') {
+          preparedMessageObject.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
+        }
+      }
+      else if (menuItemToProcess.hasOwnProperty('text') && (menuItemToProcess.text !== undefined)) {
+        preparedMessageObject.menutext += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
+      }
+      logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
+      callback(preparedMessageObject, menuItemToProcess);
+    }
+  }
+}
+
+
+
 /**
  * This function "executes" pressed menu item, so - it go from the root to the current menu item, prepared the
  * menu to the draw and then do one of the action:
@@ -8247,7 +8486,7 @@ function menuPrintFixedLengthLinesForMenuItemDetails(user, linesArray) {
  * @param {boolean=} isSilent - The selector, how to inform user about message (show or not update of menu as a new message).
  * @param {boolean=} skipConfirmation - The selector, based on which the message about success will or will not be displayed.
  */
-function menuProcessOnPosition(user, cmd, cmdPos, clearBefore, clearUserMessage, isSilent, skipConfirmation) {
+function menuProcessActionOnPosition(user, cmd, cmdPos, clearBefore, clearUserMessage, isSilent, skipConfirmation) {
   let timer;
 
   /**
@@ -8376,7 +8615,7 @@ function menuProcessOnPosition(user, cmd, cmdPos, clearBefore, clearUserMessage,
   // logs(`cmd = ${cmd}, cmdPos = ${JSON.stringify(cmdPos)}`);
   user.rootMenu = menuMakeMenuIndexed(menuMenuItemGenerateRootMenu(user, cmdPos && cmdPos.length ? cmdPos[0] : undefined ));
   // logs('user.rootMenu = ' + JSON.stringify(user.rootMenu), 1);
-  menuPrepareMenuRowToProcess(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', menuExecutePreparedMenuObject);
+  menuPrepareOnPosition(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', menuExecutePreparedMenuObject);
 }
 
 
@@ -8418,238 +8657,9 @@ function menuDrawOnPosition(user, itemPos, clearBefore, clearUserMessage, isSile
   }
   cachedSetValue(user, cachedMenuItem, itemPos);
   logs('itemPos = ' + JSON.stringify(itemPos));
-  menuPrepareMenuRowToProcess(user, user.rootMenu, itemPos ? [...itemPos] : [], null, '', menuDrawPreparedMenuObject);
+  menuPrepareOnPosition(user, user.rootMenu, itemPos ? [...itemPos] : [], null, '', menuDrawPreparedMenuObject);
 }
 
-const
-  cachedMenuItemsAndRows = 'menuItemsAndRows';
-
-/**
- * This function deletes the cached pre-drawn state of the user's menu items and rows.
- * @param {object} user - The user that is currently logged in.
- */
-function menuClearCachedMenuItemsAndRows(user) {
-  cachedDelValue(user, cachedMenuItemsAndRows);
-}
-
-const cachedMenuLongCommandsWithParams = 'longCommandsWithParams';
-const cachedMenuButtonsOffset = 'buttonsOffset';
-
-
-/**
- * This function go from the root level down to the target menu item (by `targetMenuPos`) iterative way, filling on each turn the appropriate information, as to the
- * text part of Telegram message, as for the buttons part, to prepare it for "draw" to user.
- * @param {object} user - The user object.
- * @param {object} menuItemToProcess - The menu item, which have to be processed, to reach the final destination item by `targetMenuPos`.
- * @param {string[]} targetMenuPos - The position of the menu item in the menu tree, each item of array describes the position of item on each level of hierarchy of menu.
- * @param {object} preparedMessageObject - The prepared for "draw" the Telegram message object related to the the `targetMenuPos`. Will be filled additionally on each iteration.
- * @param {string} currentIndent - The current indent on this step of iteration for the text part of Telegram message.
- * @param {function} callback - The function, which will receive a result of calculation - function(preparedMessageObject, menuItemToProcess).
- */
-function menuPrepareMenuRowToProcess(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback) {
-  logs('user = ' + JSON.stringify(user));
-  logs('currentMenuItem = ' + JSON.stringify(menuItemToProcess));
-  logs('currentMenuPos = ' + JSON.stringify(targetMenuPos));
-  logs('preparedMessageObject = ' + JSON.stringify(preparedMessageObject, null, 2));
-  logs('currentTab = ' + JSON.stringify(currentIndent));
-  logs('callback = ' + JSON.stringify(callback));
-  if (! preparedMessageObject) {
-    const
-      [savedMenu, savedRows, savedTab] = cachedExistsValue(user, cachedMenuItemsAndRows) ?  cachedGetValue(user, cachedMenuItemsAndRows) : [null, null, 0],
-      savedPos = savedMenu && savedMenu.index ? savedMenu.index.split('.') : null;
-    logs(`currentMenuPos: ${JSON.stringify(targetMenuPos)}, savedPos: ${JSON.stringify(savedPos)}, savedMenu: ${JSON.stringify(savedMenu)}`);
-    if (savedPos && (targetMenuPos.join('.').indexOf(savedPos.join('.')) === 0)) {
-      targetMenuPos = targetMenuPos.slice(savedPos.length);
-      menuItemToProcess = savedMenu;
-      preparedMessageObject = {...savedRows};
-      currentIndent = savedTab;
-      logs(`New subMenuPos: ${JSON.stringify(targetMenuPos)}, preparedMessageObject: ${JSON.stringify(preparedMessageObject)}`);
-    }
-    else {
-      preparedMessageObject = {
-        menutext: '',
-        state: '',
-        buttons: []
-      };
-    }
-  }
-  if (menuItemToProcess.externalMenu) {
-    messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess, funcEnum: menuItemToProcess.funcEnum, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
-      // logs(`menuItemToProcess.externalMenu = ${menuItemToProcess.externalMenu}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.funcEnum))}`, _l);
-      if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
-        logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
-        menuItemToProcess = menuMakeMenuIndexed(subMenu);
-        logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`);
-      }
-      else {
-        if ((typeof(subMenu) === 'object') && subMenu.hasOwnProperty('error')) {
-          console.warn(`Can't update subMenu from externalMenu ${menuItemToProcess.externalMenu}! No result. Error is ${subMenu.error}`);
-        }
-        targetMenuPos = [];
-      }
-      menuItemToProcess.externalMenu = null;
-      menuPrepareMenuRowToProcess(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback);
-    });
-  }
-  else if (menuItemToProcess.submenu && (typeof(menuItemToProcess.submenu) === 'function')) {
-    logs('currentMenuItem.submenu = ' + JSON.stringify(menuItemToProcess.submenu));
-    menuItemToProcess.submenu = menuItemToProcess.submenu(user, menuItemToProcess);
-    logs('currentMenuItem = ' + JSON.stringify(menuItemToProcess));
-    logs('currentMenuItem.submenu = ' + JSON.stringify(menuItemToProcess.submenu));
-    menuPrepareMenuRowToProcess(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback);
-  }
-  else {
-    const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
-    if (hierarchicalCaption) {
-      currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
-    }
-    let currentSubMenuPos;
-    // logs('currentMenuItem = ' + JSON.stringify(currentMenuItem, null, 2));
-    if ((menuItemToProcess.submenu.length > 0) && (targetMenuPos.length > 0)) {
-      logs(`typeof(currentMenuPos[0]) = ${typeof(targetMenuPos[0])}`);
-      logs(`Number(currentMenuPos[0]) = ${Number(targetMenuPos[0])}`);
-      logs(`(typeof(currentMenuPos[0]) === 'string') && (Number(currentMenuPos[0]) == NaN) = ${(typeof(targetMenuPos[0]) === 'string') && isNaN(Number(targetMenuPos[0]))}`);
-      currentSubMenuPos = targetMenuPos.shift();
-      if ((typeof(currentSubMenuPos) === 'string') && isNaN(Number(currentSubMenuPos))) {
-        logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}`);
-        currentSubMenuPos = menuItemToProcess.submenu.findIndex((item) => {
-          logs(`item = ${JSON.stringify(item)}`);
-          return ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos));
-        });
-        logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`);
-      }
-    }
-    if ((currentSubMenuPos !== undefined) && (currentSubMenuPos >= 0) && (menuItemToProcess.submenu.length > 0) && (currentSubMenuPos < menuItemToProcess.submenu.length)) {
-      logs(`currentSubMenuPos = ${currentSubMenuPos}, currentMenuItem = ${JSON.stringify(menuItemToProcess, null, 2)}`);
-      preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ' ' + iconItemToSubItemByArrow + ' ' : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
-      const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
-      logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`);
-      preparedMessageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
-      logs(`(1) subMenuRow.submenu[${currentSubMenuPos}] = ${JSON.stringify(subMenuItem)}`);
-      preparedMessageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
-      preparedMessageObject.state = subMenuItem.hasOwnProperty('state') ? subMenuItem.state : undefined;
-      preparedMessageObject.type = subMenuItem.hasOwnProperty('type') ? subMenuItem.type : undefined;
-      preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
-      preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
-      menuPrepareMenuRowToProcess(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, callback);
-    }
-    else {
-      logs(`currentMenuItem 2 = ${JSON.stringify(menuItemToProcess/* , null, 2 */)}`);
-      logs(`preparedMessageObject 2 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
-      logs(`currentMenuPos 2 = ${JSON.stringify(targetMenuPos/* , null, 2 */)}`);
-      logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos/* , null, 2 */)}`);
-      if (currentSubMenuPos >= menuItemToProcess.submenu.length) {
-        let savedPos = cachedGetValue(user, cachedMenuItem);
-        logs(`savedPos = ${JSON.stringify(savedPos/* , null, 2 */)}`);
-        if (targetMenuPos.length) {
-          for (let i = targetMenuPos.length -1; i >=0 ; i-- ) {
-            if (savedPos[savedPos.length - 1] === targetMenuPos[i]) {
-              savedPos.pop();
-            }
-          }
-        }
-        if (savedPos[savedPos.length - 1] === currentSubMenuPos) {
-          savedPos.pop();
-        }
-        cachedSetValue(user, cachedMenuItem, savedPos);
-        logs(`savedPos 2 = ${JSON.stringify(savedPos/* , null, 2 */)}`);
-      }
-      if (menuItemToProcess.submenu.length) {
-        cachedSetValue(user, cachedMenuItemsAndRows, [menuItemToProcess, {...preparedMessageObject}, currentIndent]);
-      }
-      preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ` ${iconItemToSubItemByArrow} ` : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
-      preparedMessageObject.buttons = [];
-      const
-        currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-        currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '' ,
-        maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
-      let buttonsCount = menuItemToProcess.submenu.length;
-      let buttonsOffset = 0;
-      if (buttonsCount > maxButtonsCount) {
-        if (cachedExistsValue(user, cachedMenuButtonsOffset)) {
-          if (currentIndex) cachedAddToDelCachedOnBack(user, currentBackIndex, cachedMenuButtonsOffset);
-          const [forIndex, currentOffset] = commandUnpackParams(cachedGetValue(user, cachedMenuButtonsOffset));
-          if (currentIndex === forIndex) {
-            buttonsOffset = Number(currentOffset);
-            buttonsCount = buttonsCount - buttonsOffset;
-          }
-          else {
-            cachedDelValue(user, cachedMenuButtonsOffset);
-          }
-        }
-      }
-      if (currentIndex) preparedMessageObject.backIndex = currentBackIndex;
-      // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
-      const
-        isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
-        callbackDataToCache = new Map();
-      // currentMenuItem.submenu.forEach(currentSubMenuItem => {
-      for (let buttonsIndex = 0; buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount); buttonsIndex++) {
-        const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
-        // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`);
-        logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
-        const currentSubIndex = currentSubMenuItem.index;
-        let callbackData = menuItemButtonPrefix + currentSubIndex;
-        if (currentSubMenuItem.hasOwnProperty('param') && (typeof(currentSubMenuItem.param) === 'string') && (currentSubMenuItem.param.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.param !== cmdPrefix)) {
-          if (currentSubMenuItem.param.length > 64) {
-            callbackDataToCache.set(currentSubIndex, currentSubMenuItem.param);
-            callbackData = commandsPackParams(cmdCached, currentSubIndex);
-          }
-          else {
-            callbackData = currentSubMenuItem.param;
-          }
-        }
-        if (callbackData.length > 64) {
-          console.error(`Callback_data max possible length exceed! subMenuItem: \n${JSON.stringify(currentSubMenuItem, null, 2)}`);
-          callbackData = cmdNoOperation;
-        }
-        const
-          currentState = currentSubMenuItem.state,
-          currentObject = currentSubMenuItem.destEnum && currentState && currentSubMenuItem.funcEnum ? getObjectEnriched(currentState) : undefined,
-          currentValue =  currentObject && (currentObject.common['type'] !== 'boolean') ? ` (${enumerationsStateValueDetails(user, currentObject, currentSubMenuItem.funcEnum).valueString})`: '',
-          currentIcon = (currentValue && isFunctionsFirst) ? '' :  menuMenuItemGetIcon(user, currentSubMenuItem);
-        preparedMessageObject.buttons.push({
-          text:  `${currentIcon}${currentSubMenuItem.name}${currentValue}`,
-          icon: currentIcon,
-          group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
-          callback_data: callbackData
-        });
-      }
-      if (buttonsOffset > 0) {
-        preparedMessageObject.buttons.push({
-          text:  `${iconItemFastLeft}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
-          icon: iconItemFastLeft,
-          group: 'offset',
-          callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset - maxButtonsCount)
-        });
-      }
-      if (buttonsCount > maxButtonsCount) {
-        preparedMessageObject.buttons.push({
-          text:  `${iconItemFastRight}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
-          icon: iconItemFastRight,
-          group: 'offset',
-          callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
-        });
-      }
-      // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
-      if (callbackDataToCache.size) {
-        // logs(`callbackDataToCache.size = ${callbackDataToCache.size}`);
-        cachedSetValue(user, cachedMenuLongCommandsWithParams, callbackDataToCache);
-      }
-      if ( preparedMessageObject.hasOwnProperty('function') && (typeof preparedMessageObject.function === "function") ) {
-        const functionResult = preparedMessageObject.function(user, menuItemToProcess);
-        if (typeof functionResult === 'string') {
-          preparedMessageObject.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
-        }
-      }
-      else if (menuItemToProcess.hasOwnProperty('text') && (menuItemToProcess.text !== undefined)) {
-        preparedMessageObject.menutext += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
-      }
-      logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
-      callback(preparedMessageObject, menuItemToProcess);
-    }
-  }
-}
 
 /**
  * This function checks the availability of menu item(device) via `availableState` property of `function`.
@@ -8704,7 +8714,8 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
         if (currentStateId && existsObject(currentStateId) && (getObject(currentStateId).common.type === 'boolean')) {
           const
             currentAttributeId = currentStateId.split('.').slice( - currentFunction.state.split('.').length).join('.'),
-            convertValueCode = currentFunction.deviceAttributes.hasOwnProperty(currentAttributeId) ? currentFunction.deviceAttributes[currentAttributeId].convertValueCode : "",
+            currentFunctionDeviceButtonsAndAttributes = {...currentFunction.deviceAttributes, ...currentFunction.deviceButtons},
+            convertValueCode = currentFunctionDeviceButtonsAndAttributes.hasOwnProperty(currentAttributeId) ? currentFunctionDeviceButtonsAndAttributes[currentAttributeId].convertValueCode : "",
             currentValue = existsState(currentStateId) ? getState(currentStateId).val : false;
           icon = enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode) ? menuItemToProcess.icons.on : menuItemToProcess.icons.off;
         }
@@ -8831,7 +8842,7 @@ function menuRenewMenuMessage(idOfUser, forceNow) {
         console.warn('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
         if ( (! cachedGetValue(user, cachedIsWaitForInput)) && (itemPos !== undefined)) {
           console.warn(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu : null})}`);
-          menuProcessOnPosition(user, undefined, itemPos, true, false, true);
+          menuProcessActionOnPosition(user, undefined, itemPos, true, false, true);
         }
       }
       else if (! isBotMessageOld24OrNotExists) {
@@ -9351,7 +9362,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
     else {
       cachedSetValue(user, cachedIsWaitForInput, false);
       /** if it private chat - delete user input, if it group - clear menu, and recreate it after user input **/
-      menuProcessOnPosition(user, undefined, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false, true);
+      menuProcessActionOnPosition(user, undefined, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false, true);
     }
   }
   else if (currentCommand === cmdGetInput) {
@@ -9520,13 +9531,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
       telegramMessagesFormatAndPushToQueueMessage(user, menuMessageObject, false, false, false);
     }
     else {
-      menuProcessOnPosition(user);
+      menuProcessActionOnPosition(user);
     }
   }
   else if (configOptions.getOption(cfgMessagesForMenuCall, user).includes(currentCommand)){
     // setCachedValue(user, cachedMenuOn, false);
     /** if it private chat - delete user input, if configured **/
-    menuProcessOnPosition(user, undefined, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, true);
+    menuProcessActionOnPosition(user, undefined, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, true);
   }
   else if (currentCommand.indexOf(cmdClose) === 0) {
 
@@ -9547,7 +9558,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
       cachedSetValue(user, cachedDelCachedOnBack, {...cachedToDelete});
     }
     currentMenuPosition = menuMenuItemExtractPosition(currentMenuPosition);
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdHome) {
     if (cachedExistsValue(user, cachedDelCachedOnBack)) {
@@ -9561,10 +9572,10 @@ async function commandUserInputCallback(user, userInputToProcess) {
       });
       cachedDelValue(user, cachedDelCachedOnBack);
     }
-    menuProcessOnPosition(user, undefined, []);
+    menuProcessActionOnPosition(user, undefined, []);
   }
   else if (currentCommand.indexOf(menuItemButtonPrefix) === 0) {
-    menuProcessOnPosition(user, currentCommand.replace(menuItemButtonPrefix,''));
+    menuProcessActionOnPosition(user, currentCommand.replace(menuItemButtonPrefix,''));
   }
   else if ((currentCommand === cmdAcknowledgeAlert) || (currentCommand === cmdAcknowledgeAndUnsubscribeAlert)) {
     const alertMessages = alertGetMessages(user);
@@ -9583,14 +9594,14 @@ async function commandUserInputCallback(user, userInputToProcess) {
       if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert) alertsManage(user, alertLastNonAcknowledgedMessage.id);
     }
     menuClearCachedMenuItemsAndRows(user);
-    menuProcessOnPosition(user);
+    menuProcessActionOnPosition(user);
   }
   else if (currentCommand === cmdAcknowledgeAllAlerts) {
     const alertMessages = alertGetMessages(user);
     alertMessages.filter(alertMessage => (! alertMessage.ack)).forEach(alertMessage => {alertMessage.ack = true});
     alertsStoreMessagesToCache(user, alertMessages);
     menuClearCachedMenuItemsAndRows(user);
-    menuProcessOnPosition(user);
+    menuProcessActionOnPosition(user);
   }
   else if (currentCommand === cmdItemPress) {
     switch (currentType) {
@@ -9732,7 +9743,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
       }
     }
     menuClearCachedMenuItemsAndRows(user);
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemDownload) {
     nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
@@ -9777,7 +9788,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     isNaN(currentItem)
                       ? currentItem : Number(currentItem));
                   // logs(`currentMenuItem = ${currentMenuItem}`);
-                  menuProcessOnPosition(user, undefined, currentMenuPosition);
+                  menuProcessActionOnPosition(user, undefined, currentMenuPosition);
                 }
                 else {
                   telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
@@ -9809,7 +9820,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             ? currentParam : Number(currentParam));
         break;
     }
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemDeleteConfirm) {
     switch (currentType) {
@@ -9990,7 +10001,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
             const currentMenuPosition = cachedGetValue(user, cachedMenuItem);
             currentMenuPosition.splice(-2, 2);
-            menuProcessOnPosition(user, undefined, currentMenuPosition);
+            menuProcessActionOnPosition(user, undefined, currentMenuPosition);
           })
           .catch((_error) => {
             telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
@@ -10003,7 +10014,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         break;
       }
     }
-    if (currentMenuPosition) menuProcessOnPosition(user, undefined, currentMenuPosition);
+    if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemMark) {
     switch (currentType) {
@@ -10067,7 +10078,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         break;
       }
     }
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemsProcess) {
     switch (currentType) {
@@ -10211,7 +10222,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                   }
                   translationsSave();
                   menuPosition.splice(-1, 1);
-                  menuProcessOnPosition(user, undefined, menuPosition);
+                  menuProcessActionOnPosition(user, undefined, menuPosition);
                 });
                 currentMenuPosition = undefined;
               }
@@ -10379,7 +10390,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                   const currentMenuPosition = cachedGetValue(user, cachedMenuItem);
                   currentMenuPosition.push(1);
                   telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-                  menuProcessOnPosition(user, undefined, currentMenuPosition);
+                  menuProcessActionOnPosition(user, undefined, currentMenuPosition);
                 })
               .catch((_error) => {
                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
@@ -10394,7 +10405,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
                 const currentMenuPosition = cachedGetValue(user, cachedMenuItem);
                 if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
-                menuProcessOnPosition(user, undefined, currentMenuPosition);
+                menuProcessActionOnPosition(user, undefined, currentMenuPosition);
             })
             .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
             break;
@@ -10410,7 +10421,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         break;
       }
     }
-    if (currentMenuPosition) menuProcessOnPosition(user, undefined, currentMenuPosition);
+    if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemReset) {
     switch (currentType) {
@@ -10439,7 +10450,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         break;
       }
     }
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if ((currentCommand === cmdItemMoveUp) || (currentCommand === cmdItemMoveDown)) {
     switch (currentType) {
@@ -10491,7 +10502,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
       }
     }
 
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdItemNameGet) {
     const currentEnumeration = enumerationsList[currentType].list;
@@ -10508,13 +10519,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
           enumerationsSave(currentType);
           menuClearCachedMenuItemsAndRows(user);
         }
-        menuProcessOnPosition(user);
+        menuProcessActionOnPosition(user);
         logs(`${currentEnumeration[currentItem].state}.update result = ${JSON.stringify(result)}`);
       });
     }
     else {
       enumerationsRereadItemName(user, currentItem, currentEnumeration[currentItem]);
-      menuProcessOnPosition(user);
+      menuProcessActionOnPosition(user);
     }
   }
   else if (currentCommand === cmdCreateReportEnum) {
@@ -10534,7 +10545,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
       currentMenuPosition.splice(-1);
     }
     if (Object.keys(enumerationsList[dataTypeReport].enums).length > 1) currentMenuPosition.splice(-1);
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdUseCommonTranslation) {
     const
@@ -10544,12 +10555,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
       translationsItemStore(user, commonTranslationId, currentTranslationIdValue);
     }
     translationsItemStore(user, currentItem, commonTranslationId);
-    menuProcessOnPosition(user, undefined, cachedGetValue(user, cachedMenuItem).slice(0,-1));
+    menuProcessActionOnPosition(user, undefined, cachedGetValue(user, cachedMenuItem).slice(0,-1));
   }
   else if (currentCommand === cmdAlertSubscribe) {
     alertsManage(user, currentType, currentItem, currentParam, alertsGetStateAlertDetailsOrThresholds(user, currentType));
     menuClearCachedMenuItemsAndRows(user);
-    menuProcessOnPosition(user);
+    menuProcessActionOnPosition(user);
   }
   else if (currentCommand === cmdItemJumpTo) {
     const jumpToArray = currentType.split('.');
@@ -10572,22 +10583,22 @@ async function commandUserInputCallback(user, userInputToProcess) {
     });
     menuClearCachedMenuItemsAndRows(user);
     logs(`currentMenuItem = ${currentMenuPosition}`);
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdSetOffset) {
     currentMenuPosition = currentType.split('.');
     const currentOffset = [currentType, currentItem].join(itemsDelimiter);
     cachedSetValue(user, cachedMenuButtonsOffset, currentOffset);
     menuClearCachedMenuItemsAndRows(user);
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdDeleteAllSentImages) {
     sentImagesDelete(user);
     menuClearCachedMenuItemsAndRows(user);
-    menuProcessOnPosition(user, undefined, currentMenuPosition);
+    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdNoOperation) {
-    menuProcessOnPosition(user);
+    menuProcessActionOnPosition(user);
   }
 }
 
@@ -11285,7 +11296,7 @@ function telegramOnConnected(connected) {
           // logs(`CachedState(user, cachedMenuOn) = ${getCachedState(user, cachedMenuOn)}, CachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)}`)
           menuClearCachedMenuItemsAndRows(user);
           cachedDelValue(user, cachedMenuOn);
-          menuProcessOnPosition(user);
+          menuProcessActionOnPosition(user);
         }
       }
     });
