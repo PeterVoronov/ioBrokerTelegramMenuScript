@@ -4804,18 +4804,23 @@ function enumerationsItemMenuItemDetails(user, menuItemToProcess) {
  */
 function enumerationsItemName(user, enumerationType, enumerationItemId, enumerationItem) {
   const currentItemTranslationId = translationsGetEnumId(user, enumerationType, enumerationItemId, enumerationsNamesMain);
-  // logs(`enumerationType = ${enumerationType}, enumerationItemId = ${enumerationItemId}, currentItemTranslationId = ${currentItemTranslationId}`, _l)
+  // logs(`enumerationType = ${enumerationType}, enumerationItemId = ${enumerationItemId}, currentItemTranslationId = ${currentItemTranslationId}, enumerationItem = ${JSON.stringify(enumerationItem)}`, _l)
   if (enumerationItem.hasOwnProperty('name') && (enumerationItem.name !== undefined) && (translationsItemGet(user, currentItemTranslationId) === currentItemTranslationId) ) {
     // logs(`currentItemTranslationId ${currentItemTranslationId}`);
     enumerationsRereadItemName(user, enumerationType, enumerationItemId);
   }
-  let result = enumerationItem.name || enumerationItem.isExternal ?
-    translationsItemGet(user, currentItemTranslationId) :
-    (enumerationType === dataTypePrimaryEnums ?
-      `${stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumerationItemId}`))} [${enumerationItemId}]` :
-      translationsItemGet(user, enumerationItem.nameTranslationId)
-    );
-  if (enumerationItem.name && enumerationItemId.includes('.')) {
+  let result = enumerationItem.name || enumerationItem.isExternal
+    ?
+      translationsItemGet(user, currentItemTranslationId)
+    :
+      (enumerationType === dataTypePrimaryEnums
+        ?
+          `${stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumerationItemId}`))} [${enumerationItemId}]`
+        :
+          (enumerationItem.nameTranslationId ? translationsItemGet(user, enumerationItem.nameTranslationId) : 'No translation')
+
+      );
+  if ([dataTypeFunction, dataTypeDestination].includes(enumerationType) && enumerationItem.name && enumerationItemId.includes('.')) {
     const holderId = enumerationItemId.split('.').shift();
     result = `${translationsGetEnumName(user, enumerationType, holderId, enumerationsNamesMain)} ${iconItemToSubItemByArrow} ${result}`;
   }
@@ -5320,9 +5325,6 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
           else {
             nodeVm.runInContext(`const func = () => (${convertValueCode}); result = func()`, sandbox);
           }
-          /**
-           * ! fix - to check!
-           */
           inputValue = sandbox.result;
         }
         catch (error) {
@@ -5333,6 +5335,45 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
   }
   return inputValue;
 }
+
+/**
+ * This function make a test of `convertValueCode` to accept or no it.
+ * @param {object} user - The user object.
+ * @param {string} functionId - The appropriate `Function` ID.
+ * @param {string} stateToTestOnShortId - The appropriate state short ID.
+ * @param {string} convertValueCodeToTest - The code to test.
+ * @returns {boolean} Test result - `true` if everything is OK.
+ */
+function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShortId, convertValueCodeToTest) {
+  let
+    result = true,
+    isStateToTestOnFound = false,
+    stateToTestValue = undefined;
+  const
+    functionsList = enumerationsList[dataTypeFunction].list,
+    destinationsList = enumerationsList[dataTypeDestination].list,
+    destinationsListIds = Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)),
+    currentFunction = functionsList && functionId && functionsList.hasOwnProperty(functionId) ? functionsList[functionId] : undefined;
+  $(`state[id=*.${stateToTestOnShortId}](${currentFunction.enum}=${functionId})`).each(stateId => {
+    if (! isStateToTestOnFound) {
+      const currentStateObject = getObject(stateId, '*');
+      const currentItemEnums = currentStateObject['enumIds'];
+      if (destinationsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length > 0) {
+        const stateToTestValueObject = getState(stateId);
+        if (stateToTestValueObject && stateToTestValueObject.hasOwnProperty('val') && (stateToTestValueObject.val !== undefined) && (stateToTestValueObject.val !== null)) {
+          stateToTestValue = stateToTestValueObject.val;
+          isStateToTestOnFound = true;
+        }
+      }
+    }
+  });
+  if (isStateToTestOnFound) {
+    const testResultValue = enumerationsEvaluateValueConversionCode(user, stateToTestValue, convertValueCodeToTest);
+    result = ! (testResultValue === stateToTestValue);
+  }
+  return result;
+}
+
 
 /**
  * This function get the ioBroker state value and return it as object contained an formatted string and it's length modifier, taking in account all possible states and it's units.
@@ -9127,7 +9168,16 @@ async function commandUserInputCallback(user, userInputToProcess) {
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
               if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
-                enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = userInputToProcess;
+                const currentListItem = enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem];
+                if (currentListItem) {
+                  if ((currentParam !== 'convertValueCode') || enumerationsTestValueConversionCode(user, currentValue, currentItem, userInputToProcess)) {
+                    enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = userInputToProcess;
+                  }
+                  else {
+                    console.warn(`Unacceptable value '${userInputToProcess}' code conversion of attribute ${currentItem} for function ${currentValue}`);
+                    telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+                  }
+                }
               }
               enumerationsSave(dataTypeFunction);
               break;
@@ -10057,10 +10107,12 @@ async function commandUserInputCallback(user, userInputToProcess) {
         if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
           const
             functionsList = enumerationsList[dataTypeFunction].list,
+            functionsListIds = Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)),
             alertFunctionId = currentSubParam,
             alertFunction = functionsList && currentSubParam && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
             isStatesInFolders = alertFunction && alertFunction.statesInFolders,
             destinationsList = enumerationsList[dataTypeDestination].list,
+            destinationsListIds = Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)),
             alertDestinationId = currentSubValue,
             alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
             alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
@@ -10087,8 +10139,8 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     case 'alertPropagateGlobal': {
                       if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
                         const currentItemEnums = currentStateObject['enumIds'];
-                        toProcessState = (Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
-                        (Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)).filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
+                        toProcessState = (functionsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
+                                      (destinationsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
                       }
                       break;
                     }
