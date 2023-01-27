@@ -237,6 +237,7 @@ const
   cfgMessagesForMenuCall                = `${cfgPrefix}MessagesForMenuCall`,
   cfgClearMenuCall                      = `${cfgPrefix}ClearMenuCall`,
   cfgShowHomeButton                     = `${cfgPrefix}ShowHomeButton`,
+  cfgShowHorizontalNavigation           = `${cfgPrefix}ShowHorizontalNavigation`,
   cfgShowResultMessages                 = `${cfgPrefix}ShowResultMessages`,
   cfgMenuRefreshInterval                = `${cfgPrefix}MenuRefreshInterval`,
   cfgUseAliasOriginForCommonAttrs       = `${cfgPrefix}UseAliasOriginForCommonAttrs`,
@@ -288,9 +289,10 @@ const
     [cfgTextLengthModifierForGChats]    : -4,                           // Modifier for the max of symbols per line for a group chats
     [cfgClearMenuCall]                  : true,                         // Delete command, after menu is shown
     [cfgHierarchicalCaption]            : 0,                            // show caption of the current menu hierarchically
-    [cfgShowHomeButton]                 : true,                         // Alway show 'Home' button
+    [cfgShowHomeButton]                 : true,                         // Always show 'Home' button
+    [cfgShowHorizontalNavigation]       : false,                        // Always show "Horizontal" navigation buttons,
     [cfgShowResultMessages]             : true,                         // Show alert messages, as reactions on some input
-    [cfgGraphsScale]                    : 1,                          // Scale for e-charts graphs
+    [cfgGraphsScale]                    : 1,                            // Scale for e-charts graphs
     [cfgGraphsIntervals]                : [
       {id: '2h',  minutes: timeIntervalsInMinutes.h * 2},
       {id: '6h',  minutes: timeIntervalsInMinutes.h * 6},
@@ -4516,7 +4518,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
             id: currentItem,
-            submenu: menuMakeMenuIndexed([
+            submenu: menuReIndexMenu([
               {
                 name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
                 id: currentItem,
@@ -7514,6 +7516,7 @@ const
       index: '',
       name: translationsItemMenuGet(user, 'RootText'),
       icon: '🎩',
+      options: `!${menuOptionHorizontalNavigation}`,
       submenu: new Array()
     },
     isMenuFastGeneration = configOptions.getOption(cfgMenuFastGeneration, user),
@@ -7952,7 +7955,7 @@ function menuMenuPartGenerateNavigationLeftAndRight(user, subMenu, upperMenuItem
         index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
         name: `${iconItemMoveLeft}`,
         param: commandsPackParams(cmdItemJumpTo, (leftItemMenuId ? [jumpToUp, leftItemMenuId] : [jumpToLeft]).join('.')),
-        group: groupId === undefined ? cmdItemJumpTo : groupId,
+        group: groupId === undefined ? 'horizontalNavigation' : groupId,
         submenu: [],
       });
     }
@@ -7961,7 +7964,7 @@ function menuMenuPartGenerateNavigationLeftAndRight(user, subMenu, upperMenuItem
         index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
         name: `${iconItemMoveRight}`,
         param: commandsPackParams(cmdItemJumpTo, (rightItemMenuId ? [jumpToUp, rightItemMenuId] : [jumpToRight]).join('.')),
-        group: groupId === undefined ? cmdItemJumpTo : groupId,
+        group: groupId === undefined ? 'horizontalNavigation' : groupId,
         submenu: [],
       });
     }
@@ -8066,7 +8069,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
     // logs(`currentLevelMenuItemsList = ${JSON.stringify(currentLevelMenuItemsList)}`);
     if (menuItemToProcess.hasOwnProperty('subordinates') && typeOf(menuItemToProcess.subordinates, 'array') && menuItemToProcess.subordinates.length) {
-      subMenu = menuMakeMenuIndexed(menuItemToProcess.subordinates, currentIndex);
+      subMenu = menuReIndexMenu(menuItemToProcess.subordinates, currentIndex);
     }
     /** this way to find an objects only by function and then filter by dest/destEnum, is a ten times faster than include destEnum in search pattern
      like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`) */
@@ -8245,7 +8248,8 @@ function menuPrintFixedLengthLinesForMenuItemDetails(user, linesArray) {
 const
   cachedMenuItemsAndRows = 'menuItemsAndRows',
   cachedMenuLongCommandsWithParams = 'longCommandsWithParams',
-  cachedMenuButtonsOffset = 'buttonsOffset';
+  cachedMenuButtonsOffset = 'buttonsOffset',
+  menuOptionHorizontalNavigation = 'horizontalNavigation';
 
 /**
  * This function deletes the cached pre-drawn state of the user's menu items and rows.
@@ -8298,7 +8302,7 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
       // logs(`menuItemToProcess.externalMenu = ${menuItemToProcess.externalMenu}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.funcEnum))}`, _l);
       if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
         logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
-        menuItemToProcess = menuMakeMenuIndexed(subMenu);
+        menuItemToProcess = menuReIndexMenu(subMenu);
         logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`);
       }
       else {
@@ -8351,7 +8355,8 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
       preparedMessageObject.type = subMenuItem.hasOwnProperty('type') ? subMenuItem.type : undefined;
       preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
       preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
-      preparedMessageObject.count = menuItemToProcess.submenu.length;
+      preparedMessageObject.options = subMenuItem.hasOwnProperty('options') ? subMenuItem.options : '';
+      preparedMessageObject.indexMax = menuItemToProcess.submenu.length - 1;
       preparedMessageObject.index = currentSubMenuPos;
       menuPrepareOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, isDrawMode, callback);
     }
@@ -8464,6 +8469,27 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
             callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
           });
         }
+        if (preparedMessageObject.buttons.filter(currentButton => {currentButton.group === 'horizontalNavigation'}).length === 0) {
+          if ((preparedMessageObject.options.includes(menuOptionHorizontalNavigation) || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
+          (! preparedMessageObject.options.includes(`!${menuOptionHorizontalNavigation}`))) {
+            if (preparedMessageObject.index) {
+              preparedMessageObject.buttons.push({
+                text:  `${iconItemMoveLeft}`,
+                icon: `${iconItemMoveLeft}`,
+                group: menuOptionHorizontalNavigation,
+                callback_data: commandsPackParams(cmdItemJumpTo, [jumpToUp, preparedMessageObject.index - 1])
+              });
+            }
+            if (preparedMessageObject.index < preparedMessageObject.indexMax) {
+              preparedMessageObject.buttons.push({
+                text:  `${iconItemMoveRight}`,
+                icon: `${iconItemMoveRight}`,
+                group: menuOptionHorizontalNavigation,
+                callback_data: commandsPackParams(cmdItemJumpTo, [jumpToUp, preparedMessageObject.index + 1])
+              });
+            }
+          }
+        }
         // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
         if (callbackDataToCache.size) {
           // logs(`callbackDataToCache.size = ${callbackDataToCache.size}`);
@@ -8514,7 +8540,7 @@ function menuProcessActionOnPosition(user, cmd, cmdPos, clearBefore, clearUserMe
    * @param {*} _preparedMessageObject -(`object`) The prepared telegram message object (including buttons).
    * @param {*} menuItemToProcess -(`object`) The menu item, which have to be "processed".
    */
-  function menuExecutePreparedMenuObject(_preparedMessageObject, menuItemToProcess) {
+  function menuProcessPreparedMenuObject(_preparedMessageObject, menuItemToProcess) {
     logs('cmdItem = ' + JSON.stringify(menuItemToProcess));
     if( (cmd) && (menuItemToProcess) && (menuItemToProcess.submenu.length === 0) && ! menuItemToProcess.hasOwnProperty('function')) {
       if ( menuItemToProcess.hasOwnProperty('state') && (menuItemToProcess.state)) {
@@ -8619,9 +8645,9 @@ function menuProcessActionOnPosition(user, cmd, cmdPos, clearBefore, clearUserMe
     }
   }
   // logs(`cmd = ${cmd}, cmdPos = ${JSON.stringify(cmdPos)}`);
-  user.rootMenu = menuMakeMenuIndexed(menuMenuItemGenerateRootMenu(user, cmdPos && cmdPos.length ? cmdPos[0] : undefined ));
+  user.rootMenu = menuReIndexMenu(menuMenuItemGenerateRootMenu(user, cmdPos && cmdPos.length ? cmdPos[0] : undefined ));
   // logs('user.rootMenu = ' + JSON.stringify(user.rootMenu), 1);
-  menuPrepareOnPosition(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', false, menuExecutePreparedMenuObject);
+  menuPrepareOnPosition(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', false, menuProcessPreparedMenuObject);
 }
 
 
@@ -8916,7 +8942,7 @@ function menuSplitButtonsArrayIntoButtonsPerRowsArray(user, buttonsArray) {
  * @param {string=} indexPrefix - The index prefix for the current menu level.
  * @returns {object|object[]} Newly created menu item or submenu array.
  */
-function menuMakeMenuIndexed(inputMenu, indexPrefix) {
+function menuReIndexMenu(inputMenu, indexPrefix) {
   // logs('menuRow = ' + JSON.stringify(menuRow));
   logs('indexPrefix = ' + JSON.stringify(indexPrefix));
   let newMenuRow;
@@ -8985,12 +9011,15 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
       if (inputMenu[key].hasOwnProperty('holderId') ) {
         newMenuRowItem.holderId = inputMenu[key].holderId;
       }
+      if (inputMenu[key].hasOwnProperty('options') ) {
+        newMenuRowItem.options = inputMenu[key].options;
+      }
       if (inputMenu[key].hasOwnProperty('navigationParams') ) {
         newMenuRowItem.navigationParams = [...inputMenu[key].navigationParams];
       }
       if (newMenuRowItem.submenu === undefined) {
         if (Array.isArray(inputMenu[key].submenu) && inputMenu[key].submenu.length ) {
-          newMenuRowItem.submenu = menuMakeMenuIndexed(inputMenu[key].submenu, newMenuRowItem.index);
+          newMenuRowItem.submenu = menuReIndexMenu(inputMenu[key].submenu, newMenuRowItem.index);
         }
         else {
           newMenuRowItem.submenu = inputMenu[key].submenu;
@@ -9004,7 +9033,7 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
     newMenuRow['icon'] = inputMenu.icon;
     newMenuRow['index'] = inputMenu.index !== undefined ? inputMenu.index : '';
     newMenuRow['name'] = inputMenu.name;
-    newMenuRow['submenu'] = menuMakeMenuIndexed(inputMenu.submenu, newMenuRow['index']);
+    newMenuRow['submenu'] = menuReIndexMenu(inputMenu.submenu, newMenuRow['index']);
     if (inputMenu.hasOwnProperty('text') ) newMenuRow['text'] = inputMenu.text;
     if (inputMenu.hasOwnProperty('externalCommand') ) newMenuRow['externalCommand'] = inputMenu.externalCommand;
   }
