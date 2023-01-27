@@ -28,7 +28,7 @@
       "cfgMenuRefreshInterval": "Інтервал оновлення, с",
       "cfgMessagesForMenuCall": "Текст виклику меню",
       "cfgShowHomeButton": "Показувати кнопку \"Головна\"",
-      "cfgShowHorizontalNavigation": "core.cfgShowHorizontalNavigation",
+      "cfgShowHorizontalNavigation": "Показувати кнопки \"Горизонтальної\" навігації",
       "cfgShowResultMessages": "Показувати результат виконання",
       "cfgSummaryTextLengthMax": "Максимальна довжина тексту в стрічці",
       "cfgTextLengthModifierForGChats": "Модифікатор довжини тексту для групових чатів",
