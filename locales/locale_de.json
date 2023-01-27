@@ -28,6 +28,7 @@
       "cfgMenuRefreshInterval": "Intervall für die vollständige Aktualisierung des Menüs, sek",
       "cfgMessagesForMenuCall": "Liste der Befehle zum Aufruf des Menüs",
       "cfgShowHomeButton": "Schaltfläche \"Startseite\" im Menü anzeigen",
+      "cfgShowHorizontalNavigation": "core.cfgShowHorizontalNavigation",
       "cfgShowResultMessages": "Ergebnismeldungen der Befehlsausführungen anzeigen",
       "cfgSummaryTextLengthMax": "Maximale Textlänge in einer Zeile",
       "cfgTextLengthModifierForGChats": "Modifikator für die maximale Länge der Gruppenchats",

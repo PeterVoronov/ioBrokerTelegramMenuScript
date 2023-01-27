@@ -24,6 +24,7 @@
     "cfgMenuRefreshInterval": "Menu full refresh interval, sec",
     "cfgMessagesForMenuCall": "List of command to call the menu",
     "cfgShowHomeButton": "Show \"Home\" button in the menu",
+    "cfgShowHorizontalNavigation": "",
     "cfgShowResultMessages": "Show command executions result messages",
     "cfgSummaryTextLengthMax": "Max text length in one line",
     "cfgTextLengthModifierForGChats": "Max length modifier for the group chats",

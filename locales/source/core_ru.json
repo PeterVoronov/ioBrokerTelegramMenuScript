@@ -24,6 +24,7 @@
     "cfgMenuRefreshInterval": "Интервал обновления, с",
     "cfgMessagesForMenuCall": "Текст вызова меню",
     "cfgShowHomeButton": "Показывать кнопку \"Домой\"",
+    "cfgShowHorizontalNavigation": "",
     "cfgShowResultMessages": "Показывать результат выполнения",
     "cfgSummaryTextLengthMax": "Максимальная длина текста в строке",
     "cfgTextLengthModifierForGChats": "Модификатор длины текста для групповых чатов",
