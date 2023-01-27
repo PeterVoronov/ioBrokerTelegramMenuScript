@@ -201,8 +201,8 @@ const
   iconItemDevice                        = '📺',
   iconItemChart                         = '📈',
   iconItemAttribute                     = '📑',
-  _iconItemFastLeft                      = '⏪',
-  _iconItemFastRight                     = '⏩',
+  _iconItemFastLeft                     = '⏪',
+  _iconItemFastRight                    = '⏩',
   iconItemNext                          = '▶️',
   iconItemPrevious                      = '◀️',
   iconItemPlus                          = '➕',
@@ -237,6 +237,7 @@ const
   cfgMessagesForMenuCall                = `${cfgPrefix}MessagesForMenuCall`,
   cfgClearMenuCall                      = `${cfgPrefix}ClearMenuCall`,
   cfgShowHomeButton                     = `${cfgPrefix}ShowHomeButton`,
+  cfgShowHorizontalNavigation           = `${cfgPrefix}ShowHorizontalNavigation`,
   cfgShowResultMessages                 = `${cfgPrefix}ShowResultMessages`,
   cfgMenuRefreshInterval                = `${cfgPrefix}MenuRefreshInterval`,
   cfgUseAliasOriginForCommonAttrs       = `${cfgPrefix}UseAliasOriginForCommonAttrs`,
@@ -288,9 +289,10 @@ const
     [cfgTextLengthModifierForGChats]    : -4,                           // Modifier for the max of symbols per line for a group chats
     [cfgClearMenuCall]                  : true,                         // Delete command, after menu is shown
     [cfgHierarchicalCaption]            : 0,                            // show caption of the current menu hierarchically
-    [cfgShowHomeButton]                 : true,                         // Alway show 'Home' button
+    [cfgShowHomeButton]                 : true,                         // Always show 'Home' button
+    [cfgShowHorizontalNavigation]       : false,                        // Always show "Horizontal" navigation buttons,
     [cfgShowResultMessages]             : true,                         // Show alert messages, as reactions on some input
-    [cfgGraphsScale]                    : 1,                          // Scale for e-charts graphs
+    [cfgGraphsScale]                    : 1,                            // Scale for e-charts graphs
     [cfgGraphsIntervals]                : [
       {id: '2h',  minutes: timeIntervalsInMinutes.h * 2},
       {id: '6h',  minutes: timeIntervalsInMinutes.h * 6},
@@ -1004,6 +1006,7 @@ class ConfigOptions {
               break;
 
             case cfgGraphsIntervals:
+              subMenuItem.options = menuOptionHorizontalNavigation;
               subMenuItem.submenu = (user, menuItemToProcess) => {
                 let
                   subMenu = new Array(),
@@ -1031,7 +1034,6 @@ class ConfigOptions {
                     subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, translationsItemTextGet(user, 'TimeRange', graphsIntervalId)));
                     subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, graphsIntervalIndex));
                   }
-                  [subMenuItem.submenu,  subMenuIndex] = menuMenuPartGenerateNavigationLeftAndRight(user, subMenuItem.submenu, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, graphsIntervalIndex, currentIntervalsMaxIndex);
                   subMenuIndex = subMenu.push(subMenuItem);
                 });
                 if (isThisLevelAllowModify) {
@@ -4516,7 +4518,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
             id: currentItem,
-            submenu: menuMakeMenuIndexed([
+            submenu: menuReIndexMenu([
               {
                 name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
                 id: currentItem,
@@ -4698,7 +4700,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       )
       subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, enumerationType, currentItem, enumerationTypeExtraId));
   }
-  [subMenu,  subMenuIndex] = menuMenuPartGenerateNavigationLeftAndRight(user, subMenu, currentIndex, subMenuIndex, currentEnumerationItem.order, lastItemIndex);
   // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
   return subMenu;
 }
@@ -4869,6 +4870,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
           name: `${enumerationsItemName(user, enumerationType, currentItem, currentEnumerationItem)}${currentEnumerationItem.isExternal ? ` ${iconItemIsExternal}`: ''}`,
           icon: currentIcon,
           accessLevel: currentAccessLevel,
+          options: menuOptionHorizontalNavigation,
           function: enumerationsMenuItemDetailsEnumerationItem,
           param: commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationsSubTypesExtended.includes(enumerationType) ? '' : undefined, enumerationsSubTypesExtended.includes(enumerationType) ? enumerationTypeExtraId : undefined),
           submenu: enumerationsMenuGenerateEnumerationItem
@@ -5262,9 +5264,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       });
     }
     subMenuIndex = subMenu.push(subMenuItem);
-  }
-  if (menuItemToProcess.hasOwnProperty('navigationParams') && typeOf(menuItemToProcess.navigationParams, 'array') && (menuItemToProcess.navigationParams.length === 4)) {
-    [subMenu, subMenuIndex]  = menuMenuPartGenerateNavigationLeftAndRight(user, subMenu, currentIndex, subMenuIndex, menuItemToProcess.navigationParams[0], menuItemToProcess.navigationParams[1], undefined, false, menuItemToProcess.navigationParams[2], menuItemToProcess.navigationParams[3]);
   }
   // logs('subMenu New = ' + JSON.stringify(subMenu, null, 1), _l);
   return subMenu;
@@ -6202,20 +6201,8 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
       name: `${alertDate}: ${alertMessage.message}`,
       icon: alertMessage.ack ? iconItemAlertOff : iconItemAlertOn,
       param: alertIndex,
-      submenu: (user, menuItemToProcess) => {
-        const
-          alertMessages = alertGetMessages(user),
-          currentMessageIndex = menuItemToProcess.param !== undefined ? Number(menuItemToProcess.param) : -1;
-        if ((currentMessageIndex >= 0) && (currentMessageIndex < alertMessages.length)) {
-          if (! alertMessages[currentMessageIndex].ack) {
-            alertMessages[currentMessageIndex].ack = true;
-            alertsStoreMessagesToCache(user, alertMessages);
-            menuClearCachedMenuItemsAndRows(user);
-          }
-        }
-        const [subSubMenu, _subSubMenuIndex] = menuMenuPartGenerateNavigationLeftAndRight(user, [], `${currentIndex}.${subMenuIndex}`, subMenuIndex, currentMessageIndex, alertMessages.length - 1, undefined, true);
-        return subSubMenu;
-      },
+      options: menuOptionHorizontalNavigation,
+      submenu: []
     });
   }
   return subMenu;
@@ -7514,6 +7501,7 @@ const
       index: '',
       name: translationsItemMenuGet(user, 'RootText'),
       icon: '🎩',
+      options: `!${menuOptionHorizontalNavigation}`,
       submenu: new Array()
     },
     isMenuFastGeneration = configOptions.getOption(cfgMenuFastGeneration, user),
@@ -7743,6 +7731,7 @@ const
       }
       else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
+        menuItem.options = menuOptionHorizontalNavigation;
         menuItem.submenu = menuMenuGenerateFirstLevelAfterRoot;
         const subordinatedIds = currentListIds.filter(itemListId => (currentList[itemListId].holder === itemId));
         subordinatedIds.forEach(itemSubordinatedId => {
@@ -7929,73 +7918,6 @@ function menuMenuItemGenerateResetItem(user, upperMenuItemIndex, subMenuItemInde
 }
 
 /**
- * Generates two navigation menu items which will be  processed by `cmdItemJumpTo`.
- * @param {object} user - The user object.
- * @param {object[]} subMenu - The current level menu items array.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {number} currentItemIndex - The index of an item in the appropriate collection (array).
- * @param {number} lastItemIndex - The current max index in the appropriate collection (array) which holds an item.
- * @param {string=} groupId - The group Id for menu.
- * @param {boolean=} backwardOrder - If items is indexed from max to min.
- * @param {string=} leftItemMenuId - left menu item ID for non numeric index.
- * @param {string=} rightItemMenuId - left menu item ID for non numeric index.
- * @returns {[object[], number]} The array with an updated `subMenu` with new menu navigation items, processed by `cmdItemJumpTo`, and updated `subMenuItemIndex`.
- */
-function menuMenuPartGenerateNavigationLeftAndRight(user, subMenu, upperMenuItemIndex, subMenuItemIndex, currentItemIndex, lastItemIndex, groupId, backwardOrder, leftItemMenuId, rightItemMenuId) {
-  const currentItemSubIndex = upperMenuItemIndex.split('.').pop();
-  if (currentItemSubIndex &&
-    // @ts-ignore
-    (! isNaN(currentItemSubIndex) || (leftItemMenuId || rightItemMenuId))) {
-    if ((backwardOrder && (currentItemIndex < lastItemIndex)) || (!backwardOrder && (currentItemIndex > 0))) {
-      subMenuItemIndex = subMenu.push({
-        index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
-        name: `${iconItemMoveLeft}`,
-        param: commandsPackParams(cmdItemJumpTo, (leftItemMenuId ? [jumpToUp, leftItemMenuId] : [jumpToLeft]).join('.')),
-        group: groupId === undefined ? cmdItemJumpTo : groupId,
-        submenu: [],
-      });
-    }
-    if ((backwardOrder && (currentItemIndex > 0)) || (!backwardOrder && (currentItemIndex < lastItemIndex))) {
-      subMenuItemIndex = subMenu.push({
-        index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
-        name: `${iconItemMoveRight}`,
-        param: commandsPackParams(cmdItemJumpTo, (rightItemMenuId ? [jumpToUp, rightItemMenuId] : [jumpToRight]).join('.')),
-        group: groupId === undefined ? cmdItemJumpTo : groupId,
-        submenu: [],
-      });
-    }
-  }
-  return [subMenu, subMenuItemIndex];
-}
-
-/**
- * This function add navigation buttons to current sub menu.
- * @param {object} user - The user object.
- * @param {array} menu - The menu array to process.
- * @returns {array} = The result sub menu.
- */
-function menuMenuAddNavigationLeftAndRight(user, menu) {
-  if (typeOf(menu, 'array') && menu.length) {
-    const subMenuMaxIndex = menu.length - 1;
-    if (subMenuMaxIndex) {
-      let _subSubMenuIndex = 0;
-      menu.forEach((subMenuItem, subMenuItemIndex) => {
-        // logs(`typeOf(subMenuItem.submenu) ${typeOf(subMenuItem.submenu)}`, _l);
-        const nonNumberIndexes = [subMenuItemIndex > 0 ? menu[subMenuItemIndex - 1].index.split('.').pop() : undefined, subMenuItemIndex < subMenuMaxIndex ? menu[subMenuItemIndex + 1].index.split('.').pop() : undefined];
-        if (typeOf(subMenuItem.submenu, 'array')) {
-          [subMenuItem.submenu, _subSubMenuIndex]  = menuMenuPartGenerateNavigationLeftAndRight(user, subMenuItem.submenu, subMenuItem.index, subMenuItem.submenu.length, subMenuItemIndex, subMenuMaxIndex, undefined, false, ...nonNumberIndexes);
-        }
-        else if (typeOf(subMenuItem.submenu, 'function')) {
-          subMenuItem.navigationParams = [subMenuItemIndex, subMenuMaxIndex, ...nonNumberIndexes];
-        }
-      });
-    }
-  }
-  return menu;
-}
-
-/**
  * Generates two menu items to move an item `up` and `down` in it's holder collection(array), which will be processed by `cmdItemMoveUp`/`cmdItemMoveDown`
  * @param {object} user - The user object.
  * @param {object[]} subMenu - The current level menu items array.
@@ -8066,7 +7988,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
     // logs(`currentLevelMenuItemsList = ${JSON.stringify(currentLevelMenuItemsList)}`);
     if (menuItemToProcess.hasOwnProperty('subordinates') && typeOf(menuItemToProcess.subordinates, 'array') && menuItemToProcess.subordinates.length) {
-      subMenu = menuMakeMenuIndexed(menuItemToProcess.subordinates, currentIndex);
+      subMenu = menuReIndexMenu(menuItemToProcess.subordinates, currentIndex);
     }
     /** this way to find an objects only by function and then filter by dest/destEnum, is a ten times faster than include destEnum in search pattern
      like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`) */
@@ -8160,7 +8082,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           currentMenuItem.submenu[0]['id'] = currentMenuItem.id;
           currentMenuItem = currentMenuItem.submenu[0];
         }
-        currentMenuItem.submenu = menuMenuAddNavigationLeftAndRight(user, currentMenuItem.submenu);
+        currentMenuItem.options = menuOptionHorizontalNavigation;
         if (currentLevelMenuItemId.includes('.')) {
           const [holderId, subordinatedId] = currentLevelMenuItemId.split('.');
           let holderItem = subMenu.find(subMenuItem => ((subMenuItem[secondaryEnumId] === holderId)));
@@ -8205,7 +8127,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       }
     }
     subMenu = subMenu.filter(item => (item));
-    subMenu = menuMenuAddNavigationLeftAndRight(user, subMenu);
   }
   // logs(`subMenu New = ${JSON.stringify(subMenu, null, 1)}`, _l);
   return subMenu;
@@ -8245,7 +8166,8 @@ function menuPrintFixedLengthLinesForMenuItemDetails(user, linesArray) {
 const
   cachedMenuItemsAndRows = 'menuItemsAndRows',
   cachedMenuLongCommandsWithParams = 'longCommandsWithParams',
-  cachedMenuButtonsOffset = 'buttonsOffset';
+  cachedMenuButtonsOffset = 'buttonsOffset',
+  menuOptionHorizontalNavigation = 'horizontalNavigation';
 
 /**
  * This function deletes the cached pre-drawn state of the user's menu items and rows.
@@ -8298,7 +8220,7 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
       // logs(`menuItemToProcess.externalMenu = ${menuItemToProcess.externalMenu}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.funcEnum))}`, _l);
       if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
         logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
-        menuItemToProcess = menuMakeMenuIndexed(subMenu);
+        menuItemToProcess = menuReIndexMenu(subMenu);
         logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`);
       }
       else {
@@ -8338,12 +8260,15 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
         });
         logs(`currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`);
       }
+      else {
+        currentSubMenuPos = Number(currentSubMenuPos);
+      }
     }
     if ((currentSubMenuPos !== undefined) && (currentSubMenuPos >= 0) && (menuItemToProcess.submenu.length > 0) && (currentSubMenuPos < menuItemToProcess.submenu.length)) {
       logs(`currentSubMenuPos = ${currentSubMenuPos}, currentMenuItem = ${JSON.stringify(menuItemToProcess, null, 2)}`);
       preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ' ' + iconItemToSubItemByArrow + ' ' : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
       const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
-      logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`);
+      // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`, _l);
       preparedMessageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
       logs(`(1) subMenuRow.submenu[${currentSubMenuPos}] = ${JSON.stringify(subMenuItem)}`);
       preparedMessageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
@@ -8351,8 +8276,10 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
       preparedMessageObject.type = subMenuItem.hasOwnProperty('type') ? subMenuItem.type : undefined;
       preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
       preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
-      preparedMessageObject.count = menuItemToProcess.submenu.length;
+      preparedMessageObject.options = subMenuItem.hasOwnProperty('options')  && (subMenuItem.options !== undefined) ? subMenuItem.options : '';
+      preparedMessageObject.indexMax = menuItemToProcess.submenu.length - 1;
       preparedMessageObject.index = currentSubMenuPos;
+      // logs(`indexMax = ${preparedMessageObject.indexMax}, index = ${preparedMessageObject.index}, options = ${preparedMessageObject.options}`, _l);
       menuPrepareOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, isDrawMode, callback);
     }
     else {
@@ -8464,6 +8391,27 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
             callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
           });
         }
+        if (preparedMessageObject.buttons.filter(currentButton => {currentButton.group === 'horizontalNavigation'}).length === 0) {
+          if (((preparedMessageObject.options && preparedMessageObject.options.includes(menuOptionHorizontalNavigation)) || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
+          (! (preparedMessageObject.options && preparedMessageObject.options.includes(`!${menuOptionHorizontalNavigation}`)))) {
+            if (preparedMessageObject.index) {
+              preparedMessageObject.buttons.push({
+                text:  `${iconItemMoveLeft}`,
+                icon: `${iconItemMoveLeft}`,
+                group: menuOptionHorizontalNavigation,
+                callback_data: commandsPackParams(cmdItemJumpTo, [jumpToUp, preparedMessageObject.index - 1].join('.'))
+              });
+            }
+            if (preparedMessageObject.index < preparedMessageObject.indexMax) {
+              preparedMessageObject.buttons.push({
+                text:  `${iconItemMoveRight}`,
+                icon: `${iconItemMoveRight}`,
+                group: menuOptionHorizontalNavigation,
+                callback_data: commandsPackParams(cmdItemJumpTo, [jumpToUp, preparedMessageObject.index + 1].join('.'))
+              });
+            }
+          }
+        }
         // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
         if (callbackDataToCache.size) {
           // logs(`callbackDataToCache.size = ${callbackDataToCache.size}`);
@@ -8514,7 +8462,7 @@ function menuProcessActionOnPosition(user, cmd, cmdPos, clearBefore, clearUserMe
    * @param {*} _preparedMessageObject -(`object`) The prepared telegram message object (including buttons).
    * @param {*} menuItemToProcess -(`object`) The menu item, which have to be "processed".
    */
-  function menuExecutePreparedMenuObject(_preparedMessageObject, menuItemToProcess) {
+  function menuProcessPreparedMenuObject(_preparedMessageObject, menuItemToProcess) {
     logs('cmdItem = ' + JSON.stringify(menuItemToProcess));
     if( (cmd) && (menuItemToProcess) && (menuItemToProcess.submenu.length === 0) && ! menuItemToProcess.hasOwnProperty('function')) {
       if ( menuItemToProcess.hasOwnProperty('state') && (menuItemToProcess.state)) {
@@ -8619,9 +8567,9 @@ function menuProcessActionOnPosition(user, cmd, cmdPos, clearBefore, clearUserMe
     }
   }
   // logs(`cmd = ${cmd}, cmdPos = ${JSON.stringify(cmdPos)}`);
-  user.rootMenu = menuMakeMenuIndexed(menuMenuItemGenerateRootMenu(user, cmdPos && cmdPos.length ? cmdPos[0] : undefined ));
+  user.rootMenu = menuReIndexMenu(menuMenuItemGenerateRootMenu(user, cmdPos && cmdPos.length ? cmdPos[0] : undefined ));
   // logs('user.rootMenu = ' + JSON.stringify(user.rootMenu), 1);
-  menuPrepareOnPosition(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', false, menuExecutePreparedMenuObject);
+  menuPrepareOnPosition(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', false, menuProcessPreparedMenuObject);
 }
 
 
@@ -8916,7 +8864,7 @@ function menuSplitButtonsArrayIntoButtonsPerRowsArray(user, buttonsArray) {
  * @param {string=} indexPrefix - The index prefix for the current menu level.
  * @returns {object|object[]} Newly created menu item or submenu array.
  */
-function menuMakeMenuIndexed(inputMenu, indexPrefix) {
+function menuReIndexMenu(inputMenu, indexPrefix) {
   // logs('menuRow = ' + JSON.stringify(menuRow));
   logs('indexPrefix = ' + JSON.stringify(indexPrefix));
   let newMenuRow;
@@ -8985,12 +8933,15 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
       if (inputMenu[key].hasOwnProperty('holderId') ) {
         newMenuRowItem.holderId = inputMenu[key].holderId;
       }
+      if (inputMenu[key].hasOwnProperty('options') ) {
+        newMenuRowItem.options = inputMenu[key].options;
+      }
       if (inputMenu[key].hasOwnProperty('navigationParams') ) {
         newMenuRowItem.navigationParams = [...inputMenu[key].navigationParams];
       }
       if (newMenuRowItem.submenu === undefined) {
         if (Array.isArray(inputMenu[key].submenu) && inputMenu[key].submenu.length ) {
-          newMenuRowItem.submenu = menuMakeMenuIndexed(inputMenu[key].submenu, newMenuRowItem.index);
+          newMenuRowItem.submenu = menuReIndexMenu(inputMenu[key].submenu, newMenuRowItem.index);
         }
         else {
           newMenuRowItem.submenu = inputMenu[key].submenu;
@@ -9004,7 +8955,7 @@ function menuMakeMenuIndexed(inputMenu, indexPrefix) {
     newMenuRow['icon'] = inputMenu.icon;
     newMenuRow['index'] = inputMenu.index !== undefined ? inputMenu.index : '';
     newMenuRow['name'] = inputMenu.name;
-    newMenuRow['submenu'] = menuMakeMenuIndexed(inputMenu.submenu, newMenuRow['index']);
+    newMenuRow['submenu'] = menuReIndexMenu(inputMenu.submenu, newMenuRow['index']);
     if (inputMenu.hasOwnProperty('text') ) newMenuRow['text'] = inputMenu.text;
     if (inputMenu.hasOwnProperty('externalCommand') ) newMenuRow['externalCommand'] = inputMenu.externalCommand;
   }
@@ -10570,25 +10521,25 @@ async function commandUserInputCallback(user, userInputToProcess) {
   }
   else if (currentCommand === cmdItemJumpTo) {
     const jumpToArray = currentType.split('.');
-    jumpToArray.forEach(menuIndex => {
-      if (menuIndex === jumpToUp) {
+    jumpToArray.forEach(jumpToItem => {
+      if (jumpToItem === jumpToUp) {
         if (currentMenuPosition.length) currentMenuPosition.pop();
       }
-      else if ((menuIndex === jumpToLeft) || (menuIndex === jumpToRight)) {
+      else if ((jumpToItem === jumpToLeft) || (jumpToItem === jumpToRight)) {
         if (currentMenuPosition.length) {
           let currentPos = currentMenuPosition.pop();
           if (! isNaN(currentPos)) {
-            currentPos = Number(currentPos) + (menuIndex === jumpToLeft ? -1 : 1);
+            currentPos = Number(currentPos) + (jumpToItem === jumpToLeft ? -1 : 1);
           }
           currentMenuPosition.push(currentPos);
         }
       }
-      else if (menuIndex) {
-        currentMenuPosition.push(menuIndex);
+      else if (jumpToItem) {
+        currentMenuPosition.push(jumpToItem);
       }
     });
     menuClearCachedMenuItemsAndRows(user);
-    logs(`currentMenuItem = ${currentMenuPosition}`);
+    // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
     menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
   else if (currentCommand === cmdSetOffset) {
