@@ -822,7 +822,7 @@ class ConfigOptions {
   menuGenerateForArray(user, menuItemToProcess) {
     logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const
-      [cfgItem, optionScope] = commandUnpackParams(menuItemToProcess.param),
+      [cfgItem, optionScope] = commandUnpackParams(menuItemToProcess.command),
       currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
@@ -845,7 +845,7 @@ class ConfigOptions {
         subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
       }
       else {
-        subMenuItem.param = cmdNoOperation;
+        subMenuItem.command = cmdNoOperation;
       }
       subMenuIndex = subMenu.push(subMenuItem);
     }
@@ -911,27 +911,27 @@ class ConfigOptions {
               index: `${currentIndex}.${subMenuIndex}.${itemOrder}.${subSubMenuIndex}`,
               name: `${currentSubMenuItemName}`,
               icon: iconItemEdit,
-              param: commandsPackParams(cmdGetInput, dataTypeConfig, cfgItem, optionScope),
+              command: commandsPackParams(cmdGetInput, dataTypeConfig, cfgItem, optionScope),
               submenu: itemType === 'array' ? (user, menuItemToProcess) => {this.menuGenerateForArray(user, menuItemToProcess)} : []
             };
           const currentOptionValue = optionScope === configOptionScopeGlobal ? this.globalConfig[cfgItem] : this.getOption(cfgItem, user);
           switch (cfgItem) {
             case cfgMenuLanguage:
               subMenuItem.accessLevel = currentAccessLevel;
-              subMenuItem.param = commandsPackParams(optionScope, currentOptionValue);
+              subMenuItem.command = commandsPackParams(optionScope, currentOptionValue);
               subMenuItem.submenu = (user, menuItemToProcess) => {
                 let
                   subMenu = new Array(),
                   subMenuIndex = 0;
                 const
                   currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-                  [optionScope, currentLanguage] = commandUnpackParams(menuItemToProcess.param);
+                  [optionScope, currentLanguage] = commandUnpackParams(menuItemToProcess.command);
                 Object.keys(translationsList).sort().forEach((languageId) => {
                   const subMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}`,
                     name: `${languageId}`,
                     icon: currentLanguage === languageId ? configOptions.getOption(cfgDefaultIconOn) : '',
-                    param: currentLanguage === languageId ? cmdNoOperation : '',
+                    command: currentLanguage === languageId ? cmdNoOperation : '',
                     submenu: new Array()
                   };
                   if (currentLanguage !== languageId) {
@@ -940,7 +940,7 @@ class ConfigOptions {
                       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                       name: `${translationsItemCoreGet(user, 'cmdItemSelect')}`,
                       icon: '',
-                      param: commandsPackParams(cmdItemPress, dataTypeConfig, cfgItem, optionScope, languageId),
+                      command: commandsPackParams(cmdItemPress, dataTypeConfig, cfgItem, optionScope, languageId),
                       submenu: []
                     });
                     subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, languageId));
@@ -952,7 +952,7 @@ class ConfigOptions {
                     index: `${currentIndex}.${subMenuIndex}`,
                     name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
                     icon: iconItemPlus,
-                    param: commandsPackParams(cfgItem, optionScope),
+                    command: commandsPackParams(cfgItem, optionScope),
                     group: 'addNew',
                     submenu: (user, menuItemToProcess) => {
                       let
@@ -960,7 +960,7 @@ class ConfigOptions {
                         subMenuIndex = 0;
                       const
                         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-                        [cfgItem, typeOfOption] = commandUnpackParams(menuItemToProcess.param);
+                        [cfgItem, typeOfOption] = commandUnpackParams(menuItemToProcess.command);
                       if (cachedValueExists(user, cachedConfigNewLanguageId)) {
                         const newLanguageId = translationsValidateLanguageId(cachedValueGet(user, cachedConfigNewLanguageId));
                         if (newLanguageId && newLanguageId.length) {
@@ -970,7 +970,7 @@ class ConfigOptions {
                               name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${newLanguageId}'`,
                               icon: iconItemApply,
                               group: cmdItemsProcess,
-                              param: commandsPackParams(cmdItemsProcess, dataTypeConfig, cfgItem, typeOfOption, newLanguageId),
+                              command: commandsPackParams(cmdItemsProcess, dataTypeConfig, cfgItem, typeOfOption, newLanguageId),
                               submenu: [],
                             }
                           );
@@ -982,7 +982,7 @@ class ConfigOptions {
                               index: `${currentIndex}.${subMenuIndex}`,
                               name: `${translationsItemCoreGet(user, 'cmdFixId')} = '${cachedValueGet(user, cachedConfigNewLanguageId)}'`,
                               icon: iconItemEdit,
-                              param: commandsPackParams(cmdGetInput, dataTypeConfig, cfgItem, typeOfOption),
+                              command: commandsPackParams(cmdGetInput, dataTypeConfig, cfgItem, typeOfOption),
                               submenu: [],
                             }
                           );
@@ -994,7 +994,7 @@ class ConfigOptions {
                             index: `${currentIndex}.${subMenuIndex}`,
                             name: `${translationsItemCoreGet(user, 'cmdSetId')}`,
                             icon: iconItemEdit,
-                            param: commandsPackParams(cmdGetInput, dataTypeConfig, cfgItem, typeOfOption),
+                            command: commandsPackParams(cmdGetInput, dataTypeConfig, cfgItem, typeOfOption),
                             submenu: [],
                           }
                         );
@@ -1019,7 +1019,7 @@ class ConfigOptions {
                   currentAccessLevel = menuItemToProcess.accessLevel,
                   isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
                   isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
-                  [cfgItem, optionScope] = commandUnpackParams(menuItemToProcess.param),
+                  [cfgItem, optionScope] = commandUnpackParams(menuItemToProcess.command),
                   isThisLevelAllowModify = optionScope === configOptionScopeGlobal ? isCurrentAccessLevelFull : isCurrentAccessLevelAllowModify,
                   currentIntervals = this.getOption(cfgItem, optionScope === configOptionScopeUser ? user : undefined);
                   const currentIntervalsMaxIndex = currentIntervals.length - 1;
@@ -1055,12 +1055,12 @@ class ConfigOptions {
             case 'array': {
               if (isThisLevelAllowModify) {
                 subMenuItem.accessLevel = currentAccessLevel;
-                subMenuItem.param = commandsPackParams(cfgItem, optionScope);
+                subMenuItem.command = commandsPackParams(cfgItem, optionScope);
               }
               else {
                 currentItem.submenu = (user, menuItemToProcess) => {this.menuGenerateForArray(user, menuItemToProcess)};
                 currentItem.accessLevel = currentAccessLevel;
-                currentItem.param = commandsPackParams(cfgItem, optionScope);
+                currentItem.command = commandsPackParams(cfgItem, optionScope);
               }
               break;
             }
@@ -1079,7 +1079,7 @@ class ConfigOptions {
             case 'boolean': {
               if (isSystemLevelOption || (optionScope === configOptionScopeUser)) currentItem.name += ` ${currentOptionValue ? this.globalConfig[cfgDefaultIconOn] : this.globalConfig[cfgDefaultIconOff]}`;
               subMenuItem.name += ` ${currentOptionValue ? this.globalConfig[cfgDefaultIconOn] : this.globalConfig[cfgDefaultIconOff]}`;
-              subMenuItem.param = commandsPackParams(cmdItemPress, dataTypeConfig, cfgItem, optionScope);
+              subMenuItem.command = commandsPackParams(cmdItemPress, dataTypeConfig, cfgItem, optionScope);
               break;
             }
 
@@ -1090,7 +1090,7 @@ class ConfigOptions {
             subSubMenuIndex = currentItem.submenu.push(subMenuItem);
           }
           else if (itemType !== 'array') {
-            currentItem.param = cmdNoOperation;
+            currentItem.command = cmdNoOperation;
           }
         });
         optionTypeItem.submenu.push(currentItem);
@@ -1678,7 +1678,7 @@ class MenuRoles {
     // logs(`getCachedState(user, cachedCurrentNewRule) = ${JSON.stringify(getCachedState(user, cachedCurrentNewRule))}`);
     const
       currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-      [_cmdId, dataType, roleId, ruleIndex] = commandUnpackParams(menuItemToProcess.param),
+      [_cmdId, dataType, roleId, ruleIndex] = commandUnpackParams(menuItemToProcess.command),
       isForNewRule = Number(ruleIndex) == -1,
       currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit) ? cachedValueGet(user, cachedRolesRoleUnderEdit) : {roleId : 'emptyRole', rules: []},
       currentRoleRules = currentRole.roleId === roleId ? currentRole['rules'] : (this.existsId(roleId) ? this.getRules(roleId) : []),
@@ -1694,7 +1694,7 @@ class MenuRoles {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `[${translationsItemTextGet(user, 'AccessLevel', accessLevel)}]`,
         icon: accessLevel === currentRule.accessLevel ? MenuRoles.accessLevelsIcons[levelIndex] : iconItemButton,
-        param: commandsPackParams(cmdItemPress, dataType, roleId, ruleIndex, accessLevel),
+        command: commandsPackParams(cmdItemPress, dataType, roleId, ruleIndex, accessLevel),
         submenu: []
       });
     });
@@ -1704,7 +1704,7 @@ class MenuRoles {
         name: `${translationsItemMenuGet(user, 'ItemsProcess')}`,
         icon: iconItemApply,
         group: cmdItemsProcess,
-        param: commandsPackParams(cmdItemsProcess, dataType, roleId),
+        command: commandsPackParams(cmdItemsProcess, dataType, roleId),
         submenu: []
       });
     }
@@ -1747,7 +1747,7 @@ class MenuRoles {
     function selectMask(user, menuItemToProcess) {
       const
         currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-        [_cmdId, upperItemId, currentItemId] = commandUnpackParams(menuItemToProcess.param),
+        [_cmdId, upperItemId, currentItemId] = commandUnpackParams(menuItemToProcess.command),
         currentMasks = [`${upperItemId}${rolesIdAndMaskDelimiter}${currentItemId}`, `${rolesMaskAnyValue}${rolesIdAndMaskDelimiter}${currentItemId}`],
         savedMask = cachedValueExists(user, cachedRolesNewRule) ? cachedValueGet(user, cachedRolesNewRule)['mask'] : '',
         rootMenu = menuMenuItemGenerateRootMenu(null),
@@ -1761,7 +1761,7 @@ class MenuRoles {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `[${currentMask}]`,
           icon: currentMask === savedMask ? iconItemSquareButton : iconItemButton,
-          param: commandsPackParams(cmdItemMark, dataTypeMenuRoleRules, currentMask),
+          command: commandsPackParams(cmdItemMark, dataTypeMenuRoleRules, currentMask),
           submenu: []
         });
       });
@@ -1769,7 +1769,7 @@ class MenuRoles {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedMask}]`,
         icon: iconItemEdit,
-        param: commandsPackParams(cmdItemJumpTo, jumpToArray.join('.')),
+        command: commandsPackParams(cmdItemJumpTo, jumpToArray.join('.')),
         submenu: []
       });
       return subMenu;
@@ -1821,7 +1821,7 @@ class MenuRoles {
             index: `${currentIndex}.${subIndex}`,
             name: `${currentItemName}${currentItem.icon ? ` ${currentItem.icon}` :''}`,
             icon: iconItemButton,
-            param: commandsPackParams(cmdEmptyCommand, currentItemId, itemId),
+            command: commandsPackParams(cmdEmptyCommand, currentItemId, itemId),
             function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule))),
             submenu: selectMask
           });
@@ -1834,7 +1834,7 @@ class MenuRoles {
               index: `${currentIndex}.${subIndex}`,
               name: `${subMenuItem.name}`,
               icon: iconItemButton,
-              param: commandsPackParams(cmdEmptyCommand, currentItemId, subMenuItem.id),
+              command: commandsPackParams(cmdEmptyCommand, currentItemId, subMenuItem.id),
               function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule))),
               submenu: selectMask
             });
@@ -1846,14 +1846,14 @@ class MenuRoles {
         index: `${currentIndex}.${subIndex}`,
         name: `[${currentMask}]`,
         icon: currentMask === savedRule.mask ? iconItemSquareButton : iconItemButton,
-        param: commandsPackParams(cmdItemMark, dataTypeMenuRoleRules, currentMask),
+        command: commandsPackParams(cmdItemMark, dataTypeMenuRoleRules, currentMask),
         submenu: []
       });
       subIndex = resultItem.submenu.push({
         index: `${currentIndex}.${subIndex}`,
         name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedRule.mask}]`,
         icon: iconItemEdit,
-        param: commandsPackParams(cmdItemJumpTo, jumpArray.join('.')),
+        command: commandsPackParams(cmdItemJumpTo, jumpArray.join('.')),
         submenu: []
       });
       // logs(`resultItem = ${JSON.stringify(resultItem)}`)
@@ -1865,7 +1865,7 @@ class MenuRoles {
     }
     const
       currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-      roleId = menuItemToProcess.param,
+      roleId = menuItemToProcess.command,
       rootMenu = menuMenuItemGenerateRootMenu(null),
       savedRule = cachedValueGet(user, cachedRolesNewRule);
     let
@@ -1878,7 +1878,7 @@ class MenuRoles {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedRule.mask}]`,
       icon: iconItemEdit,
-      param: commandsPackParams(cmdEmptyCommand, dataTypeMenuRoleRules, roleId, -1),
+      command: commandsPackParams(cmdEmptyCommand, dataTypeMenuRoleRules, roleId, -1),
       function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, savedRule)),
       submenu: (user, menuItemToProcess) => {return this.#menuRuleSetAccessLevel(user, menuItemToProcess)}});
       logs(`subMenu 2 = ${JSON.stringify(subMenu, null, 2)}`);
@@ -1898,7 +1898,7 @@ class MenuRoles {
     const
       currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
-      roleId = menuItemToProcess.param,
+      roleId = menuItemToProcess.command,
       isNewRole = ! this.existsId(roleId);
     let currentRole = {};
     if (cachedValueExists(user, cachedRolesRoleUnderEdit)) {
@@ -1927,7 +1927,7 @@ class MenuRoles {
           submenu: new Array()
         };
       if ((roleId === rolesDefaultAdmin) || (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) >= 0)) {
-        currentItem.param = cmdNoOperation;
+        currentItem.command = cmdNoOperation;
       }
       else {
         let subSubId = 0;
@@ -1935,7 +1935,7 @@ class MenuRoles {
           index: `${currentIndex}.${subMenuIndex}.${subSubId}`,
           name: `${translationsItemMenuGet(user, 'RuleSetAccessLevel')}`,
           // icon: iconItemDelete,
-          param: commandsPackParams(cmdEmptyCommand, dataTypeMenuRoleRules, roleId, subMenuIndex),
+          command: commandsPackParams(cmdEmptyCommand, dataTypeMenuRoleRules, roleId, subMenuIndex),
           text: ruleCurrentDetails,
           submenu: (user, menuItemToProcess) => {return this.#menuRuleSetAccessLevel(user, menuItemToProcess)}
         });
@@ -1949,7 +1949,7 @@ class MenuRoles {
         name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
         group: 'itemAdd',
         icon: iconItemPlus,
-        param: roleId,
+        command: roleId,
         function: (user, _menuItemToProcess) => {
           if (! cachedValueExists(user, cachedRolesRoleUnderEdit)) {
             cachedValueSet(user, cachedRolesRoleUnderEdit, {roleId : roleId, rules: currentRoleRules});
@@ -1964,7 +1964,7 @@ class MenuRoles {
           name: `${translationsItemMenuGet(user, 'ItemsProcess')}`,
           icon: iconItemApply,
           group: cmdItemsProcess,
-          param: commandsPackParams(cmdItemsProcess, dataTypeMenuRoles, roleId),
+          command: commandsPackParams(cmdItemsProcess, dataTypeMenuRoles, roleId),
           submenu: []
         });
       }
@@ -1985,7 +1985,7 @@ class MenuRoles {
   #menuItemDetailsRole(user, menuItemToProcess) {
     // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const
-      roleId = menuItemToProcess.param.includes(itemsDelimiter) ? commandUnpackParams(menuItemToProcess.param)[2]: menuItemToProcess.param,
+      roleId = menuItemToProcess.command.includes(itemsDelimiter) ? commandUnpackParams(menuItemToProcess.command)[2]: menuItemToProcess.command,
       currentRoles = objectDeepClone(this.data);
       // logs(`existsCachedState(user, cachedCurrentRoleRules) = ${existsCachedState(user, cachedCurrentRoleRules)}`);
       if (cachedValueExists(user, cachedRolesRoleUnderEdit)) {
@@ -2046,7 +2046,7 @@ class MenuRoles {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `[${roleId}]`,
         icon: currentIcon,
-        param: roleId,
+        command: roleId,
         function: (user, menuItemToProcess) => {return this.#menuItemDetailsRole(user, menuItemToProcess)},
         accessLevel: currentAccessLevel,
         submenu: (user, menuItemToProcess) => {return this.#menuGenerateRoleRules(user, menuItemToProcess)}
@@ -2082,7 +2082,7 @@ class MenuRoles {
                   index: `${currentIndex}.${subMenuIndex}`,
                   name: `${translationsItemCoreGet(user, 'cmdFixId')}`,
                   icon: iconItemEdit,
-                  param: commandsPackParams(cmdGetInput, dataTypeMenuRoles, '', 'fixId'),
+                  command: commandsPackParams(cmdGetInput, dataTypeMenuRoles, '', 'fixId'),
                   submenu: [],
                 }
               );
@@ -2095,7 +2095,7 @@ class MenuRoles {
                   index: `${currentIndex}.${subMenuIndex}`,
                   name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${newRoleId}'`,
                   icon: iconItemRole,
-                  param: commandsPackParams(cmdItemJumpTo, [0, rootMenu.submenu.length].join('.')),
+                  command: commandsPackParams(cmdItemJumpTo, [0, rootMenu.submenu.length].join('.')),
                   submenu: []
                 }
               );
@@ -2107,7 +2107,7 @@ class MenuRoles {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsItemCoreGet(user, 'cmdSetId')}`,
                 icon: iconItemEdit,
-                param: commandsPackParams(cmdGetInput, dataTypeMenuRoles, '', 'setId'),
+                command: commandsPackParams(cmdGetInput, dataTypeMenuRoles, '', 'setId'),
                 submenu: [],
               }
             );
@@ -2404,7 +2404,7 @@ class MenuUsers extends MenuRoles {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${currentFullName}${currentUser.userName ? ` [${currentUser.userName}]` : ''}`,
         icon: currentUser.isAvailable && currentUser.isEnabled ? iconItemUser : (! currentUser.isEnabled ? iconItemDisabled : iconItemNotFound),
-        param: userId,
+        command: userId,
         text: currentUserDetailsList.length ? `\n<code>${menuPrintFixedLengthLinesForMenuItemDetails(user, currentUserDetailsList)}</code>` : '',
         submenu: new Array()
       };
@@ -2414,7 +2414,7 @@ class MenuUsers extends MenuRoles {
           index: `${currentIndex}.${subMenuIndex}.${subSubId}`,
           name: `${translationsItemTextGet(user, currentUser.isEnabled ? 'SwitchOff' : 'SwitchOn')}`,
           icon: currentUser.isEnabled ? currentIcon  : iconItemDisabled,
-          param: commandsPackParams(cmdItemPress, dataTypeMenuUsers, userId),
+          command: commandsPackParams(cmdItemPress, dataTypeMenuUsers, userId),
           submenu: [],
         });
       }
@@ -2422,11 +2422,11 @@ class MenuUsers extends MenuRoles {
       currentItem.submenu.push({
         index: `${currentIndex}.${subMenuIndex}.${subSubId}`,
         name: `${translationsItemMenuGet(user, 'RolesList')}: [${rolesList.length > 23 ? `${rolesList.slice(0, 10)}...` : rolesList}]`,
-        param: userId,
+        command: userId,
         submenu: (user, menuItemToProcess) => {
           const
             currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-            userId = menuItemToProcess.param;
+            userId = menuItemToProcess.command;
           let
             subMenu = [],
             subMenuIndex = 0;
@@ -2438,7 +2438,7 @@ class MenuUsers extends MenuRoles {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `[${roleId}]`,
               icon:  userRoles.includes(roleId) ? iconItemRole : iconItemDisabled,
-              param: commandsPackParams(cmdItemPress, dataTypeMenuUserRoles, userId, roleId),
+              command: commandsPackParams(cmdItemPress, dataTypeMenuUserRoles, userId, roleId),
               submenu: []
               // text: ` [${this.cfg[cfgItem]}] `,
             });
@@ -3256,7 +3256,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
   if (isCurrentAccessLevelAllowModify && cachedValueExists(user, cachedTranslationsToUpload)) {
     const
       inputTranslation = cachedValueGet(user, cachedTranslationsToUpload),
-      [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.param),
+      [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.command),
       currentLanguage = inputTranslation ? translationsValidateLanguageId(inputTranslation.language) : '',
       currentUploadMode = menuItemToProcess.id,
       _currentVersion =  inputTranslation ? inputTranslation.version : '';
@@ -3280,7 +3280,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               name: `${translationsItemMenuGet(user, 'ItemsProcess')} ${translationPartName}`,
               icon: iconItemApply,
               group: cmdItemsProcess,
-              param: commandsPackParams(cmdEmptyCommand, dataTypeTranslation, currentUploadMode, translationPart),
+              command: commandsPackParams(cmdEmptyCommand, dataTypeTranslation, currentUploadMode, translationPart),
               function: translationsUploadMenuItemDetails,
               submenu: new Array()
             };
@@ -3291,7 +3291,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               icon: iconItemApply,
               group: cmdItemsProcess,
               function: translationsUploadMenuItemDetails,
-              param: commandsPackParams(cmdItemsProcess, dataTypeTranslation, currentUploadMode, translationPart, translationUpdateMode),
+              command: commandsPackParams(cmdItemsProcess, dataTypeTranslation, currentUploadMode, translationPart, translationUpdateMode),
               submenu: []
             });
 
@@ -3312,7 +3312,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
 */
 function translationsUploadMenuItemDetails(user, menuItemToProcess) {
   const
-    [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.param),
+    [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandUnpackParams(menuItemToProcess.command),
     currentItemDetailsList = [];
   if (cachedValueExists(user, cachedTranslationsToUpload)) {
     const
@@ -3364,7 +3364,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
             subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
           }
           else {
-            subMenuItem.param = cmdNoOperation;
+            subMenuItem.command = cmdNoOperation;
           }
         subMenuIndex = subMenu.push(subMenuItem);
       }
@@ -3389,7 +3389,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
     currentFunctionId = menuItemToProcess.funcEnum,
     deviceAttributesListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceAttributes).map(key => key.split('.').join('_')) : [],
     deviceButtonsListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceButtons).map(key => key.split('.').join('_')) : [],
-    currentDeviceListKeys = menuItemToProcess.param === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
+    currentDeviceListKeys = menuItemToProcess.command === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
 
   // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}, currentCommonPrefix = ${commonFunctionsAttributesTranslationPrefix}`, _l);
   let subMenu = [];
@@ -3423,13 +3423,13 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
           index: `${currentIndex}.${translationKeyIndex}.${subSubMenuIndex}`,
           name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
           icon: iconItemCommon,
-          param: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
+          command: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
           submenu: [],
         });
         subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
       }
       else {
-        subMenuItem.param = cmdNoOperation;
+        subMenuItem.command = cmdNoOperation;
       }
       subMenu.push(subMenuItem);
     });
@@ -3488,7 +3488,7 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
           subSubMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, dataTypeTranslation, translationType, translationKeyIndex, translationDeviceKeyIndex));
         }
         else {
-          subSubMenuItem.param = cmdNoOperation;
+          subSubMenuItem.command = cmdNoOperation;
         }
         subMenuItem.submenu.push(subSubMenuItem);
       });
@@ -3523,11 +3523,11 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
         text: ` (${translationKey})`
       };
     if (isCurrentAccessLevelAllowModify) {
-      subMenuItem.param = commandsPackParams(cmdEmptyCommand, `${translationType}.${translationKey}`);
+      subMenuItem.command = commandsPackParams(cmdEmptyCommand, `${translationType}.${translationKey}`);
       subMenuItem.submenu = (user, menuItemToProcess) => {
         const
           currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          [_cmdId, translationId] = commandUnpackParams(menuItemToProcess.param);
+          [_cmdId, translationId] = commandUnpackParams(menuItemToProcess.command);
         let
           subMenu = new Array(),
           subMenuIndex = 0;
@@ -3538,7 +3538,7 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
     }
     else {
       subMenuItem.submenu = [];
-      subMenuItem.param = cmdNoOperation;
+      subMenuItem.command = cmdNoOperation;
     }
     subMenu.push(subMenuItem);
   });
@@ -3560,7 +3560,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
       icon: iconItemDownload,
       group: 'menuTranslationFile',
       id: doDownload,
-      param: commandsPackParams(cmdItemDownload, translationPartId === translationsCoreId ? '' : translationPartId)
+      command: commandsPackParams(cmdItemDownload, translationPartId === translationsCoreId ? '' : translationPartId)
     },
     {
       name: translationsItemMenuGet(user, 'TranslationUpload'),
@@ -3573,7 +3573,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
           icon: iconItemUpload,
           group: 'menuTranslationFile',
           id: doUploadDirectly,
-          param:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadDirectly, translationPartId === translationsCoreId ? '' : translationPartId),
+          command:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadDirectly, translationPartId === translationsCoreId ? '' : translationPartId),
           function: translationsUploadMenuItemDetails,
           submenu: translationsMenuGenerateUploadTranslation
         },
@@ -3582,7 +3582,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
           icon: iconItemUpload,
           group: 'menuTranslationFile',
           id: doUploadFromRepo,
-          param:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadFromRepo, translationPartId),
+          command:  commandsPackParams(cmdItemUpload, dataTypeTranslation, doUploadFromRepo, translationPartId),
           function: translationsUploadMenuItemDetails,
           submenu: translationsMenuGenerateUploadTranslation
         }
@@ -4297,7 +4297,7 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
     subMenu = [];
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    [_cmdId, dataType, currentItem, dataTypeExtraId] = commandUnpackParams(menuItemToProcess.param),
+    [_cmdId, dataType, currentItem, dataTypeExtraId] = commandUnpackParams(menuItemToProcess.command),
     currentEnumeration = enumerationsGetList(dataType, dataTypeExtraId),
     currentMenuItem = currentEnumeration[currentItem],
     currentMenuItemGroup = currentMenuItem ? currentMenuItem.group : '',
@@ -4313,7 +4313,7 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `[${currentGroup}]`,
             icon: currentGroup === currentMenuItemGroup ? iconItemCheckMark : '',
-            param: commandsPackParams(cmdItemPress, dataTypeGroups, currentItem, dataType, currentGroup, dataTypeExtraId),
+            command: commandsPackParams(cmdItemPress, dataTypeGroups, currentItem, dataType, currentGroup, dataTypeExtraId),
             submenu: []
           });
         }
@@ -4339,7 +4339,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
+    [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.command),
     currentEnumerationList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
   const
     currentEnumerationItem = currentEnumerationList[currentItem],
@@ -4352,7 +4352,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${translationsItemTextGet(user, currentEnumerationItem.isEnabled ? 'SwitchOff' : 'SwitchOn')}`,
         icon: currentIcon,
-        param: commandsPackParams(cmdItemPress, enumerationType, currentItem, 'isEnabled', enumerationTypeExtraId),
+        command: commandsPackParams(cmdItemPress, enumerationType, currentItem, 'isEnabled', enumerationTypeExtraId),
         group: 'topRows',
         submenu: [],
       } );
@@ -4409,7 +4409,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           devicesMenuItem = {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'Devices')}`,
-            param: enumerationItemAttr,
+            command: enumerationItemAttr,
             accessLevel: currentAccessLevel,
             funcEnum: currentItem,
             icon: iconItemDevice,
@@ -4425,7 +4425,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
                 id: enumerationItemAttr,
                 accessLevel: currentAccessLevel,
-                param: currentItem,
+                command: currentItem,
                 icon: enumerationItemAttr === 'deviceAttributes' ? iconItemAttribute : iconItemSquareButtonBlack,
                 submenu: enumerationsMenuGenerateListOfEnumerationItems,
               });
@@ -4438,7 +4438,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
               accessLevel: currentAccessLevel,
-              param: enumerationItemAttr.replace('ValuesTranslation', ''),
+              command: enumerationItemAttr.replace('ValuesTranslation', ''),
               funcEnum: currentItem,
               icon: iconItemTranslation,
               id: `${currentEnumerationItemEnum}.${currentItem.replace('.', '_') }`,
@@ -4459,7 +4459,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
-              param: commandsPackParams(cmdItemNameGet, enumerationType, currentItem, enumerationItemAttr),
+              command: commandsPackParams(cmdItemNameGet, enumerationType, currentItem, enumerationItemAttr),
               submenu: [],
             });
           }
@@ -4485,7 +4485,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 index: `${currentIndex}.${subMenuIndex}.${namesSub}`,
                 name: `${translationsItemCoreGet(user, 'cmdItemRename')} "${translationsItemTextGet(user, namesKey)}" (${translationsGetEnumName(user, enumerationType, currentItem, namesKey)})`,
                 icon: isCurrentAccessLevelAllowModify ? iconItemEdit : '',
-                param: commandsPackParams(isCurrentAccessLevelAllowModify ? cmdGetInput : cmdNoOperation, enumerationType, currentItem, 'names', namesKey),
+                command: commandsPackParams(isCurrentAccessLevelAllowModify ? cmdGetInput : cmdNoOperation, enumerationType, currentItem, 'names', namesKey),
                 submenu: [],
               });
             });
@@ -4502,11 +4502,11 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           icon: iconItemEdit,
         };
         if (isCurrentAccessLevelAllowModify) {
-          groupItem.param = commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationTypeExtraId);
+          groupItem.command = commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationTypeExtraId);
           groupItem.submenu = enumerationMenuGenerateItemGroups;
         }
         else {
-          groupItem.param = cmdNoOperation;
+          groupItem.command = cmdNoOperation;
           groupItem.submenu = [];
         }
         subMenuIndex = subMenu.push(groupItem);
@@ -4552,7 +4552,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
               name: currentItemName,
               icon: isCurrentHolder ? iconItemCheckMark : '',
-              param:  commandsPackParams(cmdItemPress, enumerationType, currentItem, enumerationItemAttr, '', itemId),
+              command:  commandsPackParams(cmdItemPress, enumerationType, currentItem, enumerationItemAttr, '', itemId),
               submenu: [],
             });
             if (isCurrentHolder) subMenuItem.name += ` "${currentItemName}"`;
@@ -4567,7 +4567,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)} (${currentEnumerationItem[enumerationItemAttr] ? configOptions.getOption(cfgDefaultIconOn, user) : configOptions.getOption(cfgDefaultIconOff, user) })`,
-              param:  commandsPackParams(isCurrentAccessLevelAllowModify ? cmdItemPress : cmdNoOperation, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId),
+              command:  commandsPackParams(isCurrentAccessLevelAllowModify ? cmdItemPress : cmdNoOperation, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId),
               submenu: [],
             });
             break;
@@ -4578,7 +4578,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`,
               icon: isCurrentAccessLevelAllowModify ? iconItemEdit : '',
-              param: commandsPackParams(isCurrentAccessLevelAllowModify ? (enumerationItemAttributesWithReset.includes(enumerationItemAttr) ? cmdEmptyCommand : cmdGetInput) : cmdNoOperation, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId),
+              command: commandsPackParams(isCurrentAccessLevelAllowModify ? (enumerationItemAttributesWithReset.includes(enumerationItemAttr) ? cmdEmptyCommand : cmdGetInput) : cmdNoOperation, enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId),
               group: enumerationItemAttr.indexOf('icon') === 0 ? 'icon' : menuButtonsDefaultGroup,
               submenu: new Array(),
             };
@@ -4619,7 +4619,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                 name: `[${translationsItemTextGet(user, enumerationsConvertButtonToAttribute)}]`,
                 icon: currentEnumerationItem[accessLevelsAttr] === enumerationsConvertButtonToAttribute ? iconItemAttribute : iconItemButton,
-                param: commandsPackParams(cmdItemPress, enumerationType, currentItem, accessLevelsAttr, enumerationTypeExtraId, enumerationsConvertButtonToAttribute),
+                command: commandsPackParams(cmdItemPress, enumerationType, currentItem, accessLevelsAttr, enumerationTypeExtraId, enumerationsConvertButtonToAttribute),
                 submenu: []
               });
             }
@@ -4629,7 +4629,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                   index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                   name: `[${translationsItemTextGet(user, 'AccessLevel', accessLevel)}]`,
                   icon: accessLevel === currentEnumerationItem[accessLevelsAttr] ? MenuRoles.accessLevelsIcons[levelIndex] : iconItemButton,
-                  param: commandsPackParams(cmdItemPress, enumerationType, currentItem, accessLevelsAttr, enumerationTypeExtraId, accessLevel),
+                  command: commandsPackParams(cmdItemPress, enumerationType, currentItem, accessLevelsAttr, enumerationTypeExtraId, accessLevel),
                   submenu: []
                 });
               }
@@ -4639,7 +4639,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               name: `${translationsItemMenuGet(user, 'ItemsProcess')}`,
               icon: iconItemApply,
               group: cmdItemsProcess,
-              param: commandsPackParams(cmdItemJumpTo, [jumpToUp].join('.')),
+              command: commandsPackParams(cmdItemJumpTo, [jumpToUp].join('.')),
               submenu: []
             });
             subMenuIndex = subMenu.push(subMenuItem);
@@ -4676,7 +4676,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
             name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
             icon: iconItemCommon,
-            param: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
+            command: commandsPackParams(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
             submenu: [],
           });
           subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
@@ -4689,7 +4689,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         subMenuIndex = subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportEdit')}`,
-          param: currentItem,
+          command: currentItem,
           submenu: simpleReportMenuGenerateReportEdit,
         });
         break;
@@ -4746,7 +4746,7 @@ function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, with
  */
 function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
   const
-    [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.param),
+    [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandUnpackParams(menuItemToProcess.command),
     currentEnumeration = enumerationsGetList(enumerationType, enumerationTypeExtraId),
     currentEnumerationItem = currentEnumeration[currentItem];
   const currentItemDetailsList = [];
@@ -4843,8 +4843,8 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
-    enumerationType = menuItemToProcess.hasOwnProperty('id') ? menuItemToProcess.id : menuItemToProcess.param,
-    enumerationTypeExtraId = enumerationsSubTypesExtended.includes(enumerationType) ? menuItemToProcess.param : undefined;
+    enumerationType = menuItemToProcess.hasOwnProperty('id') ? menuItemToProcess.id : menuItemToProcess.command,
+    enumerationTypeExtraId = enumerationsSubTypesExtended.includes(enumerationType) ? menuItemToProcess.command : undefined;
   if (enumerationType !== dataTypePrimaryEnums) {
     const dataType = enumerationsSubTypes.includes(enumerationType) ? dataTypeFunction : enumerationType;
     enumerationsLoad(dataType);
@@ -4874,13 +4874,13 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
           accessLevel: currentAccessLevel,
           options: menuOptionHorizontalNavigation,
           function: enumerationsMenuItemDetailsEnumerationItem,
-          param: commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationsSubTypesExtended.includes(enumerationType) ? '' : undefined, enumerationsSubTypesExtended.includes(enumerationType) ? enumerationTypeExtraId : undefined),
+          command: commandsPackParams(cmdEmptyCommand, enumerationType, currentItem, enumerationsSubTypesExtended.includes(enumerationType) ? '' : undefined, enumerationsSubTypesExtended.includes(enumerationType) ? enumerationTypeExtraId : undefined),
           submenu: enumerationsMenuGenerateEnumerationItem
       };
       switch (enumerationType) {
         case dataTypeDeviceAttributes:
         case dataTypeDeviceButtons:
-          currentMenuItem.funcEnum = menuItemToProcess.param;
+          currentMenuItem.funcEnum = menuItemToProcess.command;
           break;
         default:
           break;
@@ -4911,7 +4911,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
               name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
               icon: iconItemPlus,
               group: cmdItemAdd,
-              param: '',
+              command: '',
             };
             const currentEnumsList = Object.keys(enumerationsList[enumerationType].enums);
             if (currentEnumsList.length === 1) {
@@ -4926,7 +4926,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
                   icon: iconItemPlus,
                   accessLevel: currentAccessLevel,
                   id: enumId,
-                  param: '',
+                  command: '',
                   submenu: simpleReportMenuGenerateReportEdit,
                 });
               });
@@ -4940,7 +4940,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
         name: `${translationsItemMenuGet(user, enumerationsEditEnums)}`,
         icon: iconItemEdit,
         accessLevel: currentAccessLevel,
-        param: enumerationType,
+        command: enumerationType,
         group: enumerationsEditEnums,
         id: dataTypePrimaryEnums,
         submenu: enumerationsMenuGenerateListOfEnumerationItems,
@@ -4955,7 +4955,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
           name: `${translationsItemCoreGet(user, 'cmdItemsLoad')}`,
           icon: iconItemRefresh,
           group: cmdItemsProcess,
-          param:  commandsPackParams(cmdItemsProcess, enumerationType, menuItemToProcess.param),
+          command:  commandsPackParams(cmdItemsProcess, enumerationType, menuItemToProcess.command),
           submenu: [],
         });
       }
@@ -4986,7 +4986,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
             subMenuItem.submenu.push({
               index: `${currentIndex}.${subMenuIndex}.${enumIndex}`,
               name: `${stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumId}`))}[${enumId}]`,
-              param: commandsPackParams(cmdItemPress, enumerationType, enumId, cmdItemAdd, enumerationTypeExtraId),
+              command: commandsPackParams(cmdItemPress, enumerationType, enumId, cmdItemAdd, enumerationTypeExtraId),
               submenu: []
             });
           });
@@ -5118,7 +5118,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               // subMenuItem.icons = deviceButtonId === primaryStateId ?  {on: currentFunction.iconOn, off: currentFunction.iconOff} :  {on: defaultIconOn, off: defaultIconOff};
               subMenuItem.state = stateIdFull;
               subMenuItem.icon  = (stateValue  === undefined) || (stateValue  === null) ? iconItemNotFound : (deviceButtonId === primaryStateId ? (stateValue ? currentFunction.iconOn : currentFunction.iconOff) :  (stateValue ? defaultIconOn : defaultIconOff));
-              subMenuItem.param = commandsPackParams(cmdSetState, stateIdFull);
+              subMenuItem.command = commandsPackParams(cmdSetState, stateIdFull);
             }
             else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
               states = enumerationsExtractPossibleValueStates(stateObject.common['states']);
@@ -5132,7 +5132,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                       name: `${enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString'] /*  possibleName !== undefined ? possibleName : possibleValue */}`,
                       state: commandsPackParams(stateIdFull, possibleValue),
-                      param: commandsPackParams(cmdSetState, stateIdFull, possibleValue),
+                      command: commandsPackParams(cmdSetState, stateIdFull, possibleValue),
                       funcEnum: currentFunctionId,
                       group: 'possibleValues',
                       icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
@@ -5166,7 +5166,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${possibleValue}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }`,
                     state: commandsPackParams(stateIdFull, possibleValue),
-                    param: commandsPackParams(cmdSetState, stateIdFull, possibleValue),
+                    command: commandsPackParams(cmdSetState, stateIdFull, possibleValue),
                     funcEnum: currentFunctionId,
                     group: 'possibleValues',
                     icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
@@ -5180,7 +5180,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   name: `${translationsItemMenuGet(user, 'SetValue')} (${stateValue ? stateValue : ''}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' })`,
                   icon: iconItemEdit,
                   funcEnum: currentFunctionId,
-                  param: commandsPackParams(cmdGetInput, dataTypeStateValue, currentFunctionId, stateIdFull, 'number'),
+                  command: commandsPackParams(cmdGetInput, dataTypeStateValue, currentFunctionId, stateIdFull, 'number'),
                   submenu: []
                 });
               }
@@ -5188,7 +5188,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             // logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2), _l);
             if ((subMenuItem.icon !== undefined) || subMenuItem.icons) {
               // logs('subMenuItem.icon = ' + JSON.stringify(subMenuItem.icon), _l);
-              if (! isButtonAllowedToPress) subMenuItem.param = cmdNoOperation;
+              if (! isButtonAllowedToPress) subMenuItem.command = cmdNoOperation;
               if (deviceButtonId !== primaryStateShortId) {
                 subMenuIndex = subMenu.push(subMenuItem);
               }
@@ -5212,7 +5212,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, 'AlertsSubscriptionExtended')}`,
-      param: primaryStateId,
+      command: primaryStateId,
       destEnum: currentDestinationId,
       funcEnum: currentFunctionId,
       accessLevel: currentAccessLevel,
@@ -5247,7 +5247,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             name: `${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}`,
             icon: iconItemChart,
             group: cmdItemsProcess,
-            param: commandsPackParams(cmdItemsProcess, dataTypeGraph, stateId, stateName, graphsIntervalMinutes, currentFunctionId, menuItemToProcess.destEnum)
+            command: commandsPackParams(cmdItemsProcess, dataTypeGraph, stateId, stateName, graphsIntervalMinutes, currentFunctionId, menuItemToProcess.destEnum)
           });
         });
       }
@@ -5256,7 +5256,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
           index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}.${subSubSubMenuIndex}`,
           name: `${translationsItemCoreGet(user, cmdDeleteAllSentImages)}`,
           icon: iconItemDelete,
-          param: cmdDeleteAllSentImages,
+          command: cmdDeleteAllSentImages,
           group: cmdDeleteAllSentImages
         });
       }
@@ -5267,7 +5267,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
         index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
         name: `${translationsItemCoreGet(user, cmdDeleteAllSentImages)}`,
         icon: iconItemDelete,
-        param: cmdDeleteAllSentImages,
+        command: cmdDeleteAllSentImages,
         group: cmdDeleteAllSentImages
       });
     }
@@ -6208,7 +6208,7 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${alertDate}: ${alertMessage.message}`,
       icon: alertMessage.ack ? iconItemAlertOff : iconItemAlertOn,
-      param: alertIndex,
+      command: alertIndex,
       options: menuOptionHorizontalNavigation,
       submenu: []
     });
@@ -6254,7 +6254,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     currentDestId = menuItemToProcess.destEnum,
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    currentObjectIndex = menuItemToProcess.param;
+    currentObjectIndex = menuItemToProcess.command;
   let
     alertsBy = {},
     subMenu = [];
@@ -6363,7 +6363,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             funcEnum: currentFuncId,
             destEnum: currentDestId,
             accessLevel: currentAccessLevel,
-            param: objectsIdList[objectId]['index'],
+            command: objectsIdList[objectId]['index'],
             submenu: alertsMenuGenerateSubscribed
           });
         });
@@ -6380,7 +6380,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             index: `${currentIndex}.${alertMenuIndex}`,
             name: `${alertsIdList[alertId]}`,
             icon: menuItemToProcess.icon,
-            param: isCurrentAccessLevelAllowModify ? '' : cmdNoOperation,
+            command: isCurrentAccessLevelAllowModify ? '' : cmdNoOperation,
             submenu: isCurrentAccessLevelAllowModify ? [menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${alertMenuIndex}`, 0, dataTypeAlertSubscribed, alertId)] : []
           });
         });
@@ -6435,7 +6435,7 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
       state: itemState,
       icons: alertsGetIcon,
       group: 'alerts',
-      param: itemParam
+      command: itemParam
     };
     let isNumericString = false;
     if (configOptions.getOption(cfgThresholdsForNumericString)) {
@@ -6453,7 +6453,7 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
       (itemStateObject.common.hasOwnProperty('states') && (['string','number'].includes(itemStateType) ))
     ) {
       if (isExtraMenu) {
-        menuItem.param = commandsPackParams(cmdEmptyCommand, ...commandUnpackParams(itemParam).slice(1));
+        menuItem.command = commandsPackParams(cmdEmptyCommand, ...commandUnpackParams(itemParam).slice(1));
         menuItem['submenu'] = alertsMenuGenerateManageBoolean;
       }
       else {
@@ -6461,7 +6461,7 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
       }
     }
     else if ((itemStateType === 'number') || isNumericString) {
-      menuItem.param = commandsPackParams(cmdEmptyCommand, ...commandUnpackParams(itemParam).slice(1));
+      menuItem.command = commandsPackParams(cmdEmptyCommand, ...commandUnpackParams(itemParam).slice(1));
       menuItem['submenu'] = alertsMenuGenerateManageNumeric;
     }
     else {
@@ -6483,7 +6483,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
-    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
+    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.command),
     alerts = alertsGet(),
     alertIsOn = alerts && alerts.hasOwnProperty(currentStateId) && alerts[currentStateId].chatIds.has(user.chatId),
     [currentAlertDetails, currentStateAlertDetails] = alertIsOn ? alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true) : [{}, {}],
@@ -6498,7 +6498,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
     name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
     icon: iconItemEdit,
     group: alertMessageTemplateId,
-    param: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
+    command: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
     submenu: [
       menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
       menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
@@ -6512,7 +6512,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
       icons: alertsGetIcon,
       group: cmdItemsProcess,
       state: currentStateId,
-      param: commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
+      command: commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
       submenu: [],
     }
   );
@@ -6533,7 +6533,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
-    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.param),
+    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandUnpackParams(menuItemToProcess.command),
     currentStateObject = getObjectEnriched(currentStateId),
     currentStateUnits = currentStateObject && currentStateObject.hasOwnProperty('common') && currentStateObject.common && currentStateObject.common.hasOwnProperty('unit') && currentStateObject.common.unit ? ` ${currentStateObject.common.unit}` : '',
     [currentThresholds, currentStateAlertThresholds] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true);
@@ -6558,7 +6558,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       name: `${currentThresholdNumber}${currentStateUnits} ${iconItemAbove}`,
       icon: currentThreshold.onAbove ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
       group: 'borders',
-      param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
+      command: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
       submenu: [],
     });
     subSubMenuIndex = subMenuItem.submenu.push({
@@ -6566,7 +6566,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       name: `${currentThresholdNumber}${currentStateUnits} ${iconItemLess}`,
       icon: currentThreshold.onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
       group: 'borders',
-      param: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
+      command: commandsPackParams((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
       submenu: [],
     });
     subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, 'thresholdOn', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
@@ -6575,7 +6575,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentThreshold.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
       icon: iconItemEdit,
       group: alertMessageTemplateId,
-      param: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
+      command: commandsPackParams(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
       submenu: [
         menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
         menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId)
@@ -6594,7 +6594,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
         icons: alertsGetIcon,
         group: cmdItemsProcess,
         state: currentStateId,
-        param: commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
+        command: commandsPackParams(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
         submenu: [],
       }
     );
@@ -6613,7 +6613,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
- * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
 function alertMenuItemGenerateAlertPropagation(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
   const subMenuItem =  {
@@ -6637,7 +6637,7 @@ function alertMenuItemGenerateAlertPropagation(user, upperMenuItemIndex, subMenu
         index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuItemIndex}.${subSubSubMenuItemIndex}`,
         name: `${translationsItemMenuGet(user, alertPropagateOption)}`,
         icon: '',
-        param: commandsPackParams(cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, ...commandParams),
+        command: commandsPackParams(cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, ...commandParams),
         submenu: []
       });
     });
@@ -6674,7 +6674,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
     deviceButtonsList = currentFunction.deviceButtons,
     currentDeviceButtons = deviceButtonsList ? Object.keys(deviceButtonsList).filter((deviceButton) => (deviceButtonsList[deviceButton].isEnabled)).sort((a, b) => (deviceButtonsList[a].order - deviceButtonsList[b].order)) : [],
     currentDeviceStates = [...currentDeviceAttributes, ...currentDeviceButtons],
-    primaryStateId = menuItemToProcess.param,
+    primaryStateId = menuItemToProcess.command,
     idPrefix = primaryStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
     currentAccessLevel = menuItemToProcess.accessLevel;
   let
@@ -6752,7 +6752,7 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
         name: `${translationsItemMenuGet(user, 'BackupCreate')}`,
         icon: iconItemBackupCreate,
         id: backupModeCreate,
-        param: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? commandsPackParams(cmdItemsProcess, dataTypeBackup, backupModeCreate) : cmdNoOperation,
+        command: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? commandsPackParams(cmdItemsProcess, dataTypeBackup, backupModeCreate) : cmdNoOperation,
         submenu: []
     });
     if (backupFiles.length) {
@@ -6773,7 +6773,7 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}.${fileIndex}`,
             name: `${backupDate} ${backupTime.split('-').join(':')} [${backupMode}]`,
             // icon: iconItemBackupCreate,
-            param: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? fileName : cmdNoOperation,
+            command: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? fileName : cmdNoOperation,
             submenu: restoreSubSubMenu,
           });
         }
@@ -6795,7 +6795,7 @@ function backupMenuGenerateRestore(user, menuItemToProcess) {
   // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, _l);
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    currentParam = menuItemToProcess.param;
+    currentParam = menuItemToProcess.command;
   let
     subMenu = [],
     subMenuIndex = 0;
@@ -6804,7 +6804,7 @@ function backupMenuGenerateRestore(user, menuItemToProcess) {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, backupModeRestore, backupRestoreItemsList[backupItem])}`,
       icon: iconItemBackupRestore,
-      param: commandsPackParams(cmdItemsProcess, dataTypeBackup, backupModeRestore, currentParam, backupItem),
+      command: commandsPackParams(cmdItemsProcess, dataTypeBackup, backupModeRestore, currentParam, backupItem),
       submenu: []
     });
   });
@@ -7080,8 +7080,8 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
   let newMenu = [];
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    reportId = menuItemToProcess.param,
-    enumId = menuItemToProcess.param ? menuItemToProcess.param : Object.keys(enumerationsList[dataTypeReport].enums)[0];
+    reportId = menuItemToProcess.command,
+    enumId = menuItemToProcess.command ? menuItemToProcess.command : Object.keys(enumerationsList[dataTypeReport].enums)[0];
   if (reportId) {
     const
       reportObjectId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[reportId].enum}.${reportId}`,
@@ -7109,13 +7109,13 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
       index: `${currentIndex}.${memberId}`,
       name: `${translationsItemMenuGet(user, 'ReportMarkNewStates')}`,
       icon: enumerationsList[dataTypeReport].icon,
-      param: reportId,
+      command: reportId,
       /** submenu function for collecting query params (dests, states, roles) */
       submenu: (user, menuItemToProcess) => {
         logs(`(${user}, menuItemToProcess)`);
         const
           currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          reportId = menuItemToProcess.param;
+          reportId = menuItemToProcess.command;
         let
           subMenuIndex = 0,
           subMenu = [];
@@ -7138,7 +7138,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsGetEnumName(user, dataTypeDestination, key)}`,
                 icon: queryDests.includes(key) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].list[key].icon,
-                param: commandsPackParams(cmdItemMark, dataTypeReportMember, dataTypeDestination, key),
+                command: commandsPackParams(cmdItemMark, dataTypeReportMember, dataTypeDestination, key),
                 submenu: []
               });
             });
@@ -7149,14 +7149,14 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineState')} (${queryState})`,
           icon: iconItemEdit,
-          param: commandsPackParams(cmdGetInput, dataTypeReportMember, 'queryState'),
+          command: commandsPackParams(cmdGetInput, dataTypeReportMember, 'queryState'),
           submenu: []
         });
         subMenuIndex = subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineRole')} (${queryRole})`,
           icon: iconItemEdit,
-          param: commandsPackParams(cmdGetInput, dataTypeReportMember, 'queryRole', 2),
+          command: commandsPackParams(cmdGetInput, dataTypeReportMember, 'queryRole', 2),
           submenu: [],
         });
         if (queryRole || queryState) {
@@ -7164,13 +7164,13 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'ReportNewStatesStartSearch')}`,
             icon: enumerationsList[dataTypeReport].icon,
-            param: reportId,
+            command: reportId,
             /** submenu function for selecting states from a query result and assigning them to report */
             submenu: (user, menuItemToProcess) => {
               logs(`(${user}, menuItemToProcess)`);
               const
                 currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-                reportId = menuItemToProcess.param;
+                reportId = menuItemToProcess.command;
               let
                 {queryDests, queryState, queryRole, queryStates, queryPossibleStates} = cachedValueGet(user, cachedSimpleReportNewQuery),
                 subMenu = [],
@@ -7213,7 +7213,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                         index: `${currentIndex}.${subMenuIndex-1}.${index}`,
                         name: `${translationsItemMenuGet(user, 'ItemMarkUnMark')}`,
                         icon: queryStates.includes(id) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].icon,
-                        param: commandsPackParams(cmdItemMark, dataTypeReportMember, 'states', queryPossibleStates.length),
+                        command: commandsPackParams(cmdItemMark, dataTypeReportMember, 'states', queryPossibleStates.length),
                         submenu: []
                       }
                     ]
@@ -7228,14 +7228,14 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 name: `${translationsItemMenuGet(user, 'ItemsProcessMarked')}`,
                 icon: configOptions.getOption(cfgDefaultIconOn, user),
                 group: cmdItemsProcess,
-                param: commandsPackParams(cmdItemsProcess, dataTypeReportMember, reportId, 'marked'),
+                command: commandsPackParams(cmdItemsProcess, dataTypeReportMember, reportId, 'marked'),
                 submenu: []
               });
               subMenuIndex = subMenu.push({
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsItemMenuGet(user, 'ItemsProcessAll')}`,
                 icon: enumerationsList[dataTypeReport].icon,
-                param: commandsPackParams(cmdItemsProcess, dataTypeReportMember, reportId, doAll),
+                command: commandsPackParams(cmdItemsProcess, dataTypeReportMember, reportId, doAll),
                 submenu: []
               });
               logs(`statesArray = ${JSON.stringify(queryPossibleStates)}`);
@@ -7260,7 +7260,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             index: `${currentIndex}.0`,
             name: `${translationsItemCoreGet(user, 'cmdFixId')}`,
             icon: iconItemEdit,
-            param: commandsPackParams(cmdGetInput, dataTypeReport, '', 'fixId'),
+            command: commandsPackParams(cmdGetInput, dataTypeReport, '', 'fixId'),
             submenu: [],
           }
         );
@@ -7271,7 +7271,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             index: `${currentIndex}.0`,
             name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${simpleReportId}'`,
             icon: enumerationsList[dataTypeReport].icon,
-            param: commandsPackParams(cmdCreateReportEnum, dataTypeReport, simpleReportId, enumId),
+            command: commandsPackParams(cmdCreateReportEnum, dataTypeReport, simpleReportId, enumId),
             submenu: [],
           }
         );
@@ -7284,7 +7284,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           index: `${currentIndex}.0`,
           name: `${translationsItemCoreGet(user, 'cmdSetId')}`,
           icon: iconItemEdit,
-          param: commandsPackParams(cmdGetInput, dataTypeReport, '', 'setId'),
+          command: commandsPackParams(cmdGetInput, dataTypeReport, '', 'setId'),
           submenu: [],
         }
       );
@@ -7467,7 +7467,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
               name: `${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}`,
               icon: iconItemChart,
               group: cmdItemsProcess,
-              param: commandsPackParams(cmdItemsProcess, dataTypeGraph, graphsTemplate, dataTypeReport, graphsIntervalMinutes, reportId)
+              command: commandsPackParams(cmdItemsProcess, dataTypeGraph, graphsTemplate, dataTypeReport, graphsIntervalMinutes, reportId)
             });
           });
         }
@@ -7476,7 +7476,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemCoreGet(user, cmdDeleteAllSentImages)}`,
             icon: iconItemDelete,
-            param: cmdDeleteAllSentImages,
+            command: cmdDeleteAllSentImages,
             group: cmdDeleteAllSentImages
           });
         }
@@ -7645,7 +7645,7 @@ const
           name: translationsItemCoreGet(user, cmdDeleteAllSentImages),
           id: cachedSentImages,
           icon: iconItemDelete,
-          param: cmdDeleteAllSentImages,
+          command: cmdDeleteAllSentImages,
           group: cmdDeleteAllSentImages
         });
       }
@@ -7683,7 +7683,7 @@ const
           const subMenuRefresh = [{
             name: `${translationsItemMenuGet(user, 'Refresh')}`,
             icon: iconItemRefresh,
-            param: commandsPackParams(cmdItemJumpTo, ''),
+            command: commandsPackParams(cmdItemJumpTo, ''),
             group: 'refresh',
             submenu: [],
           }];
@@ -7828,23 +7828,23 @@ const
  * @param {*} dataItem - The primary item or collection of items identification.
  * @param {*=} dataId - The secondary id for the item.
  * @param  {...any} dataValues - The additional parameters of an item, required for the `cmdItemDeleteConfirm`
- * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
 function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemIndex, dataType, dataItem, dataId, ...dataValues) {
-  // logs(`param = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, _l)
+  // logs(`command = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, _l)
   return {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemDelete)}`,
     icon: iconItemDelete,
     group: cmdItemDelete,
-    param: commandsPackParams(cmdItemDelete, dataType, dataItem, subMenuItemIndex, dataId, ...dataValues),
+    command: commandsPackParams(cmdItemDelete, dataType, dataItem, subMenuItemIndex, dataId, ...dataValues),
     submenu: [
       {
         index: `${upperMenuItemIndex}.${subMenuItemIndex}.0`,
         name: `${translationsItemCoreGet(user, cmdItemDeleteConfirm)}`,
         icon: iconItemDelete,
         //cfgItem, typeOfOption, subMenuIndex
-        param: commandsPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues),
+        command: commandsPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues),
         submenu: [],
       }
     ],
@@ -7860,14 +7860,14 @@ function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemInd
  * @param {string} itemName - The name of the menu item.
  * @param {string} itemGroup - The name of the menu item.
  * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
- * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
 function menuMenuItemGenerateEditItem(_user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, ...commandParams) {
   const result = {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: itemName,
     icon: iconItemEdit,
-    param: commandsPackParams(cmdGetInput, ...commandParams),
+    command: commandsPackParams(cmdGetInput, ...commandParams),
     submenu: [],
   };
   if (itemGroup) result.group = itemGroup;
@@ -7881,7 +7881,7 @@ function menuMenuItemGenerateEditItem(_user, upperMenuItemIndex, subMenuItemInde
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
- * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
 function menuMenuItemGenerateRenameItem(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
   return menuMenuItemGenerateEditItem(user, upperMenuItemIndex, subMenuItemIndex, `${translationsItemCoreGet(user, 'cmdItemRename')}`, '', ...commandParams);
@@ -7893,14 +7893,14 @@ function menuMenuItemGenerateRenameItem(user, upperMenuItemIndex, subMenuItemInd
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
- * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
 function menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
   return {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
     icon: iconItemPlus,
-    param: commandsPackParams(cmdGetInput, ...commandParams),
+    command: commandsPackParams(cmdGetInput, ...commandParams),
     group: 'addNew',
     submenu: []
   };
@@ -7912,14 +7912,14 @@ function menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex,
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {...any} commandParams - The params to be processed by `cmdItemReset`.
- * @returns {object} The menu item object {index:..., name:..., icon:..., param:..., submenu:[...]}.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
 function menuMenuItemGenerateResetItem(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
   return {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemReset)}`,
     icon: iconItemReset,
-    param: commandsPackParams(cmdItemReset, ...commandParams),
+    command: commandsPackParams(cmdItemReset, ...commandParams),
     group: 'reset',
     submenu: []
   };
@@ -7942,7 +7942,7 @@ function menuMenuPartGenerateMoveItemUpAndDown(user, subMenu, upperMenuItemIndex
     subMenuItemIndex = subMenu.push({
       index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
       name: `${iconItemMoveUp}`,
-      param: commandsPackParams(cmdItemMoveUp, ...commandParams),
+      command: commandsPackParams(cmdItemMoveUp, ...commandParams),
       group: groupId === undefined ? 'moveItem' : groupId,
       submenu: [],
     });
@@ -7951,7 +7951,7 @@ function menuMenuPartGenerateMoveItemUpAndDown(user, subMenu, upperMenuItemIndex
     subMenuItemIndex = subMenu.push({
       index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
       name: `${iconItemMoveDown}`,
-      param: commandsPackParams(cmdItemMoveDown, ...commandParams),
+      command: commandsPackParams(cmdItemMoveDown, ...commandParams),
       group: groupId === undefined ? 'moveItem' : groupId,
       submenu: [],
     });
@@ -8358,8 +8358,8 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
           // logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
           const currentSubIndex = currentSubMenuItem.index;
           let callbackData = menuItemButtonPrefix + currentSubIndex;
-          if (currentSubMenuItem.hasOwnProperty('param') && (typeof(currentSubMenuItem.param) === 'string') && (currentSubMenuItem.param.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.param !== cmdPrefix)) {
-              callbackData = currentSubMenuItem.param;
+          if (currentSubMenuItem.hasOwnProperty('command') && (typeof(currentSubMenuItem.command) === 'string') && (currentSubMenuItem.command.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.command !== cmdPrefix)) {
+              callbackData = currentSubMenuItem.command;
           }
           else if (currentSubMenuItem.hasOwnProperty('externalCommand')) {
             callbackData = commandsPackParams(cmdExternalCommand, currentSubMenuItem.funcEnum, currentSubMenuItem.externalCommand, currentSubMenuItem.externalCommandParams);
@@ -8756,8 +8756,8 @@ function menuReIndexMenu(inputMenu, indexPrefix) {
       if (inputMenu[key].hasOwnProperty('function') ) {
         newMenuRowItem.function = inputMenu[key].function;
       }
-      if (inputMenu[key].hasOwnProperty('param') ) {
-        newMenuRowItem.param = inputMenu[key].param;
+      if (inputMenu[key].hasOwnProperty('command') ) {
+        newMenuRowItem.command = inputMenu[key].command;
       }
       if (inputMenu[key].hasOwnProperty('text') ) {
         newMenuRowItem.text = inputMenu[key].text;
@@ -8826,14 +8826,14 @@ function commandsPackParams(...inputParams) {
 
 /**
  * This function "unpack"(splits) command and params from string to the array.
- * @param {string} param
+ * @param {string} command - The "command" string, with Command ID and parameters, splitted by `itemsDelimiter`.
  * @param {string[]=} defaultValue
  * @returns {string[]}
  */
-function commandUnpackParams(param, defaultValue) {
+function commandUnpackParams(command, defaultValue) {
   let result = defaultValue && typeOf(defaultValue, 'array') ? defaultValue : [];
-  if (param && typeOf(param, 'string')) {
-    result = param.split(itemsDelimiter);
+  if (command && typeOf(command, 'string')) {
+    result = command.split(itemsDelimiter);
   }
   return result;
 }
