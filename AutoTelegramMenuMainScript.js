@@ -9322,180 +9322,6 @@ async function commandUserInputCallback(user, userInputToProcess) {
       menuProcessActionOnPosition(user, undefined, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false, true);
     }
   }
-  else if (currentCommand === cmdGetInput) {
-    switch (currentType) {
-      case dataTypeTranslation: {
-        let
-          currentTranslationId = currentItem,
-          currentTranslationValue;
-        if (currentParam && currentValue) {
-          let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
-          if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
-            currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
-            destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
-            if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
-              currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
-              currentTranslationValue = destTranslation[Object.keys(destTranslation)[Number(currentValue)]];
-            }
-          }
-        }
-        else {
-          currentTranslationValue = translationsItemGet(user, currentTranslationId);
-        }
-        if (currentTranslationValue) menuMessageObject.menutext = `${translationsItemCoreGet(user, 'cmdItemRename')} ${currentTranslationId} = "${currentTranslationValue}" :`;
-        break;
-      }
-
-      case dataTypePrimaryEnums: {
-        if (currentValue && enumerationsList[currentValue]) {
-          const currentEnumsList = enumerationsList[currentValue].enums;
-          if (currentEnumsList[currentItem]) {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentType, currentParam)}" = ${currentEnumsList[currentItem].icon}:`;
-          }
-        }
-        break;
-      }
-
-      case dataTypeDestination:
-      case dataTypeFunction:
-      case dataTypeReport: {
-        switch (currentParam) {
-          case 'setId':
-          case 'fixId': {
-            const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate);
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, simpleReportId ? 'fix': 'set', 'reportId')} ${simpleReportId ? `= ${simpleReportId}` : ''}`;
-            cachedValueDelete(user, cachedSimpleReportIdToCreate);
-            break;
-          }
-
-          case 'names': {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentValue)}" = ${translationsGetEnumName(user, currentType, currentItem, currentValue)}:`;
-            break;
-          }
-
-          default: {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[currentType].list[currentItem][currentParam]}:`;
-            break;
-          }
-        }
-        break;
-      }
-
-      case dataTypeDeviceAttributes:
-      case dataTypeDeviceButtons: {
-        if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
-          menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam]}:`;
-        }
-        break;
-      }
-
-      case dataTypeMenuRoles: {
-        switch (currentParam) {
-          case 'setId':
-          case 'fixId': {
-            const newRoleId = cachedValueGet(user, cachedRolesNewRoleId);
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, newRoleId ? 'fix': 'set', 'RoleId')} ${newRoleId ? `= ${newRoleId}` : ''}`;
-            cachedValueDelete(user, cachedRolesNewRoleId);
-            break;
-          }
-          default: {
-            // menuMessageObject.menutext =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', currentType))} "${getFromTranslation(user, generateTextId(currentType, currentParam))}" = ${enumerationItems[currentType].list[currentItem][currentParam]}:`;
-            break;
-          }
-        }
-        break;
-      }
-
-
-      case dataTypeReportMember: {
-        const queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
-        menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(user, currentItem)} ${queryParams && queryParams.hasOwnProperty(currentItem) && queryParams[currentItem] ? `= ${queryParams[currentItem]}` : ''}`;
-        break;
-      }
-
-      case dataTypeAlertSubscribed: {
-        menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, currentValue)}${currentSubParam ? ` = ${currentSubParam}` : ''}:`;
-        break;
-      }
-
-      case dataTypeConfig: {
-        const
-          configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user),
-          configItemMask  = configOptions.getMaskDescription(currentItem);
-        logs(`configItem (${typeof(configItem)}${Array.isArray(configItem) ? ', Array' : ''}) = ${JSON.stringify(configItem)})`);
-        logs(`configItem (${typeof(currentParam)}) = ${JSON.stringify(currentParam)})`);
-        if ((typeOf(configItem) === 'array')
-          // @ts-ignore
-          && (! isNaN(currentValue))) {
-          const configItemIndex = Number(currentValue);
-          if (configItemIndex < configItem.length) {
-            const
-              itemByIndex = configItem[configItemIndex],
-              itemId = currentItem === cfgGraphsIntervals ? itemByIndex.id : configItemIndex,
-              itemValue = currentItem === cfgGraphsIntervals ? itemByIndex.name : itemByIndex;
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${translationsItemCoreGet(user, currentItem)}[${itemId}]' (${translationsItemTextGet(user, 'CurrentValue')} = ${itemValue}):`;
-          }
-          else {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'AddNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${translationsItemCoreGet(user, currentItem)}[]':`;
-          }
-        }
-        else {
-          if (currentItem === cfgMenuLanguage) {
-            const newLanguageId = cachedValueGet(user, cachedConfigNewLanguageId);
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, newLanguageId ? 'FixNewAttributeValue' : 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} ${translationsItemCoreGet(user, currentItem)}'${newLanguageId ? `(${newLanguageId})` : ''}:`;
-          }
-          else {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
-          }
-        }
-        break;
-      }
-
-      case dataTypeStateValue: {
-        if (existsObject(currentParam)) {
-          const
-            stateObject = getObjectEnriched(currentParam),
-            currentName = translationsGetObjectName(user, stateObject, currentItem),
-            currentValue = existsState(currentParam) ? getState(currentParam).val : null;
-          menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${currentValue ? currentValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }))`;
-          if (stateObject.common.type === 'number') {
-            menuMessageObject.menutext += `, ${translationsItemTextGet(user, 'Number')}`; //
-            if (stateObject.common.hasOwnProperty('min') || stateObject.common.hasOwnProperty('max')) {
-              menuMessageObject.menutext += '(';
-              if (stateObject.common.hasOwnProperty('min')) {
-                menuMessageObject.menutext += `${translationsItemTextGet(user, 'Min')} = ${stateObject.common.min}`;
-              }
-              menuMessageObject.menutext += ' - ';
-              if (stateObject.common.hasOwnProperty('max')) {
-                menuMessageObject.menutext += `${translationsItemTextGet(user, 'Max')} = ${stateObject.common.max}`;
-              }
-              menuMessageObject.menutext += ')';
-            }
-          }
-          menuMessageObject.menutext += ':';
-        }
-        break;
-      }
-
-      default: {
-        menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)}:`;
-        break;
-      }
-    }
-    if (menuMessageObject.menutext) {
-      menuMessageObject.menutext += botMessageStamp;
-    cachedValueSet(user, cachedIsWaitForInput, inputData);
-      telegramMessagesFormatAndPushToQueueMessage(user, menuMessageObject, false, false, false);
-    }
-    else {
-      menuProcessActionOnPosition(user);
-    }
-  }
-  else if (configOptions.getOption(cfgMessagesForMenuCall, user).includes(currentCommand)){
-    // setCachedValue(user, cachedMenuOn, false);
-    /** if it private chat - delete user input, if configured **/
-    menuProcessActionOnPosition(user, undefined, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, true);
-  }
   else if (currentCommand.indexOf(cmdClose) === 0) {
 
     menuCloseMenu(user);
@@ -9517,1045 +9343,1246 @@ async function commandUserInputCallback(user, userInputToProcess) {
     currentMenuPosition = menuMenuItemExtractPosition(currentMenuPosition);
     menuProcessActionOnPosition(user, undefined, currentMenuPosition);
   }
-  else if (currentCommand === cmdHome) {
-    if (cachedValueExists(user, cachedDelCachedOnBack)) {
-      const cachedToDelete = cachedValueGet(user, cachedDelCachedOnBack);
-      Object.keys(cachedToDelete).forEach(itemsToDelete => {
-        if (Array.isArray(cachedToDelete[itemsToDelete])) {
-          logs(`cachedToDelete[[${itemsToDelete}] = ${JSON.stringify(cachedToDelete[itemsToDelete])}`);
-          cachedToDelete[itemsToDelete].forEach(cachedId => (cachedValueDelete(user, cachedId)));
-          delete cachedToDelete[itemsToDelete];
-        }
-      });
-      cachedValueDelete(user, cachedDelCachedOnBack);
-    }
-    menuProcessActionOnPosition(user, undefined, []);
+  else if (configOptions.getOption(cfgMessagesForMenuCall, user).includes(currentCommand)){
+    // setCachedValue(user, cachedMenuOn, false);
+    /** if it private chat - delete user input, if configured **/
+    menuProcessActionOnPosition(user, undefined, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, true);
   }
   else if (currentCommand.indexOf(menuItemButtonPrefix) === 0) {
     menuProcessActionOnPosition(user, currentCommand.replace(menuItemButtonPrefix,''));
   }
-  else if ((currentCommand === cmdAcknowledgeAlert) || (currentCommand === cmdAcknowledgeAndUnsubscribeAlert)) {
-    const alertMessages = alertGetMessages(user);
-    let alertLastNonAcknowledgedMessage;
-    for (let i = alertMessages.length - 1; i >= 0; --i) {
-      const alertMessage = alertMessages[i];
-      if ((! alertMessage.ack)) {
-        alertLastNonAcknowledgedMessage = alertMessage;
-        break;
-      }
-    }
-    logs('alertMessages = ' + JSON.stringify(alertMessages));
-    if (alertLastNonAcknowledgedMessage !== undefined) {
-      alertLastNonAcknowledgedMessage.ack = true;
-      alertsStoreMessagesToCache(user, alertMessages);
-      if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert) alertsManage(user, alertLastNonAcknowledgedMessage.id);
-    }
-    menuClearCachedMenuItemsAndRows(user);
-    menuProcessActionOnPosition(user);
-  }
-  else if (currentCommand === cmdAcknowledgeAllAlerts) {
-    const alertMessages = alertGetMessages(user);
-    alertMessages.filter(alertMessage => (! alertMessage.ack)).forEach(alertMessage => {alertMessage.ack = true});
-    alertsStoreMessagesToCache(user, alertMessages);
-    menuClearCachedMenuItemsAndRows(user);
-    menuProcessActionOnPosition(user);
-  }
-  else if (currentCommand === cmdItemPress) {
-    switch (currentType) {
-      case dataTypeDestination:
-      case dataTypeFunction:
-      case dataTypeReport:
-      case dataTypeDeviceAttributes:
-      case dataTypeDeviceButtons: {
-        const
-          currentList = enumerationsGetList(currentType, currentValue),
-          currentDataItem = currentList[currentItem];
-        if (currentParam !== undefined) {
-          if (enumerationsSubTypes.includes(currentType) && enumerationsDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
-            currentDataItem[currentParam] = currentSubParam;
-          }
-          else {
-            switch (typeOf(currentDataItem[currentParam])) {
-              case 'boolean': {
-                if (currentSubParam === undefined) {
-                  currentDataItem[currentParam] = ! currentDataItem[currentParam];
+  else {
+    switch (currentCommand) {
+      case cmdGetInput: {
+        switch (currentType) {
+          case dataTypeTranslation: {
+            let
+              currentTranslationId = currentItem,
+              currentTranslationValue;
+            if (currentParam && currentValue) {
+              let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
+              if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
+                currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
+                destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
+                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
+                  currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
+                  currentTranslationValue = destTranslation[Object.keys(destTranslation)[Number(currentValue)]];
                 }
+              }
+            }
+            else {
+              currentTranslationValue = translationsItemGet(user, currentTranslationId);
+            }
+            if (currentTranslationValue) menuMessageObject.menutext = `${translationsItemCoreGet(user, 'cmdItemRename')} ${currentTranslationId} = "${currentTranslationValue}" :`;
+            break;
+          }
 
+          case dataTypePrimaryEnums: {
+            if (currentValue && enumerationsList[currentValue]) {
+              const currentEnumsList = enumerationsList[currentValue].enums;
+              if (currentEnumsList[currentItem]) {
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentType, currentParam)}" = ${currentEnumsList[currentItem].icon}:`;
+              }
+            }
+            break;
+          }
+
+          case dataTypeDestination:
+          case dataTypeFunction:
+          case dataTypeReport: {
+            switch (currentParam) {
+              case 'setId':
+              case 'fixId': {
+                const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate);
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, simpleReportId ? 'fix': 'set', 'reportId')} ${simpleReportId ? `= ${simpleReportId}` : ''}`;
+                cachedValueDelete(user, cachedSimpleReportIdToCreate);
+                break;
+              }
+
+              case 'names': {
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentValue)}" = ${translationsGetEnumName(user, currentType, currentItem, currentValue)}:`;
                 break;
               }
 
               default: {
-                if (currentSubParam) {
-                  currentDataItem[currentParam] = currentDataItem[currentParam] === currentSubParam ? '' : currentSubParam;
-                }
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[currentType].list[currentItem][currentParam]}:`;
                 break;
               }
             }
-            if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[currentItem][currentParam]) {
-              enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceAttributes, false);
-              enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceButtons, true);
-            }
-          }
-          enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
-        }
-        break;
-      }
-
-      case dataTypePrimaryEnums: {
-        if (enumerationsList.hasOwnProperty(currentValue)) {
-          if (currentParam === cmdItemAdd) {
-            enumerationsList[currentValue].enums[currentItem] = {
-              isEnabled: true,
-              order: Object.keys(enumerationsList[currentValue].enums).length,
-              icon: ''
-            };
-            // initMenuListItems(currentValue);
-            enumerationsSave(currentValue);
-            currentMenuPosition.splice(-2, 2, dataTypePrimaryEnums);
-          }
-        }
-        break;
-      }
-
-      case dataTypeGroups: {
-        const currentEnumeration = enumerationsGetList(currentParam, currentSubParam ? currentSubParam : '');
-        if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
-          currentEnumeration[currentItem].group = currentEnumeration[currentItem].group === currentValue ? '' : currentValue;
-        }
-        if (currentSubParam) {
-          enumerationsSave(dataTypeFunction);
-        }
-        else {
-          enumerationsSave(currentParam);
-        }
-        break;
-      }
-
-
-      case dataTypeConfig: {
-        switch (currentItem) {
-          case cfgMenuLanguage:
-            configOptions.setOption(currentItem, currentParam === configOptionScopeUser ? user : null, currentValue);
-            currentMenuPosition.splice(-1, 1);
             break;
-          default:
-            configOptions.setOption(currentItem, currentParam === configOptionScopeUser ? user : null, ! configOptions.getOption(currentItem, currentParam === configOptionScopeUser ? user : null));
-            break;
-        }
-        break;
-      }
-
-      case dataTypeAlertSubscribed: {
-        const
-          currentThresholds = alertsGetStateAlertDetailsOrThresholds(user, currentItem),
-          currentThresholdsKeys = Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))),
-          currentThresholdIndex = Number(currentParam);
-        if (currentThresholdIndex < currentThresholdsKeys.length) {
-          currentThresholds[currentThresholdsKeys[currentThresholdIndex]][currentValue] = ! currentThresholds[currentThresholdsKeys[currentThresholdIndex]][currentValue];
-          cachedValueSet(user, alertThresholdSet, currentThresholds);
-          cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -2).join('.'), alertThresholdSet);
-        }
-        break;
-      }
-
-      case dataTypeMenuUsers: {
-        usersInMenu.toggleItemIsEnabled(currentItem);
-        break;
-      }
-
-      case dataTypeMenuUserRoles: {
-        if (usersInMenu.hasRole(currentItem, currentParam)) {
-          usersInMenu.delRole(currentItem, currentParam);
-        }
-        else {
-          usersInMenu.addRole(currentItem, currentParam);
-        }
-        break;
-      }
-
-      case dataTypeMenuRoleRules: {
-        const currentIndex = Number(currentParam);
-        if (currentIndex === -1) {
-          if (cachedValueExists(user, cachedRolesNewRule)) {
-            const currentRule = cachedValueGet(user, cachedRolesNewRule);
-            currentRule['accessLevel'] = currentValue;
-            cachedValueSet(user, cachedRolesNewRule, currentRule);
           }
-        }
-        else {
-          if (rolesInMenu.existsId(currentItem)) {
-            let currentRules = rolesInMenu.getRules(currentItem);
-            if (currentRules.length > currentIndex) {
-              const currentRule = {...currentRules[currentIndex]};
-              currentRule['accessLevel'] = currentValue;
-              cachedValueSet(user, cachedRolesNewRule, currentRule);
+
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
+              menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam]}:`;
             }
+            break;
           }
+
+          case dataTypeMenuRoles: {
+            switch (currentParam) {
+              case 'setId':
+              case 'fixId': {
+                const newRoleId = cachedValueGet(user, cachedRolesNewRoleId);
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, newRoleId ? 'fix': 'set', 'RoleId')} ${newRoleId ? `= ${newRoleId}` : ''}`;
+                cachedValueDelete(user, cachedRolesNewRoleId);
+                break;
+              }
+              default: {
+                // menuMessageObject.menutext =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', currentType))} "${getFromTranslation(user, generateTextId(currentType, currentParam))}" = ${enumerationItems[currentType].list[currentItem][currentParam]}:`;
+                break;
+              }
+            }
+            break;
+          }
+
+
+          case dataTypeReportMember: {
+            const queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
+            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(user, currentItem)} ${queryParams && queryParams.hasOwnProperty(currentItem) && queryParams[currentItem] ? `= ${queryParams[currentItem]}` : ''}`;
+            break;
+          }
+
+          case dataTypeAlertSubscribed: {
+            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, currentValue)}${currentSubParam ? ` = ${currentSubParam}` : ''}:`;
+            break;
+          }
+
+          case dataTypeConfig: {
+            const
+              configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user),
+              configItemMask  = configOptions.getMaskDescription(currentItem);
+            logs(`configItem (${typeof(configItem)}${Array.isArray(configItem) ? ', Array' : ''}) = ${JSON.stringify(configItem)})`);
+            logs(`configItem (${typeof(currentParam)}) = ${JSON.stringify(currentParam)})`);
+            if ((typeOf(configItem) === 'array')
+              // @ts-ignore
+              && (! isNaN(currentValue))) {
+              const configItemIndex = Number(currentValue);
+              if (configItemIndex < configItem.length) {
+                const
+                  itemByIndex = configItem[configItemIndex],
+                  itemId = currentItem === cfgGraphsIntervals ? itemByIndex.id : configItemIndex,
+                  itemValue = currentItem === cfgGraphsIntervals ? itemByIndex.name : itemByIndex;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${translationsItemCoreGet(user, currentItem)}[${itemId}]' (${translationsItemTextGet(user, 'CurrentValue')} = ${itemValue}):`;
+              }
+              else {
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'AddNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${translationsItemCoreGet(user, currentItem)}[]':`;
+              }
+            }
+            else {
+              if (currentItem === cfgMenuLanguage) {
+                const newLanguageId = cachedValueGet(user, cachedConfigNewLanguageId);
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, newLanguageId ? 'FixNewAttributeValue' : 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} ${translationsItemCoreGet(user, currentItem)}'${newLanguageId ? `(${newLanguageId})` : ''}:`;
+              }
+              else {
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
+              }
+            }
+            break;
+          }
+
+          case dataTypeStateValue: {
+            if (existsObject(currentParam)) {
+              const
+                stateObject = getObjectEnriched(currentParam),
+                currentName = translationsGetObjectName(user, stateObject, currentItem),
+                currentValue = existsState(currentParam) ? getState(currentParam).val : null;
+              menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${currentValue ? currentValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }))`;
+              if (stateObject.common.type === 'number') {
+                menuMessageObject.menutext += `, ${translationsItemTextGet(user, 'Number')}`; //
+                if (stateObject.common.hasOwnProperty('min') || stateObject.common.hasOwnProperty('max')) {
+                  menuMessageObject.menutext += '(';
+                  if (stateObject.common.hasOwnProperty('min')) {
+                    menuMessageObject.menutext += `${translationsItemTextGet(user, 'Min')} = ${stateObject.common.min}`;
+                  }
+                  menuMessageObject.menutext += ' - ';
+                  if (stateObject.common.hasOwnProperty('max')) {
+                    menuMessageObject.menutext += `${translationsItemTextGet(user, 'Max')} = ${stateObject.common.max}`;
+                  }
+                  menuMessageObject.menutext += ')';
+                }
+              }
+              menuMessageObject.menutext += ':';
+            }
+            break;
+          }
+
+          default: {
+            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)}:`;
+            break;
+          }
+        }
+        if (menuMessageObject.menutext) {
+          menuMessageObject.menutext += botMessageStamp;
+        cachedValueSet(user, cachedIsWaitForInput, inputData);
+          telegramMessagesFormatAndPushToQueueMessage(user, menuMessageObject, false, false, false);
+        }
+        else {
+          menuProcessActionOnPosition(user);
         }
         break;
       }
-
-      default: {
+      case cmdHome: {
+        if (cachedValueExists(user, cachedDelCachedOnBack)) {
+          const cachedToDelete = cachedValueGet(user, cachedDelCachedOnBack);
+          Object.keys(cachedToDelete).forEach(itemsToDelete => {
+            if (Array.isArray(cachedToDelete[itemsToDelete])) {
+              logs(`cachedToDelete[[${itemsToDelete}] = ${JSON.stringify(cachedToDelete[itemsToDelete])}`);
+              cachedToDelete[itemsToDelete].forEach(cachedId => (cachedValueDelete(user, cachedId)));
+              delete cachedToDelete[itemsToDelete];
+            }
+          });
+          cachedValueDelete(user, cachedDelCachedOnBack);
+        }
+        menuProcessActionOnPosition(user, undefined, []);
         break;
       }
-    }
-    menuClearCachedMenuItemsAndRows(user);
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdItemDownload) {
-    nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
-      if (err) {
-        console.warn(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
+      case cmdAcknowledgeAlert:
+      case cmdAcknowledgeAndUnsubscribeAlert: {
+        const alertMessages = alertGetMessages(user);
+        let alertLastNonAcknowledgedMessage;
+        for (let i = alertMessages.length - 1; i >= 0; --i) {
+          const alertMessage = alertMessages[i];
+          if ((! alertMessage.ack)) {
+            alertLastNonAcknowledgedMessage = alertMessage;
+            break;
+          }
+        }
+        logs('alertMessages = ' + JSON.stringify(alertMessages));
+        if (alertLastNonAcknowledgedMessage !== undefined) {
+          alertLastNonAcknowledgedMessage.ack = true;
+          alertsStoreMessagesToCache(user, alertMessages);
+          if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert) alertsManage(user, alertLastNonAcknowledgedMessage.id);
+        }
+        menuClearCachedMenuItemsAndRows(user);
+        menuProcessActionOnPosition(user);
+        break;
       }
-      else {
-        const
-          languageId = configOptions.getOption(cfgMenuLanguage),
-          tmpFileName = nodePath.join(tmpDirectory, `menuTranslation_${languageId}.json`),
-          currentTranslation = translationsGetCurrentForUser(user);
-        nodeFS.writeFile(tmpFileName, JSON.stringify({type: translationsType, language: languageId, version: translationsVersion, translation: currentTranslation}, null, 2), err => {
+      case cmdAcknowledgeAllAlerts: {
+        const alertMessages = alertGetMessages(user);
+        alertMessages.filter(alertMessage => (! alertMessage.ack)).forEach(alertMessage => {alertMessage.ack = true});
+        alertsStoreMessagesToCache(user, alertMessages);
+        menuClearCachedMenuItemsAndRows(user);
+        menuProcessActionOnPosition(user);
+        break;
+      }
+      case cmdItemPress: {
+        switch (currentType) {
+          case dataTypeDestination:
+          case dataTypeFunction:
+          case dataTypeReport:
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            const
+              currentList = enumerationsGetList(currentType, currentValue),
+              currentDataItem = currentList[currentItem];
+            if (currentParam !== undefined) {
+              if (enumerationsSubTypes.includes(currentType) && enumerationsDeviceButtonsAccessLevelAttrs.includes(currentParam)) {
+                currentDataItem[currentParam] = currentSubParam;
+              }
+              else {
+                switch (typeOf(currentDataItem[currentParam])) {
+                  case 'boolean': {
+                    if (currentSubParam === undefined) {
+                      currentDataItem[currentParam] = ! currentDataItem[currentParam];
+                    }
+
+                    break;
+                  }
+
+                  default: {
+                    if (currentSubParam) {
+                      currentDataItem[currentParam] = currentDataItem[currentParam] === currentSubParam ? '' : currentSubParam;
+                    }
+                    break;
+                  }
+                }
+                if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[currentItem][currentParam]) {
+                  enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceAttributes, false);
+                  enumerationsRefreshFunctionDeviceStates(user, currentItem, dataTypeDeviceButtons, true);
+                }
+              }
+              enumerationsSave(enumerationsSubTypes.includes(currentType) && currentValue ? dataTypeFunction : currentType);
+            }
+            break;
+          }
+
+          case dataTypePrimaryEnums: {
+            if (enumerationsList.hasOwnProperty(currentValue)) {
+              if (currentParam === cmdItemAdd) {
+                enumerationsList[currentValue].enums[currentItem] = {
+                  isEnabled: true,
+                  order: Object.keys(enumerationsList[currentValue].enums).length,
+                  icon: ''
+                };
+                // initMenuListItems(currentValue);
+                enumerationsSave(currentValue);
+                currentMenuPosition.splice(-2, 2, dataTypePrimaryEnums);
+              }
+            }
+            break;
+          }
+
+          case dataTypeGroups: {
+            const currentEnumeration = enumerationsGetList(currentParam, currentSubParam ? currentSubParam : '');
+            if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
+              currentEnumeration[currentItem].group = currentEnumeration[currentItem].group === currentValue ? '' : currentValue;
+            }
+            if (currentSubParam) {
+              enumerationsSave(dataTypeFunction);
+            }
+            else {
+              enumerationsSave(currentParam);
+            }
+            break;
+          }
+
+
+          case dataTypeConfig: {
+            switch (currentItem) {
+              case cfgMenuLanguage:
+                configOptions.setOption(currentItem, currentParam === configOptionScopeUser ? user : null, currentValue);
+                currentMenuPosition.splice(-1, 1);
+                break;
+              default:
+                configOptions.setOption(currentItem, currentParam === configOptionScopeUser ? user : null, ! configOptions.getOption(currentItem, currentParam === configOptionScopeUser ? user : null));
+                break;
+            }
+            break;
+          }
+
+          case dataTypeAlertSubscribed: {
+            const
+              currentThresholds = alertsGetStateAlertDetailsOrThresholds(user, currentItem),
+              currentThresholdsKeys = Object.keys(currentThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))),
+              currentThresholdIndex = Number(currentParam);
+            if (currentThresholdIndex < currentThresholdsKeys.length) {
+              currentThresholds[currentThresholdsKeys[currentThresholdIndex]][currentValue] = ! currentThresholds[currentThresholdsKeys[currentThresholdIndex]][currentValue];
+              cachedValueSet(user, alertThresholdSet, currentThresholds);
+              cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -2).join('.'), alertThresholdSet);
+            }
+            break;
+          }
+
+          case dataTypeMenuUsers: {
+            usersInMenu.toggleItemIsEnabled(currentItem);
+            break;
+          }
+
+          case dataTypeMenuUserRoles: {
+            if (usersInMenu.hasRole(currentItem, currentParam)) {
+              usersInMenu.delRole(currentItem, currentParam);
+            }
+            else {
+              usersInMenu.addRole(currentItem, currentParam);
+            }
+            break;
+          }
+
+          case dataTypeMenuRoleRules: {
+            const currentIndex = Number(currentParam);
+            if (currentIndex === -1) {
+              if (cachedValueExists(user, cachedRolesNewRule)) {
+                const currentRule = cachedValueGet(user, cachedRolesNewRule);
+                currentRule['accessLevel'] = currentValue;
+                cachedValueSet(user, cachedRolesNewRule, currentRule);
+              }
+            }
+            else {
+              if (rolesInMenu.existsId(currentItem)) {
+                let currentRules = rolesInMenu.getRules(currentItem);
+                if (currentRules.length > currentIndex) {
+                  const currentRule = {...currentRules[currentIndex]};
+                  currentRule['accessLevel'] = currentValue;
+                  cachedValueSet(user, cachedRolesNewRule, currentRule);
+                }
+              }
+            }
+            break;
+          }
+
+          default: {
+            break;
+          }
+        }
+        menuClearCachedMenuItemsAndRows(user);
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdItemDownload: {
+        nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
           if (err) {
-            console.warn(`Can't create temporary file '${tmpFileName}'! Error: '${JSON.stringify(err)}'.`);
+            console.warn(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
           }
           else {
-            telegramSendFile(user, tmpFileName);
+            const
+              languageId = configOptions.getOption(cfgMenuLanguage),
+              tmpFileName = nodePath.join(tmpDirectory, `menuTranslation_${languageId}.json`),
+              currentTranslation = translationsGetCurrentForUser(user);
+            nodeFS.writeFile(tmpFileName, JSON.stringify({type: translationsType, language: languageId, version: translationsVersion, translation: currentTranslation}, null, 2), err => {
+              if (err) {
+                console.warn(`Can't create temporary file '${tmpFileName}'! Error: '${JSON.stringify(err)}'.`);
+              }
+              else {
+                telegramSendFile(user, tmpFileName);
+              }
+            });
           }
         });
+        break;
       }
-    });
-  }
-  else if (currentCommand === cmdItemUpload) {
-    switch (currentType) {
-      case dataTypeTranslation:
-        switch (currentItem) {
-          case doUploadDirectly: {
-            cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
-            cachedValueDelete(user, cachedTranslationsToUpload);
-            telegramMessagesFormatAndPushToQueueMessage(user, {menutext: translationsItemTextGet(user, 'UploadTranslationFile')}, false, false, false);
+      case cmdItemUpload: {
+        switch (currentType) {
+          case dataTypeTranslation:
+            switch (currentItem) {
+              case doUploadDirectly: {
+                cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
+                cachedValueDelete(user, cachedTranslationsToUpload);
+                telegramMessagesFormatAndPushToQueueMessage(user, {menutext: translationsItemTextGet(user, 'UploadTranslationFile')}, false, false, false);
+                break;
+              }
+
+              case doUploadFromRepo: {
+                const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
+                translationsLoadLocalesFromRepository(currentLanguageId, currentParam, (locales, _error) => {
+                  if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(currentLanguageId) && typeOf(locales[currentLanguageId], 'object')) {
+                    const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, '', '', '', locales[currentLanguageId]);
+                    if (isTranslationFileOk) {
+                      currentMenuPosition.push(
+                        // @ts-ignore
+                        isNaN(currentItem)
+                          ? currentItem : Number(currentItem));
+                      // logs(`currentMenuItem = ${currentMenuItem}`);
+                      menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                    }
+                    else {
+                      telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
+                    }
+                  }
+                  else {
+                    telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
+                  }
+                });
+                break;
+              }
+
+              default: {
+                break;
+              }
+            }
+            break;
+
+          default:
+            break;
+        }
+        break;
+      }
+      case cmdItemDelete: {
+        switch (currentType) {
+          default:
+            currentMenuPosition.push(
+              // @ts-ignore
+              isNaN(currentParam)
+                ? currentParam : Number(currentParam));
+            break;
+        }
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdItemDeleteConfirm: {
+        switch (currentType) {
+          case dataTypeDestination:
+          case dataTypeFunction:
+          case dataTypeReport: {
+            const enumObjectId = enumerationsIsItemCanBeDeleted(currentType, currentItem, true);
+            if (enumObjectId) {
+              await deleteObjectAsync(enumObjectId);
+            }
+          }
+            // break omitted
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            const currentList = enumerationsSubTypes.includes(currentType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list;
+            delete currentList[currentItem];
+            enumerationsReorderItems(currentList);
+            enumerationsSave(enumerationsSubTypes.includes(currentType)  && currentParam ? dataTypeFunction : currentType);
+            currentMenuPosition.splice(-2, 2);
+            logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
             break;
           }
 
-          case doUploadFromRepo: {
-            const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
-            translationsLoadLocalesFromRepository(currentLanguageId, currentParam, (locales, _error) => {
-              if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(currentLanguageId) && typeOf(locales[currentLanguageId], 'object')) {
-                const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, '', '', '', locales[currentLanguageId]);
-                if (isTranslationFileOk) {
-                  currentMenuPosition.push(
-                    // @ts-ignore
-                    isNaN(currentItem)
-                      ? currentItem : Number(currentItem));
-                  // logs(`currentMenuItem = ${currentMenuItem}`);
-                  menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+          case dataTypePrimaryEnums: {
+            if (enumerationsList.hasOwnProperty(currentParam)) {
+              const
+                currentEnumsList = enumerationsList[currentParam].enums;
+              if (Object.keys(currentEnumsList).includes(currentItem)) {
+                delete currentEnumsList[currentItem];
+                enumerationsSave(currentParam);
+                currentMenuPosition.splice(-3, 3, dataTypePrimaryEnums);
+              }
+            }
+            break;
+          }
+
+
+          case dataTypeReportMember: {
+            const
+              currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[currentItem].enum}.${currentItem}`;
+            let
+              currentReportObject = getObject(currentReportId);
+            delete currentReportObject.common.members[Number(currentParam)];
+            currentReportObject.common.members = currentReportObject.common.members.filter(n => n);
+            // @ts-ignore
+            await setObjectAsync(currentReportId, currentReportObject);
+            currentMenuPosition.splice(-2, 2);
+            break;
+          }
+
+          case dataTypeAlertSubscribed: {
+            if (currentParam !== undefined) {
+              const
+                currentDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, currentItem),
+                currentThresholdIndex = Number(currentParam),
+                currentThresholdsKeys = currentThresholdIndex >= 0 ? Object.keys(currentDetailsOrThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))) : [];
+              if (currentThresholdIndex < currentThresholdsKeys.length) {
+                if (currentValue) {
+                  const currentDetailOrThreshold = currentThresholdIndex >= 0 ? currentDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]] : currentDetailsOrThresholds;
+                  if (currentDetailOrThreshold.hasOwnProperty(currentValue)) delete currentDetailOrThreshold[currentValue];
+                }
+                else if (currentThresholdIndex >= 0) {
+                  delete currentDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]];
+                }
+                cachedValueSet(user, alertThresholdSet, currentDetailsOrThresholds);
+                cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -3).join('.'), alertThresholdSet);
+                currentMenuPosition.splice(-2, 2);
+              }
+            }
+            else {
+              alertsManage(user, currentItem);
+              currentMenuPosition.splice(-4, 4);
+            }
+            break;
+          }
+
+          case dataTypeTranslation: {
+            let currentTranslationId = currentItem;
+            if (currentParam && currentValue) {
+              let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
+              if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
+                currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
+                destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
+                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
+                  currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
                 }
                 else {
-                  telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
+                  currentTranslationId = '';
                 }
               }
               else {
-                telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
+                currentTranslationId = '';
               }
-            });
+            }
+            if (currentTranslationId) {
+              translationsItemDelete(user, currentTranslationId);
+              currentMenuPosition.splice(-2, 2);
+            }
             break;
           }
 
-          default: {
-            break;
-          }
-        }
-        break;
-
-      default:
-        break;
-    }
-  }
-  else if (currentCommand === cmdItemDelete) {
-    switch (currentType) {
-      default:
-        currentMenuPosition.push(
-          // @ts-ignore
-          isNaN(currentParam)
-            ? currentParam : Number(currentParam));
-        break;
-    }
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdItemDeleteConfirm) {
-    switch (currentType) {
-      case dataTypeDestination:
-      case dataTypeFunction:
-      case dataTypeReport: {
-        const enumObjectId = enumerationsIsItemCanBeDeleted(currentType, currentItem, true);
-        if (enumObjectId) {
-          await deleteObjectAsync(enumObjectId);
-        }
-      }
-        // break omitted
-      case dataTypeDeviceAttributes:
-      case dataTypeDeviceButtons: {
-        const currentList = enumerationsSubTypes.includes(currentType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list;
-        delete currentList[currentItem];
-        enumerationsReorderItems(currentList);
-        enumerationsSave(enumerationsSubTypes.includes(currentType)  && currentParam ? dataTypeFunction : currentType);
-        currentMenuPosition.splice(-2, 2);
-        logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
-        break;
-      }
-
-      case dataTypePrimaryEnums: {
-        if (enumerationsList.hasOwnProperty(currentParam)) {
-          const
-            currentEnumsList = enumerationsList[currentParam].enums;
-          if (Object.keys(currentEnumsList).includes(currentItem)) {
-            delete currentEnumsList[currentItem];
-            enumerationsSave(currentParam);
-            currentMenuPosition.splice(-3, 3, dataTypePrimaryEnums);
-          }
-        }
-        break;
-      }
-
-
-      case dataTypeReportMember: {
-        const
-          currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[currentItem].enum}.${currentItem}`;
-        let
-          currentReportObject = getObject(currentReportId);
-        delete currentReportObject.common.members[Number(currentParam)];
-        currentReportObject.common.members = currentReportObject.common.members.filter(n => n);
-        // @ts-ignore
-        await setObjectAsync(currentReportId, currentReportObject);
-        currentMenuPosition.splice(-2, 2);
-        break;
-      }
-
-      case dataTypeAlertSubscribed: {
-        if (currentParam !== undefined) {
-          const
-            currentDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, currentItem),
-            currentThresholdIndex = Number(currentParam),
-            currentThresholdsKeys = currentThresholdIndex >= 0 ? Object.keys(currentDetailsOrThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))) : [];
-          if (currentThresholdIndex < currentThresholdsKeys.length) {
-            if (currentValue) {
-              const currentDetailOrThreshold = currentThresholdIndex >= 0 ? currentDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]] : currentDetailsOrThresholds;
-              if (currentDetailOrThreshold.hasOwnProperty(currentValue)) delete currentDetailOrThreshold[currentValue];
-            }
-            else if (currentThresholdIndex >= 0) {
-              delete currentDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]];
-            }
-            cachedValueSet(user, alertThresholdSet, currentDetailsOrThresholds);
-            cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -3).join('.'), alertThresholdSet);
-            currentMenuPosition.splice(-2, 2);
-          }
-        }
-        else {
-          alertsManage(user, currentItem);
-          currentMenuPosition.splice(-4, 4);
-        }
-        break;
-      }
-
-      case dataTypeTranslation: {
-        let currentTranslationId = currentItem;
-        if (currentParam && currentValue) {
-          let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
-          if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
-            currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
-            destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
-            if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
-              currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
-            }
-            else {
-              currentTranslationId = '';
-            }
-          }
-          else {
-            currentTranslationId = '';
-          }
-        }
-        if (currentTranslationId) {
-          translationsItemDelete(user, currentTranslationId);
-          currentMenuPosition.splice(-2, 2);
-        }
-        break;
-      }
-
-      case dataTypeConfig: {
-        switch (currentItem) {
-          case cfgMenuLanguage: {
-            switch (currentParam) {
-              case configOptionScopeGlobal:
-                if (translationsList.hasOwnProperty(currentValue)) {
-                  delete translationsList[currentValue];
-                  currentMenuPosition.splice(-2, 2);
-                  translationsSave();
+          case dataTypeConfig: {
+            switch (currentItem) {
+              case cfgMenuLanguage: {
+                switch (currentParam) {
+                  case configOptionScopeGlobal:
+                    if (translationsList.hasOwnProperty(currentValue)) {
+                      delete translationsList[currentValue];
+                      currentMenuPosition.splice(-2, 2);
+                      translationsSave();
+                    }
+                    break;
                 }
                 break;
+              }
+
+              default: {
+                let configItemArray = configOptions.getOption(currentItem,  currentParam === configOptionScopeGlobal ? null : user);
+                // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, _l)
+                if (configItemArray && Array.isArray(configItemArray)) {
+                  if (configItemArray.length > Number(currentValue)) {
+                    configItemArray.splice(Number(currentValue), 1);
+                    configOptions.setOption(currentItem, currentParam === configOptionScopeGlobal ? null : user, configItemArray);
+                    currentMenuPosition.splice(-2, 2);
+                  }
+                }
+                break;
+              }
+              }
+
+            break;
+          }
+
+          case dataTypeMenuRoleRules: {
+            const
+              currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit) ? cachedValueGet(user, cachedRolesRoleUnderEdit) : undefined,
+              currentRoleId = currentRole ? currentRole.roleId : currentItem;
+
+            switch (currentRoleId) {
+              case currentItem: {
+                let currentRules = currentRole ? currentRole.rules : (rolesInMenu.existsId(currentItem) ? rolesInMenu.getRules(currentItem) : undefined);
+                if (currentRules) {
+                  const currentIndex = Number(currentParam);
+                  if (currentRules.length > currentIndex) {
+                    currentRules.splice(currentIndex,  1);
+                    if (currentRole) {
+                      currentRole.rules = currentRules;
+                      cachedValueSet(user, cachedRolesRoleUnderEdit, currentRole);
+                    }
+                    else {
+                      rolesInMenu.setRules(currentItem, currentRules, usersInMenu);
+                    }
+                    currentMenuPosition.splice(-2, 2);
+                  }
+                }
+                break;
+              }
+              default: {
+                break;
+              }
             }
             break;
           }
 
-          default: {
-            let configItemArray = configOptions.getOption(currentItem,  currentParam === configOptionScopeGlobal ? null : user);
-            // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, _l)
-            if (configItemArray && Array.isArray(configItemArray)) {
-              if (configItemArray.length > Number(currentValue)) {
-                configItemArray.splice(Number(currentValue), 1);
-                configOptions.setOption(currentItem, currentParam === configOptionScopeGlobal ? null : user, configItemArray);
+          case dataTypeMenuRoles: {
+            if (rolesInMenu.existsId(currentItem) && (rolesInMenu.getUsers(currentItem).length === 0)) {
+              rolesInMenu.delRole(currentItem);
+              currentMenuPosition.splice(-2, 2);
+              menuClearCachedMenuItemsAndRows(user);
+              cachedValueDelete(user, cachedRolesRoleUnderEdit);
+            }
+            break;
+          }
+
+          case dataTypeBackup: {
+            backupFileDelete(currentItem)
+              .then(() => {
+                telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
                 currentMenuPosition.splice(-2, 2);
-              }
-            }
-            break;
-          }
-          }
-
-        break;
-      }
-
-      case dataTypeMenuRoleRules: {
-        const
-          currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit) ? cachedValueGet(user, cachedRolesRoleUnderEdit) : undefined,
-          currentRoleId = currentRole ? currentRole.roleId : currentItem;
-
-        switch (currentRoleId) {
-          case currentItem: {
-            let currentRules = currentRole ? currentRole.rules : (rolesInMenu.existsId(currentItem) ? rolesInMenu.getRules(currentItem) : undefined);
-            if (currentRules) {
-              const currentIndex = Number(currentParam);
-              if (currentRules.length > currentIndex) {
-                currentRules.splice(currentIndex,  1);
-                if (currentRole) {
-                  currentRole.rules = currentRules;
-                  cachedValueSet(user, cachedRolesRoleUnderEdit, currentRole);
-                }
-                else {
-                  rolesInMenu.setRules(currentItem, currentRules, usersInMenu);
-                }
-                currentMenuPosition.splice(-2, 2);
-              }
-            }
-            break;
-          }
-          default: {
-            break;
-          }
-        }
-        break;
-      }
-
-      case dataTypeMenuRoles: {
-        if (rolesInMenu.existsId(currentItem) && (rolesInMenu.getUsers(currentItem).length === 0)) {
-          rolesInMenu.delRole(currentItem);
-          currentMenuPosition.splice(-2, 2);
-          menuClearCachedMenuItemsAndRows(user);
-          cachedValueDelete(user, cachedRolesRoleUnderEdit);
-        }
-        break;
-      }
-
-      case dataTypeBackup: {
-        backupFileDelete(currentItem)
-          .then(() => {
-            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-            const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
-            currentMenuPosition.splice(-2, 2);
-            menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-          })
-          .catch((_error) => {
-            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
-          });
-        currentMenuPosition = undefined;
-        break;
-      }
-
-      default: {
-        break;
-      }
-    }
-    if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdItemMark) {
-    switch (currentType) {
-      case dataTypeDestination:
-      case dataTypeFunction:
-      case dataTypeReport: {
-        break;
-      }
-
-      case dataTypeReportMember: {
-        let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
-        queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
-        switch (currentItem) {
-          case dataTypeDestination:
-            if (queryParams.queryDests.includes(currentParam) ) {
-              delete queryParams.queryDests[queryParams.queryDests.indexOf(currentParam)];
-            }
-            else {
-              queryParams.queryDests.push(currentParam);
-            }
-            queryParams.queryStates = [];
-            queryParams.queryPossibleStates = [];
-            break;
-
-          case 'states':
-            if (queryParams.queryStates.includes(queryParams.queryPossibleStates[currentParam])) {
-              delete queryParams.queryStates[queryParams.queryStates.indexOf(queryParams.queryPossibleStates[currentParam])];
-            }
-            else {
-              queryParams.queryStates.push(queryParams.queryPossibleStates[currentParam]);
-            }
-            currentMenuPosition.splice(-1);
-            break;
-
-          default:
-            break;
-        }
-        cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
-        menuClearCachedMenuItemsAndRows(user);
-        break;
-      }
-
-      case dataTypeConfig: {
-        break;
-      }
-
-      case dataTypeMenuRoleRules: {
-        const currentRule = cachedValueExists(user, cachedRolesNewRule) ? cachedValueGet(user, cachedRolesNewRule) : {mask: rolesMaskAnyItem, accessLevel: ''};
-        if (currentRule['mask'] === currentItem) {
-          currentRule['mask'] = rolesMaskAnyItem;
-        }
-        else {
-          currentRule['mask'] = currentItem;
-        }
-        cachedValueSet(user, cachedRolesNewRule, currentRule);
-        menuClearCachedMenuItemsAndRows(user);
-        logs(`currentMenuItem = ${currentMenuPosition}`);
-        break;
-      }
-      default: {
-        break;
-      }
-    }
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdItemsProcess) {
-    switch (currentType) {
-      case dataTypeDestination:
-      case dataTypeFunction:
-      case dataTypeReport: {
-        break;
-      }
-
-      case dataTypeDeviceAttributes:
-      case dataTypeDeviceButtons: {
-        if (enumerationsRefreshFunctionDeviceStates(user, currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
-        break;
-      }
-
-      case dataTypeTranslation: {
-        if (cachedValueExists(user, cachedTranslationsToUpload)) {
-          const updateTranslationResult = translationsProcessLanguageUpdate(user, currentParam, currentValue);
-          telegramMessagesDisplayPopUpMessage(user, updateTranslationResult ? updateTranslationResult : translationsItemTextGet(user, 'MsgSuccess'));
-        }
-        else {
-          telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
-        }
-        // logs(`currentMenuItem = ${currentMenuItem}`);
-        currentMenuPosition.splice(-2);
-        break;
-      }
-
-      case dataTypeAlertSubscribed: {
-        if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
-          const
-            functionsList = enumerationsList[dataTypeFunction].list,
-            functionsListIds = Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)),
-            alertFunctionId = currentSubParam,
-            alertFunction = functionsList && currentSubParam && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
-            isStatesInFolders = alertFunction && alertFunction.statesInFolders,
-            destinationsList = enumerationsList[dataTypeDestination].list,
-            destinationsListIds = Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)),
-            alertDestinationId = currentSubValue,
-            alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
-            alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
-            alerts = alertsGet(),
-            alertIsOn = alerts && alerts.hasOwnProperty(currentValue) && alerts[currentValue].chatIds.has(user.chatId),
-            alertStateAlertDetails = alertIsOn  ? alerts[currentValue].chatIds.get(user.chatId) : undefined,
-            filterId = `state[id=*.${alertStateShortId}]`,
-            filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
-            filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
-            filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(currentItem) ? filterFunction : (currentItem === 'alertPropagateDestination' ? filterDestination : '');
-          if (alertIsOn) {
-            $(`${filterId}${filterEnum}`).each((stateId) => {
-              if (stateId !== currentValue) {
-                const currentStateObject = getObject(stateId, currentItem === 'alertPropagateFuncAndDest' ? alertDestination.enum : (currentItem === 'alertPropagateGlobal' ? '*' : undefined));
-                if (currentStateObject) {
-                  let toProcessState = false;
-                  switch (currentItem) {
-                    case 'alertPropagateFuncAndDest': {
-                      if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
-                        toProcessState = currentStateObject['enumIds'].includes(`${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`);
-                      }
-                      break;
-                    }
-                    case 'alertPropagateGlobal': {
-                      if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
-                        const currentItemEnums = currentStateObject['enumIds'];
-                        toProcessState = (functionsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
-                                      (destinationsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
-                      }
-                      break;
-                    }
-                    default: {
-                      toProcessState = true;
-                      break;
-                    }
-                  }
-                  if (toProcessState) {
-                    const
-                      currentStateAlertDetails = alerts && alerts.hasOwnProperty(stateId) && alerts[stateId].chatIds.has(user.chatId) ? alerts[stateId].chatIds.get(user.chatId) : undefined,
-                      isDifferentAlertDetails = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails);
-                    if (isDifferentAlertDetails) {
-                      if ((currentStateAlertDetails && currentStateAlertDetails && (currentParam === 'alertPropagateOverwrite')) || (currentStateAlertDetails === undefined)) {
-                        // logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l)
-                        alertsManage(user, stateId, currentItem, currentParam, alertStateAlertDetails);
-                      }
-                    }
-                  }
-                }
-              }
-            });
-            currentMenuPosition.splice(-2);
-          }
-        }
-        break;
-      }
-
-      case dataTypeReportMember: {
-        const
-          queryParams = cachedValueGet(user, cachedSimpleReportNewQuery),
-          queryStates = currentParam === doAll ? queryParams.queryPossibleStates : queryParams.queryStates;
-        if (queryStates.length) {
-          const
-            currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[currentItem].enum}.${currentItem}`;
-          let
-            currentReportObject = getObject(currentReportId);
-          logs(`currentReportObject = ${JSON.stringify(currentReportObject, null, 2)}`);
-          if (currentReportObject) {
-            if (! currentReportObject.common.hasOwnProperty('members')) {
-              currentReportObject.common.members = [];
-            }
-            queryStates.forEach((state) => {
-              if (! currentReportObject.common.members.includes(state)) {
-                currentReportObject.common.members.push(state);
-              }
-            });
-            // @ts-ignore
-            await setObjectAsync(currentReportId, currentReportObject);
-            logs(`currentReportObject = ${JSON.stringify(getObject(currentReportId), null, 2)}`);
-          }
-
-        }
-        currentMenuPosition.splice(-2, 2);
-        cachedValueDelete(user, cachedSimpleReportNewQuery);
-        break;
-      }
-
-      case dataTypeConfig: {
-        switch (currentItem) {
-          case cfgMenuLanguage:
-            if (currentParam === configOptionScopeGlobal) {
-              const newLanguageId = currentValue;
-              if (! translationsList.hasOwnProperty(newLanguageId)) {
-                const menuPosition = currentMenuPosition;
-                translationsLoadLocalesFromRepository(newLanguageId, translationsCoreId, (locales, _error) => {
-                  translationsList[newLanguageId] = {};
-                  if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(newLanguageId) && typeOf(locales[newLanguageId], 'object')) {
-                    if (translationsCheckAndCacheUploadedFile(user, '', '', '', locales[newLanguageId])) {
-                      const newTranslation = locales[newLanguageId];
-                      if (newTranslation && newTranslation.hasOwnProperty(idTranslation) && typeOf(newTranslation[idTranslation], 'object') && (Math.abs(translationsCompareVersion(newTranslation['version'])) < 10)) {
-                        translationsList[newLanguageId] = newTranslation[idTranslation];
-                      }
-                    }
-                  }
-                  translationsSave();
-                  menuPosition.splice(-1, 1);
-                  menuProcessActionOnPosition(user, undefined, menuPosition);
-                });
-                currentMenuPosition = undefined;
-              }
-            }
-            break;
-
-          default:
-            break;
-        }
-        break;
-      }
-
-      case dataTypeMenuRoleRules: {
-        if (cachedValueExists(user, cachedRolesNewRule)) {
-          const
-            currentRule = cachedValueGet(user, cachedRolesNewRule),
-            currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit)
-                ? cachedValueGet(user, cachedRolesRoleUnderEdit)
-                : {roleId : currentItem, rules: rolesInMenu.existsId(currentItem) ? rolesInMenu.getRules(currentItem) : []};
-          let currentRoleRules = [...currentRole['rules']];
-          currentRoleRules = currentRoleRules.filter(rule => (rule.mask !== currentRule.mask) );
-          currentRoleRules.push(currentRule);
-          cachedValueSet(user, cachedRolesRoleUnderEdit, {roleId : currentRole.roleId, rules: currentRoleRules});
-          cachedValueDelete(user, cachedRolesNewRule);
-          currentMenuPosition.splice(-2, 2);
-        }
-        break;
-      }
-
-      case dataTypeMenuRoles: {
-        if (cachedValueExists(user, cachedRolesRoleUnderEdit)) {
-          const currentRole = cachedValueGet(user, cachedRolesRoleUnderEdit);
-          if (currentItem === currentRole.roleId) {
-            if (rolesInMenu.existsId(currentRole.roleId)) {
-              rolesInMenu.setRules(currentRole.roleId, currentRole.rules, usersInMenu);
-            }
-            else {
-              rolesInMenu.addRole(currentRole.roleId, currentRole.rules);
-              currentMenuPosition.splice(-1);
-            }
-            cachedValueDelete(user, cachedRolesRoleUnderEdit);
-          }
-          menuClearCachedMenuItemsAndRows(user);
-        }
-        break;
-      }
-
-      case dataTypeGraph: {
-        const
-          graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
-          historyAdapter = `system.adapter.${configOptions.getOption(cfgHistoryAdapter)}`,
-          shortStateId = currentItem.split('.').pop(),
-          graphTemplateId = existsObject(`${graphsTemplatesFolder}.${shortStateId}`) ? `${graphsTemplatesFolder}.${shortStateId}` : `${graphsTemplatesFolder}.${graphsDefaultTemplate}`;
-        // logs(`graphTemplateId = ${graphTemplateId}, currentItem = ${currentItem}`);
-        // logs(`existsObject(graphTemplateId) = ${existsObject(graphTemplateId)}, existsState(currentParam) = ${existsState(currentItem)}`);
-        if (existsObject(graphTemplateId) && ((currentParam === dataTypeReport) || existsState(currentItem))) {
-          let graphTemplate = getObject(graphTemplateId);
-          const
-            graphAdapter = graphsTemplatesFolder.split('.').slice(0, 2).join('.');
-          // logs(`graphTemplate = ${JSON.stringify(graphTemplate, null, 2)}`);
-          if (graphTemplate.native && graphTemplate.native.data && graphTemplate.native.data.lines && (graphTemplate.native.data.lines.length === 1)) {
-            if (currentParam === dataTypeReport) {
-              const
-                reportId = currentSubParam,
-                reportsList = enumerationsList[dataTypeReport].list,
-                reportItem = reportsList[reportId],
-                reportObject = getObject(`${prefixEnums}.${reportItem.enum}.${reportId}`);
-              if (reportObject && reportObject.hasOwnProperty('common') && reportObject.common.hasOwnProperty('members') && Array.isArray(reportObject.common['members']) && reportObject.common['members'].length) {
-                const
-                  reportStatesList = reportObject.common['members'].sort(),
-                  reportStatesStructure  = simpleReportPrepareStructure(reportStatesList),
-                  graphLines = graphTemplate.native.data.lines,
-                  templateLine = graphLines.pop();
-                templateLine.instance = historyAdapter;
-                // logs(`templateLine ${typeOf(templateLine)} = ${JSON.stringify(templateLine, null, 2)}`);
-                let currentUnit;
-                Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
-                  const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
-                  currentFuncs.sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
-                    const currentDeviceObjects = Object.keys(reportStatesStructure[currentDestId][currentFuncId]);
-                    currentDeviceObjects.forEach(currentDeviceObject => {
-                      const currentStateObjects = reportStatesStructure[currentDestId][currentFuncId][currentDeviceObject];
-                      currentStateObjects.forEach(currentStateObject => {
-                        const currentLine = objectDeepClone(templateLine);
-                        if (currentUnit === undefined) currentUnit = currentStateObject.common && currentStateObject.common.unit ? currentStateObject.common.unit : '';
-                        currentLine.unit = currentUnit;
-                        currentLine.id = currentStateObject._id;
-                        currentLine.name = `${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationsNamesInside)}`;
-                        if (graphLines.length > 0) currentLine.commonYAxis = "0";
-                        currentLine.lineStyle = (graphLines.length % 3) === 0 ? 'solid' : ((graphLines.length % 3) === 1 ? 'dashed' : 'dotted');
-                        graphLines.push(currentLine);
-                      });
-                    });
-                  });
-                });
-                graphTemplate.native.data.title = translationsGetEnumName(user, dataTypeReport, reportId);
-              }
-            }
-            else {
-              const
-                currentStateObject = getObject(currentItem),
-                currentLine = graphTemplate.native.data.lines[0];
-              currentLine.id = currentItem;
-              currentLine.name = currentParam;
-              currentLine.unit = currentStateObject.common && currentStateObject.common.unit ? currentStateObject.common.unit : '';
-              currentLine.instance = historyAdapter;
-              graphTemplate.native.data.title = `${translationsGetEnumName(user, dataTypeFunction, currentSubParam, enumerationsNamesMain)} ${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentSubValue, enumerationsNamesInside)}`;
-            }
-            graphTemplate.native.data.range = currentValue;
-            const newTemplateId = `${graphAdapter}.${graphsTemporaryFolder}.${user.userId}.${user.chatId}`;
-            graphTemplate['_id'] = newTemplateId;
-            try {
-              // @ts-ignore
-              await setObjectAsync(newTemplateId, graphTemplate);
-            }
-            catch (error) {
-              console.warn(`Can't create temporary template object ${newTemplateId}`);
-            }
-            if (existsObject(newTemplateId)) {
-              // logs(`newTemplateId`);
-              nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
-                if (err) {
-                  console.warn(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
-                }
-                else {
-                  const
-                    tmpGraphFileName = nodePath.join(tmpDirectory, 'graph.png'),
-                    scaleSize = configOptions.getOption(cfgGraphsScale, user);
-                  sendTo(graphAdapter,
-                    {
-                      preset: newTemplateId,
-                      renderer: 'png',
-                      width: Math.round(1024*scaleSize),          // default 1024
-                      height: Math.round(300*scaleSize),          // default 300
-                      compressionLevel: 0,
-                      filters: 0,
-                      fileOnDisk: tmpGraphFileName
-                    },
-                    result => {
-                      if (result.error) {
-                        console.error(`error: JSON.stringify(result.error)`);
-                      }
-                      else if (result.data) {
-                        telegramSendImage(user, tmpGraphFileName);
-                        deleteObjectAsync(newTemplateId);
-                      }
-                    }
-                  );
-                }
-              });
-            }
-          }
-        }
-        currentMenuPosition = undefined;
-        break;
-      }
-
-      case dataTypeBackup: {
-        switch (currentItem) {
-          case backupModeCreate: {
-            currentMenuPosition = undefined;
-            backupCreate(backupModeManual)
-              .then((_result) => {
-                  menuClearCachedMenuItemsAndRows(user);
-                  const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
-                  currentMenuPosition.push(1);
-                  telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-                  menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-                })
+                menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+              })
               .catch((_error) => {
                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
               });
             currentMenuPosition = undefined;
             break;
           }
-          case backupModeRestore: {
-            currentMenuPosition = undefined;
-            backupRestore(currentParam, currentValue)
-              .then(() => {
-                telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-                const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
-                if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
-                menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-            })
-            .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
-            break;
-          }
+
           default: {
             break;
           }
         }
+        if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
         break;
       }
-
-      default: {
-        break;
-      }
-    }
-    if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdItemReset) {
-    switch (currentType) {
-      case dataTypeConfig: {
-        if (! configGlobalOptions.includes(currentItem)) {
-          configOptions.deleteUserOption(currentItem, user);
-          // logs(`exists = ${JSON.stringify(configOptions.existsOption(currentItem, user))}, currentItem = ${JSON.stringify(configOptions.getOption(currentItem, user))}`, _l)
-          menuClearCachedMenuItemsAndRows(user);
-        }
-        break;
-      }
-
-      case dataTypeDeviceAttributes:
-      case dataTypeDeviceButtons: {
-        if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
-          if (typeOf(enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam], 'string')) {
-            enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = '';
+      case cmdItemMark: {
+        switch (currentType) {
+          case dataTypeDestination:
+          case dataTypeFunction:
+          case dataTypeReport: {
+            break;
           }
-        }
-        enumerationsSave(dataTypeFunction);
-        menuClearCachedMenuItemsAndRows(user);
-        break;
-      }
 
-      default: {
-        break;
-      }
-    }
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if ((currentCommand === cmdItemMoveUp) || (currentCommand === cmdItemMoveDown)) {
-    switch (currentType) {
-      case dataTypeDestination:
-      case dataTypeFunction:
-      case dataTypeReport:
-      case dataTypeDeviceAttributes:
-      case dataTypeDeviceButtons: {
-        const
-          currentList = enumerationsSubTypes.includes(currentType) && currentParam ?  enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list,
-          currentOrder = currentList[currentItem].order,
-          newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1 );
-        logs(`currentOrder = ${currentOrder} newOrder = ${newOrder}`);
-        const newItem = Object.keys(currentList).find((cItem) => {
-          return currentList[cItem].order === newOrder;
-        });
-        if (newItem != undefined) {
-          currentList[newItem].order = currentOrder;
-          currentList[currentItem].order = newOrder;
-          currentMenuPosition.splice(-1, 1, newOrder);
-        }
-        enumerationsSave(enumerationsSubTypes.includes(currentType) && currentParam ? dataTypeFunction : currentType);
-        break;
-      }
-      case dataTypeConfig:   {
-        const currentIntervals = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user);
-        switch (currentItem) {
-          case cfgGraphsIntervals:{
-            const
-              currentIntervalIndex = Number(currentValue),
-              currentInterval = currentIntervals[currentIntervalIndex],
-              newPosition = currentIntervalIndex + (currentCommand === cmdItemMoveUp ? -1 : 1);
-            currentIntervals.splice(currentIntervalIndex, 1);
-            currentIntervals.splice(newPosition, 0, currentInterval);
-            currentMenuPosition.splice(-1, 1, newPosition);
-            configOptions.setOption(currentItem, user, currentIntervals);
+          case dataTypeReportMember: {
+            let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
+            queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
+            switch (currentItem) {
+              case dataTypeDestination:
+                if (queryParams.queryDests.includes(currentParam) ) {
+                  delete queryParams.queryDests[queryParams.queryDests.indexOf(currentParam)];
+                }
+                else {
+                  queryParams.queryDests.push(currentParam);
+                }
+                queryParams.queryStates = [];
+                queryParams.queryPossibleStates = [];
+                break;
+
+              case 'states':
+                if (queryParams.queryStates.includes(queryParams.queryPossibleStates[currentParam])) {
+                  delete queryParams.queryStates[queryParams.queryStates.indexOf(queryParams.queryPossibleStates[currentParam])];
+                }
+                else {
+                  queryParams.queryStates.push(queryParams.queryPossibleStates[currentParam]);
+                }
+                currentMenuPosition.splice(-1);
+                break;
+
+              default:
+                break;
+            }
+            cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
             menuClearCachedMenuItemsAndRows(user);
             break;
           }
+
+          case dataTypeConfig: {
+            break;
+          }
+
+          case dataTypeMenuRoleRules: {
+            const currentRule = cachedValueExists(user, cachedRolesNewRule) ? cachedValueGet(user, cachedRolesNewRule) : {mask: rolesMaskAnyItem, accessLevel: ''};
+            if (currentRule['mask'] === currentItem) {
+              currentRule['mask'] = rolesMaskAnyItem;
+            }
+            else {
+              currentRule['mask'] = currentItem;
+            }
+            cachedValueSet(user, cachedRolesNewRule, currentRule);
+            menuClearCachedMenuItemsAndRows(user);
+            logs(`currentMenuItem = ${currentMenuPosition}`);
+            break;
+          }
           default: {
             break;
           }
         }
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
         break;
       }
+      case cmdItemsProcess: {
+        switch (currentType) {
+          case dataTypeDestination:
+          case dataTypeFunction:
+          case dataTypeReport: {
+            break;
+          }
 
-      default: {
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            if (enumerationsRefreshFunctionDeviceStates(user, currentItem, currentType, false)) menuClearCachedMenuItemsAndRows(user);
+            break;
+          }
+
+          case dataTypeTranslation: {
+            if (cachedValueExists(user, cachedTranslationsToUpload)) {
+              const updateTranslationResult = translationsProcessLanguageUpdate(user, currentParam, currentValue);
+              telegramMessagesDisplayPopUpMessage(user, updateTranslationResult ? updateTranslationResult : translationsItemTextGet(user, 'MsgSuccess'));
+            }
+            else {
+              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
+            }
+            // logs(`currentMenuItem = ${currentMenuItem}`);
+            currentMenuPosition.splice(-2);
+            break;
+          }
+
+          case dataTypeAlertSubscribed: {
+            if (alertPropagateDistributions.includes(currentItem) && alertPropagateOptions.includes(currentParam)) {
+              const
+                functionsList = enumerationsList[dataTypeFunction].list,
+                functionsListIds = Object.keys(functionsList).filter(itemId => ((! functionsList[itemId].isExternal) && functionsList[itemId].isEnabled)),
+                alertFunctionId = currentSubParam,
+                alertFunction = functionsList && currentSubParam && functionsList.hasOwnProperty(alertFunctionId) ? functionsList[alertFunctionId] : undefined,
+                isStatesInFolders = alertFunction && alertFunction.statesInFolders,
+                destinationsList = enumerationsList[dataTypeDestination].list,
+                destinationsListIds = Object.keys(destinationsList).filter(itemId => (destinationsList[itemId].isEnabled)),
+                alertDestinationId = currentSubValue,
+                alertDestination = destinationsList && currentSubValue && destinationsList.hasOwnProperty(alertDestinationId) ? destinationsList[alertDestinationId] : undefined,
+                alertStateShortId = currentValue.split('.').slice(isStatesInFolders ? -2 : -1).join('.'),
+                alerts = alertsGet(),
+                alertIsOn = alerts && alerts.hasOwnProperty(currentValue) && alerts[currentValue].chatIds.has(user.chatId),
+                alertStateAlertDetails = alertIsOn  ? alerts[currentValue].chatIds.get(user.chatId) : undefined,
+                filterId = `state[id=*.${alertStateShortId}]`,
+                filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
+                filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
+                filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(currentItem) ? filterFunction : (currentItem === 'alertPropagateDestination' ? filterDestination : '');
+              if (alertIsOn) {
+                $(`${filterId}${filterEnum}`).each((stateId) => {
+                  if (stateId !== currentValue) {
+                    const currentStateObject = getObject(stateId, currentItem === 'alertPropagateFuncAndDest' ? alertDestination.enum : (currentItem === 'alertPropagateGlobal' ? '*' : undefined));
+                    if (currentStateObject) {
+                      let toProcessState = false;
+                      switch (currentItem) {
+                        case 'alertPropagateFuncAndDest': {
+                          if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
+                            toProcessState = currentStateObject['enumIds'].includes(`${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`);
+                          }
+                          break;
+                        }
+                        case 'alertPropagateGlobal': {
+                          if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
+                            const currentItemEnums = currentStateObject['enumIds'];
+                            toProcessState = (functionsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`))).length > 0) &&
+                                          (destinationsListIds.filter(itemId => (currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`))).length) > 0;
+                          }
+                          break;
+                        }
+                        default: {
+                          toProcessState = true;
+                          break;
+                        }
+                      }
+                      if (toProcessState) {
+                        const
+                          currentStateAlertDetails = alerts && alerts.hasOwnProperty(stateId) && alerts[stateId].chatIds.has(user.chatId) ? alerts[stateId].chatIds.get(user.chatId) : undefined,
+                          isDifferentAlertDetails = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails);
+                        if (isDifferentAlertDetails) {
+                          if ((currentStateAlertDetails && currentStateAlertDetails && (currentParam === 'alertPropagateOverwrite')) || (currentStateAlertDetails === undefined)) {
+                            // logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l)
+                            alertsManage(user, stateId, currentItem, currentParam, alertStateAlertDetails);
+                          }
+                        }
+                      }
+                    }
+                  }
+                });
+                currentMenuPosition.splice(-2);
+              }
+            }
+            break;
+          }
+
+          case dataTypeReportMember: {
+            const
+              queryParams = cachedValueGet(user, cachedSimpleReportNewQuery),
+              queryStates = currentParam === doAll ? queryParams.queryPossibleStates : queryParams.queryStates;
+            if (queryStates.length) {
+              const
+                currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[currentItem].enum}.${currentItem}`;
+              let
+                currentReportObject = getObject(currentReportId);
+              logs(`currentReportObject = ${JSON.stringify(currentReportObject, null, 2)}`);
+              if (currentReportObject) {
+                if (! currentReportObject.common.hasOwnProperty('members')) {
+                  currentReportObject.common.members = [];
+                }
+                queryStates.forEach((state) => {
+                  if (! currentReportObject.common.members.includes(state)) {
+                    currentReportObject.common.members.push(state);
+                  }
+                });
+                // @ts-ignore
+                await setObjectAsync(currentReportId, currentReportObject);
+                logs(`currentReportObject = ${JSON.stringify(getObject(currentReportId), null, 2)}`);
+              }
+
+            }
+            currentMenuPosition.splice(-2, 2);
+            cachedValueDelete(user, cachedSimpleReportNewQuery);
+            break;
+          }
+
+          case dataTypeConfig: {
+            switch (currentItem) {
+              case cfgMenuLanguage:
+                if (currentParam === configOptionScopeGlobal) {
+                  const newLanguageId = currentValue;
+                  if (! translationsList.hasOwnProperty(newLanguageId)) {
+                    const menuPosition = currentMenuPosition;
+                    translationsLoadLocalesFromRepository(newLanguageId, translationsCoreId, (locales, _error) => {
+                      translationsList[newLanguageId] = {};
+                      if (locales && typeOf(locales, 'object') && locales.hasOwnProperty(newLanguageId) && typeOf(locales[newLanguageId], 'object')) {
+                        if (translationsCheckAndCacheUploadedFile(user, '', '', '', locales[newLanguageId])) {
+                          const newTranslation = locales[newLanguageId];
+                          if (newTranslation && newTranslation.hasOwnProperty(idTranslation) && typeOf(newTranslation[idTranslation], 'object') && (Math.abs(translationsCompareVersion(newTranslation['version'])) < 10)) {
+                            translationsList[newLanguageId] = newTranslation[idTranslation];
+                          }
+                        }
+                      }
+                      translationsSave();
+                      menuPosition.splice(-1, 1);
+                      menuProcessActionOnPosition(user, undefined, menuPosition);
+                    });
+                    currentMenuPosition = undefined;
+                  }
+                }
+                break;
+
+              default:
+                break;
+            }
+            break;
+          }
+
+          case dataTypeMenuRoleRules: {
+            if (cachedValueExists(user, cachedRolesNewRule)) {
+              const
+                currentRule = cachedValueGet(user, cachedRolesNewRule),
+                currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit)
+                    ? cachedValueGet(user, cachedRolesRoleUnderEdit)
+                    : {roleId : currentItem, rules: rolesInMenu.existsId(currentItem) ? rolesInMenu.getRules(currentItem) : []};
+              let currentRoleRules = [...currentRole['rules']];
+              currentRoleRules = currentRoleRules.filter(rule => (rule.mask !== currentRule.mask) );
+              currentRoleRules.push(currentRule);
+              cachedValueSet(user, cachedRolesRoleUnderEdit, {roleId : currentRole.roleId, rules: currentRoleRules});
+              cachedValueDelete(user, cachedRolesNewRule);
+              currentMenuPosition.splice(-2, 2);
+            }
+            break;
+          }
+
+          case dataTypeMenuRoles: {
+            if (cachedValueExists(user, cachedRolesRoleUnderEdit)) {
+              const currentRole = cachedValueGet(user, cachedRolesRoleUnderEdit);
+              if (currentItem === currentRole.roleId) {
+                if (rolesInMenu.existsId(currentRole.roleId)) {
+                  rolesInMenu.setRules(currentRole.roleId, currentRole.rules, usersInMenu);
+                }
+                else {
+                  rolesInMenu.addRole(currentRole.roleId, currentRole.rules);
+                  currentMenuPosition.splice(-1);
+                }
+                cachedValueDelete(user, cachedRolesRoleUnderEdit);
+              }
+              menuClearCachedMenuItemsAndRows(user);
+            }
+            break;
+          }
+
+          case dataTypeGraph: {
+            const
+              graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
+              historyAdapter = `system.adapter.${configOptions.getOption(cfgHistoryAdapter)}`,
+              shortStateId = currentItem.split('.').pop(),
+              graphTemplateId = existsObject(`${graphsTemplatesFolder}.${shortStateId}`) ? `${graphsTemplatesFolder}.${shortStateId}` : `${graphsTemplatesFolder}.${graphsDefaultTemplate}`;
+            // logs(`graphTemplateId = ${graphTemplateId}, currentItem = ${currentItem}`);
+            // logs(`existsObject(graphTemplateId) = ${existsObject(graphTemplateId)}, existsState(currentParam) = ${existsState(currentItem)}`);
+            if (existsObject(graphTemplateId) && ((currentParam === dataTypeReport) || existsState(currentItem))) {
+              let graphTemplate = getObject(graphTemplateId);
+              const
+                graphAdapter = graphsTemplatesFolder.split('.').slice(0, 2).join('.');
+              // logs(`graphTemplate = ${JSON.stringify(graphTemplate, null, 2)}`);
+              if (graphTemplate.native && graphTemplate.native.data && graphTemplate.native.data.lines && (graphTemplate.native.data.lines.length === 1)) {
+                if (currentParam === dataTypeReport) {
+                  const
+                    reportId = currentSubParam,
+                    reportsList = enumerationsList[dataTypeReport].list,
+                    reportItem = reportsList[reportId],
+                    reportObject = getObject(`${prefixEnums}.${reportItem.enum}.${reportId}`);
+                  if (reportObject && reportObject.hasOwnProperty('common') && reportObject.common.hasOwnProperty('members') && Array.isArray(reportObject.common['members']) && reportObject.common['members'].length) {
+                    const
+                      reportStatesList = reportObject.common['members'].sort(),
+                      reportStatesStructure  = simpleReportPrepareStructure(reportStatesList),
+                      graphLines = graphTemplate.native.data.lines,
+                      templateLine = graphLines.pop();
+                    templateLine.instance = historyAdapter;
+                    // logs(`templateLine ${typeOf(templateLine)} = ${JSON.stringify(templateLine, null, 2)}`);
+                    let currentUnit;
+                    Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
+                      const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
+                      currentFuncs.sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
+                        const currentDeviceObjects = Object.keys(reportStatesStructure[currentDestId][currentFuncId]);
+                        currentDeviceObjects.forEach(currentDeviceObject => {
+                          const currentStateObjects = reportStatesStructure[currentDestId][currentFuncId][currentDeviceObject];
+                          currentStateObjects.forEach(currentStateObject => {
+                            const currentLine = objectDeepClone(templateLine);
+                            if (currentUnit === undefined) currentUnit = currentStateObject.common && currentStateObject.common.unit ? currentStateObject.common.unit : '';
+                            currentLine.unit = currentUnit;
+                            currentLine.id = currentStateObject._id;
+                            currentLine.name = `${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationsNamesInside)}`;
+                            if (graphLines.length > 0) currentLine.commonYAxis = "0";
+                            currentLine.lineStyle = (graphLines.length % 3) === 0 ? 'solid' : ((graphLines.length % 3) === 1 ? 'dashed' : 'dotted');
+                            graphLines.push(currentLine);
+                          });
+                        });
+                      });
+                    });
+                    graphTemplate.native.data.title = translationsGetEnumName(user, dataTypeReport, reportId);
+                  }
+                }
+                else {
+                  const
+                    currentStateObject = getObject(currentItem),
+                    currentLine = graphTemplate.native.data.lines[0];
+                  currentLine.id = currentItem;
+                  currentLine.name = currentParam;
+                  currentLine.unit = currentStateObject.common && currentStateObject.common.unit ? currentStateObject.common.unit : '';
+                  currentLine.instance = historyAdapter;
+                  graphTemplate.native.data.title = `${translationsGetEnumName(user, dataTypeFunction, currentSubParam, enumerationsNamesMain)} ${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentSubValue, enumerationsNamesInside)}`;
+                }
+                graphTemplate.native.data.range = currentValue;
+                const newTemplateId = `${graphAdapter}.${graphsTemporaryFolder}.${user.userId}.${user.chatId}`;
+                graphTemplate['_id'] = newTemplateId;
+                try {
+                  // @ts-ignore
+                  await setObjectAsync(newTemplateId, graphTemplate);
+                }
+                catch (error) {
+                  console.warn(`Can't create temporary template object ${newTemplateId}`);
+                }
+                if (existsObject(newTemplateId)) {
+                  // logs(`newTemplateId`);
+                  nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
+                    if (err) {
+                      console.warn(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
+                    }
+                    else {
+                      const
+                        tmpGraphFileName = nodePath.join(tmpDirectory, 'graph.png'),
+                        scaleSize = configOptions.getOption(cfgGraphsScale, user);
+                      sendTo(graphAdapter,
+                        {
+                          preset: newTemplateId,
+                          renderer: 'png',
+                          width: Math.round(1024*scaleSize),          // default 1024
+                          height: Math.round(300*scaleSize),          // default 300
+                          compressionLevel: 0,
+                          filters: 0,
+                          fileOnDisk: tmpGraphFileName
+                        },
+                        result => {
+                          if (result.error) {
+                            console.error(`error: JSON.stringify(result.error)`);
+                          }
+                          else if (result.data) {
+                            telegramSendImage(user, tmpGraphFileName);
+                            deleteObjectAsync(newTemplateId);
+                          }
+                        }
+                      );
+                    }
+                  });
+                }
+              }
+            }
+            currentMenuPosition = undefined;
+            break;
+          }
+
+          case dataTypeBackup: {
+            switch (currentItem) {
+              case backupModeCreate: {
+                currentMenuPosition = undefined;
+                backupCreate(backupModeManual)
+                  .then((_result) => {
+                      menuClearCachedMenuItemsAndRows(user);
+                      const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
+                      currentMenuPosition.push(1);
+                      telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                      menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                    })
+                  .catch((_error) => {
+                    telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
+                  });
+                currentMenuPosition = undefined;
+                break;
+              }
+              case backupModeRestore: {
+                currentMenuPosition = undefined;
+                backupRestore(currentParam, currentValue)
+                  .then(() => {
+                    telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
+                    const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
+                    if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
+                    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                })
+                .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
+                break;
+              }
+              default: {
+                break;
+              }
+            }
+            break;
+          }
+
+          default: {
+            break;
+          }
+        }
+        if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
         break;
       }
-    }
+      case cmdItemReset: {
+        switch (currentType) {
+          case dataTypeConfig: {
+            if (! configGlobalOptions.includes(currentItem)) {
+              configOptions.deleteUserOption(currentItem, user);
+              // logs(`exists = ${JSON.stringify(configOptions.existsOption(currentItem, user))}, currentItem = ${JSON.stringify(configOptions.getOption(currentItem, user))}`, _l)
+              menuClearCachedMenuItemsAndRows(user);
+            }
+            break;
+          }
 
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdItemNameGet) {
-    const currentEnumeration = enumerationsList[currentType].list;
-    if (currentEnumeration[currentItem].isExternal) {
-      const timeout = configOptions.getOption(cfgExternalMenuTimeout);
-      messageTo(`${currentEnumeration[currentItem].state}.update`, {request: ['name', 'icon'], timeout: timeout}, {timeout: timeout}, (result) => {
-        if (result.success) {
-          if (result.name) {
-            enumerationsUpdateItemName(user, currentType, currentItem, currentEnumeration[currentItem], result.name);
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
+              if (typeOf(enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam], 'string')) {
+                enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = '';
+              }
+            }
+            enumerationsSave(dataTypeFunction);
+            menuClearCachedMenuItemsAndRows(user);
+            break;
           }
-          if (result.icon) {
-            currentEnumeration[currentItem].icon = result.icon;
+
+          default: {
+            break;
           }
-          enumerationsSave(currentType);
+        }
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdItemMoveUp:
+      case cmdItemMoveDown: {
+        switch (currentType) {
+          case dataTypeDestination:
+          case dataTypeFunction:
+          case dataTypeReport:
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            const
+              currentList = enumerationsSubTypes.includes(currentType) && currentParam ?  enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list,
+              currentOrder = currentList[currentItem].order,
+              newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1 );
+            logs(`currentOrder = ${currentOrder} newOrder = ${newOrder}`);
+            const newItem = Object.keys(currentList).find((cItem) => {
+              return currentList[cItem].order === newOrder;
+            });
+            if (newItem != undefined) {
+              currentList[newItem].order = currentOrder;
+              currentList[currentItem].order = newOrder;
+              currentMenuPosition.splice(-1, 1, newOrder);
+            }
+            enumerationsSave(enumerationsSubTypes.includes(currentType) && currentParam ? dataTypeFunction : currentType);
+            break;
+          }
+          case dataTypeConfig:   {
+            const currentIntervals = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user);
+            switch (currentItem) {
+              case cfgGraphsIntervals:{
+                const
+                  currentIntervalIndex = Number(currentValue),
+                  currentInterval = currentIntervals[currentIntervalIndex],
+                  newPosition = currentIntervalIndex + (currentCommand === cmdItemMoveUp ? -1 : 1);
+                currentIntervals.splice(currentIntervalIndex, 1);
+                currentIntervals.splice(newPosition, 0, currentInterval);
+                currentMenuPosition.splice(-1, 1, newPosition);
+                configOptions.setOption(currentItem, user, currentIntervals);
+                menuClearCachedMenuItemsAndRows(user);
+                break;
+              }
+              default: {
+                break;
+              }
+            }
+            break;
+          }
+
+          default: {
+            break;
+          }
+        }
+
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdItemNameGet: {
+        const currentEnumeration = enumerationsList[currentType].list;
+        if (currentEnumeration[currentItem].isExternal) {
+          const timeout = configOptions.getOption(cfgExternalMenuTimeout);
+          messageTo(`${currentEnumeration[currentItem].state}.update`, {request: ['name', 'icon'], timeout: timeout}, {timeout: timeout}, (result) => {
+            if (result.success) {
+              if (result.name) {
+                enumerationsUpdateItemName(user, currentType, currentItem, currentEnumeration[currentItem], result.name);
+              }
+              if (result.icon) {
+                currentEnumeration[currentItem].icon = result.icon;
+              }
+              enumerationsSave(currentType);
+              menuClearCachedMenuItemsAndRows(user);
+            }
+            menuProcessActionOnPosition(user);
+            logs(`${currentEnumeration[currentItem].state}.update result = ${JSON.stringify(result)}`);
+          });
+        }
+        else {
+          enumerationsRereadItemName(user, currentItem, currentEnumeration[currentItem]);
+          menuProcessActionOnPosition(user);
+        }
+        break;
+      }
+      case cmdCreateReportEnum: {
+        logs(`currentCommand params = ${JSON.stringify([currentCommand, currentType, currentItem, currentParam] )}`);
+        let
+          obj = {...simpleReportFunctionTemplate};
+        obj.common.name.en = stringCapitalize(currentItem);
+        try {
+          const newReportId = `${prefixEnums}.${currentParam}.${currentItem}`;
+          // @ts-ignore
+          await setObjectAsync(newReportId, obj);
+          logs(`Object ${newReportId} is created : ${existsObject(newReportId)}`);
           menuClearCachedMenuItemsAndRows(user);
         }
-        menuProcessActionOnPosition(user);
-        logs(`${currentEnumeration[currentItem].state}.update result = ${JSON.stringify(result)}`);
-      });
-    }
-    else {
-      enumerationsRereadItemName(user, currentItem, currentEnumeration[currentItem]);
-      menuProcessActionOnPosition(user);
-    }
-  }
-  else if (currentCommand === cmdCreateReportEnum) {
-    logs(`currentCommand params = ${JSON.stringify([currentCommand, currentType, currentItem, currentParam] )}`);
-    let
-      obj = {...simpleReportFunctionTemplate};
-    obj.common.name.en = stringCapitalize(currentItem);
-    try {
-      const newReportId = `${prefixEnums}.${currentParam}.${currentItem}`;
-      // @ts-ignore
-      await setObjectAsync(newReportId, obj);
-      logs(`Object ${newReportId} is created : ${existsObject(newReportId)}`);
-      menuClearCachedMenuItemsAndRows(user);
-    }
-    catch (error) {
-      console.error(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
-      currentMenuPosition.splice(-1);
-    }
-    if (Object.keys(enumerationsList[dataTypeReport].enums).length > 1) currentMenuPosition.splice(-1);
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdUseCommonTranslation) {
-    const
-      commonTranslationId = `${translationsCommonFunctionsAttributesPrefix}.${currentItem.split('.').pop()}`,
-      currentTranslationIdValue = translationsItemGet(user, currentItem);
-    if ((translationsItemGet(user, commonTranslationId) === commonTranslationId) && (currentTranslationIdValue !== currentItem)) {
-      translationsItemStore(user, commonTranslationId, currentTranslationIdValue);
-    }
-    translationsItemStore(user, currentItem, commonTranslationId);
-    menuProcessActionOnPosition(user, undefined, cachedValueGet(user, cachedMenuItem).slice(0,-1));
-  }
-  else if (currentCommand === cmdAlertSubscribe) {
-    alertsManage(user, currentType, currentItem, currentParam, alertsGetStateAlertDetailsOrThresholds(user, currentType));
-    menuClearCachedMenuItemsAndRows(user);
-    menuProcessActionOnPosition(user);
-  }
-  else if (currentCommand === cmdItemJumpTo) {
-    const jumpToArray = currentType.split('.');
-    jumpToArray.forEach(jumpToItem => {
-      if (jumpToItem === jumpToUp) {
-        if (currentMenuPosition.length) currentMenuPosition.pop();
-      }
-      else if ((jumpToItem === jumpToLeft) || (jumpToItem === jumpToRight)) {
-        if (currentMenuPosition.length) {
-          let currentPos = currentMenuPosition.pop();
-          if (! isNaN(currentPos)) {
-            currentPos = Number(currentPos) + (jumpToItem === jumpToLeft ? -1 : 1);
-          }
-          currentMenuPosition.push(currentPos);
+        catch (error) {
+          console.error(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
+          currentMenuPosition.splice(-1);
         }
+        if (Object.keys(enumerationsList[dataTypeReport].enums).length > 1) currentMenuPosition.splice(-1);
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
       }
-      else if (jumpToItem) {
-        currentMenuPosition.push(jumpToItem);
+      case cmdUseCommonTranslation: {
+        const
+          commonTranslationId = `${translationsCommonFunctionsAttributesPrefix}.${currentItem.split('.').pop()}`,
+          currentTranslationIdValue = translationsItemGet(user, currentItem);
+        if ((translationsItemGet(user, commonTranslationId) === commonTranslationId) && (currentTranslationIdValue !== currentItem)) {
+          translationsItemStore(user, commonTranslationId, currentTranslationIdValue);
+        }
+        translationsItemStore(user, currentItem, commonTranslationId);
+        menuProcessActionOnPosition(user, undefined, cachedValueGet(user, cachedMenuItem).slice(0,-1));
+        break;
       }
-    });
-    menuClearCachedMenuItemsAndRows(user);
-    // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdSetOffset) {
-    currentMenuPosition = currentType.split('.');
-    const currentOffset = [currentType, currentItem].join(itemsDelimiter);
-    cachedValueSet(user, cachedMenuButtonsOffset, currentOffset);
-    menuClearCachedMenuItemsAndRows(user);
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdDeleteAllSentImages) {
-    sentImagesDelete(user);
-    menuClearCachedMenuItemsAndRows(user);
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
-  }
-  else if (currentCommand === cmdNoOperation) {
-    menuProcessActionOnPosition(user);
+      case cmdAlertSubscribe: {
+        alertsManage(user, currentType, currentItem, currentParam, alertsGetStateAlertDetailsOrThresholds(user, currentType));
+        menuClearCachedMenuItemsAndRows(user);
+        menuProcessActionOnPosition(user);
+        break;
+      }
+      case cmdItemJumpTo: {
+        const jumpToArray = currentType.split('.');
+        jumpToArray.forEach(jumpToItem => {
+          if (jumpToItem === jumpToUp) {
+            if (currentMenuPosition.length) currentMenuPosition.pop();
+          }
+          else if ((jumpToItem === jumpToLeft) || (jumpToItem === jumpToRight)) {
+            if (currentMenuPosition.length) {
+              let currentPos = currentMenuPosition.pop();
+              if (! isNaN(currentPos)) {
+                currentPos = Number(currentPos) + (jumpToItem === jumpToLeft ? -1 : 1);
+              }
+              currentMenuPosition.push(currentPos);
+            }
+          }
+          else if (jumpToItem) {
+            currentMenuPosition.push(jumpToItem);
+          }
+        });
+        menuClearCachedMenuItemsAndRows(user);
+        // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdSetOffset: {
+        currentMenuPosition = currentType.split('.');
+        const currentOffset = [currentType, currentItem].join(itemsDelimiter);
+        cachedValueSet(user, cachedMenuButtonsOffset, currentOffset);
+        menuClearCachedMenuItemsAndRows(user);
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdDeleteAllSentImages: {
+        sentImagesDelete(user);
+        menuClearCachedMenuItemsAndRows(user);
+        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        break;
+      }
+      case cmdNoOperation: {
+        menuProcessActionOnPosition(user);
+        break;
+      }
+    }
   }
 }
 
