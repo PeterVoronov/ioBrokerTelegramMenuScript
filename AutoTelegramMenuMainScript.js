@@ -50,6 +50,8 @@ Object.defineProperty(RegExp.prototype, "toJSON", {
 //*** Commands - begin ***//
 const
   cmdPrefix                             = 'cmd',
+  cmdSetState                           = `${cmdPrefix}SetState`,
+  cmdExternalCommand                    = `${cmdPrefix}ExternalCommand`,
   cmdBack                               = `${cmdPrefix}Back`,
   cmdClose                              = `${cmdPrefix}Close`,
   cmdHome                               = `${cmdPrefix}Home`,
@@ -5112,9 +5114,11 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             stateValue = enumerationsEvaluateValueConversionCode(user, stateValue, convertValueCode);
             logs('stateObject = ' + JSON.stringify(stateObject, null, 2));
             if (currentStateType === 'boolean') {
-              if (stateValue === undefined) stateValue = false;
-              subMenuItem.icons = deviceButtonId === primaryStateId ?  {on: currentFunction.iconOn, off: currentFunction.iconOff} :  {on: defaultIconOn, off: defaultIconOff};
+              // if (stateValue === undefined) stateValue = false;
+              // subMenuItem.icons = deviceButtonId === primaryStateId ?  {on: currentFunction.iconOn, off: currentFunction.iconOff} :  {on: defaultIconOn, off: defaultIconOff};
               subMenuItem.state = stateIdFull;
+              subMenuItem.icon  = (stateValue  === undefined) || (stateValue  === null) ? iconItemNotFound : (deviceButtonId === primaryStateId ? (stateValue ? currentFunction.iconOn : currentFunction.iconOff) :  (stateValue ? defaultIconOn : defaultIconOff));
+              subMenuItem.param = commandsPackParams(cmdSetState, stateIdFull);
             }
             else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
               states = enumerationsExtractPossibleValueStates(stateObject.common['states']);
@@ -5128,7 +5132,9 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                       name: `${enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString'] /*  possibleName !== undefined ? possibleName : possibleValue */}`,
                       state: commandsPackParams(stateIdFull, possibleValue),
+                      param: commandsPackParams(cmdSetState, stateIdFull, possibleValue),
                       funcEnum: currentFunctionId,
+                      group: 'possibleValues',
                       icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
                       submenu: []
                     };
@@ -5160,7 +5166,9 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${possibleValue}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }`,
                     state: commandsPackParams(stateIdFull, possibleValue),
+                    param: commandsPackParams(cmdSetState, stateIdFull, possibleValue),
                     funcEnum: currentFunctionId,
+                    group: 'possibleValues',
                     icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
                     submenu: []
                   };
@@ -5939,7 +5947,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
     itemPos = cachedValueGet(user, cachedMenuItem),
     isMenuOn = cachedValueGet(user, cachedMenuOn),
     [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, '95:59:00');
-  if (isMenuOn && itemPos && (! isUserMessageOldOrNotExists) && (! isAcknowledged)) menuProcessActionOnPosition(user, undefined, undefined, true);
+  if (isMenuOn && itemPos && (! isUserMessageOldOrNotExists) && (! isAcknowledged)) menuDrawOnPosition(user, undefined, true);
 }
 
 /**
@@ -8341,36 +8349,29 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
         if (currentIndex) preparedMessageObject.backIndex = currentBackIndex;
         // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
         const
-          isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
+          _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
           callbackDataToCache = new Map();
         // currentMenuItem.submenu.forEach(currentSubMenuItem => {
         for (let buttonsIndex = 0; buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount); buttonsIndex++) {
           const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
-          // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`);
-          logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
+          // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`, _l);
+          // logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
           const currentSubIndex = currentSubMenuItem.index;
           let callbackData = menuItemButtonPrefix + currentSubIndex;
           if (currentSubMenuItem.hasOwnProperty('param') && (typeof(currentSubMenuItem.param) === 'string') && (currentSubMenuItem.param.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.param !== cmdPrefix)) {
-            if (currentSubMenuItem.param.length > 64) {
-              callbackDataToCache.set(currentSubIndex, currentSubMenuItem.param);
-              callbackData = commandsPackParams(cmdCached, currentSubIndex);
-            }
-            else {
               callbackData = currentSubMenuItem.param;
-            }
+          }
+          else if (currentSubMenuItem.hasOwnProperty('externalCommand')) {
+            callbackData = commandsPackParams(cmdExternalCommand, currentSubMenuItem.funcEnum, currentSubMenuItem.externalCommand, currentSubMenuItem.externalCommandParams);
           }
           if (callbackData.length > 64) {
-            console.error(`Callback_data max possible length exceed! subMenuItem: \n${JSON.stringify(currentSubMenuItem, null, 2)}`);
-            callbackData = cmdNoOperation;
+            callbackDataToCache.set(currentSubIndex, callbackData);
+            callbackData = commandsPackParams(cmdCached, currentSubIndex);
+            // console.error(`Callback_data max possible length exceed! subMenuItem: \n${JSON.stringify(currentSubMenuItem, null, 2)}`);
+            // callbackData = cmdNoOperation;
           }
-          const
-            currentState = currentSubMenuItem.state,
-            currentObject = currentSubMenuItem.destEnum && currentState && currentSubMenuItem.funcEnum ? getObjectEnriched(currentState) : undefined,
-            currentValue =  currentObject && (currentObject.common['type'] !== 'boolean') ? ` (${enumerationsStateValueDetails(user, currentObject, currentSubMenuItem.funcEnum).valueString})`: '',
-            currentIcon = (currentValue && isFunctionsFirst) ? '' :  menuMenuItemGetIcon(user, currentSubMenuItem);
           preparedMessageObject.buttons.push({
-            text:  `${currentIcon}${currentSubMenuItem.name}${currentValue}`,
-            icon: currentIcon,
+            text:  `${menuMenuItemGetIcon(user, currentSubMenuItem)}${currentSubMenuItem.name}`,
             group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
             callback_data: callbackData
           });
@@ -8378,7 +8379,6 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
         if (buttonsOffset > 0) {
           preparedMessageObject.buttons.push({
             text:  `${iconItemPrevious}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
-            icon: iconItemPrevious,
             group: 'offset',
             callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset - maxButtonsCount)
           });
@@ -8386,7 +8386,6 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
         if (buttonsCount > maxButtonsCount) {
           preparedMessageObject.buttons.push({
             text:  `${iconItemNext}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
-            icon: iconItemNext,
             group: 'offset',
             callback_data: commandsPackParams(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
           });
@@ -8397,7 +8396,6 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
             if (preparedMessageObject.index) {
               preparedMessageObject.buttons.push({
                 text:  `${iconItemMoveLeft}`,
-                icon: `${iconItemMoveLeft}`,
                 group: menuOptionHorizontalNavigation,
                 callback_data: commandsPackParams(cmdItemJumpTo, [jumpToUp, preparedMessageObject.index - 1].join('.'))
               });
@@ -8405,7 +8403,6 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
             if (preparedMessageObject.index < preparedMessageObject.indexMax) {
               preparedMessageObject.buttons.push({
                 text:  `${iconItemMoveRight}`,
-                icon: `${iconItemMoveRight}`,
                 group: menuOptionHorizontalNavigation,
                 callback_data: commandsPackParams(cmdItemJumpTo, [jumpToUp, preparedMessageObject.index + 1].join('.'))
               });
@@ -8423,156 +8420,6 @@ function menuPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedM
     }
   }
 }
-
-
-
-/**
- * This function "executes" pressed menu item, so - it go from the root to the current menu item, prepared the
- * menu to the draw and then do one of the action:
- * - changes the ioBroker state,
- * - calling the Extension command,
- * - simple draw the submenu under menu item.
- * @param {object} user - The user object.
- * @param {string=} cmd - The command to execute.
- * @param {string[]=} cmdPos - The position of the menu item in the menu tree, each item of array describes the position of item on each level of hierarchy of menu.
- * @param {boolean=} clearBefore - The selector, to identify, is it needed to be previous message from Auto Telegram Menu cleared.
- * @param {boolean=} clearUserMessage - The selector to identify, should be user message to be deleted.
- * @param {boolean=} isSilent - The selector, how to inform user about message (show or not update of menu as a new message).
- * @param {boolean=} skipConfirmation - The selector, based on which the message about success will or will not be displayed.
- */
-function menuProcessActionOnPosition(user, cmd, cmdPos, clearBefore, clearUserMessage, isSilent, skipConfirmation) {
-  let timer;
-
-  /**
-   * This function is called, when the "execution" is finished successfully.
-   * It displayed pop-up with result, and then redraw the menu.
-   * @param {*=} resultMessage -(`string`) The string with a message about execution result.
-   */
-  function stateSetSuccessfully(resultMessage) {
-    clearTimeout(timer);
-    cachedValueSet(user, cachedCurrentState, '');
-    cmdPos = cmdPos ? cmdPos.slice(0, cmdPos.length-1) : [];
-    telegramMessagesDisplayPopUpMessage(user, resultMessage ? resultMessage : translationsItemTextGet(user, 'MsgSuccess'));
-    menuClearCachedMenuItemsAndRows(user);
-    menuDrawOnPosition(user, cmdPos, clearBefore, clearUserMessage, isSilent);
-  }
-
-  /**
-   * This function "process" the received menu item, after it was prepared.
-   * @param {*} _preparedMessageObject -(`object`) The prepared telegram message object (including buttons).
-   * @param {*} menuItemToProcess -(`object`) The menu item, which have to be "processed".
-   */
-  function menuProcessPreparedMenuObject(_preparedMessageObject, menuItemToProcess) {
-    logs('cmdItem = ' + JSON.stringify(menuItemToProcess));
-    if( (cmd) && (menuItemToProcess) && (menuItemToProcess.submenu.length === 0) && ! menuItemToProcess.hasOwnProperty('function')) {
-      if ( menuItemToProcess.hasOwnProperty('state') && (menuItemToProcess.state)) {
-        let [currState, possibleValue] = commandUnpackParams(menuItemToProcess.state);
-        const currObject = getObjectEnriched(currState);
-        logs('currObject = ' + JSON.stringify(currObject));
-        const _role = currObject.common['role'];
-        if (currObject.common['write']) {
-          clearTimeout(timer);
-          timer = setTimeout(function() {
-            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
-            console.error(`Error! No response for object ${currState}`);
-            cmdPos = cmdPos ? cmdPos.slice(0, cmdPos.length-1) : [];
-            menuDrawOnPosition(user, cmdPos, clearBefore, clearUserMessage, isSilent);
-          }, 4000);
-          cachedValueSet(user, cachedCurrentState, currState);
-          const currObjectType = currObject.common['type'];
-          if ((currObjectType === 'boolean') || (possibleValue !== undefined)) {
-            if (currObjectType === 'boolean') {
-              setState(currState, ! getState(currState).val, stateSetSuccessfully );
-            }
-            else if (currObject.common.hasOwnProperty('states') && (['string','number'].includes(currObjectType) )) {
-                const currObjectStates = enumerationsExtractPossibleValueStates(currObject.common['states']);
-                logs('possibleValue = ' + JSON.stringify(possibleValue));
-                logs('Object.keys(states). = ' + JSON.stringify(Object.keys(currObjectStates)));
-                if (Object.keys(currObjectStates).includes(possibleValue) ) {
-                  setState(currState, currObjectType === 'number' ? Number(possibleValue) : possibleValue, stateSetSuccessfully);
-                }
-                else {
-                  console.error(`Value '${possibleValue}' not in the acceptable list ${JSON.stringify(Object.keys(currObjectStates))}`);
-                  telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueNotInTheList'));
-                  clearTimeout(timer);
-                }
-            }
-            else if ((currObjectType === 'number')) {
-              const possibleNumber = Number(possibleValue);
-              const currObjectStep = Number(currObject.common.hasOwnProperty('step') ? currObject.common['step'] : 1);
-              if (((! currObject.common.hasOwnProperty('min')) || (possibleNumber >= Number(currObject.common['min']))) &&
-                ((! currObject.common.hasOwnProperty('max')) || (possibleNumber <= Number(currObject.common['max']))) &&
-                ((possibleNumber % currObjectStep) == 0 )) {
-                setState(currState, possibleNumber, stateSetSuccessfully);
-              }
-              else {
-                console.error(`Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currObject.common)}`);
-                telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                clearTimeout(timer);
-              }
-            }
-            else {
-              clearTimeout(timer);
-              console.error(`Unsupported object type: '${currObjectType}'`);
-              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgUnsupportedObjectType'));
-            }
-          }
-          else {
-            clearTimeout(timer);
-            cmdPos = cmdPos ? cmdPos.slice(0, cmdPos.length-1) : [];
-            console.error(`Unacceptable value '${possibleValue}' for object conditions ${JSON.stringify(currObject.common)}`);
-            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-            menuDrawOnPosition(user, cmdPos, clearBefore, clearUserMessage, isSilent);
-          }
-        }
-      }
-      else if ( menuItemToProcess.hasOwnProperty('externalCommand') && (menuItemToProcess.externalCommand !== undefined)) {
-        logs('cmdItem = ' + JSON.stringify(menuItemToProcess));
-        clearTimeout(timer);
-        timer = setTimeout(function() {
-          telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
-          console.error(`Error! No response for external command ${JSON.stringify(menuItemToProcess)}`);
-          cmdPos = cmdPos ? cmdPos.slice(0, cmdPos.length-1) : [];
-          menuDrawOnPosition(user, cmdPos, clearBefore, clearUserMessage, isSilent);
-        }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
-        messageTo(menuItemToProcess.externalCommand, {user, data: menuItemToProcess.hasOwnProperty('externalCommandParams') ? menuItemToProcess.externalCommandParams : undefined, funcEnum: menuItemToProcess.funcEnum, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function externalCommandExecuted(result){
-          if (result.success) {
-            stateSetSuccessfully();
-          }
-          else {
-            stateSetSuccessfully(result.error);
-
-          }
-        });
-
-      }
-      else {
-        if (! skipConfirmation) telegramMessagesDisplayPopUpMessage(user);
-        menuDrawOnPosition(user, cmdPos, clearBefore, clearUserMessage, isSilent);
-      }
-    }
-    else {
-      logs('cmdPos 2 = ' + JSON.stringify(cmdPos));
-      if (! skipConfirmation) telegramMessagesDisplayPopUpMessage(user);
-      menuDrawOnPosition(user, cmdPos, clearBefore, clearUserMessage, isSilent);
-    }
-  }
-
-  if ((cmd !== undefined) && (cmd !== null)) {
-    cmdPos = menuMenuItemExtractPosition(cmd);
-  }
-  else {
-    if ((cmdPos === undefined ) || (cmdPos === null)) {
-      cmdPos = cachedValueExists(user, cachedMenuItem) ?  cachedValueGet(user, cachedMenuItem) : [];
-    }
-  }
-  // logs(`cmd = ${cmd}, cmdPos = ${JSON.stringify(cmdPos)}`);
-  user.rootMenu = menuReIndexMenu(menuMenuItemGenerateRootMenu(user, cmdPos && cmdPos.length ? cmdPos[0] : undefined ));
-  // logs('user.rootMenu = ' + JSON.stringify(user.rootMenu), 1);
-  menuPrepareOnPosition(user, user.rootMenu, cmdPos ? [...cmdPos] : [], null, '', false, menuProcessPreparedMenuObject);
-}
-
-
 
 
 /**
@@ -8610,8 +8457,8 @@ function menuDrawOnPosition(user, itemPos, clearBefore, clearUserMessage, isSile
     itemPos = cachedValueGet(user, cachedMenuItem);
   }
   cachedValueSet(user, cachedMenuItem, itemPos);
-  logs('itemPos = ' + JSON.stringify(itemPos));
-  menuPrepareOnPosition(user, user.rootMenu, itemPos ? [...itemPos] : [], null, '', true, menuDrawPreparedMenuObject);
+  // logs('itemPos = ' + JSON.stringify(itemPos), _l);
+  menuPrepareOnPosition(user, user.rootMenu ? user.rootMenu : menuReIndexMenu(menuMenuItemGenerateRootMenu(user, itemPos && itemPos.length ? itemPos[0] : undefined )), itemPos ? [...itemPos] : [], null, '', true, menuDrawPreparedMenuObject);
 }
 
 
@@ -8670,8 +8517,8 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
             currentAttributeId = currentStateId.split('.').slice( - currentFunction.state.split('.').length).join('.'),
             currentFunctionDeviceButtonsAndAttributes = {...currentFunction.deviceAttributes, ...currentFunction.deviceButtons},
             convertValueCode = currentFunctionDeviceButtonsAndAttributes.hasOwnProperty(currentAttributeId) ? currentFunctionDeviceButtonsAndAttributes[currentAttributeId].convertValueCode : "",
-            currentValue = existsState(currentStateId) ? getState(currentStateId).val : false;
-          icon = enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode) ? menuItemToProcess.icons.on : menuItemToProcess.icons.off;
+            currentValue = existsState(currentStateId) ? getState(currentStateId).val : undefined;
+          icon = (currentValue === undefined)  || (currentValue === null) ? iconItemNotFound : (enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode) ? menuItemToProcess.icons.on : menuItemToProcess.icons.off);
         }
       }
       else if (typeOf(menuItemToProcess.icons, 'function')) {
@@ -8796,7 +8643,7 @@ function menuRenewMenuMessage(idOfUser, forceNow) {
         console.warn('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
         if ( (! cachedValueGet(user, cachedIsWaitForInput)) && (itemPos !== undefined)) {
           console.warn(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu : null})}`);
-          menuProcessActionOnPosition(user, undefined, itemPos, true, false, true);
+          menuDrawOnPosition(user, itemPos, true, false, true);
         }
       }
       else if (! isBotMessageOld24OrNotExists) {
@@ -8997,6 +8844,99 @@ function commandUnpackParams(param, defaultValue) {
  * @param {string} userInputToProcess - The string, contained the user input.
  */
 async function commandUserInputCallback(user, userInputToProcess) {
+  let timer;
+
+  /**
+   * This function is called, when the "execution" is finished.
+   * It displayed pop-up with result, and then redraw the menu.
+   * @param {object} user - The user object.
+   * @param {any=} result -(`string`) The execution result.
+   * @param {boolean=} isFromGetInput - The selector to identify a way of input value come
+   */
+  function stateOrCommandProcessed(user, result, isFromGetInput) {
+    if (timer) clearTimeout(timer);
+    cachedValueSet(user, cachedCurrentState, '');
+    telegramMessagesDisplayPopUpMessage(user, result.error ? result.error : translationsItemTextGet(user, 'MsgSuccess'));
+    if ((! result.error) || result.success) {
+      menuClearCachedMenuItemsAndRows(user);
+      if (isFromGetInput) {
+        menuDrawOnPosition(user, undefined, user.userId !== user.chatId, user.userId === user.chatId, false);
+      }
+      else {
+        menuDrawOnPosition(user);
+      }
+    }
+  }
+
+  /**
+   * This function is used to set the state value via standard 'setState' and process the result.
+   * @param {object} user - The user object.
+   * @param {string} stateId - The state ID to set value.
+   * @param {any=} stateValue  - The possible value for the state.
+   * @param {boolean=} isFromGetInput - The selector to identify a way of input value come.
+   */
+  function setStateValue(user, stateId, stateValue, isFromGetInput) {
+    // logs(`setState with state: '${currentType}' and value ${currentItem}`, _l);
+    const currentObject = getObjectEnriched(stateId);
+    logs('currObject = ' + JSON.stringify(currentObject));
+    if (currentObject.common['write']) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
+        console.error(`Error! No response from setState() for ${stateId}`);
+        menuDrawOnPosition(user);
+      }, 4000);
+      cachedValueSet(user, cachedCurrentState, stateId);
+      const currentStateType = currentObject.common['type'];
+      const setStateCallback = (error) => (stateOrCommandProcessed(user, {success: error === undefined, error}, isFromGetInput));
+      if ((currentStateType === 'boolean') || (stateValue !== undefined)) {
+        if (currentStateType === 'boolean') {
+          const
+            currentStateObject = getState(stateId),
+            currentStateValue = (currentStateObject.val === undefined) || (currentStateObject.val === null) ? false : currentStateObject.val;
+          setState(stateId, ! currentStateValue, setStateCallback);
+        }
+        else if (currentObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
+            const currentStatePossibleValues = enumerationsExtractPossibleValueStates(currentObject.common['states']);
+            logs('possibleValue = ' + JSON.stringify(stateValue));
+            logs('Object.keys(states). = ' + JSON.stringify(Object.keys(currentStatePossibleValues)));
+            if (Object.keys(currentStatePossibleValues).includes(stateValue) ) {
+              setState(stateId, currentStateType === 'number' ? Number(stateValue) : stateValue, setStateCallback);
+            }
+            else {
+              console.error(`Value '${stateValue}' not in the acceptable list ${JSON.stringify(Object.keys(currentStatePossibleValues))}`);
+              telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueNotInTheList'));
+              clearTimeout(timer);
+            }
+        }
+        else if ((currentStateType === 'number')) {
+          const possibleNumber = Number(stateValue);
+          const currentStateValuesStep = Number(currentObject.common.hasOwnProperty('step') ? currentObject.common['step'] : 1);
+          if (((! currentObject.common.hasOwnProperty('min')) || (possibleNumber >= Number(currentObject.common['min']))) &&
+            ((! currentObject.common.hasOwnProperty('max')) || (possibleNumber <= Number(currentObject.common['max']))) &&
+            ((possibleNumber % currentStateValuesStep) == 0 )) {
+            setState(stateId, possibleNumber, setStateCallback);
+          }
+          else {
+            console.error(`Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currentObject.common)}`);
+            telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+            clearTimeout(timer);
+          }
+        }
+        else {
+          clearTimeout(timer);
+          console.error(`Unsupported object type: '${currentStateType}'`);
+          telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgUnsupportedObjectType'));
+        }
+      }
+      else {
+        clearTimeout(timer);
+        console.error(`Unacceptable value '${stateValue}' for state conditions ${JSON.stringify(currentObject.common)}`);
+        telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+      }
+    }
+  }
+
 
   const
     isWaitForInput = cachedValueGet(user, cachedIsWaitForInput),
@@ -9231,24 +9171,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             }
 
             case dataTypeStateValue: {
-              if (existsObject(currentParam)) {
-                const
-                  stateObject = getObjectEnriched(currentParam);
-                if (stateObject.common.type === 'number') {
-                  // @ts-ignore
-                  if (! isNaN(userInputToProcess)
-                    && ((! stateObject.common.hasOwnProperty('min')) || (Number(userInputToProcess) >= Number(stateObject.common.min)))
-                    && ((! stateObject.common.hasOwnProperty('max')) || (Number(userInputToProcess) <= Number(stateObject.common.max)))
-                    ) {
-                    await setStateAsync(currentParam, Number(userInputToProcess));
-                    telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-                  }
-                  else {
-                    console.warn(`Unacceptable value '${userInputToProcess}' for object conditions ${JSON.stringify(stateObject.common)}`);
-                    telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                  }
-                }
-              }
+              setStateValue(user, currentParam, userInputToProcess, true);
               break;
             }
 
@@ -9319,7 +9242,9 @@ async function commandUserInputCallback(user, userInputToProcess) {
     else {
       cachedValueSet(user, cachedIsWaitForInput, false);
       /** if it private chat - delete user input, if it group - clear menu, and recreate it after user input **/
-      menuProcessActionOnPosition(user, undefined, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false, true);
+      if (currentType !== dataTypeStateValue) {
+        menuDrawOnPosition(user, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false);
+      }
     }
   }
   else if (currentCommand.indexOf(cmdClose) === 0) {
@@ -9341,15 +9266,15 @@ async function commandUserInputCallback(user, userInputToProcess) {
       cachedValueSet(user, cachedDelCachedOnBack, {...cachedToDelete});
     }
     currentMenuPosition = menuMenuItemExtractPosition(currentMenuPosition);
-    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+    menuDrawOnPosition(user, currentMenuPosition);
   }
   else if (configOptions.getOption(cfgMessagesForMenuCall, user).includes(currentCommand)){
     // setCachedValue(user, cachedMenuOn, false);
     /** if it private chat - delete user input, if configured **/
-    menuProcessActionOnPosition(user, undefined, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, true);
+    menuDrawOnPosition(user, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false);
   }
   else if (currentCommand.indexOf(menuItemButtonPrefix) === 0) {
-    menuProcessActionOnPosition(user, currentCommand.replace(menuItemButtonPrefix,''));
+    menuDrawOnPosition(user, menuMenuItemExtractPosition(currentCommand.replace(menuItemButtonPrefix,'')));
   }
   else {
     switch (currentCommand) {
@@ -9519,7 +9444,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
           telegramMessagesFormatAndPushToQueueMessage(user, menuMessageObject, false, false, false);
         }
         else {
-          menuProcessActionOnPosition(user);
+          menuDrawOnPosition(user, currentMenuPosition);
         }
         break;
       }
@@ -9535,7 +9460,24 @@ async function commandUserInputCallback(user, userInputToProcess) {
           });
           cachedValueDelete(user, cachedDelCachedOnBack);
         }
-        menuProcessActionOnPosition(user, undefined, []);
+        menuDrawOnPosition(user, []);
+        break;
+      }
+      case cmdSetState: {
+        setStateValue(user, currentType, currentItem);
+        break;
+      }
+      case cmdExternalCommand: {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function() {
+          telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
+          console.error(`Error! No response from external command ${currentItem} for function ${currentType}`);
+          // menuDrawOnPosition(user);
+        }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
+        const commandParams = currentParam === undefined ? undefined : commandsPackParams(commandUnpackParams(inputData).slice(3));
+        logs(`External command ${currentItem} for function ${currentType}, with params ${commandParams}`, _l);
+        menuDrawOnPosition(user);
+        messageTo(currentItem, {user, data:  commandParams, funcEnum: currentType, translations: translationsGetForExtension(user, currentType)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, result => (stateOrCommandProcessed(user, result)));
         break;
       }
       case cmdAcknowledgeAlert:
@@ -9556,7 +9498,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
           if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert) alertsManage(user, alertLastNonAcknowledgedMessage.id);
         }
         menuClearCachedMenuItemsAndRows(user);
-        menuProcessActionOnPosition(user);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdAcknowledgeAllAlerts: {
@@ -9564,7 +9506,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         alertMessages.filter(alertMessage => (! alertMessage.ack)).forEach(alertMessage => {alertMessage.ack = true});
         alertsStoreMessagesToCache(user, alertMessages);
         menuClearCachedMenuItemsAndRows(user);
-        menuProcessActionOnPosition(user);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemPress: {
@@ -9707,7 +9649,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
           }
         }
         menuClearCachedMenuItemsAndRows(user);
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemDownload: {
@@ -9754,7 +9696,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                         isNaN(currentItem)
                           ? currentItem : Number(currentItem));
                       // logs(`currentMenuItem = ${currentMenuItem}`);
-                      menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                      menuDrawOnPosition(user, currentMenuPosition);
                     }
                     else {
                       telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
@@ -9787,7 +9729,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 ? currentParam : Number(currentParam));
             break;
         }
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemDeleteConfirm: {
@@ -9969,7 +9911,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
                 const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
                 currentMenuPosition.splice(-2, 2);
-                menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                menuDrawOnPosition(user, currentMenuPosition);
               })
               .catch((_error) => {
                 telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
@@ -9982,7 +9924,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             break;
           }
         }
-        if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        if (currentMenuPosition) menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemMark: {
@@ -10047,7 +9989,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             break;
           }
         }
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemsProcess: {
@@ -10192,7 +10134,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                       }
                       translationsSave();
                       menuPosition.splice(-1, 1);
-                      menuProcessActionOnPosition(user, undefined, menuPosition);
+                      menuDrawOnPosition(user, menuPosition);
                     });
                     currentMenuPosition = undefined;
                   }
@@ -10360,7 +10302,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                       const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
                       currentMenuPosition.push(1);
                       telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
-                      menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                      menuDrawOnPosition(user, currentMenuPosition);
                     })
                   .catch((_error) => {
                     telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError'));
@@ -10375,7 +10317,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
                     telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgSuccess'));
                     const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
                     if (currentValue === backupItemAll) currentMenuPosition.splice(-1);
-                    menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+                    menuDrawOnPosition(user, currentMenuPosition);
                 })
                 .catch(() => telegramMessagesDisplayPopUpMessage(user, translationsItemTextGet(user, 'MsgError')));
                 break;
@@ -10391,7 +10333,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             break;
           }
         }
-        if (currentMenuPosition) menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        if (currentMenuPosition) menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemReset: {
@@ -10421,7 +10363,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
             break;
           }
         }
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemMoveUp:
@@ -10475,7 +10417,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
           }
         }
 
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemNameGet: {
@@ -10493,13 +10435,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
               enumerationsSave(currentType);
               menuClearCachedMenuItemsAndRows(user);
             }
-            menuProcessActionOnPosition(user);
+            menuDrawOnPosition(user, currentMenuPosition);
             logs(`${currentEnumeration[currentItem].state}.update result = ${JSON.stringify(result)}`);
           });
         }
         else {
           enumerationsRereadItemName(user, currentItem, currentEnumeration[currentItem]);
-          menuProcessActionOnPosition(user);
+          menuDrawOnPosition(user, currentMenuPosition);
         }
         break;
       }
@@ -10520,7 +10462,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
           currentMenuPosition.splice(-1);
         }
         if (Object.keys(enumerationsList[dataTypeReport].enums).length > 1) currentMenuPosition.splice(-1);
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdUseCommonTranslation: {
@@ -10531,13 +10473,13 @@ async function commandUserInputCallback(user, userInputToProcess) {
           translationsItemStore(user, commonTranslationId, currentTranslationIdValue);
         }
         translationsItemStore(user, currentItem, commonTranslationId);
-        menuProcessActionOnPosition(user, undefined, cachedValueGet(user, cachedMenuItem).slice(0,-1));
+        menuDrawOnPosition(user, cachedValueGet(user, cachedMenuItem).slice(0,-1));
         break;
       }
       case cmdAlertSubscribe: {
         alertsManage(user, currentType, currentItem, currentParam, alertsGetStateAlertDetailsOrThresholds(user, currentType));
         menuClearCachedMenuItemsAndRows(user);
-        menuProcessActionOnPosition(user);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdItemJumpTo: {
@@ -10561,7 +10503,7 @@ async function commandUserInputCallback(user, userInputToProcess) {
         });
         menuClearCachedMenuItemsAndRows(user);
         // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdSetOffset: {
@@ -10569,17 +10511,17 @@ async function commandUserInputCallback(user, userInputToProcess) {
         const currentOffset = [currentType, currentItem].join(itemsDelimiter);
         cachedValueSet(user, cachedMenuButtonsOffset, currentOffset);
         menuClearCachedMenuItemsAndRows(user);
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdDeleteAllSentImages: {
         sentImagesDelete(user);
         menuClearCachedMenuItemsAndRows(user);
-        menuProcessActionOnPosition(user, undefined, currentMenuPosition);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
       case cmdNoOperation: {
-        menuProcessActionOnPosition(user);
+        menuDrawOnPosition(user, currentMenuPosition);
         break;
       }
     }
@@ -11280,7 +11222,7 @@ function telegramOnConnected(connected) {
           // logs(`CachedState(user, cachedMenuOn) = ${getCachedState(user, cachedMenuOn)}, CachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)}`)
           menuClearCachedMenuItemsAndRows(user);
           cachedValueDelete(user, cachedMenuOn);
-          menuProcessActionOnPosition(user);
+          menuDrawOnPosition(user);
         }
       }
     });
