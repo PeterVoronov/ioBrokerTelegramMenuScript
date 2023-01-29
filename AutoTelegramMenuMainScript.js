@@ -6125,7 +6125,7 @@ function alertsOnSubscribedState(object) {
                   idStoredTimerStatus = [objectId, chatId, alertThresholdValue, 'timerStatus'].join(itemsDelimiter),
                   storedTimerOn = alertsStoredVariables.has(idStoredTimerOn) ? alertsStoredVariables.get(idStoredTimerOn) : undefined,
                   storedTimerStatus = (storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)) ? alertsStoredVariables.get(idStoredTimerStatus) : 0,
-                  isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue)  || (storedTimerOn && (storedTimerStatus < 0))),
+                  isLess = (currentStateValue < thresholdValue) && ((oldStateValue >= thresholdValue)  || (storedTimerOn && (storedTimerStatus > 0))),
                   isAbove = (currentStateValue >= thresholdValue) && ((oldStateValue < thresholdValue) || (storedTimerOn && (storedTimerStatus < 0))),
                   alertMessageTemplate = currentThreshold.hasOwnProperty(alertMessageTemplateId) ? currentThreshold[alertMessageTemplateId] : alertDefaultTemplate;
                 alertMessageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
@@ -6143,11 +6143,11 @@ function alertsOnSubscribedState(object) {
                   else {
                     const currentTimerStatus =  isLess && onLess ? -1 : (isAbove && onAbove ? 1 : 0);
                     if (currentTimerStatus !== 0) {
-                      alertsStoredVariables.set(idStoredTimerStatus, isLess ? -1 :  1);
-                      alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
-                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                      alertsStoredVariables.set(idStoredTimerStatus, currentTimerStatus);
+                      alertsStoredVariables.set(idStoredTimerOn, setTimeout((idStoredTimerOn, idStoredTimerStatus) => {
                         alertsStoredVariables.delete(idStoredTimerOn);
                         alertsStoredVariables.delete(idStoredTimerStatus);
+                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
                       }, onTimeInterval * 1000));
                     }
                   }
