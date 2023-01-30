@@ -10830,7 +10830,9 @@ function telegramMessageQueueProcess(user, messageId) {
         }
         console.warn(`Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({...user, rootMenu : null})})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(telegramLastUserError, null, 2)}.`);
         if (telegramLastUserError && telegramLastUserError.hasOwnProperty['error'] && (telegramLastUserError.error.level === telegramErrorLevelFatal)) {
+          console.warn(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
+            console.warn(`Retrying message send.`);
             telegramMessageQueueProcess(user);
           },
           telegramDelayToSendReTry);
@@ -10922,7 +10924,7 @@ function telegramMessageQueueProcess(user, messageId) {
         telegramObjects;
         // will send a last message, to prevent spamming the telegram with flipping some states in ioBroker. In case of user input - we will not lost any message
       do {
-        telegramObjects = userMessagesQueue[currentPos];
+        telegramObjects = objectDeepClone(userMessagesQueue[currentPos]);
         if (telegramObjects === undefined) {
           if (currentPos < (userMessagesQueue.length - 1)) {
             currentPos = userMessagesQueue.length - 1;
@@ -10934,7 +10936,7 @@ function telegramMessageQueueProcess(user, messageId) {
             cachedValueDelete(user, cachedTelegramMessagesQueue);
             currentPos = -1;
           }
-          telegramObjects = currentPos >= 0 ? userMessagesQueue[currentPos] : undefined;
+          telegramObjects = currentPos >= 0 ? objectDeepClone(userMessagesQueue[currentPos]) : undefined;
         }
         if (typeOf(telegramObjects, 'object')) telegramObjects = [telegramObjects];
         if (telegramObjects && telegramObjects[0][telegramCommandDeleteMessage] && telegramObjects[0][telegramCommandDeleteMessage].isBotMessage) {
