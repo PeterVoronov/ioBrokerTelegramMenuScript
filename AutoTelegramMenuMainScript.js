@@ -318,7 +318,7 @@ const
   },
 
   configDefaultOptionMasks = {
-    [cfgUpdateMessageTime]              : {text: 'hh:mm', rule:/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/},
+    [cfgUpdateMessageTime]              : {text: 'hh:mm', rule:/^([0-1]?\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/},
     [cfgGraphsIntervals]                : {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)}
   }
 ;
@@ -850,7 +850,7 @@ class ConfigOptions {
       subMenuIndex = subMenu.push(subMenuItem);
     }
     if (isThisLevelAllowModify) {
-      subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
+      subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
     }
     return subMenu;
   }
@@ -1034,7 +1034,7 @@ class ConfigOptions {
                     let subSubMenuIndex = 0;
                     [subMenuItem.submenu,  subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(user, subMenuItem.submenu,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex,  graphsIntervalIndex, currentIntervalsMaxIndex, undefined, dataTypeConfig, cfgItem, optionScope, graphsIntervalIndex);
                     subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, translationsItemTextGet(user, 'TimeRange', graphsIntervalId)));
-                    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, graphsIntervalIndex));
+                    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, graphsIntervalIndex));
                   }
                   subMenuIndex = subMenu.push(subMenuItem);
                 });
@@ -1114,7 +1114,6 @@ class ConfigOptions {
         ' *' + (this.globalConfig.cfgMenuRefreshInterval >= 60 ? '/' + Math.trunc(this.globalConfig.cfgMenuRefreshInterval / 60) : '') +
         ' * * * *';
       logs('scheduleString = ' + JSON.stringify(scheduleString));
-      // this.menuSchedule = schedule(scheduleString, () => {this.functionScheduleMenuUpdate});
     }
   }
 }
@@ -1332,21 +1331,21 @@ class MenuRoles {
    * @returns {object[]} - arrays with sorted rules.
    */
   static sortRules(rules, inverseMasks, sortDescending) {
-    let result = rules;
+    let currentSort;
     if (rules && typeOf(rules, 'array') && (rules.length > 0)) {
       if (inverseMasks) {
         if (rules[0].hasOwnProperty('maskInverted') && rules[0].maskInverted) {
-          result = rules.sort((ruleA, ruleB) => (sortDescending ? ruleB.maskInverted.localeCompare(ruleA.maskInverted) : ruleA.maskInverted.localeCompare(ruleB.maskInverted)));
+          currentSort = (ruleA, ruleB) => (sortDescending ? ruleB.maskInverted.localeCompare(ruleA.maskInverted) : ruleA.maskInverted.localeCompare(ruleB.maskInverted));
         }
         else {
-          result = rules.sort((ruleA, ruleB) => (sortDescending ? MenuRoles.maskInverse(ruleB.mask).localeCompare(MenuRoles.maskInverse(ruleA.mask)) : MenuRoles.maskInverse(ruleA.mask).localeCompare(MenuRoles.maskInverse(ruleB.mask))));
+          currentSort = (ruleA, ruleB) => (sortDescending ? MenuRoles.maskInverse(ruleB.mask).localeCompare(MenuRoles.maskInverse(ruleA.mask)) : MenuRoles.maskInverse(ruleA.mask).localeCompare(MenuRoles.maskInverse(ruleB.mask)));
         }
       }
       else {
-        result = rules.sort((ruleA, ruleB) => (sortDescending ? ruleB.mask.localeCompare(ruleA.mask) : ruleA.mask.localeCompare(ruleB.mask)));
+        currentSort = (ruleA, ruleB) => (sortDescending ? ruleB.mask.localeCompare(ruleA.mask) : ruleA.mask.localeCompare(ruleB.mask));
       }
     }
-    return result;
+    return currentSort  ? rules.sort(currentSort) : rules;
   }
 
   /**
@@ -1536,12 +1535,7 @@ class MenuRoles {
       else if ((! MenuRoles.accessLevelsPreventToShow.includes(result.accessLevel)) && (menuItemIdParts.length === 1) && (maskPrefix === rolesMaskAnyValue) && (maskSuffix !== rolesMaskAnyValue) ) {
         result.accessLevel = rolesAccessLevelPossible;
       }
-      // else if ((! returnRule) && (menuItemId.split(idAndMaskDelimiter).length === 1) && (result.mask.split(idAndMaskDelimiter).length === 2) && (MenuRoles.compareAccessLevels(result.accessLevel, accessLevelForbidden) < 0)) {
-      //   result.accessLevel = accessLevelPossible
-      //   logs(`menuItemId = ${menuItemId}, result = ${JSON.stringify(result)}`);
-      // }
     }
-    // if (!returnRule) logs(`menuItemId = ${menuItemId}, result = ${JSON.stringify(result)}, \nregexpMatch = ${JSON.stringify(regexpMatch)}, \neffectiveRoleRulesList = ${JSON.stringify(effectiveRoleRulesList, null, 1)}`);
     result = returnRule ? result : (result !== undefined ? result.accessLevel : rolesAccessLevelForbidden);
     return result;
   }
@@ -1626,7 +1620,6 @@ class MenuRoles {
           const menuItemSubordinated = menuItem.subordinates.find(item => item.id === maskPrefixSubordinatedId);
           if (menuItemSubordinated && menuItemSubordinated.hasOwnProperty('name')) {
             maskPrefix += `.${menuItemSubordinated.name}`;
-            menuItem = menuItemSubordinated;
           }
           else {
             maskPrefix += `.${maskPrefixSubordinatedId}`;
@@ -2029,7 +2022,6 @@ class MenuRoles {
     let
       subMenu = [],
       subMenuIndex = 0;
-    // this.data = this.loadData();
     cachedAddToDelCachedOnBack(user, currentIndex, cachedRolesRoleUnderEdit);
     cachedAddToDelCachedOnBack(user, currentIndex, cachedRolesNewRule);
     const currentRoles = objectDeepClone(this.getRoles());
@@ -2077,7 +2069,7 @@ class MenuRoles {
           if (newRoleId) {
             if (newRoleId.length > 12) {
               cachedValueSet(user, cachedRolesNewRoleId, newRoleId.slice(0, 12));
-              subMenuIndex = subMenu.push(
+              subMenu.push(
                 {
                   index: `${currentIndex}.${subMenuIndex}`,
                   name: `${translationsItemCoreGet(user, 'cmdFixId')}`,
@@ -2090,7 +2082,7 @@ class MenuRoles {
             else {
               logs(`newRoleId = ${newRoleId}`);
               const rootMenu = menuMenuItemGenerateRootMenu(null);
-              subMenuIndex = subMenu.push(
+              subMenu.push(
                 {
                   index: `${currentIndex}.${subMenuIndex}`,
                   name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${newRoleId}'`,
@@ -2512,7 +2504,6 @@ function translationsValidateLanguageId(languageId){
  * @param {object=} user - The user object.
  */
 function translationsSave(user) {
-  logs(`saveTranslation() from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   let translationIds = [];
   if (user) {
     translationIds.push(configOptions.getOption(cfgMenuLanguage, user));
@@ -2557,7 +2548,6 @@ function translationsSave(user) {
  * under `translationStatePrefix` path.
  */
 function translationsLoad() {
-  logs(`loadTranslation() from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   $(`state[id=${prefixTranslationStates}.*]`).each( (translationId) => {
     const
       languageId = translationId.replace(`${prefixTranslationStates}.`, ''),
@@ -2570,7 +2560,6 @@ function translationsLoad() {
       }
       catch (error) {
         console.warn(`Can't process a translation for language ${languageId}!`);
-        // translationList[languageId] = {};
       }
       // logs(`translationsList[${langId}] = ${JSON.stringify(translationsList[langId])}`);
     }
@@ -2851,7 +2840,6 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
  * @returns {object} The current translation object.
  */
 function translationsGetCurrentForUser(user) {
-  logs(`translationGetCurrentForUser(${user}) from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   // logs(`translationsList = ${JSON.stringify(translationsList)}`);
   let
     languageId = configOptions.getOption(cfgMenuLanguage, user),
@@ -2877,7 +2865,6 @@ function translationsGetCurrentForUser(user) {
  * @returns The translation object contains the translation Id.
  */
 function translationsPointOnItemOwner(user, translationId, pointOnItemItself) {
-  logs(`translationPointOnItemOwner(${translationId}) from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   const
     // @ts-ignore
     idsList = translationId ? (typeOf(translationId, 'string') ? translationId.split('.') : translationId) : [],
@@ -2905,7 +2892,6 @@ function translationsPointOnItemOwner(user, translationId, pointOnItemItself) {
  * @returns {string} The translation value for the provided Id.
  */
 function translationsItemGet(user, translationId) {
-  logs(`getFromTranslation(user, ${translationId}) from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   // logs(`translationId = ${translationId}`, _l)
   const
     currentTranslation = translationsPointOnItemOwner(user, translationId),
@@ -2916,7 +2902,7 @@ function translationsItemGet(user, translationId) {
   // logs(`currentTranslation[${shortId}] = ${currentTranslation[shortId]}`);
   if (translationId && shortId && currentTranslation) {
     if (! currentTranslation.hasOwnProperty(shortId)) {
-      console.warn(`translationId '${translationId}' is not found. getFromTranslation is called from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
+      console.warn(`translationId '${translationId}' is not found. getFromTranslation is called from ${arguments.callee && arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
       currentTranslation[shortId] = translationId;
       translationsSave(user);
     }
@@ -2988,7 +2974,6 @@ function translationsItemGet(user, translationId) {
  * @param {string} translationValue - The new value.
  */
 function translationsItemStore(user, translationId, translationValue) {
-  logs(`putToTranslation(${translationId}, ${translationValue}) from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   const
     currentTranslation = translationsPointOnItemOwner(user, translationId),
     shortId = translationId.split('.').pop();
@@ -3004,7 +2989,6 @@ function translationsItemStore(user, translationId, translationValue) {
  * @param {string} translationId - The translation Id.
  */
 function translationsItemDelete(user, translationId) {
-  logs(`delFromTranslation(${translationId}) from ${arguments.callee.caller  ? arguments.callee.caller.name : ''}`);
   const idsList = translationId.split('.');
   let currentTranslation = translationsPointOnItemOwner(user, translationId);
   if (currentTranslation && idsList) {
@@ -3066,10 +3050,7 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
   // logs(`object = ${object}, translationId = ${translationId}`, _l);
   if (translationId) {
     const objectName = translationsItemGet(user, translationId);
-    if (objectName !== translationId) {
-      return objectName;
-    }
-    else if ((typeof(object) === 'string') && (! existsObject(object))) {
+    if ((objectName !== translationId) || ((typeof(object) === 'string') && (! existsObject(object)))) {
       return objectName;
     }
   }
@@ -3626,8 +3607,7 @@ const cachedValuesStatesCommonAttributes = {
   [prefixExternalStates] : {name:"External state", type: 'json', read: true, write: true, role: 'state'},
   [cachedSentImages] : {name:"List of sent images", type: 'json', read: true, write: true, role: 'json'},
 };
-const cachedTimeDeltaParseRegExp = /^(((\d*)?:)?(\d*)?:)?(\d*)$/;
-// let cachedStates = {};
+const cachedTimeDeltaParseRegExp = /^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$/;
 const cachedValuesMap = new Map();
 
 /**
@@ -3688,7 +3668,6 @@ function cachedValueGet(user, valueId, getLastChange) {
               cachedVal = JSON.parse(cachedVal, JSONReviverWithMap);
             }
             catch (err) {
-              // cachedStates[id] = cachedVal;
               logs(`Parse error - ${JSON.stringify(err)}`);
             }
           }
@@ -3717,7 +3696,7 @@ function cachedGetValueAndCheckItIfOld(user, valueId, cachedValueMaxAge) {
   const
     checkDate = new Date(),
     deltaMatch = cachedValueMaxAge.match(cachedTimeDeltaParseRegExp),
-    [_tmp1, _tmp2, _tmp3, deltaHours, deltaMinutes, deltaSeconds] = deltaMatch ? deltaMatch : [],
+    [deltaHours, deltaMinutes, deltaSeconds] = deltaMatch ? deltaMatch : [],
     [cachedValue, cachedValueLC] = cachedValueGet(user, valueId, true);
   if (deltaSeconds) checkDate.setSeconds(checkDate.getSeconds() - Number(deltaSeconds));
   if (deltaMinutes) checkDate.setMinutes(checkDate.getMinutes() - Number(deltaMinutes));
@@ -5378,7 +5357,7 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
   });
   if (isStateToTestOnFound) {
     const testResultValue = enumerationsEvaluateValueConversionCode(user, stateToTestValue, convertValueCodeToTest);
-    result = ! (testResultValue === stateToTestValue);
+    result = testResultValue !== stateToTestValue;
   }
   return result;
 }
@@ -7408,7 +7387,8 @@ function simpleReportGenerate(user, menuItemToProcess) {
         const linePrefix = '- ';
         reportLines.push({label: `${linePrefix}${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationsNamesInside)}`});
         const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
-        currentFuncs.sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
+        const currentSort = (a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction));
+        currentFuncs.sort(currentSort).forEach(currentFuncId => {
           if (isAlwaysExpanded || (currentFuncs.length > 1)) {
             reportLines.push({label: ` ${linePrefix}${stringCapitalize(translationsGetEnumName(user, dataTypeFunction, currentFuncId, enumerationsNamesMany))}`});
           }
@@ -7454,7 +7434,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
     const reportObject = getObject(`${prefixEnums}.${reportItem.enum}.${reportId}`);
     if (reportObject && reportObject.hasOwnProperty('common') && reportObject.common.hasOwnProperty('members') && Array.isArray(reportObject.common['members']) && reportObject.common['members'].length) {
       const reportStatesList = reportObject.common['members'].sort();
-      let shortStates = reportStatesList.map(state => state.split('.').pop()).reduce((previousState, currentState) => { if (! previousState.includes(currentState)) previousState.push(currentState); return previousState }, new Array());
+      let shortStates = reportStatesList.map(state => state.split('.').pop()).reduce((previousState, currentState) => { if (! previousState.includes(currentState)) {previousState.push(currentState)} return previousState }, new Array());
       const graphsTemplate = shortStates.length === 1 ? (existsObject(`${graphsTemplatesFolder}.${shortStates[0]}`) ? shortStates[0] : graphsDefaultTemplate) : undefined;
       if (graphsTemplate) {
         let subMenuIndex = 0;
@@ -8700,88 +8680,39 @@ function menuButtonsArraySplitIntoButtonsPerRowsArray(user, buttonsArray) {
  * @returns {object|object[]} Newly created menu item or submenu array.
  */
 function menuMenuReIndex(inputMenu, indexPrefix) {
-  // logs('menuRow = ' + JSON.stringify(menuRow));
-  logs('indexPrefix = ' + JSON.stringify(indexPrefix));
   let newMenuRow;
-  if (Array.isArray(inputMenu)) {
-    // indexPrefix = indexPrefix && indexPrefix.length > 0 ? indexPrefix + '.' : '';
+  if (typeOf(inputMenu, 'array')) {
     newMenuRow = [];
     for (const key of inputMenu.keys()) {
-      let newMenuRowItem = {};
-      // if ((indexPrefix.length === 0) && ! menuRow[key].hasOwnProperty('id')) {
-      //   menuRow[key].id = menuRow[key].funcEnum;
-      // }
-      const indexSuffix = inputMenu[key].hasOwnProperty('id') && inputMenu[key].id && (! inputMenu[key].id.includes('.')) ? inputMenu[key].id : key;
+      const
+        newMenuRowItem = {},
+        currentInputMenuRowItem = inputMenu[key],
+        indexSuffix = currentInputMenuRowItem.hasOwnProperty('id') && currentInputMenuRowItem.id && (! currentInputMenuRowItem.id.includes('.')) ? currentInputMenuRowItem.id : key;
       newMenuRowItem.index = indexPrefix && indexPrefix.length > 0 ? [indexPrefix, indexSuffix].join('.') : indexSuffix;
-      newMenuRowItem.name = inputMenu[key].name;
-      if (inputMenu[key].hasOwnProperty('id') ) {
-        newMenuRowItem.id = inputMenu[key].id;
-      }
-      if (inputMenu[key].hasOwnProperty('accessLevel') ) {
-        newMenuRowItem.accessLevel = inputMenu[key].accessLevel;
-      }
-      if (inputMenu[key].hasOwnProperty('state') ) {
-        newMenuRowItem.state = inputMenu[key].state;
-      }
-      if (inputMenu[key].hasOwnProperty('group') ) {
-        newMenuRowItem.group = inputMenu[key].group;
-      }
-      if (inputMenu[key].hasOwnProperty('icon') ) {
-        newMenuRowItem.icon = inputMenu[key].icon;
-      }
-      if (inputMenu[key].hasOwnProperty('icons') ) {
-        newMenuRowItem.icons = inputMenu[key].icons;
-      }
-      if (inputMenu[key].hasOwnProperty('type') ) {
-        newMenuRowItem.type = inputMenu[key].type;
-      }
-      if (inputMenu[key].hasOwnProperty('funcEnum') ) {
-        newMenuRowItem.funcEnum = inputMenu[key].funcEnum;
-      }
-      if (inputMenu[key].hasOwnProperty('destEnum') ) {
-        newMenuRowItem.destEnum = inputMenu[key].destEnum;
-      }
-      if (inputMenu[key].hasOwnProperty('function') ) {
-        newMenuRowItem.function = inputMenu[key].function;
-      }
-      if (inputMenu[key].hasOwnProperty('command') ) {
-        newMenuRowItem.command = inputMenu[key].command;
-      }
-      if (inputMenu[key].hasOwnProperty('text') ) {
-        newMenuRowItem.text = inputMenu[key].text;
-      }
-      if (inputMenu[key].hasOwnProperty('externalCommand') ) {
-        newMenuRowItem.externalCommand = inputMenu[key].externalCommand;
-      }
-      if (inputMenu[key].hasOwnProperty('externalCommandParams') ) {
-        newMenuRowItem.externalCommandParams = inputMenu[key].externalCommandParams;
-      }
-      if (inputMenu[key].hasOwnProperty('externalMenu') ) {
-        newMenuRowItem.externalMenu = inputMenu[key].externalMenu;
-      }
-      if (inputMenu[key].hasOwnProperty('externalMenuParams') ) {
-        newMenuRowItem.externalMenuParams = inputMenu[key].externalMenuParams;
-      }
-      if (inputMenu[key].hasOwnProperty('subordinates') ) {
-        newMenuRowItem.subordinates = [...inputMenu[key].subordinates];
-      }
-      if (inputMenu[key].hasOwnProperty('holderId') ) {
-        newMenuRowItem.holderId = inputMenu[key].holderId;
-      }
-      if (inputMenu[key].hasOwnProperty('options') ) {
-        newMenuRowItem.options = inputMenu[key].options;
-      }
-      if (inputMenu[key].hasOwnProperty('navigationParams') ) {
-        newMenuRowItem.navigationParams = [...inputMenu[key].navigationParams];
-      }
-      if (newMenuRowItem.submenu === undefined) {
-        if (Array.isArray(inputMenu[key].submenu) && inputMenu[key].submenu.length ) {
-          newMenuRowItem.submenu = menuMenuReIndex(inputMenu[key].submenu, newMenuRowItem.index);
+      Object.keys(currentInputMenuRowItem).forEach(attributeId => {
+        switch (attributeId) {
+          case 'index':{
+            break;
+          }
+          case 'subordinates': {
+            newMenuRowItem[attributeId] = [...currentInputMenuRowItem[attributeId]];
+            break;
+          }
+          case 'submenu': {
+            if (typeOf(currentInputMenuRowItem.submenu, 'array') && currentInputMenuRowItem.submenu.length ) {
+              newMenuRowItem.submenu = menuMenuReIndex(currentInputMenuRowItem.submenu, newMenuRowItem.index);
+            }
+            else {
+              newMenuRowItem.submenu = currentInputMenuRowItem.submenu;
+            }
+            break;
+          }
+          default:
+            newMenuRowItem[attributeId] = currentInputMenuRowItem[attributeId];
+            break;
         }
-        else {
-          newMenuRowItem.submenu = inputMenu[key].submenu;
-        }
-      }
+         newMenuRowItem[attributeId] = currentInputMenuRowItem[attributeId];
+      });
       newMenuRow.push(newMenuRowItem);
     }
   }
@@ -9461,7 +9392,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         timer = setTimeout(function() {
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
           console.error(`Error! No response from external command ${currentItem} for function ${currentType}`);
-          // menuDrawOnPosition(user);
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         const commandParams = currentParam === undefined ? undefined : commandsParamsPack(commandsParamsUnpack(inputData).slice(3));
         logs(`External command ${currentItem} for function ${currentType}, with params ${commandParams}`, _l);
@@ -9547,7 +9477,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   order: Object.keys(enumerationsList[currentValue].enums).length,
                   icon: ''
                 };
-                // initMenuListItems(currentValue);
                 enumerationsSave(currentValue);
                 currentMenuPosition.splice(-2, 2, dataTypePrimaryEnums);
               }
@@ -10059,7 +9988,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           currentStateAlertDetails = alerts && alerts.hasOwnProperty(stateId) && alerts[stateId].chatIds.has(user.chatId) ? alerts[stateId].chatIds.get(user.chatId) : undefined,
                           isDifferentAlertDetails = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails);
                         if (isDifferentAlertDetails) {
-                          if ((currentStateAlertDetails && currentStateAlertDetails && (currentParam === 'alertPropagateOverwrite')) || (currentStateAlertDetails === undefined)) {
+                          if ((currentStateAlertDetails && (currentParam === 'alertPropagateOverwrite')) || (currentStateAlertDetails === undefined)) {
                             // logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l)
                             alertsManage(user, stateId, currentItem, currentParam, alertStateAlertDetails);
                           }
@@ -10201,8 +10130,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     // logs(`templateLine ${typeOf(templateLine)} = ${JSON.stringify(templateLine, null, 2)}`);
                     let currentUnit;
                     Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
-                      const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
-                      currentFuncs.sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction))).forEach(currentFuncId => {
+                      const
+                        currentSort = (a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction)),
+                        currentFuncs = Object.keys(reportStatesStructure[currentDestId]).sort(currentSort);
+                      currentFuncs.forEach(currentFuncId => {
                         const currentDeviceObjects = Object.keys(reportStatesStructure[currentDestId][currentFuncId]);
                         currentDeviceObjects.forEach(currentDeviceObject => {
                           const currentStateObjects = reportStatesStructure[currentDestId][currentFuncId][currentDeviceObject];
@@ -11614,7 +11545,7 @@ function objectKeysSort(inputObject) {
  */
 function logs(txt, debug) {
   if ((configOptions.getOption(cfgDebugMode)) || (debug !== undefined)){
-    console.log((arguments.callee.caller  ? arguments.callee.caller.name : '') + ': ' + txt);
+    console.log((arguments.callee && arguments.callee.caller  ? arguments.callee.caller.name : '') + ': ' + txt);
   }
 }
 
