@@ -6022,7 +6022,6 @@ function alertsOnSubscribedState(object) {
     // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
     let alertIsRaised = false;
     const
-      alertMessages = new Array(),
       alertObject = getObjectEnriched(objectId, '*'),
       alertDestinationId = alerts[objectId].destination,
       alertFunctionId = alerts[objectId].function,
@@ -6038,7 +6037,9 @@ function alertsOnSubscribedState(object) {
         alertStateType = alertObject.common['type'];
       alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
-        const user = chatId > 0 ? telegramUserGenerateObjectFromId(chatId) : telegramUserGenerateObjectFromId(undefined, chatId);
+        const
+          alertMessages = new Array(),
+          user = chatId > 0 ? telegramUserGenerateObjectFromId(chatId) : telegramUserGenerateObjectFromId(undefined, chatId);
         if ((chatId > 0) || (activeChatGroups.includes(chatId))) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
