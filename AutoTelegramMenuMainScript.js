@@ -132,9 +132,9 @@ const
   dataTypeIgnoreInput                   = '=====',
 
   //*** Time interval constants ***//
-  timeDelta24                           = '23:59:00',
-  timeDelta48                           = '47:59:00',
-  timeDelta96                           = '95:59:00',
+  timeDelta24                           = {hours: 23, minutes: 59, seconds: 0},
+  timeDelta48                           = {hours: 47, minutes: 59, seconds: 0},
+  timeDelta96                           = {hours: 95, minutes: 59, seconds: 0},
 
   //*** ID constants ***//
   idEnumerations                        = 'enumerations',
@@ -3607,7 +3607,6 @@ const cachedValuesStatesCommonAttributes = {
   [prefixExternalStates] : {name:"External state", type: 'json', read: true, write: true, role: 'state'},
   [cachedSentImages] : {name:"List of sent images", type: 'json', read: true, write: true, role: 'json'},
 };
-const cachedTimeDeltaParseRegExp = /^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$/;
 const cachedValuesMap = new Map();
 
 /**
@@ -3689,18 +3688,16 @@ function cachedValueGet(user, valueId, getLastChange) {
  * and check its age against an appropriate `cachedValueMaxAge`.
  * @param {object} user - The user object.
  * @param {string} valueId - The Id of cached value.
- * @param {string} cachedValueMaxAge - The string in a format 'hh:mm:ss'
+ * @param {object} cachedValueMaxAge - The object with attributed {hours, minutes, seconds}.
  * @returns {[any, boolean]} The array with cached value and boolean indicator of it's age and presence.
  */
 function cachedGetValueAndCheckItIfOld(user, valueId, cachedValueMaxAge) {
   const
     checkDate = new Date(),
-    deltaMatch = cachedValueMaxAge.match(cachedTimeDeltaParseRegExp),
-    [deltaHours, deltaMinutes, deltaSeconds] = deltaMatch ? deltaMatch : [],
     [cachedValue, cachedValueLC] = cachedValueGet(user, valueId, true);
-  if (deltaSeconds) checkDate.setSeconds(checkDate.getSeconds() - Number(deltaSeconds));
-  if (deltaMinutes) checkDate.setMinutes(checkDate.getMinutes() - Number(deltaMinutes));
-  if (deltaHours) checkDate.setHours(checkDate.getHours() - Number(deltaHours));
+  if (cachedValueMaxAge.seconds) checkDate.setSeconds(checkDate.getSeconds() - Number(cachedValueMaxAge.seconds));
+  if (cachedValueMaxAge.minutes) checkDate.setMinutes(checkDate.getMinutes() - Number(cachedValueMaxAge.minutes));
+  if (cachedValueMaxAge.hours) checkDate.setHours(checkDate.getHours() - Number(cachedValueMaxAge.hours));
   const isStateOldOrNotExists = (cachedValue === undefined) || (cachedValueLC === undefined) || (cachedValueLC <= checkDate.valueOf());
   return [cachedValue, isStateOldOrNotExists];
 }
@@ -5925,7 +5922,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
   const
     itemPos = cachedValueGet(user, cachedMenuItem),
     isMenuOn = cachedValueGet(user, cachedMenuOn),
-    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, '95:59:00');
+    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta96);
   if (isMenuOn && itemPos && (! isUserMessageOldOrNotExists) && (! isAcknowledged)) menuMenuDrawOnPosition(user, undefined, true);
 }
 
@@ -7382,13 +7379,13 @@ function simpleReportGenerate(user, menuItemToProcess) {
       let
         reportStatesStructure = simpleReportPrepareStructure(reportStatesList);
       logs(`reportStatesStructure = ${JSON.stringify(reportStatesStructure, null, 2)}`);
-      let reportLines = new Array();
+      const reportLines = new Array();
+      const currentSort = (a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction));
       Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
         const linePrefix = '- ';
         reportLines.push({label: `${linePrefix}${translationsItemTextGet(user, 'In').toLowerCase()} ${translationsGetEnumName(user, dataTypeDestination, currentDestId, enumerationsNamesInside)}`});
-        const currentFuncs = Object.keys(reportStatesStructure[currentDestId]);
-        const currentSort = (a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction));
-        currentFuncs.sort(currentSort).forEach(currentFuncId => {
+        const currentFuncs = Object.keys(reportStatesStructure[currentDestId]).sort(currentSort);
+        currentFuncs.forEach(currentFuncId => {
           if (isAlwaysExpanded || (currentFuncs.length > 1)) {
             reportLines.push({label: ` ${linePrefix}${stringCapitalize(translationsGetEnumName(user, dataTypeFunction, currentFuncId, enumerationsNamesMany))}`});
           }
@@ -8711,7 +8708,6 @@ function menuMenuReIndex(inputMenu, indexPrefix) {
             newMenuRowItem[attributeId] = currentInputMenuRowItem[attributeId];
             break;
         }
-         newMenuRowItem[attributeId] = currentInputMenuRowItem[attributeId];
       });
       newMenuRow.push(newMenuRowItem);
     }
@@ -10129,10 +10125,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     templateLine.instance = historyAdapter;
                     // logs(`templateLine ${typeOf(templateLine)} = ${JSON.stringify(templateLine, null, 2)}`);
                     let currentUnit;
+                    const currentSort = (a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction));
                     Object.keys(reportStatesStructure).sort((a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeDestination))).forEach(currentDestId => {
-                      const
-                        currentSort = (a, b) => (enumerationsCompareOrderOfItems(a, b, dataTypeFunction)),
-                        currentFuncs = Object.keys(reportStatesStructure[currentDestId]).sort(currentSort);
+                      const currentFuncs = Object.keys(reportStatesStructure[currentDestId]).sort(currentSort);
                       currentFuncs.forEach(currentFuncId => {
                         const currentDeviceObjects = Object.keys(reportStatesStructure[currentDestId][currentFuncId]);
                         currentDeviceObjects.forEach(currentDeviceObject => {
