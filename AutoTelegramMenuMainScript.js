@@ -5920,9 +5920,8 @@ function alertsInit(checkStates) {
  * @param {string} alertId - The alert Id, i.e. appropriate ioBroker state Id.
  * @param {string} alertMessage - The alert message text.
  * @param {boolean=} isAcknowledged - The alert message acknowledge status.
- * @param {any=} alertStateValue - The current value of state was raised alert.
  */
-function alertsMessagePush(user, alertId, alertMessage, isAcknowledged, alertStateValue) {
+function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
   logs(`user = ${JSON.stringify(user)}`);
   logs(`id = ${JSON.stringify(alertId)}`);
   logs(`alertMessage = ${JSON.stringify(alertMessage)}`);
@@ -5934,7 +5933,6 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged, alertSta
     // @ts-ignore
     date: (new Date()).valueOf()
   });
-  if (configOptions.getOption(cfgCheckAlertStatesOnStartUp)) alertsStoreStateValue(alertId, alertStateValue);
   alertsStoreMessagesToCache(user, alertMessages);
   const
     itemPos = cachedValueGet(user, cachedMenuItem),
@@ -6051,6 +6049,7 @@ function alertsOnSubscribedState(object) {
         alertFunctionDeviceButtonsAndAttributes = {...alertFunction.deviceAttributes, ...alertFunction.deviceButtons},
         convertValueCode = alertFunctionDeviceButtonsAndAttributes.hasOwnProperty(alertStateShortId) ? alertFunctionDeviceButtonsAndAttributes[alertStateShortId].convertValueCode : "",
         alertStateType = alertObject.common['type'];
+      if (configOptions.getOption(cfgCheckAlertStatesOnStartUp)) alertsStoreStateValue(objectId, object.state.val);
       alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
         const user = chatId > 0 ? telegramUserGenerateObjectFromId(chatId) : telegramUserGenerateObjectFromId(undefined, chatId);
@@ -6091,14 +6090,14 @@ function alertsOnSubscribedState(object) {
               if ((storedTimerOn === undefined) || (currentStateValue !== storedTimerOldValue)) {
                 alertsStoredVariables.set(idStoredTimerValue, [currentStateValue, oldStateValue]);
                 alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
-                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
+                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
                   alertsStoredVariables.delete(idStoredTimerOn);
                   alertsStoredVariables.delete(idStoredTimerValue);
                 }, onTimeInterval * 1000));
               }
             }
             else {
-              alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
+              alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
             }
           }
           else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
@@ -6138,13 +6137,13 @@ function alertsOnSubscribedState(object) {
                       alertsStoredVariables.set(idStoredTimerOn, setTimeout((idStoredTimerOn, idStoredTimerStatus) => {
                         alertsStoredVariables.delete(idStoredTimerOn);
                         alertsStoredVariables.delete(idStoredTimerStatus);
-                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
+                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
                       }, onTimeInterval * 1000));
                     }
                   }
                 }
                 else {
-                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
+                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
                 }
               });
           }
