@@ -5920,8 +5920,9 @@ function alertsInit(checkStates) {
  * @param {string} alertId - The alert Id, i.e. appropriate ioBroker state Id.
  * @param {string} alertMessage - The alert message text.
  * @param {boolean=} isAcknowledged - The alert message acknowledge status.
+ * @param {any=} alertStateValue - The current value of state was raised alert.
  */
-function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
+function alertsMessagePush(user, alertId, alertMessage, isAcknowledged, alertStateValue) {
   logs(`user = ${JSON.stringify(user)}`);
   logs(`id = ${JSON.stringify(alertId)}`);
   logs(`alertMessage = ${JSON.stringify(alertMessage)}`);
@@ -5933,6 +5934,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
     // @ts-ignore
     date: (new Date()).valueOf()
   });
+  alertsStoreStateValue(alertId, alertStateValue);
   alertsStoreMessagesToCache(user, alertMessages);
   const
     itemPos = cachedValueGet(user, cachedMenuItem),
@@ -6035,7 +6037,6 @@ function alertsOnSubscribedState(object) {
     objectId = object.id;
   if ((alerts !== undefined) && alerts.hasOwnProperty(objectId)) {
     // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
-    let alertIsRaised = false;
     const
       alertObject = getObjectEnriched(objectId, '*'),
       alertDestinationId = alerts[objectId].destination,
@@ -6052,9 +6053,7 @@ function alertsOnSubscribedState(object) {
         alertStateType = alertObject.common['type'];
       alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
-        const
-          alertMessages = new Array(),
-          user = chatId > 0 ? telegramUserGenerateObjectFromId(chatId) : telegramUserGenerateObjectFromId(undefined, chatId);
+        const user = chatId > 0 ? telegramUserGenerateObjectFromId(chatId) : telegramUserGenerateObjectFromId(undefined, chatId);
         if ((chatId > 0) || (activeChatGroups.includes(chatId))) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
@@ -6092,14 +6091,14 @@ function alertsOnSubscribedState(object) {
               if ((storedTimerOn === undefined) || (currentStateValue !== storedTimerOldValue)) {
                 alertsStoredVariables.set(idStoredTimerValue, [currentStateValue, oldStateValue]);
                 alertsStoredVariables.set(idStoredTimerOn, setTimeout(() => {
-                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
                   alertsStoredVariables.delete(idStoredTimerOn);
                   alertsStoredVariables.delete(idStoredTimerValue);
                 }, onTimeInterval * 1000));
               }
             }
             else {
-              alertMessages.push(alertMessageText);
+              alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
             }
           }
           else if ((alertStateType === 'number') && (Object.keys(detailsOrThresholds).length)) {
@@ -6139,28 +6138,21 @@ function alertsOnSubscribedState(object) {
                       alertsStoredVariables.set(idStoredTimerOn, setTimeout((idStoredTimerOn, idStoredTimerStatus) => {
                         alertsStoredVariables.delete(idStoredTimerOn);
                         alertsStoredVariables.delete(idStoredTimerStatus);
-                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
                       }, onTimeInterval * 1000));
                     }
                   }
                 }
                 else {
-                  alertMessages.push(alertMessageText);
+                  alertsMessagePush(user, objectId, alertMessageText, objectId === currentState, currentStateValue);
                 }
               });
-          }
-          alertMessages.forEach(alertMessageText => alertsMessagePush(user, objectId, alertMessageText, objectId === currentState));
-          if ((alertMessages.length > 0) && (! alertIsRaised)) {
-            alertIsRaised = true;
           }
         }
         else {
           logs(`Current chatId = ${chatId} is belong to non active chat`);
         }
       });
-      if (alertIsRaised && configOptions.getOption(cfgCheckAlertStatesOnStartUp)) {
-        alertsStoreStateValue(object.id, object.state.val);
-      }
     }
   }
 }
