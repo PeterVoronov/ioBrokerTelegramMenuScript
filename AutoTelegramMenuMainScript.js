@@ -5919,7 +5919,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged, alertSta
     // @ts-ignore
     date: (new Date()).valueOf()
   });
-  alertsStoreStateValue(alertId, alertStateValue);
+  if (configOptions.getOption(cfgCheckAlertStatesOnStartUp)) alertsStoreStateValue(alertId, alertStateValue);
   alertsStoreMessagesToCache(user, alertMessages);
   const
     itemPos = cachedValueGet(user, cachedMenuItem),
