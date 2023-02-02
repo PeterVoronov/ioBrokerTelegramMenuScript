@@ -951,7 +951,6 @@ class ConfigOptions {
                     index: `${currentIndex}.${subMenuIndex}`,
                     name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
                     icon: iconItemPlus,
-                    command: commandsParamsPack(cfgItem, optionScope),
                     options: {item: cfgItem, scope: optionScope},
                     group: 'addNew',
                     submenu: (user, menuItemToProcess) => {
@@ -3253,6 +3252,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
     const
       inputTranslation = cachedValueGet(user, cachedTranslationsToUpload),
       [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandsParamsUnpack(menuItemToProcess.command),
+      // {translationPart: currentPart} = menuItemToProcess.options,
       currentLanguage = inputTranslation ? translationsValidateLanguageId(inputTranslation.language) : '',
       currentUploadMode = menuItemToProcess.id,
       _currentVersion =  inputTranslation ? inputTranslation.version : '';
@@ -3277,6 +3277,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               icon: iconItemApply,
               group: cmdItemsProcess,
               command: commandsParamsPack(cmdEmptyCommand, dataTypeTranslation, currentUploadMode, translationPart),
+              options: {dataType: dataTypeTranslation, uploadMode: currentUploadMode, translationPart},
               function: translationsUploadMenuItemDetails,
               submenu: new Array()
             };
@@ -3288,6 +3289,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               group: cmdItemsProcess,
               function: translationsUploadMenuItemDetails,
               command: commandsParamsPack(cmdItemsProcess, dataTypeTranslation, currentUploadMode, translationPart, translationUpdateMode),
+              options: {dataType: dataTypeTranslation, uploadMode: currentUploadMode, translationPart, updateMode: translationUpdateMode},
               submenu: []
             });
 
@@ -3308,7 +3310,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
 */
 function translationsUploadMenuItemDetails(user, menuItemToProcess) {
   const
-    [_cmdId, _currentType, _currentUploadMode, currentPart, _currentMode] = commandsParamsUnpack(menuItemToProcess.command),
+    {translationPart: currentPart} = menuItemToProcess.options,
     currentItemDetailsList = [];
   if (cachedValueExists(user, cachedTranslationsToUpload)) {
     const
@@ -3380,12 +3382,13 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    translationType = `${idFunctions}.${menuItemToProcess.id}`,
+    {function: currentFunctionId, functionEnum: currentFunctionEnum,  dataType: currentDataType, translationPrefix} = menuItemToProcess.options,
+    currentTranslationPrefix = translationPrefix ? translationPrefix : `${currentFunctionEnum}.${currentFunctionId.replace('.', '_') }`,
+    translationType = `${idFunctions}.${currentTranslationPrefix}`,
     currentTranslation = translationsPointOnItemOwner(user, translationType, true),
-    currentFunctionId = menuItemToProcess.funcEnum,
     deviceAttributesListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceAttributes).map(key => key.split('.').join('_')) : [],
     deviceButtonsListKeys = currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? Object.keys(enumerationsList[dataTypeFunction].list[currentFunctionId].deviceButtons).map(key => key.split('.').join('_')) : [],
-    currentDeviceListKeys = menuItemToProcess.command === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
+    currentDeviceListKeys = currentDataType === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
 
   // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}, currentCommonPrefix = ${commonFunctionsAttributesTranslationPrefix}`, _l);
   let subMenu = [];
@@ -3420,6 +3423,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
           name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
           icon: iconItemCommon,
           command: commandsParamsPack(cmdUseCommonTranslation, dataTypeTranslation, currentTranslationId),
+          options: {dataType: dataTypeTranslation, translationId: currentTranslationId},
           submenu: [],
         });
         subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
@@ -3445,8 +3449,8 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    translationType = `${idFunctions}.${menuItemToProcess.id}`,
-    _currentFunction = menuItemToProcess.funcEnum,
+    {function: currentFunction, functionEnum: currentFunctionEnum} = menuItemToProcess.options,
+    translationType = `${idFunctions}.${currentFunctionEnum}.${currentFunction.replace('.', '_') }`,
     currentTranslation = translationsPointOnItemOwner(user, `${translationType}.destinations`, true),
     destinationItems = enumerationsList[dataTypeDestination].list;
   // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}`, _l);
@@ -3519,11 +3523,11 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
         text: ` (${translationKey})`
       };
     if (isCurrentAccessLevelAllowModify) {
-      subMenuItem.command = commandsParamsPack(cmdEmptyCommand, `${translationType}.${translationKey}`);
+      subMenuItem.options = {translationId: `${translationType}.${translationKey}`},
       subMenuItem.submenu = (user, menuItemToProcess) => {
         const
           currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          [_cmdId, translationId] = commandsParamsUnpack(menuItemToProcess.command);
+          {translationId} = menuItemToProcess.options;
         let
           subMenu = new Array(),
           subMenuIndex = 0;
@@ -3550,13 +3554,15 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
  * @returns {object[]} array of menu items.
  */
 function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
+  translationPartId = translationPartId === translationsCoreId ? '' : translationPartId;
   return [
       {
       name: translationsItemMenuGet(user, 'TranslationDownload'),
       icon: iconItemDownload,
       group: 'menuTranslationFile',
       id: doDownload,
-      command: commandsParamsPack(cmdItemDownload, translationPartId === translationsCoreId ? '' : translationPartId)
+      command: commandsParamsPack(cmdItemDownload, translationPartId),
+      options: {translationPart: translationPartId}
     },
     {
       name: translationsItemMenuGet(user, 'TranslationUpload'),
@@ -3569,7 +3575,8 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
           icon: iconItemUpload,
           group: 'menuTranslationFile',
           id: doUploadDirectly,
-          command:  commandsParamsPack(cmdItemUpload, dataTypeTranslation, doUploadDirectly, translationPartId === translationsCoreId ? '' : translationPartId),
+          command:  commandsParamsPack(cmdItemUpload, dataTypeTranslation, doUploadDirectly, translationPartId),
+          options: {dataType: dataTypeTranslation, uploadMode: doUploadDirectly, translationPart: translationPartId},
           function: translationsUploadMenuItemDetails,
           submenu: translationsMenuGenerateUploadTranslation
         },
@@ -3579,6 +3586,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
           group: 'menuTranslationFile',
           id: doUploadFromRepo,
           command:  commandsParamsPack(cmdItemUpload, dataTypeTranslation, doUploadFromRepo, translationPartId),
+          options: {dataType: dataTypeTranslation, uploadMode: doUploadFromRepo, translationPart: translationPartId},
           function: translationsUploadMenuItemDetails,
           submenu: translationsMenuGenerateUploadTranslation
         }
@@ -4289,6 +4297,7 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     [_cmdId, dataType, currentItem, dataTypeExtraId] = commandsParamsUnpack(menuItemToProcess.command),
+    // {dataType, item: currentItem, dataTypeExtra: dataTypeExtraId} = menuItemToProcess.options,
     currentEnumeration = enumerationsGetList(dataType, dataTypeExtraId),
     currentMenuItem = currentEnumeration[currentItem],
     currentMenuItemGroup = currentMenuItem ? currentMenuItem.group : '',
@@ -4305,6 +4314,7 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
             name: `[${currentGroup}]`,
             icon: currentGroup === currentMenuItemGroup ? iconItemCheckMark : '',
             command: commandsParamsPack(cmdItemPress, dataTypeGroups, currentItem, dataType, currentGroup, dataTypeExtraId),
+            options: {dataType: dataTypeGroups, item: currentItem, groupDataType: dataType, group: currentGroup, groupDataTypeExtra: dataTypeExtraId},
             submenu: []
           });
         }
@@ -4331,6 +4341,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     [_cmdId, enumerationType, currentItem, _paramToSkip, enumerationTypeExtraId, _otherParams] = commandsParamsUnpack(menuItemToProcess.command),
+    // {dataType: enumerationType, item: currentItem, dataTypeExtra: enumerationTypeExtraId} = menuItemToProcess.options,
     currentEnumerationList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
   const
     currentEnumerationItem = currentEnumerationList[currentItem],
@@ -4344,6 +4355,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         name: `${translationsItemTextGet(user, currentEnumerationItem.isEnabled ? 'SwitchOff' : 'SwitchOn')}`,
         icon: currentIcon,
         command: commandsParamsPack(cmdItemPress, enumerationType, currentItem, 'isEnabled', enumerationTypeExtraId),
+        options: {dataType: enumerationType, item: currentItem, attribute: 'isEnabled', dataTypeExtra: enumerationTypeExtraId},
         group: 'topRows',
         submenu: [],
       } );
@@ -4400,7 +4412,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           devicesMenuItem = {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'Devices')}`,
-            command: enumerationItemAttr,
             accessLevel: currentAccessLevel,
             funcEnum: currentItem,
             icon: iconItemDevice,
@@ -4417,6 +4428,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 id: enumerationItemAttr,
                 accessLevel: currentAccessLevel,
                 command: currentItem,
+                options: {item: currentItem, attribute: enumerationItemAttr},
                 icon: enumerationItemAttr === 'deviceAttributes' ? iconItemAttribute : iconItemSquareButtonBlack,
                 submenu: enumerationsMenuGenerateListOfEnumerationItems,
               });
@@ -4429,10 +4441,8 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
               accessLevel: currentAccessLevel,
-              command: enumerationItemAttr.replace('ValuesTranslation', ''),
-              funcEnum: currentItem,
+              options: {function: currentItem, functionEnum: currentEnumerationItemEnum, dataType: enumerationItemAttr.replace('ValuesTranslation', '')},
               icon: iconItemTranslation,
-              id: `${currentEnumerationItemEnum}.${currentItem.replace('.', '_') }`,
               submenu: ['deviceAttributesValuesTranslation', 'deviceButtonsValuesTranslation'] .includes(enumerationItemAttr) ?  translationsMenuGenerateFunctionStatesItems :  translationsMenuGenerateFunctionDeviceItems,
             });
             break;
@@ -4891,7 +4901,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
             name: `${translationsItemMenuGet(user, 'commonStatesTranslation')}`,
             icon: iconItemCommon,
             accessLevel: currentAccessLevel,
-            id: `${translationsCommonFunctionsAttributesPrefix}`,
+            options: {translationPrefix: translationsCommonFunctionsAttributesPrefix},
             submenu: translationsMenuGenerateFunctionStatesItems,
           });
           break;
