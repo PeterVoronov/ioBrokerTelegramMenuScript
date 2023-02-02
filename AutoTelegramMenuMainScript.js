@@ -10757,7 +10757,6 @@ function telegramMessageQueueProcess(user, messageId) {
           }
         }
         console.warn(`Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({...user, rootMenu : null})})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(telegramLastUserError, null, 2)}.`);
-        console.log(`telegramLastUserError.hasOwnProperty['error'] = ${telegramLastUserError.hasOwnProperty['error']}, (telegramLastUserError.error.level === ${telegramErrorLevelFatal}) = ${(telegramLastUserError.error.level === telegramErrorLevelFatal)}, = ${(telegramLastUserError && telegramLastUserError.hasOwnProperty['error'] && (telegramLastUserError.error.level === telegramErrorLevelFatal))}`);
         if (telegramLastUserError && telegramLastUserError.hasOwnProperty['error'] && (telegramLastUserError.error.level === telegramErrorLevelFatal)) {
           console.warn(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
