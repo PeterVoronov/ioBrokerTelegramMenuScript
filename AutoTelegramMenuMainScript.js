@@ -10720,7 +10720,7 @@ function telegramMessageQueueProcess(user, messageId) {
   function telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, waitForLog) {
     let
       userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue),
-      telegramLastUserError;
+      telegramError;
     const currentTS = Date.now();
     if (! result) {
       if (waitForLog) {
@@ -10730,15 +10730,30 @@ function telegramMessageQueueProcess(user, messageId) {
         telegramDelayToCatchLog);
       }
       else {
-        // logs(`telegramLastErrors = ${JSON.stringify(telegramLastErrors)}, ${telegramLastErrors.hasOwnProperty(`${user.chatId}`)}`, _l)
-        if (telegramLastErrors && telegramLastErrors.hasOwnProperty(`${user.chatId}`) && telegramLastErrors[`${user.chatId}`]) {
-          telegramLastUserError = telegramLastErrors[`${user.chatId}`];
-          if ((telegramLastUserError.ts < sendToTS) || (telegramLastUserError.ts > currentTS)) {
-            telegramLastUserError = null;
+        // logs(`telegramLastErrors = ${JSON.stringify(telegramLastErrors, JSONReplacerWithMap)}}`, _l)
+        if (telegramLastErrors && telegramLastErrors.size) {
+          if ((user.chatId > 0) && telegramLastErrors.has(user.chatId)) {
+            telegramError = telegramLastErrors.get(user.chatId);
+            if ((telegramError.ts < sendToTS) || (telegramError.ts > currentTS)) {
+              telegramError = null;
+            }
+            else {
+              telegramLastErrors.delete(user.chatId);
+            }
+          }
+          else if ((user.chatId < 0) && telegramLastErrors.has(0)) {
+            const groupChatErrors = telegramLastErrors.get(0);
+            if (typeOf(groupChatErrors, 'array') && groupChatErrors.length) {
+              const errorIndex = groupChatErrors.findIndex(error => ((error.ts >= sendToTS) && (error.ts < currentTS)));
+              if (errorIndex >= 0) {
+                telegramError = groupChatErrors[errorIndex];
+                groupChatErrors.splice(errorIndex, 1);
+              }
+            }
           }
         }
-        console.warn(`Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({...user, rootMenu : null})})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(telegramLastUserError, null, 2)}.`);
-        if (telegramLastUserError && telegramLastUserError.hasOwnProperty['error'] && (telegramLastUserError.error.level === telegramErrorLevelFatal)) {
+        console.warn(`Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({...user, rootMenu : null})})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(telegramError, null, 2)}.`);
+        if (telegramError && telegramError.hasOwnProperty('error') && (telegramError.error.level === telegramErrorLevelFatal)) {
           console.warn(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
             console.warn(`Retrying message send.`);
@@ -10746,11 +10761,11 @@ function telegramMessageQueueProcess(user, messageId) {
           },
           telegramDelayToSendReTry);
         }
-        else if (telegramLastUserError && telegramLastUserError.hasOwnProperty['error'] && (telegramLastUserError.error.level === telegramErrorLevelTelegram) && telegramObject && telegramObject.hasOwnProperty(telegramLastUserError.command)) {
+        else if (telegramError && telegramError.hasOwnProperty['error'] && (telegramError.error.level === telegramErrorLevelTelegram) && telegramObject && telegramObject.hasOwnProperty(telegramError.command)) {
           const
             [currentMessageId, isCurrentMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48);
-          if ((! isCurrentMessageOldOrNotExists ) && (currentMessageId != telegramObject[telegramLastUserError.command].options.message_id) ) {
-            telegramObject[telegramLastUserError.command].options.message_id = currentMessageId;
+          if ((! isCurrentMessageOldOrNotExists ) && (currentMessageId != telegramObject[telegramError.command].options.message_id) ) {
+            telegramObject[telegramError.command].options.message_id = currentMessageId;
             sendTo(telegramAdapter, telegramObject, result => {telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true)});
           }
           else {
@@ -10960,8 +10975,8 @@ function telegramMessageDisplayPopUp(user, text, showAlert) {
 let telegramIsConnected = false;
 const
   telegramQueuesIsWaitingConnection = [],
-  telegramLastErrors = {},
-  telegramErrorParseRegExp = /^telegram.\d\s+\(\d+\)\s+Cannot\s+send\s+(\w+)\s+\[chatId\s-\s(-?\d+)\]:\s+Error:\s(\w+?):\s(.+?):\s(.+)$/,
+  telegramLastErrors = new Map(),
+  telegramErrorParseRegExp = /^telegram.\d\s+\(\d+\)\s+Cannot\s+send\s+(\w+)\s+\[(chatId|user)\s-\s(-?\d+|\w+)\]:\s+Error:\s(\w+?):\s(.+?):\s(.+)$/,
   telegramCommandEditMessage = 'editMessageText',
   telegramCommandDeleteMessage = 'deleteMessage',
   telegramErrorLevelFatal = 'EFATAL',
@@ -11012,19 +11027,32 @@ function telegramOnLogError(logRecord) {
   if (typeOf(logRecord, 'object') && logRecord.hasOwnProperty('from') && (logRecord.from === telegramAdapter)) {
     try {
       const telegramErrorParsed = telegramErrorParseRegExp.exec(logRecord.message);
-      if (telegramErrorParsed && (telegramErrorParsed.length === 6) &&
-        // @ts-ignore
-        (! isNaN(telegramErrorParsed[2]))) {
-        telegramLastErrors[telegramErrorParsed[2]] = {
-          ts: logRecord.ts,
-          command: telegramErrorParsed[1],
-          error: {
-            level: telegramErrorParsed[3],
-            info: telegramErrorParsed[4],
-            message: telegramErrorParsed[5]
+      if (telegramErrorParsed && (telegramErrorParsed.length === 7)){
+        const
+          // @ts-ignore
+          chatId = isNaN(telegramErrorParsed[3]) ? 0 : Number(telegramErrorParsed[3]),
+          errorMessage = {
+            ts: logRecord.ts,
+            command: telegramErrorParsed[1],
+            chatId: chatId,
+            error: {
+              level: telegramErrorParsed[4],
+              info: telegramErrorParsed[5],
+              message: telegramErrorParsed[6]
+            }
+          };
+        if (chatId) {
+          telegramLastErrors.set(chatId, errorMessage);
+        }
+        else {
+
+          if (! telegramLastErrors.has(chatId)) {
+            telegramLastErrors.set(chatId, []);
           }
-        };
-        // logs(`telegramLastErrors[${telegramErrorParsed[2]}] = ${JSON.stringify(telegramLastErrors[telegramErrorParsed[2]])}`, _l)
+          const currentErrors = telegramLastErrors.get(chatId);
+          currentErrors.push(errorMessage);
+        }
+        // logs(`error = ${telegramErrorParsed} = ${JSON.stringify(telegramLastErrors, JSONReplacerWithMap)}`, _l)
       }
     }
     catch (error) {
