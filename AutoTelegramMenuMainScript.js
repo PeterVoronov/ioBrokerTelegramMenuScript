@@ -8358,9 +8358,11 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
         let callbackData = menuItemButtonPrefix + currentSubIndex;
         if (currentSubMenuItem.hasOwnProperty('command') && (typeof(currentSubMenuItem.command) === 'string') && (currentSubMenuItem.command.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.command !== cmdPrefix)) {
             callbackData = currentSubMenuItem.command;
+            // if (currentSubMenuItem.options) callbackData = commandsParamsPack(commandsParamsUnpack(currentSubMenuItem.command)[0], JSON.stringify({options: currentSubMenuItem.options}));
         }
         else if (currentSubMenuItem.hasOwnProperty('externalCommand')) {
           callbackData = commandsParamsPack(cmdExternalCommand, currentSubMenuItem.funcEnum, currentSubMenuItem.externalCommand, currentSubMenuItem.externalCommandParams);
+          // callbackData = commandsParamsPack(cmdExternalCommand, JSON.stringify({options: {function: currentSubMenuItem.funcEnum, item: currentSubMenuItem.externalCommand, attribute: currentSubMenuItem.externalCommandParams}}));
         }
         if (callbackData.length > 64) {
           callbackDataToCache.set(currentSubIndex, callbackData);
