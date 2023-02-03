@@ -5200,16 +5200,13 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     }
   });
   if (isCurrentAccessLevelNonSilent) {
-    const alertSubscribeItem = alertsMenuItemGenerateSubscribedOn(`${currentIndex}.${subMenuIndex}`, `${translationsItemCoreGet(user, cmdAlertSubscribe)}`, primaryStateId, undefined, commandsParamsPack(cmdAlertSubscribe, primaryStateId, currentFunctionId, currentDestinationId));
+    const alertSubscribeItem = alertsMenuItemGenerateSubscribedOn(`${currentIndex}.${subMenuIndex}`, `${translationsItemCoreGet(user, cmdAlertSubscribe)}`, primaryStateId, undefined, commandsParamsPack(cmdAlertSubscribe, primaryStateId, currentFunctionId, currentDestinationId), {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId});
     if (alertSubscribeItem) {
       subMenuIndex = subMenu.push(alertSubscribeItem);
     }
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, 'AlertsSubscriptionExtended')}`,
-      command: primaryStateId,
-      destEnum: currentDestinationId,
-      funcEnum: currentFunctionId,
       options: {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId},
       accessLevel: currentAccessLevel,
       icon: iconItemAlerts,
@@ -6194,7 +6191,6 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${alertDate}: ${alertMessage.message}`,
       icon: alertMessage.ack ? iconItemAlertOff : iconItemAlertOn,
-      command: alertIndex,
       options: {[menuOptionHorizontalNavigation]: true},
       submenu: []
     });
@@ -6240,7 +6236,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     currentDestId = menuItemToProcess.destEnum,
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    currentObjectIndex = menuItemToProcess.command;
+    {item: currentObjectIndex} = menuItemToProcess.options;
   let
     alertsBy = {},
     subMenu = [];
@@ -6349,7 +6345,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             funcEnum: currentFuncId,
             destEnum: currentDestId,
             accessLevel: currentAccessLevel,
-            command: objectsIdList[objectId]['index'],
+            options: {item: objectsIdList[objectId]['index']},
             submenu: alertsMenuGenerateSubscribed
           });
         });
@@ -6407,10 +6403,11 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth) {
  * @param {string} itemState - The related ioBroker state.
  * @param {object} itemStateObject - The related ioBroker state object (can be `undefined`).
  * @param {string} itemParam - The additional command params.
+ * @param {object} itemOptions - The menu item object options.
  * @param {boolean=} isExtraMenu - The selector to show more detailed params.
  * @returns {object} Menu item object.
  */
-function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, itemStateObject, itemParam, isExtraMenu) {
+function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, itemStateObject, itemParam, itemOptions, isExtraMenu) {
   let menuItem;
   if ((itemStateObject === undefined) || (itemStateObject === null)) itemStateObject = getObjectEnriched(itemState);
   if (itemStateObject && itemStateObject.hasOwnProperty('common') && itemStateObject.common) {
@@ -6421,7 +6418,8 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
       state: itemState,
       icons: alertsGetIcon,
       group: 'alerts',
-      command: itemParam
+      command: itemParam,
+      options: itemOptions
     };
     let isNumericString = false;
     if (configOptions.getOption(cfgThresholdsForNumericString)) {
@@ -6439,7 +6437,6 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
       (itemStateObject.common.hasOwnProperty('states') && (['string','number'].includes(itemStateType) ))
     ) {
       if (isExtraMenu) {
-        menuItem.command = commandsParamsPack(cmdEmptyCommand, ...commandsParamsUnpack(itemParam).slice(1));
         menuItem['submenu'] = alertsMenuGenerateManageBoolean;
       }
       else {
@@ -6447,7 +6444,6 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
       }
     }
     else if ((itemStateType === 'number') || isNumericString) {
-      menuItem.command = commandsParamsPack(cmdEmptyCommand, ...commandsParamsUnpack(itemParam).slice(1));
       menuItem['submenu'] = alertsMenuGenerateManageNumeric;
     }
     else {
@@ -6469,7 +6465,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
-    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandsParamsUnpack(menuItemToProcess.command),
+    {function: currentFunctionId, destination: currentDestinationId, state: currentStateId} = menuItemToProcess.options,
     alerts = alertsGet(),
     alertIsOn = alerts && alerts.hasOwnProperty(currentStateId) && alerts[currentStateId].chatIds.has(user.chatId),
     [currentAlertDetails, currentStateAlertDetails] = alertIsOn ? alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true) : [{}, {}],
@@ -6484,7 +6480,6 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
     name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
     icon: iconItemEdit,
     group: alertMessageTemplateId,
-    command: commandsParamsPack(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
     submenu: [
       menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
       menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
@@ -6499,6 +6494,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
       group: cmdItemsProcess,
       state: currentStateId,
       command: commandsParamsPack(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
+      options: {function: currentFunctionId, destination: currentDestinationId, state: currentStateId},
       submenu: [],
     }
   );
@@ -6519,7 +6515,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
-    [_cmdId, currentStateId, currentFunctionId, currentDestinationId] = commandsParamsUnpack(menuItemToProcess.command),
+    {function: currentFunctionId, destination: currentDestinationId, state: currentStateId} = menuItemToProcess.options,
     currentStateObject = getObjectEnriched(currentStateId),
     currentStateUnits = currentStateObject && currentStateObject.hasOwnProperty('common') && currentStateObject.common && currentStateObject.common.hasOwnProperty('unit') && currentStateObject.common.unit ? ` ${currentStateObject.common.unit}` : '',
     [currentThresholds, currentStateAlertThresholds] = alertsGetStateAlertDetailsOrThresholds(user, currentStateId, true);
@@ -6545,6 +6541,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       icon: currentThreshold.onAbove ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
       group: 'borders',
       command: commandsParamsPack((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onAbove) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onAbove'),
+      options: {dataType: dataTypeAlertSubscribed, state: currentStateId, item: subMenuIndex, mode: 'onAbove'},
       submenu: [],
     });
     subSubMenuIndex = subMenuItem.submenu.push({
@@ -6553,6 +6550,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       icon: currentThreshold.onLess ? configOptions.getOption(cfgDefaultIconOn, user) :  configOptions.getOption(cfgDefaultIconOff, user) ,
       group: 'borders',
       command: commandsParamsPack((currentThreshold.onAbove === currentThreshold.onLess) || (! currentThreshold.onLess) ? cmdItemPress : cmdNoOperation, dataTypeAlertSubscribed, currentStateId, subMenuIndex, 'onLess'),
+      options: {dataType: dataTypeAlertSubscribed, state: currentStateId, item: subMenuIndex, mode: 'onLess'},
       submenu: [],
     });
     subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, 'thresholdOn', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
@@ -6561,7 +6559,6 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentThreshold.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
       icon: iconItemEdit,
       group: alertMessageTemplateId,
-      command: commandsParamsPack(cmdEmptyCommand, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
       submenu: [
         menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
         menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId)
@@ -6581,6 +6578,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
         group: cmdItemsProcess,
         state: currentStateId,
         command: commandsParamsPack(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId),
+        options: {function: currentFunctionId, destination: currentDestinationId, state: currentStateId},
         submenu: [],
       }
     );
@@ -6598,10 +6596,12 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
  * @param {object} user - The user object.
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
+ * @param {string} currentStateId - The current state ID.
+ * @param {string} currentFunctionId - The current Function ID.
+ * @param {string} currentDestinationId - The current Destination ID.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
-function alertMenuItemGenerateAlertPropagation(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
+function alertMenuItemGenerateAlertPropagation(user, upperMenuItemIndex, subMenuItemIndex, currentStateId, currentFunctionId, currentDestinationId) {
   const subMenuItem =  {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemMenuGet(user, 'alertPropagate')}`,
@@ -6623,7 +6623,8 @@ function alertMenuItemGenerateAlertPropagation(user, upperMenuItemIndex, subMenu
         index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuItemIndex}.${subSubSubMenuItemIndex}`,
         name: `${translationsItemMenuGet(user, alertPropagateOption)}`,
         icon: '',
-        command: commandsParamsPack(cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, ...commandParams),
+        command: commandsParamsPack(cmdItemsProcess, dataTypeAlertSubscribed, alertPropagateDistribution, alertPropagateOption, currentStateId, currentFunctionId, currentDestinationId),
+        options: {dataType: alertPropagateDistribution, mode: alertPropagateDistribution, function: currentFunctionId, destination: currentDestinationId, state: currentStateId},
         submenu: []
       });
     });
@@ -6679,7 +6680,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
                 const
                   stateIndex = `${currentIndex}.${subMenuIndex}`,
                   stateName = `${translationsGetObjectName(user, currentStateObject, currentFunctionId)}`,
-                  subMenuItem = alertsMenuItemGenerateSubscribedOn(stateIndex, stateName, currentStateId, currentStateObject, commandsParamsPack(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId), true);
+                  subMenuItem = alertsMenuItemGenerateSubscribedOn(stateIndex, stateName, currentStateId, currentStateObject, commandsParamsPack(cmdAlertSubscribe, currentStateId, currentFunctionId, currentDestinationId), {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId}, true);
                 if (subMenuItem) {
                   // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 1)}`, _l)
                   subMenuIndex = subMenu.push(subMenuItem);
@@ -6737,6 +6738,7 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
         icon: iconItemBackupCreate,
         id: backupModeCreate,
         command: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? commandsParamsPack(cmdItemsProcess, dataTypeBackup, backupModeCreate) : cmdNoOperation,
+        options: {dataType: dataTypeBackup, mode: backupModeCreate},
         submenu: []
     });
     if (backupFiles.length) {
@@ -6747,7 +6749,9 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
         id: backupModeRestore,
         submenu: new Array()
       };
-      const restoreSubSubMenu = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? backupMenuGenerateRestore : [];
+      const
+        restoreSubSubMenu = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? backupMenuGenerateRestore : [],
+        restoreSubCommand = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? {} : {command: cmdNoOperation};
       backupFiles.forEach((fileName, fileIndex) => {
         const
           backupFileDetails = fileName.match(backupFileMask),
@@ -6757,8 +6761,9 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}.${fileIndex}`,
             name: `${backupDate} ${backupTime.split('-').join(':')} [${backupMode}]`,
             // icon: iconItemBackupCreate,
-            command: MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0 ? fileName : cmdNoOperation,
+            options: {fileName},
             submenu: restoreSubSubMenu,
+            ...restoreSubCommand
           });
         }
       });
@@ -6779,7 +6784,7 @@ function backupMenuGenerateRestore(user, menuItemToProcess) {
   // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, _l);
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    currentParam = menuItemToProcess.command;
+    {fileName} = menuItemToProcess.options;
   let
     subMenu = [],
     subMenuIndex = 0;
@@ -6788,11 +6793,12 @@ function backupMenuGenerateRestore(user, menuItemToProcess) {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, backupModeRestore, backupRestoreItemsList[backupItem])}`,
       icon: iconItemBackupRestore,
-      command: commandsParamsPack(cmdItemsProcess, dataTypeBackup, backupModeRestore, currentParam, backupItem),
+      command: commandsParamsPack(cmdItemsProcess, dataTypeBackup, backupModeRestore, fileName, backupItem),
+      options: {dataType: dataTypeBackup, mode: backupModeRestore, fileName, item: backupItem},
       submenu: []
     });
   });
-  subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, dataTypeBackup, currentParam));
+  subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, dataTypeBackup, fileName));
   return subMenu;
 }
 
@@ -7092,13 +7098,13 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
       index: `${currentIndex}.${memberId}`,
       name: `${translationsItemMenuGet(user, 'ReportMarkNewStates')}`,
       icon: enumerationsList[dataTypeReport].icon,
-      command: reportId,
+      options: {item: reportId},
       /** submenu function for collecting query params (dests, states, roles) */
       submenu: (user, menuItemToProcess) => {
         logs(`(${user}, menuItemToProcess)`);
         const
           currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          reportId = menuItemToProcess.command;
+          {item: reportId} = menuItemToProcess.options;
         let
           subMenuIndex = 0,
           subMenu = [];
@@ -7122,6 +7128,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 name: `${translationsGetEnumName(user, dataTypeDestination, key)}`,
                 icon: queryDests.includes(key) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].list[key].icon,
                 command: commandsParamsPack(cmdItemMark, dataTypeReportMember, dataTypeDestination, key),
+                options: {dataType: dataTypeReportMember, itemType: dataTypeDestination, item: key},
                 submenu: []
               });
             });
@@ -7133,13 +7140,15 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineState')} (${queryState})`,
           icon: iconItemEdit,
           command: commandsParamsPack(cmdGetInput, dataTypeReportMember, 'queryState'),
+          options: {dataType: dataTypeReportMember, item: 'queryState'},
           submenu: []
         });
         subMenuIndex = subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineRole')} (${queryRole})`,
           icon: iconItemEdit,
-          command: commandsParamsPack(cmdGetInput, dataTypeReportMember, 'queryRole', 2),
+          command: commandsParamsPack(cmdGetInput, dataTypeReportMember, 'queryRole'),
+          options: {dataType: dataTypeReportMember, item: 'queryRole'},
           submenu: [],
         });
         if (queryRole || queryState) {
@@ -7147,13 +7156,13 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'ReportNewStatesStartSearch')}`,
             icon: enumerationsList[dataTypeReport].icon,
-            command: reportId,
+            options: {item: reportId},
             /** submenu function for selecting states from a query result and assigning them to report */
             submenu: (user, menuItemToProcess) => {
               logs(`(${user}, menuItemToProcess)`);
               const
                 currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-                reportId = menuItemToProcess.command;
+                {item: reportId} = menuItemToProcess.options;
               let
                 {queryDests, queryState, queryRole, queryStates, queryPossibleStates} = cachedValueGet(user, cachedSimpleReportNewQuery),
                 subMenu = [],
@@ -7197,6 +7206,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                         name: `${translationsItemMenuGet(user, 'ItemMarkUnMark')}`,
                         icon: queryStates.includes(id) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].icon,
                         command: commandsParamsPack(cmdItemMark, dataTypeReportMember, 'states', queryPossibleStates.length),
+                        options: {dataType: dataTypeReportMember, itemType: 'states', item: queryPossibleStates.length},
                         submenu: []
                       }
                     ]
@@ -7212,6 +7222,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 icon: configOptions.getOption(cfgDefaultIconOn, user),
                 group: cmdItemsProcess,
                 command: commandsParamsPack(cmdItemsProcess, dataTypeReportMember, reportId, 'marked'),
+                options: {dataType: dataTypeReportMember, item: reportId, mode: 'marked'},
                 submenu: []
               });
               subMenuIndex = subMenu.push({
@@ -7219,6 +7230,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 name: `${translationsItemMenuGet(user, 'ItemsProcessAll')}`,
                 icon: enumerationsList[dataTypeReport].icon,
                 command: commandsParamsPack(cmdItemsProcess, dataTypeReportMember, reportId, doAll),
+                options: {dataType: dataTypeReportMember, item: reportId, mode: doAll},
                 submenu: []
               });
               logs(`statesArray = ${JSON.stringify(queryPossibleStates)}`);
@@ -7244,6 +7256,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             name: `${translationsItemCoreGet(user, 'cmdFixId')}`,
             icon: iconItemEdit,
             command: commandsParamsPack(cmdGetInput, dataTypeReport, '', 'fixId'),
+            options: {dataType: dataTypeReport, mode: 'fixId'},
             submenu: [],
           }
         );
@@ -7255,6 +7268,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${simpleReportId}'`,
             icon: enumerationsList[dataTypeReport].icon,
             command: commandsParamsPack(cmdCreateReportEnum, dataTypeReport, simpleReportId, enumId),
+            options: {dataType: dataTypeReport, item: simpleReportId, enum: enumId},
             submenu: [],
           }
         );
@@ -7268,6 +7282,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           name: `${translationsItemCoreGet(user, 'cmdSetId')}`,
           icon: iconItemEdit,
           command: commandsParamsPack(cmdGetInput, dataTypeReport, '', 'setId'),
+          options: {dataType: dataTypeReport, mode: 'setId'},
           submenu: [],
         }
       );
@@ -7451,7 +7466,8 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
               name: `${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}`,
               icon: iconItemChart,
               group: cmdItemsProcess,
-              command: commandsParamsPack(cmdItemsProcess, dataTypeGraph, graphsTemplate, dataTypeReport, graphsIntervalMinutes, reportId)
+              command: commandsParamsPack(cmdItemsProcess, dataTypeGraph, graphsTemplate, dataTypeReport, graphsIntervalMinutes, reportId),
+              options: {dataType: dataTypeGraph, itemType: dataTypeReport, item: reportId, template: graphsTemplate, graphsInterval: graphsIntervalMinutes}
             });
           });
         }
