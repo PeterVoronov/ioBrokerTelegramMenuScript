@@ -8358,17 +8358,29 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
         let callbackData = menuItemButtonPrefix + currentSubIndex;
         if (currentSubMenuItem.hasOwnProperty('command') && (typeof(currentSubMenuItem.command) === 'string') && (currentSubMenuItem.command.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.command !== cmdPrefix)) {
             callbackData = currentSubMenuItem.command;
+            /**
+             * Preparation for full options implementation
+             */
             // if (currentSubMenuItem.options) callbackData = commandsParamsPack(commandsParamsUnpack(currentSubMenuItem.command)[0], JSON.stringify({options: currentSubMenuItem.options}));
+            /** */
         }
         else if (currentSubMenuItem.hasOwnProperty('externalCommand')) {
           callbackData = commandsParamsPack(cmdExternalCommand, currentSubMenuItem.funcEnum, currentSubMenuItem.externalCommand, currentSubMenuItem.externalCommandParams);
+          /**
+           * Preparation for full options implementation
+           */
           // callbackData = commandsParamsPack(cmdExternalCommand, JSON.stringify({options: {function: currentSubMenuItem.funcEnum, item: currentSubMenuItem.externalCommand, attribute: currentSubMenuItem.externalCommandParams}}));
+          /** */
         }
         if (callbackData.length > 64) {
           callbackDataToCache.set(currentSubIndex, callbackData);
           callbackData = commandsParamsPack(cmdCached, currentSubIndex);
-          // console.error(`Callback_data max possible length exceed! subMenuItem: \n${JSON.stringify(currentSubMenuItem, null, 2)}`);
-          // callbackData = cmdNoOperation;
+          /**
+           * Preparation for full options implementation
+           */
+          // callbackDataToCache.set(currentSubIndex, currentSubMenuItem.options);
+          // callbackData = commandsParamsPack(commandsParamsUnpack(currentSubMenuItem.command)[0], JSON.stringify({options: {cachedId: currentSubIndex}}));
+          /** */
         }
         preparedMessageObject.buttons.push({
           text:  `${menuMenuItemGetIcon(user, currentSubMenuItem)}${currentSubMenuItem.name}`,
@@ -8381,6 +8393,11 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
           text:  `${iconItemPrevious}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
           group: 'offset',
           callback_data: commandsParamsPack(cmdSetOffset, currentIndex, buttonsOffset - maxButtonsCount)
+          /**
+           * Preparation for full options implementation
+           */
+          // callback_data: commandsParamsPack(cmdSetOffset, JSON.stringify{{options:{index: currentIndex, offset: buttonsOffset - maxButtonsCount}}})
+          /** */
         });
       }
       if (buttonsCount > maxButtonsCount) {
@@ -8388,6 +8405,11 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
           text:  `${iconItemNext}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
           group: 'offset',
           callback_data: commandsParamsPack(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
+          /**
+           * Preparation for full options implementation
+           */
+          // callback_data: commandsParamsPack(cmdSetOffset, JSON.stringify{{options:{index: currentIndex, offset: buttonsOffset + maxButtonsCount}}})
+          /** */
         });
       }
       if (preparedMessageObject.navigationLeft !== undefined) {
@@ -8395,6 +8417,11 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
           text:  `${iconItemMoveLeft}`,
           group: menuOptionHorizontalNavigation,
           callback_data: commandsParamsPack(cmdItemJumpTo, [jumpToUp, preparedMessageObject.navigationLeft].join('.'))
+          /**
+           * Preparation for full options implementation
+           */
+          // callback_data: commandsParamsPack(cmdSetOffset, JSON.stringify{{options:{jumpToArray: [jumpToUp, preparedMessageObject.navigationLeft]}})
+          /** */
         });
       }
       if (preparedMessageObject.navigationRight !== undefined) {
@@ -8402,6 +8429,11 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
           text:  `${iconItemMoveRight}`,
           group: menuOptionHorizontalNavigation,
           callback_data: commandsParamsPack(cmdItemJumpTo, [jumpToUp, preparedMessageObject.navigationRight].join('.'))
+          /**
+           * Preparation for full options implementation
+           */
+          // callback_data: commandsParamsPack(cmdSetOffset, JSON.stringify{{options:{jumpToArray: [jumpToUp, preparedMessageObject.navigationRight]}})
+          /** */
         });
       }
       // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
@@ -9385,7 +9417,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
         if (menuMessageObject.menutext) {
           menuMessageObject.menutext += botMessageStamp;
-        cachedValueSet(user, cachedIsWaitForInput, inputData);
+          cachedValueSet(user, cachedIsWaitForInput, inputData);
           telegramMessageFormatAndPushToMessageQueue(user, menuMessageObject, false, false, false);
         }
         else {
