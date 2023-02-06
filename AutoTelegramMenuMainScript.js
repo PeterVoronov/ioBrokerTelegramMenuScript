@@ -124,6 +124,7 @@ const
   dataTypeStateValue                    = 'stateV',
   dataTypeMenuRoles                     = 'mRoles',
   dataTypeMenuRoleRules                 = 'mRoleR',
+  dataTypeMenuRoleRulesMask             = 'mRoleRM',
   dataTypeMenuUsers                     = 'mUsers',
   dataTypeMenuUserRoles                 = 'mUserR',
   dataTypeGraph                         = 'graph',
@@ -1761,8 +1762,8 @@ class MenuRoles {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `[${currentMask}]`,
           icon: currentMask === savedMask ? iconItemSquareButton : iconItemButton,
-          command: commandsParamsPack(cmdItemMark, dataTypeMenuRoleRules, currentMask),
-          options: {dataType: dataTypeMenuRoleRules, mask: currentMask},
+          command: cmdItemMark,
+          options: {dataType: dataTypeMenuRoleRulesMask, item: currentMask},
           submenu: []
         });
       });
@@ -1848,8 +1849,8 @@ class MenuRoles {
         index: `${currentIndex}.${subIndex}`,
         name: `[${currentMask}]`,
         icon: currentMask === savedRule.mask ? iconItemSquareButton : iconItemButton,
-        command: commandsParamsPack(cmdItemMark, dataTypeMenuRoleRules, currentMask),
-        options: {dataType: dataTypeMenuRoleRules, mask: currentMask},
+        command: cmdItemMark,
+        options: {dataType: dataTypeMenuRoleRulesMask, item: currentMask},
         submenu: []
       });
       subIndex = resultItem.submenu.push({
@@ -3559,7 +3560,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
       icon: iconItemDownload,
       group: 'menuTranslationFile',
       id: doDownload,
-      command: commandsParamsPack(cmdItemDownload, translationPartId),
+      command: cmdItemDownload,
       options: {translationPart: translationPartId}
     },
     {
@@ -7127,7 +7128,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsGetEnumName(user, dataTypeDestination, key)}`,
                 icon: queryDests.includes(key) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].list[key].icon,
-                command: commandsParamsPack(cmdItemMark, dataTypeReportMember, dataTypeDestination, key),
+                command: cmdItemMark,
                 options: {dataType: dataTypeReportMember, itemType: dataTypeDestination, item: key},
                 submenu: []
               });
@@ -7205,7 +7206,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                         index: `${currentIndex}.${subMenuIndex-1}.${index}`,
                         name: `${translationsItemMenuGet(user, 'ItemMarkUnMark')}`,
                         icon: queryStates.includes(id) ? configOptions.getOption(cfgDefaultIconOn, user) : enumerationsList[dataTypeDestination].icon,
-                        command: commandsParamsPack(cmdItemMark, dataTypeReportMember, 'states', queryPossibleStates.length),
+                        command: cmdItemMark,
                         options: {dataType: dataTypeReportMember, itemType: 'states', item: queryPossibleStates.length},
                         submenu: []
                       }
@@ -9962,24 +9963,24 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeReportMember: {
             let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
             queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
-            switch (currentItem) {
+            switch (commandOptions.itemType) {
               case dataTypeDestination:
-                if (queryParams.queryDests.includes(currentParam) ) {
-                  delete queryParams.queryDests[queryParams.queryDests.indexOf(currentParam)];
+                if (queryParams.queryDests.includes(commandOptions.item) ) {
+                  delete queryParams.queryDests[queryParams.queryDests.indexOf(commandOptions.item)];
                 }
                 else {
-                  queryParams.queryDests.push(currentParam);
+                  queryParams.queryDests.push(commandOptions.item);
                 }
                 queryParams.queryStates = [];
                 queryParams.queryPossibleStates = [];
                 break;
 
               case 'states':
-                if (queryParams.queryStates.includes(queryParams.queryPossibleStates[currentParam])) {
-                  delete queryParams.queryStates[queryParams.queryStates.indexOf(queryParams.queryPossibleStates[currentParam])];
+                if (queryParams.queryStates.includes(queryParams.queryPossibleStates[commandOptions.item])) {
+                  delete queryParams.queryStates[queryParams.queryStates.indexOf(queryParams.queryPossibleStates[commandOptions.item])];
                 }
                 else {
-                  queryParams.queryStates.push(queryParams.queryPossibleStates[currentParam]);
+                  queryParams.queryStates.push(queryParams.queryPossibleStates[commandOptions.item]);
                 }
                 currentMenuPosition.splice(-1);
                 break;
@@ -9996,13 +9997,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             break;
           }
 
-          case dataTypeMenuRoleRules: {
+          case dataTypeMenuRoleRulesMask: {
             const currentRule = cachedValueExists(user, cachedRolesNewRule) ? cachedValueGet(user, cachedRolesNewRule) : {mask: rolesMaskAnyItem, accessLevel: ''};
-            if (currentRule['mask'] === currentItem) {
+            if (currentRule['mask'] === commandOptions.item) {
               currentRule['mask'] = rolesMaskAnyItem;
             }
             else {
-              currentRule['mask'] = currentItem;
+              currentRule['mask'] = commandOptions.item;
             }
             cachedValueSet(user, cachedRolesNewRule, currentRule);
             menuMenuItemsAndRowsClearCached(user);
