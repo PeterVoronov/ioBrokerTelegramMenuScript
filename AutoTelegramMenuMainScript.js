@@ -844,7 +844,7 @@ class ConfigOptions {
         let subSubMenuIndex = 0;
         const currentCommandOptions = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: subMenuIndex};
         subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
-        subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
+        subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
       }
       else {
         subMenuItem.command = cmdNoOperation;
@@ -936,15 +936,16 @@ class ConfigOptions {
                   };
                   if (currentLanguage !== languageId) {
                     let subSubMenuIndex = 0;
+                    const currentCommandOptions = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, value: languageId};
                     subSubMenuIndex = subMenuItem.submenu.push({
                       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                       name: `${translationsItemCoreGet(user, 'cmdItemSelect')}`,
                       icon: '',
                       command: cmdItemPress,
-                      options: {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, value: languageId},
+                      options: currentCommandOptions,
                       submenu: []
                     });
-                    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, languageId));
+                    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
                   }
                   subMenuIndex = subMenu.push(subMenuItem);
                 });
@@ -1038,7 +1039,7 @@ class ConfigOptions {
                     const currentCommandOptions = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: graphsIntervalIndex};
                     [subMenuItem.submenu,  subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(user, subMenuItem.submenu,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex,  graphsIntervalIndex, currentIntervalsMaxIndex, currentCommandOptions);
                     subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {dataType: dataTypeTranslation, translationId: translationsItemGenerateId('text', 'TimeRange', graphsIntervalId)}));
-                    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, graphsIntervalIndex));
+                    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
                   }
                   subMenuIndex = subMenu.push(subMenuItem);
                 });
@@ -1937,15 +1938,16 @@ class MenuRoles {
       }
       else {
         let subSubId = 0;
+        const currentCommandOptions = {dataType: dataTypeMenuRoleRules, roleId, ruleIndex: subMenuIndex};
         subSubId = currentItem.submenu.push({
           index: `${currentIndex}.${subMenuIndex}.${subSubId}`,
           name: `${translationsItemMenuGet(user, 'RuleSetAccessLevel')}`,
           // icon: iconItemDelete,
-          options: {dataType: dataTypeMenuRoleRules, roleId, ruleIndex: subMenuIndex},
+          options: currentCommandOptions,
           text: ruleCurrentDetails,
           submenu: (user, menuItemToProcess) => {return this.#menuRuleSetAccessLevel(user, menuItemToProcess)}
         });
-        if (rule.mask !== rolesMaskAnyItem) currentItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubId, dataTypeMenuRoleRules, roleId, subMenuIndex));
+        if (rule.mask !== rolesMaskAnyItem) currentItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubId, currentCommandOptions));
       }
       subMenuIndex = subMenu.push(currentItem);
     });
@@ -1964,19 +1966,20 @@ class MenuRoles {
         },
         submenu: (user, menuItemToProcess) => {return this.#menuGenerateRoleRulesAddItem(user, menuItemToProcess)}
       });
+      const currentCommandOptions = {dataType: dataTypeMenuRoleRules, roleId};
       if ((isNewRole && currentRoleRules.length) || (JSON.stringify(this.getRules(roleId)) !== JSON.stringify(currentRoleRules))) {
-        subMenuIndex = subMenu.push({
+        subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ItemsProcess')}`,
           icon: iconItemApply,
           group: cmdItemsProcess,
           command: cmdItemsProcess,
-          options: {dataType: dataTypeMenuRoleRules, roleId},
+          options: currentCommandOptions,
           submenu: []
         });
       }
       else if ((! cachedValueExists(user, cachedRolesRoleUnderEdit)) && ((this.existsId(roleId)) && (rolesInMenu.getUsers(roleId).length === 0))) {
-        subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, dataTypeMenuRoles, roleId));
+        subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, currentCommandOptions));
       }
     }
     return subMenu;
@@ -3362,7 +3365,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
           if (isCurrentAccessLevelAllowModify) {
             const currentCommandOptions = {dataType: dataTypeTranslation, translationId: `${translationsCoreId}.${translationKey}`};
             subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
-            subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
+            subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
           }
           else {
             subMenuItem.command = cmdNoOperation;
@@ -3419,7 +3422,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
           submenu: new Array()
         };
       if (isCurrentAccessLevelAllowModify) {
-        const currentCommandOptions = {dataType: dataTypeTranslation, translationId: `${translationsCoreId}.${translationKey}`};
+        const currentCommandOptions = {dataType: dataTypeTranslation, translationId: currentTranslationId};
         subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, currentCommandOptions));
         subSubMenuIndex = subMenuItem.submenu.push({
           index: `${currentIndex}.${translationKeyIndex}.${subSubMenuIndex}`,
@@ -3429,7 +3432,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
           options: currentCommandOptions,
           submenu: [],
         });
-        subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
+        subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, currentCommandOptions));
       }
       else {
         subMenuItem.command = cmdNoOperation;
@@ -3489,7 +3492,7 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
         if (isCurrentAccessLevelAllowModify) {
           const currentCommandOptions = {dataType: dataTypeTranslation,  translationType: translationType, item: translationKeyIndex, index: translationDeviceKeyIndex};
           subSubMenuIndex = subSubMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, currentCommandOptions));
-          subSubMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, dataTypeTranslation, translationType, translationKeyIndex, translationDeviceKeyIndex));
+          subSubMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, currentCommandOptions));
         }
         else {
           subSubMenuItem.command = cmdNoOperation;
@@ -3534,7 +3537,7 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
           subMenu = new Array(),
           subMenuIndex = 0;
         subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, menuItemToProcess.options));
-        subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, dataTypeTranslation, translationId));
+        subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, menuItemToProcess.options));
         return subMenu;
       };
     }
@@ -4688,7 +4691,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             options: {dataType: dataTypeTranslation, translationId: currentTranslationId},
             submenu: [],
           });
-          subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
+          subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
           subMenuIndex = subMenu.push(subMenuItem);
         });
         break;
@@ -4709,7 +4712,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       ((configOptions.getOption(cfgAllowToDeleteEmptyEnums) && enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) || (enumerationsIsItemCanBeDeleted(enumerationType, currentItem, false))
       ))
       )
-      subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, enumerationType, currentItem, enumerationTypeExtraId));
+      subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId}));
   }
   // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
   return subMenu;
@@ -6370,7 +6373,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             name: `${alertsIdList[alertId]}`,
             icon: menuItemToProcess.icon,
             command: isCurrentAccessLevelAllowModify ? '' : cmdNoOperation,
-            submenu: isCurrentAccessLevelAllowModify ? [menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${alertMenuIndex}`, 0, dataTypeAlertSubscribed, alertId)] : []
+            submenu: isCurrentAccessLevelAllowModify ? [menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${alertMenuIndex}`, 0, {dataType: dataTypeAlertSubscribed, state: alertId})] : []
           });
         });
       }
@@ -6489,7 +6492,7 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
     group: alertMessageTemplateId,
     submenu: [
       menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', currentCommandOptions),
-      menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
+      menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, currentCommandOptions)
     ],
   });
   const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
@@ -6569,10 +6572,10 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       group: alertMessageTemplateId,
       submenu: [
         menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', currentCommandOptions),
-        menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId)
+        menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 1, currentCommandOptions)
       ],
     });
-    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex));
+    subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {dataType: dataTypeAlertSubscribed, state: currentStateId, index: subMenuIndex}));
     subMenuIndex = subMenu.push(subMenuItem);
   });
   subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {dataType: dataTypeAlertSubscribed, state: currentStateId, index: subMenuIndex, item: alertThresholdId}));
@@ -6806,7 +6809,7 @@ function backupMenuGenerateRestore(user, menuItemToProcess) {
       submenu: []
     });
   });
-  subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, dataTypeBackup, fileName));
+  subMenuIndex = subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, {dataType: dataTypeBackup, fileName}));
   return subMenu;
 }
 
@@ -7096,7 +7099,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             icon: enumerationsList[dataTypeReport].icon,
             function: (_user, _menuItemToProcess) => (`${memberTopObjectName} (${member})`),
             submenu: [
-              menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${memberId}`, 0, dataTypeReportMember, reportId, memberId)
+              menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${memberId}`, 0, {dataType: dataTypeReportMember, item: reportId, index: memberId})
             ],
           });
         }
@@ -7833,27 +7836,26 @@ const
  * @param {string} user - The user object.
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {string} dataType - The type of the item, which will be deleted.
- * @param {*} dataItem - The primary item or collection of items identification.
- * @param {*=} dataId - The secondary id for the item.
- * @param  {...any} dataValues - The additional parameters of an item, required for the `cmdItemDeleteConfirm`
+ * @param  {object} commandOptions - The options required for the `cmdItemDeleteConfirm`
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
-function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemIndex, dataType, dataItem, dataId, ...dataValues) {
+function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
   // logs(`command = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, _l)
   return {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemDelete)}`,
     icon: iconItemDelete,
     group: cmdItemDelete,
-    command: commandsParamsPack(cmdItemDelete, dataType, dataItem, subMenuItemIndex, dataId, ...dataValues),
+    command: cmdItemDelete,
+    options: {index: subMenuItemIndex},
     submenu: [
       {
         index: `${upperMenuItemIndex}.${subMenuItemIndex}.0`,
         name: `${translationsItemCoreGet(user, cmdItemDeleteConfirm)}`,
         icon: iconItemDelete,
         //cfgItem, typeOfOption, subMenuIndex
-        command: commandsParamsPack(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues),
+        command: cmdItemDeleteConfirm,
+        options: commandOptions,
         submenu: [],
       }
     ],
@@ -8863,7 +8865,8 @@ function commandsExtractCommandWithOptions(user, userInputString) {
           currentOptions = inputOptions.options;
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.warn(`Can't parse options for the command '${currentCommand}' from string = '${inputOptionsString}! Error is ${JSON.stringify(error)}'.`);
     }
   }
@@ -9141,19 +9144,19 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             }
 
             case dataTypeConfig: {
-              if (currentItem === cfgMenuLanguage) {
+              if (commandOptions.item === cfgMenuLanguage) {
                 cachedValueSet(user, cachedConfigNewLanguageId, userInputToProcess);
               }
               else {
-                const configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user);
+                const configItem = configOptions.getOption(commandOptions.item, commandOptions.scope === configOptionScopeGlobal ? null : user);
                 if (typeOf(configItem, 'array') &&
                   // @ts-ignore
-                  (! isNaN(currentValue))) {
-                  const configItemIndex = Number(currentValue);
+                  (! isNaN(commandOptions.index))) {
+                  const configItemIndex = Number(commandOptions.index);
                   let newValue;
                   newValue = userInputToProcess;
                   if ( configItemIndex < configItem.length) {
-                    if (currentItem === cfgGraphsIntervals) {
+                    if (commandOptions.item === cfgGraphsIntervals) {
                       configItem[configItemIndex].name = newValue;
                     }
                     else {
@@ -9161,29 +9164,29 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     }
                   }
                   else {
-                    if (currentItem === cfgGraphsIntervals) {
+                    if (commandOptions.item === cfgGraphsIntervals) {
                       const
-                        currentMask =  configOptions.getMask(currentItem),
-                        configItemMask  = configOptions.getMaskDescription(currentItem),
+                        currentMask =  configOptions.getMask(commandOptions.item),
+                        configItemMask  = configOptions.getMaskDescription(commandOptions.item),
                         parsedValueArray = currentMask && currentMask.test(userInputToProcess) ? userInputToProcess.match(currentMask): [],
                         parsedValue = parsedValueArray && parsedValueArray.length && timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2]) ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]] : undefined;
                       newValue = parsedValue !== undefined ? {id: userInputToProcess, minutes: parsedValue} : null;
-                      menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
+                      menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
                     }
                     if (newValue !== null) configItem.push(newValue);
                   }
-                  configOptions.setOption(currentItem, user, configItem);
+                  configOptions.setOption(commandOptions.item, user, configItem);
                 }
                 else {
-                  const parsedValue = configOptions.parseOption(currentItem, userInputToProcess);
+                  const parsedValue = configOptions.parseOption(commandOptions.item, userInputToProcess);
                   if (parsedValue === undefined) {
                     const
-                      configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user),
-                      configItemMask  = configOptions.getMaskDescription(currentItem);
-                    menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
+                      configItem = configOptions.getOption(commandOptions.item, commandOptions.scope === configOptionScopeGlobal ? null : user),
+                      configItemMask  = configOptions.getMaskDescription(commandOptions.item);
+                    menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
                   }
                   else {
-                    configOptions.setOption(currentItem, currentParam === configOptionScopeGlobal ? null : user, parsedValue);
+                    configOptions.setOption(commandOptions.item, commandOptions.scope === configOptionScopeGlobal ? null : user, parsedValue);
                   }
                 }
               }
@@ -9196,7 +9199,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             }
 
             case dataTypeAlertSubscribed: {
-              switch (currentValue) {
+              switch (commandOptions.item) {
                 case alertThresholdId:
                 case alertThresholdOnTimeIntervalId:{
                   // @ts-ignore
@@ -9204,16 +9207,16 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   break;
                 }
               }
-              if (Number.isNaN(userInputToProcess) && (currentValue !== alertMessageTemplateId)) {
+              if (Number.isNaN(userInputToProcess) && (commandOptions.item !== alertMessageTemplateId)) {
                 console.warn(`Unacceptable value '${userInputToProcess}' for number conditions`);
                 telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
               }
               else {
                 const
-                  alertDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, currentItem),
-                  currentThresholdIndex = Number(currentParam),
+                  alertDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
+                  currentThresholdIndex = Number(commandOptions.index),
                   currentThresholdsKeys = currentThresholdIndex >= 0 ? Object.keys(alertDetailsOrThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))) : [];
-                if (currentValue === alertThresholdId) {
+                if (commandOptions.item === alertThresholdId) {
                   let currentThresholdRules = {onAbove: true, onLess: true};
                   if (currentThresholdIndex < currentThresholdsKeys.length) {
                     currentThresholdRules = alertDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]];
@@ -9227,17 +9230,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
                 else {
                   const currentDetailsOrThreshold = currentThresholdIndex >= 0 ? alertDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]] : alertDetailsOrThresholds;
-                  if ((currentValue === alertThresholdOnTimeIntervalId) &&
+                  if ((commandOptions.item === alertThresholdOnTimeIntervalId) &&
                     // @ts-ignore
                     (userInputToProcess === 0)) {
-                    delete currentDetailsOrThreshold[currentValue];
+                    delete currentDetailsOrThreshold[commandOptions.item];
                   }
                   else {
-                    currentDetailsOrThreshold[currentValue] = userInputToProcess;
+                    currentDetailsOrThreshold[commandOptions.item] = userInputToProcess;
                   }
                 }
                 cachedValueSet(user, alertThresholdSet, alertDetailsOrThresholds);
-                const backStepsForCacheDelete = (currentThresholdIndex >= 0  ? -2 : -1) + (currentValue === alertMessageTemplateId ? -1 : 0);
+                const backStepsForCacheDelete = (currentThresholdIndex >= 0  ? -2 : -1) + (commandOptions.item === alertMessageTemplateId ? -1 : 0);
                 cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, backStepsForCacheDelete).join('.'), alertThresholdSet);
                 menuMenuItemsAndRowsClearCached(user);
               }
@@ -9268,7 +9271,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     }
   }
   else if (currentCommand.indexOf(cmdClose) === 0) {
-
     menuMenuClose(user);
   }
   else if (currentCommand.indexOf(cmdBack) === 0) {
@@ -9731,8 +9733,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           default:
             currentMenuPosition.push(
               // @ts-ignore
-              isNaN(currentParam)
-                ? currentParam : Number(currentParam));
+              isNaN(commandOptions.index)
+                ? commandOptions.index : Number(commandOptions.index));
             break;
         }
         menuMenuDrawOnPosition(user, currentMenuPosition);
@@ -9743,7 +9745,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeDestination:
           case dataTypeFunction:
           case dataTypeReport: {
-            const enumObjectId = enumerationsIsItemCanBeDeleted(commandOptions.dataType, currentItem, true);
+            const enumObjectId = enumerationsIsItemCanBeDeleted(commandOptions.dataType, commandOptions.item, true);
             if (enumObjectId) {
               await deleteObjectAsync(enumObjectId);
             }
@@ -9751,22 +9753,22 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             // break omitted
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            const currentList = enumerationsSubTypes.includes(commandOptions.dataType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][commandOptions.dataType] : enumerationsList[commandOptions.dataType].list;
-            delete currentList[currentItem];
+            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
+            delete currentList[commandOptions.item];
             enumerationsReorderItems(currentList);
-            enumerationsSave(enumerationsSubTypes.includes(commandOptions.dataType)  && currentParam ? dataTypeFunction : commandOptions.dataType);
+            enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
             currentMenuPosition.splice(-2, 2);
             logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
             break;
           }
 
           case dataTypePrimaryEnums: {
-            if (enumerationsList.hasOwnProperty(currentParam)) {
+            if (enumerationsList.hasOwnProperty(commandOptions.dataTypeExtraId)) {
               const
-                currentEnumsList = enumerationsList[currentParam].enums;
-              if (Object.keys(currentEnumsList).includes(currentItem)) {
-                delete currentEnumsList[currentItem];
-                enumerationsSave(currentParam);
+                currentEnumsList = enumerationsList[commandOptions.dataTypeExtraId].enums;
+              if (Object.keys(currentEnumsList).includes(commandOptions.item)) {
+                delete currentEnumsList[commandOptions.item];
+                enumerationsSave(commandOptions.dataTypeExtraId);
                 currentMenuPosition.splice(-3, 3, dataTypePrimaryEnums);
               }
             }
@@ -9776,10 +9778,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeReportMember: {
             const
-              currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[currentItem].enum}.${currentItem}`;
+              currentReportId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[commandOptions.item].enum}.${commandOptions.item}`;
             let
               currentReportObject = getObject(currentReportId);
-            delete currentReportObject.common.members[Number(currentParam)];
+            delete currentReportObject.common.members[Number(commandOptions.index)];
             currentReportObject.common.members = currentReportObject.common.members.filter(n => n);
             // @ts-ignore
             await setObjectAsync(currentReportId, currentReportObject);
@@ -9790,13 +9792,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeAlertSubscribed: {
             if (currentParam !== undefined) {
               const
-                currentDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, currentItem),
-                currentThresholdIndex = Number(currentParam),
+                currentDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
+                currentThresholdIndex = Number(commandOptions.index),
                 currentThresholdsKeys = currentThresholdIndex >= 0 ? Object.keys(currentDetailsOrThresholds).sort((thresholdA, thresholdB) => (Number(thresholdA) - Number(thresholdB))) : [];
               if (currentThresholdIndex < currentThresholdsKeys.length) {
-                if (currentValue) {
+                if (commandOptions.item) {
                   const currentDetailOrThreshold = currentThresholdIndex >= 0 ? currentDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]] : currentDetailsOrThresholds;
-                  if (currentDetailOrThreshold.hasOwnProperty(currentValue)) delete currentDetailOrThreshold[currentValue];
+                  if (currentDetailOrThreshold.hasOwnProperty(commandOptions.item)) delete currentDetailOrThreshold[commandOptions.item];
                 }
                 else if (currentThresholdIndex >= 0) {
                   delete currentDetailsOrThresholds[currentThresholdsKeys[currentThresholdIndex]];
@@ -9807,29 +9809,27 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
             }
             else {
-              alertsManage(user, currentItem);
+              alertsManage(user, commandOptions.state);
               currentMenuPosition.splice(-4, 4);
             }
             break;
           }
 
           case dataTypeTranslation: {
-            let currentTranslationId = currentItem;
-            if (currentParam && currentValue) {
-              let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
-              if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
-                currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
-                destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
-                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
-                  currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
-                }
-                else {
-                  currentTranslationId = '';
+            let currentTranslationId;
+            if (commandOptions.translationType && commandOptions.item && commandOptions.index) {
+              currentTranslationId = commandOptions.translationType;
+              let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
+              if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(commandOptions.item))) {
+                currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(commandOptions.item)]}`;
+                destTranslation = destTranslation[Object.keys(destTranslation)[Number(commandOptions.item)]];
+                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(commandOptions.index))) {
+                  currentTranslationId += `.${Object.keys(destTranslation)[Number(commandOptions.index)]}`;
                 }
               }
-              else {
-                currentTranslationId = '';
-              }
+            }
+            else if (commandOptions.translationId) {
+              currentTranslationId = commandOptions.translationId;
             }
             if (currentTranslationId) {
               translationsItemDelete(user, currentTranslationId);
@@ -9839,12 +9839,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (currentItem) {
+            switch (commandOptions.item) {
               case cfgMenuLanguage: {
-                switch (currentParam) {
+                switch (commandOptions.scope) {
                   case configOptionScopeGlobal:
-                    if (translationsList.hasOwnProperty(currentValue)) {
-                      delete translationsList[currentValue];
+                    if (translationsList.hasOwnProperty(commandOptions.value)) {
+                      delete translationsList[commandOptions.value];
                       currentMenuPosition.splice(-2, 2);
                       translationsSave();
                     }
@@ -9854,12 +9854,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
 
               default: {
-                let configItemArray = configOptions.getOption(currentItem,  currentParam === configOptionScopeGlobal ? null : user);
+                let configItemArray = configOptions.getOption(commandOptions.item,  commandOptions.scope === configOptionScopeGlobal ? null : user);
                 // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, _l)
                 if (configItemArray && Array.isArray(configItemArray)) {
-                  if (configItemArray.length > Number(currentValue)) {
-                    configItemArray.splice(Number(currentValue), 1);
-                    configOptions.setOption(currentItem, currentParam === configOptionScopeGlobal ? null : user, configItemArray);
+                  if (configItemArray.length > Number(commandOptions.index)) {
+                    configItemArray.splice(Number(commandOptions.index), 1);
+                    configOptions.setOption(commandOptions.item,  commandOptions.scope === configOptionScopeGlobal ? null : user, configItemArray);
                     currentMenuPosition.splice(-2, 2);
                   }
                 }
@@ -9873,13 +9873,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeMenuRoleRules: {
             const
               currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit) ? cachedValueGet(user, cachedRolesRoleUnderEdit) : undefined,
-              currentRoleId = currentRole ? currentRole.roleId : currentItem;
+              currentRoleId = currentRole ? currentRole.roleId : commandOptions.roleId;
 
             switch (currentRoleId) {
-              case currentItem: {
-                let currentRules = currentRole ? currentRole.rules : (rolesInMenu.existsId(currentItem) ? rolesInMenu.getRules(currentItem) : undefined);
+              case commandOptions.roleId: {
+                let currentRules = currentRole ? currentRole.rules : (rolesInMenu.existsId(currentRoleId) ? rolesInMenu.getRules(currentRoleId) : undefined);
                 if (currentRules) {
-                  const currentIndex = Number(currentParam);
+                  const currentIndex = Number(commandOptions.ruleIndex);
                   if (currentRules.length > currentIndex) {
                     currentRules.splice(currentIndex,  1);
                     if (currentRole) {
@@ -9887,7 +9887,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       cachedValueSet(user, cachedRolesRoleUnderEdit, currentRole);
                     }
                     else {
-                      rolesInMenu.setRules(currentItem, currentRules, usersInMenu);
+                      rolesInMenu.setRules(currentRoleId, currentRules, usersInMenu);
                     }
                     currentMenuPosition.splice(-2, 2);
                   }
@@ -9902,8 +9902,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeMenuRoles: {
-            if (rolesInMenu.existsId(currentItem) && (rolesInMenu.getUsers(currentItem).length === 0)) {
-              rolesInMenu.delRole(currentItem);
+            if (rolesInMenu.existsId(commandOptions.roleId) && (rolesInMenu.getUsers(commandOptions.roleId).length === 0)) {
+              rolesInMenu.delRole(commandOptions.roleId);
               currentMenuPosition.splice(-2, 2);
               menuMenuItemsAndRowsClearCached(user);
               cachedValueDelete(user, cachedRolesRoleUnderEdit);
@@ -9912,7 +9912,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeBackup: {
-            backupFileDelete(currentItem)
+            backupFileDelete(commandOptions.fileName)
               .then(() => {
                 telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgSuccess'));
                 const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
