@@ -842,7 +842,8 @@ class ConfigOptions {
       };
       if (isThisLevelAllowModify) {
         let subSubMenuIndex = 0;
-        subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
+        const currentCommandOptions = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: subMenuIndex};
+        subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
         subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
       }
       else {
@@ -851,7 +852,7 @@ class ConfigOptions {
       subMenuIndex = subMenu.push(subMenuItem);
     }
     if (isThisLevelAllowModify) {
-      subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
+      subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: subMenuIndex}));
     }
     return subMenu;
   }
@@ -902,7 +903,7 @@ class ConfigOptions {
         if (isThisLevelAllowModify) currentItem.submenu = new Array();
         let subSubMenuIndex = 0;
         if (isCurrentAccessLevelFull) {
-          subSubMenuIndex = currentItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}.${itemOrder}`, subSubMenuIndex, dataTypeTranslation, cfgItem));
+          subSubMenuIndex = currentItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}.${itemOrder}`, subSubMenuIndex, {dataType: dataTypeTranslation, item: cfgItem}));
         }
         const optionScopes = isSystemLevelOption ? [configOptionScopeGlobal] : (isCurrentAccessLevelFull && (! isSystemLevelOption) ?  [configOptionScopeGlobal, configOptionScopeUser] : [configOptionScopeUser]);
         optionScopes.forEach(optionScope => {
@@ -1034,14 +1035,15 @@ class ConfigOptions {
                   };
                   if (isThisLevelAllowModify) {
                     let subSubMenuIndex = 0;
-                    [subMenuItem.submenu,  subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(user, subMenuItem.submenu,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex,  graphsIntervalIndex, currentIntervalsMaxIndex, {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: graphsIntervalIndex});
-                    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, translationsItemTextGet(user, 'TimeRange', graphsIntervalId)));
+                    const currentCommandOptions = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: graphsIntervalIndex};
+                    [subMenuItem.submenu,  subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(user, subMenuItem.submenu,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex,  graphsIntervalIndex, currentIntervalsMaxIndex, currentCommandOptions);
+                    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {dataType: dataTypeTranslation, translationId: translationsItemGenerateId('text', 'TimeRange', graphsIntervalId)}));
                     subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeConfig, cfgItem, optionScope, graphsIntervalIndex));
                   }
                   subMenuIndex = subMenu.push(subMenuItem);
                 });
                 if (isThisLevelAllowModify) {
-                  subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, dataTypeConfig, cfgItem, optionScope, subMenuIndex));
+                  subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: subMenuIndex}));
                   if (optionScope === configOptionScopeUser) {
                     subMenuIndex = subMenu.push(menuMenuItemGenerateResetItem(user, currentIndex, subMenuIndex, {dataType: dataTypeConfig, item: cfgItem}));
                   }
@@ -2086,8 +2088,8 @@ class MenuRoles {
                   index: `${currentIndex}.${subMenuIndex}`,
                   name: `${translationsItemCoreGet(user, 'cmdFixId')}`,
                   icon: iconItemEdit,
-                  command: commandsParamsPack(cmdGetInput, dataTypeMenuRoles, '', 'fixId'),
-                  options: {dataType: dataTypeMenuRoles, editMode: 'fixId'},
+                  command: dataTypeMenuRoles,
+                  options: {dataType: dataTypeMenuRoles, mode: 'fixId'},
                   submenu: [],
                 }
               );
@@ -2113,8 +2115,8 @@ class MenuRoles {
                 index: `${currentIndex}.${subMenuIndex}`,
                 name: `${translationsItemCoreGet(user, 'cmdSetId')}`,
                 icon: iconItemEdit,
-                command: commandsParamsPack(cmdGetInput, dataTypeMenuRoles, '', 'setId'),
-                options: {dataType: dataTypeMenuRoles, editMode: 'setId'},
+                command: dataTypeMenuRoles,
+                options: {dataType: dataTypeMenuRoles, mode: 'setId'},
                 submenu: [],
               }
             );
@@ -3358,7 +3360,8 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
             submenu: new Array()
           };
           if (isCurrentAccessLevelAllowModify) {
-            subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
+            const currentCommandOptions = {dataType: dataTypeTranslation, translationId: `${translationsCoreId}.${translationKey}`};
+            subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
             subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, `${translationsCoreId}.${translationKey}`));
           }
           else {
@@ -3416,13 +3419,14 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
           submenu: new Array()
         };
       if (isCurrentAccessLevelAllowModify) {
-        subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
+        const currentCommandOptions = {dataType: dataTypeTranslation, translationId: `${translationsCoreId}.${translationKey}`};
+        subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, currentCommandOptions));
         subSubMenuIndex = subMenuItem.submenu.push({
           index: `${currentIndex}.${translationKeyIndex}.${subSubMenuIndex}`,
           name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
           icon: iconItemCommon,
           command: cmdUseCommonTranslation,
-          options: {dataType: dataTypeTranslation, translationId: currentTranslationId},
+          options: currentCommandOptions,
           submenu: [],
         });
         subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
@@ -3483,7 +3487,8 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
           submenu: new Array()
         };
         if (isCurrentAccessLevelAllowModify) {
-          subSubMenuIndex = subSubMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, dataTypeTranslation, translationType, translationKeyIndex, translationDeviceKeyIndex));
+          const currentCommandOptions = {dataType: dataTypeTranslation,  translationType: translationType, item: translationKeyIndex, index: translationDeviceKeyIndex};
+          subSubMenuIndex = subSubMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, currentCommandOptions));
           subSubMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${translationKeyIndex}.${translationDeviceKeyIndex}`, subSubMenuIndex, dataTypeTranslation, translationType, translationKeyIndex, translationDeviceKeyIndex));
         }
         else {
@@ -3522,15 +3527,13 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
         text: ` (${translationKey})`
       };
     if (isCurrentAccessLevelAllowModify) {
-      subMenuItem.options = {translationId: `${translationType}.${translationKey}`},
+      subMenuItem.options = {dataType: dataTypeTranslation, translationId: `${translationType}.${translationKey}`},
       subMenuItem.submenu = (user, menuItemToProcess) => {
-        const
-          currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          {translationId} = menuItemToProcess.options;
+        const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '';
         let
           subMenu = new Array(),
           subMenuIndex = 0;
-        subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, dataTypeTranslation, translationId));
+        subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, menuItemToProcess.options));
         subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, dataTypeTranslation, translationId));
         return subMenu;
       };
@@ -4294,8 +4297,8 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
     subMenu = [];
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    {dataType, item: currentItem, dataTypeExtraId} = menuItemToProcess.options,
-    currentEnumeration = enumerationsGetList(dataType, dataTypeExtraId),
+    {dataType: dataTypeItem, item: currentItem, dataTypeExtraId} = menuItemToProcess.options,
+    currentEnumeration = enumerationsGetList(dataTypeItem, dataTypeExtraId),
     currentMenuItem = currentEnumeration[currentItem],
     currentMenuItemGroup = currentMenuItem ? currentMenuItem.group : '',
     existingGroups = new Array();
@@ -4311,13 +4314,13 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
             name: `[${currentGroup}]`,
             icon: currentGroup === currentMenuItemGroup ? iconItemCheckMark : '',
             command: cmdItemPress,
-            options: {dataType: dataTypeGroups, item: currentItem, groupDataType: dataType, group: currentGroup, groupDataTypeExtraId: dataTypeExtraId},
+            options: {dataType: dataTypeGroups, item: currentItem, groupDataType: dataTypeItem, group: currentGroup, groupDataTypeExtraId: dataTypeExtraId},
             submenu: []
           });
         }
       }
     });
-  subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, dataTypeGroups, currentItem, dataType, dataTypeExtraId));
+  subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {dataType: dataTypeGroups, item: currentItem, groupDataType: dataTypeItem, groupDataTypeExtraId: dataTypeExtraId}));
 
   return subMenu;
 }
@@ -4446,10 +4449,10 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       case 'name': {
         if (isCurrentAccessLevelAllowModify) {
           if ((enumerationItemAttrs.includes('nameTranslationId')) && currentEnumerationItem['nameTranslationId']) {
-            subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, dataTypeTranslation, translationsGetEnumId(user, enumerationType, currentItem, enumerationsNamesMain)));
+            subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, {dataType: dataTypeTranslation, translationId: translationsGetEnumId(user, enumerationType, currentItem, enumerationsNamesMain)}));
           }
           else {
-            subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, enumerationType, currentItem, 'names', enumerationsNamesMain));
+            subMenuIndex = subMenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}`, subMenuIndex, {dataType: enumerationType, item: currentItem, attribute: 'names', index: enumerationsNamesMain}));
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
@@ -4583,9 +4586,11 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             };
             if (isCurrentAccessLevelAllowModify && (enumerationItemAttributesWithReset.includes(enumerationItemAttr))) {
               let subSubMenuIndex = 0;
-              const currentSubMenuIndex = `${currentIndex}.${subMenuIndex}`;
-              subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, currentSubMenuIndex, subSubMenuIndex, `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`, '', enumerationType, currentItem, enumerationItemAttr, enumerationTypeExtraId));
-              subMenuItem.submenu.push(menuMenuItemGenerateResetItem(user, currentSubMenuIndex, subSubMenuIndex, {dataType: enumerationType, item: currentItem, attribute: enumerationItemAttr, dataTypeExtraId: enumerationTypeExtraId}));
+              const
+                currentSubMenuIndex = `${currentIndex}.${subMenuIndex}`,
+                currentCommandOptions = {dataType: enumerationType, item: currentItem, attribute: enumerationItemAttr, dataTypeExtraId: enumerationTypeExtraId};
+              subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, currentSubMenuIndex, subSubMenuIndex, `${translationsItemMenuGet(user, enumerationItemAttr)} "${currentEnumerationItem[enumerationItemAttr]}"`, '', currentCommandOptions));
+              subMenuItem.submenu.push(menuMenuItemGenerateResetItem(user, currentSubMenuIndex, subSubMenuIndex, currentCommandOptions));
             }
             subMenuIndex = subMenu.push(subMenuItem);
             break;
@@ -4673,7 +4678,8 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               icon: iconItemEdit,
               submenu: new Array()
             };
-          subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeTranslation, currentTranslationId));
+          const currentCommandOptions = {dataType: dataTypeTranslation, translationId: currentTranslationId};
+          subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
           subSubMenuIndex = subMenuItem.submenu.push({
             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
             name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
@@ -5175,8 +5181,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   name: `${translationsItemMenuGet(user, 'SetValue')} (${stateValue ? stateValue : ''}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' })`,
                   icon: iconItemEdit,
                   funcEnum: currentFunctionId,
-                  command: commandsParamsPack(cmdGetInput, dataTypeStateValue, currentFunctionId, stateIdFull, 'number'),
-                  options: {function: currentFunctionId, state: stateIdFull, dataType: dataTypeStateValue, valueType: currentStateType},
+                  command: cmdGetInput,
+                  options: {dataType: dataTypeStateValue, state: stateIdFull,  function: currentFunctionId, valueType: currentStateType},
                   submenu: []
                 });
               }
@@ -6474,14 +6480,15 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
   let
     subMenu = [],
     subMenuIndex = 0;
-  subMenuIndex = subMenu.push(menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, '', dataTypeAlertSubscribed, currentStateId, -1, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
+  subMenuIndex = subMenu.push(menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, '', {dataType: dataTypeAlertSubscribed, state: currentStateId, index: -1, item: alertThresholdOnTimeIntervalId, value: currentOnTimeInterval}));
+  const currentCommandOptions = {dataType: dataTypeAlertSubscribed, state: currentStateId, index: -1, item: alertMessageTemplateId, value: currentMessageTemplate};
   subMenuIndex = subMenu.push({
     index: `${currentIndex}.${subMenuIndex}`,
     name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentAlertDetails.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
     icon: iconItemEdit,
     group: alertMessageTemplateId,
     submenu: [
-      menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId, currentMessageTemplate),
+      menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', currentCommandOptions),
       menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, -1, alertMessageTemplateId)
     ],
   });
@@ -6534,7 +6541,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
         submenu: new Array()
       };
     let subSubMenuIndex = 0;
-    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${currentThresholdNumber}${currentStateUnits}`, 'value', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId, `${currentThresholdNumber}${currentStateUnits}`));
+    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${currentThresholdNumber}${currentStateUnits}`, 'value', {dataType: dataTypeAlertSubscribed, state: currentStateId, index: subMenuIndex, item: alertThresholdId, value: `${currentThresholdNumber}${currentStateUnits}`}));
     subSubMenuIndex = subMenuItem.submenu.push({
       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
       name: `${currentThresholdNumber}${currentStateUnits} ${iconItemAbove}`,
@@ -6553,21 +6560,22 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
       options: {dataType: dataTypeAlertSubscribed, state: currentStateId, item: subMenuIndex, mode: 'onLess'},
       submenu: [],
     });
-    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, 'thresholdOn', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdOnTimeIntervalId, currentOnTimeInterval));
+    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, `${translationsItemTextGet(user, alertThresholdOnTimeIntervalId)} {${currentOnTimeInterval}}`, 'thresholdOn', {dataType: dataTypeAlertSubscribed, state: currentStateId, index: subMenuIndex, item: alertThresholdOnTimeIntervalId, value: currentOnTimeInterval}));
+    const currentCommandOptions = {dataType: dataTypeAlertSubscribed, state: currentStateId, index: subMenuIndex, item: alertMessageTemplateId, value: currentThresholdMessageTemplate};
     subSubMenuIndex = subMenuItem.submenu.push({
       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
       name: `${translationsItemTextGet(user, alertMessageTemplateId)}${currentThreshold.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`}`,
       icon: iconItemEdit,
       group: alertMessageTemplateId,
       submenu: [
-        menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId, currentThresholdMessageTemplate),
+        menuMenuItemGenerateEditItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 0, `${translationsItemTextGet(user, alertMessageTemplateId)}`, 'edit', currentCommandOptions),
         menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`, 1, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertMessageTemplateId)
       ],
     });
     subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex));
     subMenuIndex = subMenu.push(subMenuItem);
   });
-  subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, dataTypeAlertSubscribed, currentStateId, subMenuIndex, alertThresholdId));
+  subMenuIndex = subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {dataType: dataTypeAlertSubscribed, state: currentStateId, index: subMenuIndex, item: alertThresholdId}));
   const isThresholdsSetChanged = JSON.stringify(currentStateAlertThresholds) !== JSON.stringify(currentThresholds);
   if (isThresholdsSetChanged || Object.keys(currentStateAlertThresholds).length) {
     subMenuIndex = subMenu.push(
@@ -7139,7 +7147,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineState')} (${queryState})`,
           icon: iconItemEdit,
-          command: commandsParamsPack(cmdGetInput, dataTypeReportMember, 'queryState'),
+          command: cmdGetInput,
           options: {dataType: dataTypeReportMember, item: 'queryState'},
           submenu: []
         });
@@ -7147,7 +7155,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineRole')} (${queryRole})`,
           icon: iconItemEdit,
-          command: commandsParamsPack(cmdGetInput, dataTypeReportMember, 'queryRole'),
+          command: cmdGetInput,
           options: {dataType: dataTypeReportMember, item: 'queryRole'},
           submenu: [],
         });
@@ -7860,15 +7868,16 @@ function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemInd
  * @param {number} subMenuItemIndex - The index of an item to be created.
  * @param {string} itemName - The name of the menu item.
  * @param {string} itemGroup - The name of the menu item.
- * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
+ * @param {object} commandOptions - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
-function menuMenuItemGenerateEditItem(_user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, ...commandParams) {
+function menuMenuItemGenerateEditItem(_user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, commandOptions) {
   const result = {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: itemName,
     icon: iconItemEdit,
-    command: commandsParamsPack(cmdGetInput, ...commandParams),
+    command: cmdGetInput,
+    options: commandOptions,
     submenu: [],
   };
   if (itemGroup) result.group = itemGroup;
@@ -7881,11 +7890,11 @@ function menuMenuItemGenerateEditItem(_user, upperMenuItemIndex, subMenuItemInde
  * @param {object} user - The user object.
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
+ * @param {object} commandOptions - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
-function menuMenuItemGenerateRenameItem(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
-  return menuMenuItemGenerateEditItem(user, upperMenuItemIndex, subMenuItemIndex, `${translationsItemCoreGet(user, 'cmdItemRename')}`, '', ...commandParams);
+function menuMenuItemGenerateRenameItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
+  return menuMenuItemGenerateEditItem(user, upperMenuItemIndex, subMenuItemIndex, `${translationsItemCoreGet(user, 'cmdItemRename')}`, '', commandOptions);
 }
 
 /**
@@ -7893,15 +7902,16 @@ function menuMenuItemGenerateRenameItem(user, upperMenuItemIndex, subMenuItemInd
  * @param {object} user - The user object.
  * @param {string} upperMenuItemIndex - The upper level item menu index.
  * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {...any} commandParams - The params to be processed by `cmdGetInput`.
+ * @param {object} commandOptions - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
-function menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex, ...commandParams) {
+function menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
   return {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
     icon: iconItemPlus,
-    command: commandsParamsPack(cmdGetInput, ...commandParams),
+    command: cmdGetInput,
+    options: commandOptions,
     group: 'addNew',
     submenu: []
   };
@@ -8981,13 +8991,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   }
   if (cachedValueExists(user, cachedMenuLongCommandsWithParams)) cachedValueDelete(user, cachedMenuLongCommandsWithParams);
   // logs(`cachedCommand = ${cachedLongCommands}`, _l);
-  // logs(`currentCommand = ${currentCommand}, currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentSubParam = ${currentSubParam}, currentSubValue = ${currentSubValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`, _l);
+  // logs(`currentCommand = ${currentCommand}, commandOptions.dataType = ${commandOptions.dataType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentSubParam = ${currentSubParam}, currentSubValue = ${currentSubValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`, _l);
 
   if (isWaitForInput) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (currentCommand) {
         case cmdItemUpload: {
-          // logs(`currentType = ${currentType}, currentItem = ${currentItem}, currentParam = ${currentParam}, userInputToProcess = ${userInputToProcess}`, _l);
+          // logs(`commandOptions.dataType = ${commandOptions.dataType}, currentItem = ${currentItem}, currentParam = ${currentParam}, userInputToProcess = ${userInputToProcess}`, _l);
           switch (commandOptions.dataType) {
             case dataTypeTranslation: {
               const isTranslationFileOk = translationsCheckAndCacheUploadedFile(user, userInputToProcess, commandOptions.fileName, commandOptions.fileSize);
@@ -9013,32 +9023,30 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
         case cmdGetInput:
         default: {
-          switch (currentType) {
+          switch (commandOptions.dataType) {
             case dataTypeTranslation: {
-              let currentTranslationId = currentItem;
-              if (currentParam && currentValue) {
-                let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
-                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
-                  currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
-                  destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
-                  if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
-                    currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
-                  }
-                  else {
-                    currentTranslationId = '';
+              let currentTranslationId;
+              if (commandOptions.translationType && commandOptions.item && commandOptions.index) {
+                currentTranslationId = commandOptions.translationType;
+                let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
+                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(commandOptions.item))) {
+                  currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(commandOptions.item)]}`;
+                  destTranslation = destTranslation[Object.keys(destTranslation)[Number(commandOptions.item)]];
+                  if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(commandOptions.index))) {
+                    currentTranslationId += `.${Object.keys(destTranslation)[Number(commandOptions.index)]}`;
                   }
                 }
-                else {
-                  currentTranslationId = '';
-                }
+              }
+              else if (commandOptions.translationId) {
+                currentTranslationId = commandOptions.translationId;
               }
               if (currentTranslationId) translationsItemStore(user, currentTranslationId, userInputToProcess);
               const currentTranslation = translationsGetCurrentForUser(user);
-              if (currentItem && currentParam && (! currentValue)) {
+              if (commandOptions.translationType && commandOptions.item && (! commandOptions.index)) {
                 const newPosition = Object.keys(currentTranslation)
-                  .filter((key) => (! key.includes('.')) && (key.indexOf(currentParam) === 0))
+                  .filter((key) => (! key.includes('.')) && (key.indexOf(commandOptions.item) === 0))
                   .sort((a, b) => (currentTranslation[a].localeCompare(currentTranslation[b])))
-                  .indexOf(currentItem);
+                  .indexOf(commandOptions.translationType);
                 if (newPosition >= 0) {
                   currentMenuPosition.splice(-1, newPosition);
                 }
@@ -9046,86 +9054,68 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               break;
             }
 
-            case dataTypePrimaryEnums: {
-              if (currentValue && enumerationsList[currentValue]) {
-                const currentEnumsList = enumerationsList[currentValue].enums;
-                if (currentItem && currentEnumsList[currentItem]) {
-                  const
-                    oldIcon = currentEnumsList[currentItem].icon,
-                    currentList = enumerationsList[currentValue].list;
-                  currentEnumsList[currentItem].icon = userInputToProcess;
-                  Object.keys(currentList).forEach(currentListItem => {if ((currentList[currentListItem].enum === currentItem) && (currentList[currentListItem].icon === oldIcon)) currentList[currentListItem].icon = userInputToProcess;});
-                  enumerationsInit(currentValue);
-                  enumerationsSave(currentValue);
-                }
-              }
-              break;
-            }
-
             case dataTypeDestination:
-            case dataTypeFunction:{
-              switch (currentParam) {
-                case 'state': {
-                  const currentDeviceAttributes = enumerationsList[currentType].list[currentItem].deviceAttributes;
-                  if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(currentParam)) {
-                    currentDeviceAttributes[userInputToProcess] = objectDeepClone(currentDeviceAttributes[currentParam]);
-                    currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(userInputToProcess.split('.').join('_'), currentItem, undefined, enumerationsDeviceBasicAttributes.includes(userInputToProcess));
-                    delete currentDeviceAttributes[currentParam];
-                  }
-                  break;
-                }
-              }
-            }
-            // break omitted
-            case dataTypeReport: {
-              switch (currentParam) {
-                case 'setId':
-                case 'fixId':
-                  cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
-                  break;
-
-                case 'names':
-                  enumerationsUpdateItemName(user, currentType, currentItem, enumerationsList[currentType].list[currentItem], userInputToProcess, currentValue !== enumerationsNamesMain ? currentValue : '');
-                  break;
-
-                default:
-                  enumerationsList[currentType].list[currentItem][currentParam] = userInputToProcess;
-                  break;
-              }
-              enumerationsSave(currentType);
-              break;
-            }
-
+            case dataTypeFunction:
+            case dataTypeReport:
+            case dataTypePrimaryEnums:
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
-              if (currentItem && currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
-                const currentListItem = enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem];
-                if (currentListItem) {
-                  if (currentParam && ((currentParam !== 'convertValueCode') || enumerationsTestValueConversionCode(user, currentValue, currentItem, userInputToProcess))) {
-                    enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam] = userInputToProcess;
+              const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
+              switch (commandOptions.attribute) {
+                case 'state': {
+                  const currentDeviceAttributes = currentList[commandOptions.item].deviceAttributes;
+                  if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(commandOptions.attribute)) {
+                    currentDeviceAttributes[userInputToProcess] = objectDeepClone(currentDeviceAttributes[commandOptions.attribute]);
+                    currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(userInputToProcess.split('.').join('_'), commandOptions.item, undefined, enumerationsDeviceBasicAttributes.includes(userInputToProcess));
+                    delete currentDeviceAttributes[commandOptions.attribute];
+                  }
+                  break;
+                }
+                case 'setId':
+                case 'fixId': {
+                  cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
+                  break;
+                }
+                case 'names': {
+                  enumerationsUpdateItemName(user, commandOptions.dataType, commandOptions.item, currentList[commandOptions.item], userInputToProcess, commandOptions.index !== enumerationsNamesMain ? commandOptions.index : '');
+                  break;
+                }
+                case 'convertValueCode': {
+                  if (enumerationsTestValueConversionCode(user, commandOptions.dataTypeExtraId, commandOptions.item, userInputToProcess)) {
+                    currentList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
                   }
                   else {
-                    console.warn(`Unacceptable value '${userInputToProcess}' code conversion of attribute ${currentItem} for function ${currentValue}`);
+                    console.warn(`Unacceptable value '${userInputToProcess}' code conversion of attribute ${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`);
                     telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                   }
+                  break;
+                }
+                default:{
+                  const oldIcon = (commandOptions.dataType === dataTypePrimaryEnums) && (commandOptions.attribute === 'icon') ? currentList[commandOptions.item][commandOptions.attribute] : '';
+                  currentList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
+                  if ((commandOptions.dataType === dataTypePrimaryEnums) && (commandOptions.attribute === 'icon')) {
+                    const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
+                    Object.keys(workList).forEach(currentListItem => {
+                      if ((workList[currentListItem].enum === commandOptions.dataType) && (currentList[currentListItem].icon === oldIcon)) {
+                        currentList[currentListItem].icon = userInputToProcess;
+                      }
+                    });
+                    enumerationsInit(commandOptions.dataTypeExtraId);
+                  }
+                  break;
                 }
               }
-              enumerationsSave(dataTypeFunction);
+              enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
               break;
             }
 
             case dataTypeGroups: {
-              const currentEnumeration = enumerationsGetList(currentParam, currentValue);
-              if (currentItem && currentEnumeration && currentEnumeration.hasOwnProperty(currentItem) && currentEnumeration[currentItem]) {
-                currentEnumeration[currentItem].group = userInputToProcess;
+              const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
+              if (currentItem && currentList && currentList.hasOwnProperty(currentItem) && currentList[currentItem]) {
+                currentList[commandOptions.item].group = userInputToProcess;
               }
-              // logs(`currentParam, currentValue = ${[currentType, currentItem, currentParam, currentValue,]}`, _l)
-              if (currentValue) {
-                enumerationsSave(dataTypeFunction);
-              }
-              else {
-                enumerationsSave(currentParam);
-              }
+              // logs(`currentParam, currentValue = ${[commandOptions.dataType, currentItem, currentParam, currentValue,]}`, _l)
+              enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
               break;
             }
 
@@ -9145,7 +9135,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             case dataTypeReportMember: {
               let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
               queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
-              queryParams[currentItem] = userInputToProcess;
+              queryParams[commandOptions.item] = userInputToProcess;
               cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
               break;
             }
@@ -9201,7 +9191,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             }
 
             case dataTypeStateValue: {
-              setStateValue(user, currentParam, userInputToProcess, true);
+              setStateValue(user, commandOptions.state, userInputToProcess, true);
               break;
             }
 
@@ -9272,7 +9262,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     else {
       cachedValueSet(user, cachedIsWaitForInput, false);
       /** if it private chat - delete user input, if it group - clear menu, and recreate it after user input **/
-      if (currentType !== dataTypeStateValue) {
+      if (commandOptions.dataType !== dataTypeStateValue) {
         menuMenuDrawOnPosition(user, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false);
       }
     }
@@ -9309,83 +9299,71 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   else {
     switch (currentCommand) {
       case cmdGetInput: {
-        switch (currentType) {
+        switch (commandOptions.dataType) {
           case dataTypeTranslation: {
             let
-              currentTranslationId = currentItem,
+              currentTranslationId,
               currentTranslationValue;
-            if (currentParam && currentValue) {
-              let destTranslation = translationsPointOnItemOwner(user, `${currentItem}.destinations`, true);
-              if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentParam))) {
-                currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(currentParam)]}`;
-                destTranslation = destTranslation[Object.keys(destTranslation)[Number(currentParam)]];
-                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(currentValue))) {
-                  currentTranslationId += `.${Object.keys(destTranslation)[Number(currentValue)]}`;
-                  currentTranslationValue = destTranslation[Object.keys(destTranslation)[Number(currentValue)]];
+            if (commandOptions.translationType && commandOptions.item && commandOptions.index) {
+              currentTranslationId = commandOptions.translationType;
+              let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
+              if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(commandOptions.item))) {
+                currentTranslationId += `.destinations.${Object.keys(destTranslation)[Number(commandOptions.item)]}`;
+                destTranslation = destTranslation[Object.keys(destTranslation)[Number(commandOptions.item)]];
+                if (destTranslation && (typeOf(destTranslation) === 'object') && (Object.keys(destTranslation).length > Number(commandOptions.index))) {
+                  currentTranslationId += `.${Object.keys(destTranslation)[Number(commandOptions.index)]}`;
+                  currentTranslationValue = destTranslation[Object.keys(destTranslation)[Number(commandOptions.index)]];
                 }
               }
             }
-            else {
+            else if (commandOptions.translationId) {
+              currentTranslationId = commandOptions.translationId;
               currentTranslationValue = translationsItemGet(user, currentTranslationId);
             }
             if (currentTranslationValue) menuMessageObject.menutext = `${translationsItemCoreGet(user, 'cmdItemRename')} ${currentTranslationId} = "${currentTranslationValue}" :`;
             break;
           }
 
-          case dataTypePrimaryEnums: {
-            if (currentValue && enumerationsList[currentValue]) {
-              const currentEnumsList = enumerationsList[currentValue].enums;
-              if (currentEnumsList[currentItem]) {
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentType, currentParam)}" = ${currentEnumsList[currentItem].icon}:`;
-              }
-            }
-            break;
-          }
-
           case dataTypeDestination:
           case dataTypeFunction:
-          case dataTypeReport: {
-            switch (currentParam) {
+          case dataTypeReport:
+          case dataTypePrimaryEnums:
+          case dataTypeDeviceAttributes:
+          case dataTypeDeviceButtons: {
+            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
+            switch (commandOptions.attribute) {
               case 'setId':
               case 'fixId': {
                 const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate);
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, simpleReportId ? 'fix': 'set', 'reportId')} ${simpleReportId ? `= ${simpleReportId}` : ''}`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} ${translationsItemTextGet(user, simpleReportId ? 'fix': 'set', 'reportId')} ${simpleReportId ? `= ${simpleReportId}` : ''}`;
                 cachedValueDelete(user, cachedSimpleReportIdToCreate);
                 break;
               }
 
               case 'names': {
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentValue)}" = ${translationsGetEnumName(user, currentType, currentItem, currentValue)}:`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemTextGet(user, commandOptions.index)}" = ${translationsGetEnumName(user, commandOptions.dataType, commandOptions.item, commandOptions.index)}:`;
                 break;
               }
 
               default: {
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[currentType].list[currentItem][currentParam]}:`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemTextGet(user, commandOptions.attribute)}" = ${currentList[commandOptions.item][commandOptions.attribute]}:`;
                 break;
               }
-            }
-            break;
-          }
-
-          case dataTypeDeviceAttributes:
-          case dataTypeDeviceButtons: {
-            if (currentValue && enumerationsList[dataTypeFunction].list[currentValue]) {
-              menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} "${translationsItemTextGet(user, currentParam)}" = ${enumerationsList[dataTypeFunction].list[currentValue][currentType][currentItem][currentParam]}:`;
             }
             break;
           }
 
           case dataTypeMenuRoles: {
-            switch (currentParam) {
+            switch (commandOptions.mode) {
               case 'setId':
               case 'fixId': {
                 const newRoleId = cachedValueGet(user, cachedRolesNewRoleId);
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, newRoleId ? 'fix': 'set', 'RoleId')} ${newRoleId ? `= ${newRoleId}` : ''}`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} ${translationsItemTextGet(user, newRoleId ? 'fix': 'set', 'RoleId')} ${newRoleId ? `= ${newRoleId}` : ''}`;
                 cachedValueDelete(user, cachedRolesNewRoleId);
                 break;
               }
               default: {
-                // menuMessageObject.menutext =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', currentType))} "${getFromTranslation(user, generateTextId(currentType, currentParam))}" = ${enumerationItems[currentType].list[currentItem][currentParam]}:`;
+                // menuMessageObject.menutext =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', commandOptions.dataType))} "${getFromTranslation(user, generateTextId(commandOptions.dataType, currentParam))}" = ${enumerationItems[commandOptions.dataType].list[currentItem][currentParam]}:`;
                 break;
               }
             }
@@ -9395,55 +9373,56 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeReportMember: {
             const queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(user, currentItem)} ${queryParams && queryParams.hasOwnProperty(currentItem) && queryParams[currentItem] ? `= ${queryParams[currentItem]}` : ''}`;
+            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(user, commandOptions.item)} ${queryParams && queryParams.hasOwnProperty(commandOptions.item) && queryParams[commandOptions.item] ? `= ${queryParams[commandOptions.item]}` : ''}`;
             break;
           }
 
           case dataTypeAlertSubscribed: {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} ${translationsItemTextGet(user, currentValue)}${currentSubParam ? ` = ${currentSubParam}` : ''}:`;
+            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} ${translationsItemTextGet(user, commandOptions.item)}${commandOptions.value ? ` = ${commandOptions.value}` : ''}:`;
             break;
           }
 
           case dataTypeConfig: {
             const
-              configItem = configOptions.getOption(currentItem, currentParam === configOptionScopeGlobal ? null : user),
-              configItemMask  = configOptions.getMaskDescription(currentItem);
+              configItem = configOptions.getOption(commandOptions.item, commandOptions.scope === configOptionScopeGlobal ? null : user),
+              configItemMask  = configOptions.getMaskDescription(commandOptions.item);
             logs(`configItem (${typeof(configItem)}${Array.isArray(configItem) ? ', Array' : ''}) = ${JSON.stringify(configItem)})`);
             logs(`configItem (${typeof(currentParam)}) = ${JSON.stringify(currentParam)})`);
             if ((typeOf(configItem) === 'array')
               // @ts-ignore
               && (! isNaN(currentValue))) {
-              const configItemIndex = Number(currentValue);
+              const configItemIndex = Number(commandOptions.index);
               if (configItemIndex < configItem.length) {
                 const
                   itemByIndex = configItem[configItemIndex],
                   itemId = currentItem === cfgGraphsIntervals ? itemByIndex.id : configItemIndex,
                   itemValue = currentItem === cfgGraphsIntervals ? itemByIndex.name : itemByIndex;
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${translationsItemCoreGet(user, currentItem)}[${itemId}]' (${translationsItemTextGet(user, 'CurrentValue')} = ${itemValue}):`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} '${translationsItemCoreGet(user, commandOptions.item)}[${itemId}]' (${translationsItemTextGet(user, 'CurrentValue')} = ${itemValue}):`;
               }
               else {
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'AddNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${translationsItemCoreGet(user, currentItem)}[]':`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'AddNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} '${translationsItemCoreGet(user, commandOptions.item)}[]':`;
               }
             }
             else {
               if (currentItem === cfgMenuLanguage) {
                 const newLanguageId = cachedValueGet(user, cachedConfigNewLanguageId);
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, newLanguageId ? 'FixNewAttributeValue' : 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} ${translationsItemCoreGet(user, currentItem)}'${newLanguageId ? `(${newLanguageId})` : ''}:`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, newLanguageId ? 'FixNewAttributeValue' : 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} ${translationsItemCoreGet(user, commandOptions.item)}'${newLanguageId ? `(${newLanguageId})` : ''}:`;
               }
               else {
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, currentItem)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
               }
             }
             break;
           }
 
           case dataTypeStateValue: {
-            if (existsObject(currentParam)) {
+            if (existsObject(commandOptions.state)) {
               const
-                stateObject = getObjectEnriched(currentParam),
-                currentName = translationsGetObjectName(user, stateObject, currentItem),
-                currentValue = existsState(currentParam) ? getState(currentParam).val : null;
-              menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${currentValue ? currentValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }))`;
+                currentStateId = commandOptions.state,
+                stateObject = getObjectEnriched(currentStateId),
+                currentName = translationsGetObjectName(user, stateObject, commandOptions.function),
+                currentValue = existsState(currentStateId) ? getState(currentStateId).val : null;
+              menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${currentValue ? currentValue : iconItemNotFound}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }))`;
               if (stateObject.common.type === 'number') {
                 menuMessageObject.menutext += `, ${translationsItemTextGet(user, 'Number')}`; //
                 if (stateObject.common.hasOwnProperty('min') || stateObject.common.hasOwnProperty('max')) {
@@ -9464,7 +9443,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           default: {
-            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', currentType)}:`;
+            menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)}:`;
             break;
           }
         }
@@ -9501,7 +9480,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         if (timer) clearTimeout(timer);
         timer = setTimeout(function() {
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
-          console.error(`Error! No response from external command ${currentItem} for function ${currentType}`);
+          console.error(`Error! No response from external command ${currentItem} for function ${commandOptions.dataType}`);
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(`External command ${commandOptions.item} for function ${commandOptions.function}, with params ${commandOptions.attribute}`, _l);
         menuMenuDrawOnPosition(user);
@@ -9568,7 +9547,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     break;
                   }
                 }
-                if ((currentType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[commandOptions.item][commandOptions.attribute]) {
+                if ((commandOptions.dataType === dataTypeFunction) && (currentParam === 'isEnabled') && currentList[commandOptions.item][commandOptions.attribute]) {
                   enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceAttributes, false);
                   enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons, true);
                 }
@@ -9748,7 +9727,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         break;
       }
       case cmdItemDelete: {
-        switch (currentType) {
+        switch (commandOptions.dataType) {
           default:
             currentMenuPosition.push(
               // @ts-ignore
@@ -9760,11 +9739,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         break;
       }
       case cmdItemDeleteConfirm: {
-        switch (currentType) {
+        switch (commandOptions.dataType) {
           case dataTypeDestination:
           case dataTypeFunction:
           case dataTypeReport: {
-            const enumObjectId = enumerationsIsItemCanBeDeleted(currentType, currentItem, true);
+            const enumObjectId = enumerationsIsItemCanBeDeleted(commandOptions.dataType, currentItem, true);
             if (enumObjectId) {
               await deleteObjectAsync(enumObjectId);
             }
@@ -9772,10 +9751,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             // break omitted
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            const currentList = enumerationsSubTypes.includes(currentType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][currentType] : enumerationsList[currentType].list;
+            const currentList = enumerationsSubTypes.includes(commandOptions.dataType) && currentParam ? enumerationsList[dataTypeFunction].list[currentParam][commandOptions.dataType] : enumerationsList[commandOptions.dataType].list;
             delete currentList[currentItem];
             enumerationsReorderItems(currentList);
-            enumerationsSave(enumerationsSubTypes.includes(currentType)  && currentParam ? dataTypeFunction : currentType);
+            enumerationsSave(enumerationsSubTypes.includes(commandOptions.dataType)  && currentParam ? dataTypeFunction : commandOptions.dataType);
             currentMenuPosition.splice(-2, 2);
             logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
             break;
@@ -10457,7 +10436,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         break;
       }
       case cmdItemNameGet: {
-        const currentList = enumerationsList[currentType].list;
+        const currentList = enumerationsList[commandOptions.dataType].list;
         if (! currentList[commandOptions.item].isExternal) {
           enumerationsRereadItemName(user, commandOptions.item, currentList[commandOptions.item]);
           menuMenuDrawOnPosition(user, currentMenuPosition);
