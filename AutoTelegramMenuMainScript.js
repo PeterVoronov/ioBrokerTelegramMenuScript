@@ -1305,7 +1305,7 @@ class MenuRoles {
    * @param {boolean=} compiled - Boolean selector of the rules format.
    * @returns {object} An object with the roleId's are the keys and the appropriate rules lists are the values.
    */
-  getRoles(itemId, compiled) {
+  getRoles(itemId, compiled = false) {
     let roles = {};
     if (itemId) {
       if (this.existsId(itemId)) {
@@ -1338,7 +1338,7 @@ class MenuRoles {
    * @param {boolean=} sortDescending - The sort order boolean selector.
    * @returns {object[]} - arrays with sorted rules.
    */
-  static sortRules(rules, inverseMasks, sortDescending) {
+  static sortRules(rules, inverseMasks = false, sortDescending = false) {
     let currentSort;
     if (rules && typeOf(rules, 'array') && (rules.length > 0)) {
       if (inverseMasks) {
@@ -1394,7 +1394,7 @@ class MenuRoles {
    * @param {boolean=} _compiled - defined to be compatible with the child class (`MenuUsers`) method.
    * @returns {object[]} An array of rules.
    */
-  getRules(itemId, _compiled) {
+  getRules(itemId, _compiled = false) {
     if (this.existsId(itemId)) {
       return this.data[itemId];
     }
@@ -1506,7 +1506,7 @@ class MenuRoles {
    * @param {boolean=} inverseMasks - Boolean to process mask as it is or inverted.
    * @returns {string} The result accessLevel.
    */
-  getMenuItemAccess(itemId, menuItemId, inverseMasks) {
+  getMenuItemAccess(itemId, menuItemId, inverseMasks = false) {
     const result = MenuRoles.#getAccessLevel(menuItemId, this.getRules(itemId, true), false, inverseMasks);
     return result;
   }
@@ -1521,7 +1521,7 @@ class MenuRoles {
    * @param {boolean=} inverseMasks - to process mask as it is or inverted.
    * @returns {object|string} The result is a rule object or access level sting.
    */
-  static #getAccessLevel(menuItemId, effectiveRoleRulesList, returnRule, inverseMasks) {
+  static #getAccessLevel(menuItemId, effectiveRoleRulesList, returnRule = false, inverseMasks = false) {
     let result;
     const
       menuItemIdParts = menuItemId.split(rolesIdAndMaskDelimiter),
@@ -2269,7 +2269,7 @@ class MenuUsers extends MenuRoles {
    * @param {boolean=} compiled - The boolean selector to define a return format of the roles rules.
    * @returns {object} An object as a list of roles as object properties.
    */
-  getRoles(itemId, compiled) {
+  getRoles(itemId, compiled = false) {
     let roles = {};
     if (itemId) {
       itemId = this.existsId(itemId);
@@ -2322,7 +2322,7 @@ class MenuUsers extends MenuRoles {
    * @param {boolean=} compiled - The boolean selector to define a return format of the roles rules.
    * @returns {object[]} An array of rules.
    */
-  getRules(itemId, compiled) {
+  getRules(itemId, compiled = false) {
     let rules = [];
     itemId = this.existsId(itemId);
     if (itemId) {
@@ -2883,7 +2883,7 @@ function translationsGetCurrentForUser(user) {
  * @param {boolean=} pointOnItemItself - The inheritance level selector.
  * @returns The translation object contains the translation Id.
  */
-function translationsPointOnItemOwner(user, translationId, pointOnItemItself) {
+function translationsPointOnItemOwner(user, translationId, pointOnItemItself = false) {
   const
     // @ts-ignore
     idsList = translationId ? (typeOf(translationId, 'string') ? translationId.split('.') : translationId) : [],
@@ -3031,7 +3031,7 @@ function translationsItemDelete(user, translationId) {
  * @param {boolean=} isCommon - The indicator of common attributes.
  * @returns {string|undefined} The translation Id string.
  */
- function translationsGetObjectId(object, functionId, destinationId, isCommon) {
+ function translationsGetObjectId(object, functionId, destinationId, isCommon = false) {
   logs(`object = ${JSON.stringify(object)}`);
   let translationId;
   const
@@ -3063,7 +3063,7 @@ function translationsItemDelete(user, translationId) {
  * @param {boolean=} isCommon - The indicator of common attributes.
  * @returns {string} The result name of object.
  */
-function translationsGetObjectName(user, object, functionId, destinationId, isCommon) {
+function translationsGetObjectName(user, object, functionId, destinationId, isCommon = false) {
   logs(`object = ${JSON.stringify(object)}`);
   const translationId = translationsGetObjectId(object, functionId, destinationId, isCommon);
   // logs(`object = ${object}, translationId = ${translationId}`, _l);
@@ -3674,7 +3674,7 @@ function cachedValueExists(user, valueId) {
  * return an array with value and lastChange timestamp of it.
  * @returns {any|[any, number]}
  */
-function cachedValueGet(user, valueId, getLastChange) {
+function cachedValueGet(user, valueId, getLastChange = false) {
   logs('user = ' + JSON.stringify(user));
   logs('state = ' + JSON.stringify(valueId));
   const id = cachedGetValueId(user, valueId);
@@ -4165,7 +4165,7 @@ function enumerationsReorderItems(currentEnumerations) {
  * @param {string} enumerationType - The string defines the enumerationItem type.
  * @param {boolean=} withExtensions - The selector to init Extensions.
  */
-function enumerationsInit(enumerationType, withExtensions) {
+function enumerationsInit(enumerationType, withExtensions = false) {
   logs(`  enumerationItems= ${JSON.stringify(enumerationsList[enumerationType])}`);
   let currentEnumerationList = enumerationsList[enumerationType].list;
   let countItems = enumerationsReorderItems(currentEnumerationList);
@@ -4738,7 +4738,7 @@ function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
  * @param {boolean=} withEnum - The selector of deletion check.
  * @returns {string} The string containing the appropriate enum Id in case of `withEnum`, or 'can be deleted' in case of deletion is possible and empty string  - if not.
  */
-function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, withEnum){
+function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, withEnum = false){
   const
     currentEnumeration = enumerationsList[enumerationType],
     currentEnumerationItemObject =  currentEnumeration && currentEnumeration.list.hasOwnProperty(enumerationItemId) ? currentEnumeration.list[enumerationItemId] : {},
@@ -5395,7 +5395,7 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
  * @param {boolean=} skipCodeConversion - The selector to skip code conversion.
  * @returns {object} The resulted object contained the formatted string.
  */
-function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState, skipCodeConversion) {
+function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState, skipCodeConversion = false) {
   const currObject = ((typeof(stateIdOrObject) === 'string') && existsObject(stateIdOrObject)) ? getObjectEnriched(stateIdOrObject) : stateIdOrObject;
   let valueString = '';
   let lengthModifier = 0;
@@ -5881,7 +5881,7 @@ function alertsGetIcon(user, menuItemToProcess) {
  * This function is used to load stored alerts and subscribe on appropriate states changes.
  * @param {boolean=} checkStates - The selector, to define, will the previous values be checked.
  */
-function alertsInit(checkStates) {
+function alertsInit(checkStates = false) {
   const alerts = alertsGet();
   // console.log(`alerts = ${JSON.stringify(alerts)}`);
   const
@@ -5929,7 +5929,7 @@ function alertsInit(checkStates) {
  * @param {string} alertMessage - The alert message text.
  * @param {boolean=} isAcknowledged - The alert message acknowledge status.
  */
-function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
+function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) {
   logs(`user = ${JSON.stringify(user)}`);
   logs(`id = ${JSON.stringify(alertId)}`);
   logs(`alertMessage = ${JSON.stringify(alertMessage)}`);
@@ -5955,7 +5955,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged) {
  * @param {boolean=} nonAcknowledged - The selector to filter only unacknowledged messages.
  * @returns {object[]} The array of alert messages.
  */
-function alertGetMessages(user, nonAcknowledged) {
+function alertGetMessages(user, nonAcknowledged = false) {
   const alertMessages = cachedValueExists(user, cachedAlertMessages) ?  cachedValueGet(user, cachedAlertMessages) : [];
   /**  temporary code **/
   alertMessages.forEach(alertMessage => {
@@ -6394,7 +6394,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
  * @param {boolean=} returnBoth - The selector to define the result format.
  * @returns {object|object[]} The thresholds of thresholds array.
  */
-function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth) {
+function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth = false) {
   const
     alerts = alertsGet(),
     currentStateAlert = alerts.hasOwnProperty(alertId) ? alerts[alertId] : undefined,
@@ -6414,7 +6414,7 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth) {
  * @param {boolean=} isExtraMenu - The selector to show more detailed params.
  * @returns {object} Menu item object.
  */
-function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, itemStateObject, itemOptions, isExtraMenu) {
+function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, itemStateObject, itemOptions, isExtraMenu = false) {
   let menuItem;
   if ((itemStateObject === undefined) || (itemStateObject === null)) itemStateObject = getObjectEnriched(itemState);
   if (itemStateObject && itemStateObject.hasOwnProperty('common') && itemStateObject.common) {
@@ -7726,7 +7726,7 @@ const
    * @param {boolean=} isSubordinated - The indicator, if this menu item has a holder one.
    * @returns {object} Newly generated root menu item.
    */
-  function menuMenuItemGenerateRootEnumeration(user, enumerationType, currentEnumeration, itemId, nameDeclinationKey, isSubordinated) {
+  function menuMenuItemGenerateRootEnumeration(user, enumerationType, currentEnumeration, itemId, nameDeclinationKey, isSubordinated = false) {
     let result = null;
     const currentItem = currentEnumeration[itemId];
     if (isSubordinated || (! currentItem.holder)) {
@@ -8465,7 +8465,7 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
  * @param {boolean=} clearUserMessage - The selector to identify, should be user message to be deleted.
  * @param {boolean=} isSilent - The selector, how to inform user about message (show or not update of menu as a new message).
  */
-function menuMenuDrawOnPosition(user, itemPos, clearBefore, clearUserMessage, isSilent) {
+function menuMenuDrawOnPosition(user, itemPos, clearBefore = false, clearUserMessage = false, isSilent = false) {
 
   /**
    * This function "draw" the received menu item, after it was prepared.
@@ -8657,7 +8657,7 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
  * @param {number} idOfUser - The user ID of the user to refresh the menu for. Can be empty, for all.
  * @param {boolean=} forceNow - The selector, to force the refresh for all users now, independently from configured value.
  */
-function menuMenuMessageRenew(idOfUser, forceNow) {
+function menuMenuMessageRenew(idOfUser, forceNow = false) {
   let userIds = (idOfUser !== menuRefreshTimeAllUsers) && usersInMenu.validId(idOfUser) ? [idOfUser] : usersInMenu.getUsers();
   // logs('userIds = ' + JSON.stringify(userIds), _l);
   if (idOfUser === menuRefreshTimeAllUsers) {
@@ -8811,10 +8811,11 @@ function commandsParamsPack(...inputParams) {
 /**
  * This function prepares command with option to be fit into `callbackData` field of telegramMenu button object.
  * If length of callbackData is more then 64, then all options data will be stored in separate map `callbackDataToCache`.
- * @param {string} command
- * @param {object} options
- * @param {string=} index
- * @param {Map=} callbackDataToCache
+ * @param {string} command - The current menu item command ID.
+ * @param {object} options - The command options object.
+ * @param {string=} index - The index of current menu item.
+ * @param {Map=} callbackDataToCache - The Map object to store options in cache.
+ * @returns {string} The command and options(or index) "packed" to string;
  */
 function commandsCallbackDataPrepare(command, options, index, callbackDataToCache)  {
   let callbackData = commandsParamsPack(command, JSON.stringify({options}));
@@ -8884,7 +8885,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
    * @param {any=} result -(`string`) The execution result.
    * @param {boolean=} isFromGetInput - The selector to identify a way of input value come
    */
-  function stateOrCommandProcessed(user, result, isFromGetInput) {
+  function stateOrCommandProcessed(user, result, isFromGetInput = false) {
     if (timer) clearTimeout(timer);
     cachedValueSet(user, cachedCurrentState, '');
     telegramMessageDisplayPopUp(user, result.error ? result.error : translationsItemTextGet(user, 'MsgSuccess'));
@@ -8906,7 +8907,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
    * @param {any=} stateValue  - The possible value for the state.
    * @param {boolean=} isFromGetInput - The selector to identify a way of input value come.
    */
-  function setStateValue(user, stateId, stateValue, isFromGetInput) {
+  function setStateValue(user, stateId, stateValue, isFromGetInput = false) {
     // logs(`setState with state: '${currentType}' and value ${currentItem}`, _l);
     const currentObject = getObjectEnriched(stateId);
     logs('currObject = ' + JSON.stringify(currentObject));
@@ -10647,7 +10648,7 @@ function telegramOnImageSendCommand(data, callback) {
  * @param {boolean=} createNewMessage - The selector to create new Telegram message instead of edit exiting one.
  * @param {boolean=} isSilent - The selector, how to inform user about message (show or not update of menu as a new message).
  */
-function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, clearBefore, clearUserMessage, createNewMessage, isSilent) {
+function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, clearBefore = false, clearUserMessage = false, createNewMessage = false, isSilent = false) {
   const alertMessages = alertGetMessages(user, true);
   logs('alertMessages = ' + JSON.stringify(alertMessages));
   let alertMessage = '';
@@ -10786,7 +10787,7 @@ function telegramMessageQueueProcess(user, messageId) {
    * @param {number} currentLength - The current length of queue.
    * @param {boolean=} waitForLog - The selector to identify is needed to wait for log for error details.
    */
-  function telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, waitForLog) {
+  function telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, waitForLog = false) {
     let
       userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue),
       telegramError;
@@ -10980,7 +10981,7 @@ function telegramMessageQueueProcess(user, messageId) {
  * @param {number=} messageIdToDelete - The Telegram message unique id for the deletion.
  * @returns
  */
-function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegramObjectOnly, messageIdToDelete) {
+function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegramObjectOnly = false, messageIdToDelete) {
   const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48);
   const messageId = messageIdToDelete ? messageIdToDelete : (isUserMessageToDelete ? cachedValueGet(user, cachedMessageId) : (isBotMessageOldOrNotExists ? undefined : lastBotMessageId));
   if (messageId) {
@@ -11013,7 +11014,7 @@ function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegram
  * @param {string=} text - The text to be displayed.
  * @param {boolean=} showAlert - The show alert attribute.
  */
-function telegramMessageDisplayPopUp(user, text, showAlert) {
+function telegramMessageDisplayPopUp(user, text, showAlert = false) {
   if(configOptions.getOption(cfgShowResultMessages, user)) {
     const telegramObject = {
       answerCallbackQuery: {
