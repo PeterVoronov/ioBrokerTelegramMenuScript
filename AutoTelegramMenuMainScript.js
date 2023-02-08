@@ -1885,7 +1885,7 @@ class MenuRoles {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedRule.mask}]`,
       icon: iconItemEdit,
-      options: {dataType: dataTypeMenuRoleRules, roleId, ruleIndex: -1},
+      options: {dataType: dataTypeMenuRoleRules, roleId, ruleIndex: -1, [menuOptionHorizontalNavigation]: false},
       function: (user, _menuItemToProcess) => (MenuRoles.#ruleDetails(user, savedRule)),
       submenu: (user, menuItemToProcess) => {return this.#menuRuleSetAccessLevel(user, menuItemToProcess)}});
       logs(`subMenu 2 = ${JSON.stringify(subMenu, null, 2)}`);
@@ -1956,7 +1956,7 @@ class MenuRoles {
         name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
         group: 'itemAdd',
         icon: iconItemPlus,
-        options: {roleId},
+        options: {roleId, [menuOptionHorizontalNavigation]: false},
         function: (user, _menuItemToProcess) => {
           if (! cachedValueExists(user, cachedRolesRoleUnderEdit)) {
             cachedValueSet(user, cachedRolesRoleUnderEdit, {roleId : roleId, rules: currentRoleRules});
@@ -1965,7 +1965,7 @@ class MenuRoles {
         },
         submenu: (user, menuItemToProcess) => {return this.#menuGenerateRoleRulesAddItem(user, menuItemToProcess)}
       });
-      const currentCommandOptions = {dataType: dataTypeMenuRoleRules, roleId};
+      const currentCommandOptions = {dataType: dataTypeMenuRoles, roleId};
       if ((isNewRole && currentRoleRules.length) || (JSON.stringify(this.getRules(roleId)) !== JSON.stringify(currentRoleRules))) {
         subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
@@ -6445,6 +6445,7 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
     ) {
       if (isExtraMenu) {
         menuItem['submenu'] = alertsMenuGenerateManageBoolean;
+        menuItem['command'] = cmdEmptyCommand;
       }
       else {
         menuItem['submenu'] = [];
@@ -6452,6 +6453,7 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
     }
     else if ((itemStateType === 'number') || isNumericString) {
       menuItem['submenu'] = alertsMenuGenerateManageNumeric;
+      menuItem['command'] = cmdEmptyCommand;
     }
     else {
       menuItem = undefined;
@@ -8093,9 +8095,10 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
             icon: currentIcon,
             submenu: enumerationsMenuGenerateDevice
           };
-          logs('deviceMenuItem = ' + JSON.stringify(deviceMenuItem, null, 2));
+          // logs('deviceMenuItem = ' + JSON.stringify(deviceMenuItem, null, 2), _l);
           currentMenuItem.submenu.push(deviceMenuItem);
         });
+        currentMenuItem.options = {[menuOptionHorizontalNavigation]: true};
         if (((isFunctionsFirst && primaryMenuItem.simplifyMenuWithOneDevice) ||
           ((! isFunctionsFirst) && (! currentLevelMenuItemId.includes('.')) && currentLevelMenuItem.simplifyMenuWithOneDevice)) &&
           (currentMenuItem.submenu.length === 1)) {
@@ -8107,7 +8110,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           currentMenuItem.submenu[0]['id'] = currentMenuItem.id;
           currentMenuItem = currentMenuItem.submenu[0];
         }
-        currentMenuItem.options = {[menuOptionHorizontalNavigation]: true};
         if (currentLevelMenuItemId.includes('.')) {
           const [holderId, subordinatedId] = currentLevelMenuItemId.split('.');
           let holderItem = subMenu.find(subMenuItem => ((subMenuItem[secondaryEnumId] === holderId)));
@@ -8190,7 +8192,7 @@ function menuMenuItemDetailsPrintFixedLengthLines(user, linesArray) {
 
 const
   cachedMenuItemsAndRows = 'menuItemsAndRows',
-  cachedMenuLongCommandsWithParams = 'longCommandsWithParams',
+  cachedCommandsOptionsList = 'commandsOptions',
   cachedMenuButtonsOffset = 'buttonsOffset',
   menuOptionHorizontalNavigation = 'horizontalNavigation';
 
@@ -8286,9 +8288,12 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
       preparedMessageObject.options = subMenuItem.hasOwnProperty('options')  && (subMenuItem.options !== undefined) ? subMenuItem.options : {};
       if (preparedMessageObject.navigationLeft !== undefined) preparedMessageObject.navigationLeft = undefined;
       if (preparedMessageObject.navigationRight !== undefined) preparedMessageObject.navigationRight = undefined;
-      const currentSubMenuMaxIndex = menuItemToProcess.submenu.length - 1;
-      if ((currentSubMenuMaxIndex > 0) && ((preparedMessageObject.options && preparedMessageObject.options[menuOptionHorizontalNavigation]) || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
-      (! (preparedMessageObject.options && (preparedMessageObject.options[menuOptionHorizontalNavigation] === false)))) {
+      const
+        currentSubMenuMaxIndex = menuItemToProcess.submenu.length - 1,
+        currentOptions = preparedMessageObject.options,
+        horizontalNavigation = currentOptions && currentOptions.hasOwnProperty(menuOptionHorizontalNavigation) ? (currentOptions[menuOptionHorizontalNavigation] ? 1 : -1) : 0;
+      if ((currentSubMenuMaxIndex > 0) && ((horizontalNavigation > 0) || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
+      (! (horizontalNavigation < 0))) {
         if (currentSubMenuPos > 0)  {
           for (let itemPos = currentSubMenuPos - 1; itemPos >= 0; itemPos--) {
             if ((menuItemToProcess.submenu[itemPos].command === undefined) || (! menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix))) {
@@ -8368,28 +8373,17 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
         // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`, _l);
         // logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
         const currentSubIndex = currentSubMenuItem.index;
-        let
-          callbackData = menuItemButtonPrefix + currentSubIndex,
-          currentOptions;
+        let callbackData = menuItemButtonPrefix + currentSubIndex;
         if (currentSubMenuItem.hasOwnProperty('command') && (typeof(currentSubMenuItem.command) === 'string') && (currentSubMenuItem.command.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.command !== cmdPrefix)) {
+          if (currentSubMenuItem.options) {
+            callbackData = commandsCallbackDataPrepare(currentSubMenuItem.command, currentSubMenuItem.options, currentSubIndex, callbackDataToCache);
+          }
+          else {
             callbackData = currentSubMenuItem.command;
-            /**
-             * Preparation for full options implementation
-             */
-            if (currentSubMenuItem.options) {
-              currentOptions = objectDeepClone(currentSubMenuItem.options);
-              if (currentOptions.hasOwnProperty(menuOptionHorizontalNavigation)) delete currentOptions[menuOptionHorizontalNavigation];
-              callbackData = commandsCallbackDataPrepare(currentSubMenuItem.command, JSON.stringify({options: currentOptions}), currentSubIndex, callbackDataToCache);
-            }
-            /** */
+          }
         }
         else if (currentSubMenuItem.hasOwnProperty('externalCommand')) {
-          // callbackData = commandsParamsPack(cmdExternalCommand, currentSubMenuItem.funcEnum, currentSubMenuItem.externalCommand, currentSubMenuItem.externalCommandParams);
-          /**
-           * Preparation for full options implementation
-           */
-          callbackData = commandsCallbackDataPrepare(cmdExternalCommand, JSON.stringify({options: {function: currentSubMenuItem.funcEnum, item: currentSubMenuItem.externalCommand, attribute: currentSubMenuItem.externalCommandParams}}), currentSubIndex, callbackDataToCache);
-          /** */
+          callbackData = commandsCallbackDataPrepare(cmdExternalCommand, {function: currentSubMenuItem.funcEnum, item: currentSubMenuItem.externalCommand, attribute: currentSubMenuItem.externalCommandParams}, currentSubIndex, callbackDataToCache);
         }
         preparedMessageObject.buttons.push({
           text:  `${menuMenuItemGetIcon(user, currentSubMenuItem)}${currentSubMenuItem.name}`,
@@ -8401,54 +8395,34 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
         preparedMessageObject.buttons.push({
           text:  `${iconItemPrevious}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
           group: 'offset',
-          // callback_data: commandsParamsPack(cmdSetOffset, currentIndex, buttonsOffset - maxButtonsCount)
-          /**
-           * Preparation for full options implementation
-           */
-          callback_data: commandsCallbackDataPrepare(cmdSetOffset, JSON.stringify({options:{index: currentIndex, offset: buttonsOffset - maxButtonsCount}}), [currentIndex, 'prev'].join('.'), callbackDataToCache)
-          /** */
+          callback_data: commandsCallbackDataPrepare(cmdSetOffset, {index: currentIndex, offset: buttonsOffset - maxButtonsCount}, [currentIndex, 'prev'].join('.'), callbackDataToCache)
         });
       }
       if (buttonsCount > maxButtonsCount) {
         preparedMessageObject.buttons.push({
           text:  `${iconItemNext}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
           group: 'offset',
-          // callback_data: commandsParamsPack(cmdSetOffset, currentIndex, buttonsOffset + maxButtonsCount)
-          /**
-           * Preparation for full options implementation
-           */
-          callback_data: commandsCallbackDataPrepare(cmdSetOffset, JSON.stringify({options:{index: currentIndex, offset: buttonsOffset + maxButtonsCount}}), [currentIndex, 'next'].join('.'), callbackDataToCache)
-          /** */
+          callback_data: commandsCallbackDataPrepare(cmdSetOffset, {index: currentIndex, offset: buttonsOffset + maxButtonsCount}, [currentIndex, 'next'].join('.'), callbackDataToCache)
         });
       }
       if (preparedMessageObject.navigationLeft !== undefined) {
         preparedMessageObject.buttons.push({
           text:  `${iconItemMoveLeft}`,
           group: menuOptionHorizontalNavigation,
-          // callback_data: commandsParamsPack(cmdItemJumpTo, [jumpToUp, preparedMessageObject.navigationLeft].join('.'))
-          /**
-           * Preparation for full options implementation
-           */
-          callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, JSON.stringify({options:{jumpToArray: [jumpToUp, preparedMessageObject.navigationLeft]}}), [currentIndex, 'left'].join('.'), callbackDataToCache)
-          /** */
+          callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationLeft]}, [currentIndex, 'left'].join('.'), callbackDataToCache)
         });
       }
       if (preparedMessageObject.navigationRight !== undefined) {
         preparedMessageObject.buttons.push({
           text:  `${iconItemMoveRight}`,
           group: menuOptionHorizontalNavigation,
-          // callback_data: commandsParamsPack(cmdItemJumpTo, [jumpToUp, preparedMessageObject.navigationRight].join('.'))
-          /**
-           * Preparation for full options implementation
-           */
-          callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, JSON.stringify({options:{jumpToArray: [jumpToUp, preparedMessageObject.navigationRight]}}), [currentIndex, 'right'].join('.'), callbackDataToCache)
-          /** */
+          callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationRight]}, [currentIndex, 'right'].join('.'), callbackDataToCache)
         });
       }
       // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
       if (callbackDataToCache.size) {
         // logs(`callbackDataToCache.size = ${callbackDataToCache.size}`);
-        cachedValueSet(user, cachedMenuLongCommandsWithParams, callbackDataToCache);
+        cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
       }
       // logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
       callback(preparedMessageObject, menuItemToProcess);
@@ -8813,17 +8787,13 @@ function commandsParamsPack(...inputParams) {
  * If length of callbackData is more then 64, then all options data will be stored in separate map `callbackDataToCache`.
  * @param {string} command - The current menu item command ID.
  * @param {object} options - The command options object.
- * @param {string=} index - The index of current menu item.
- * @param {Map=} callbackDataToCache - The Map object to store options in cache.
+ * @param {string} index - The index of current menu item.
+ * @param {Map} callbackDataToCache - The Map object to store options in cache.
  * @returns {string} The command and options(or index) "packed" to string;
  */
 function commandsCallbackDataPrepare(command, options, index, callbackDataToCache)  {
-  let callbackData = commandsParamsPack(command, JSON.stringify({options}));
-  if ((callbackData.length > 64) && index && callbackDataToCache && typeOf(callbackDataToCache, 'map')) {
-    callbackDataToCache.set(index, options);
-    callbackData = commandsParamsPack(command, index);
-  }
-  return callbackData;
+  callbackDataToCache.set(index, options);
+  return commandsParamsPack(command, index);
 }
 
 /**
@@ -8844,29 +8814,19 @@ function commandsParamsUnpack(command, defaultValue) {
  * This function "extracts"(parses) command and respective options from string to the object.
  * @param {object} user - The user object.
  * @param {string} userInputString  - The user input or data from menu.
+ * @param {Map=} commandsOptionsList  - The Map with command-options pairs.
  * @returns {object} The result object in format {command: , options: }.
  */
-function commandsExtractCommandWithOptions(user, userInputString) {
+function commandsExtractCommandWithOptions(user, userInputString, commandsOptionsList) {
   let currentOptions = {};
-  const [currentCommand, inputOptionsString] = commandsParamsUnpack(userInputString, [cmdNoOperation]);
-  if (inputOptionsString.includes('{options:{')) {
-    try {
-      let inputOptions = JSON.parse(inputOptionsString);
-      if (inputOptions.hasOwnProperty('options')) {
-        currentOptions = inputOptions.options;
-      }
-    }
-    catch (error) {
-      console.warn(`Can't parse options for the command '${currentCommand}' from string = '${inputOptionsString}! Error is ${JSON.stringify(error)}'.`);
+  const [currentCommand, currentCommandIndex] = commandsParamsUnpack(userInputString, [cmdNoOperation]);
+  if (currentCommandIndex) {
+    const cachedLongCommands = commandsOptionsList ? commandsOptionsList : (cachedValueExists(user, cachedCommandsOptionsList) ? cachedValueGet(user, cachedCommandsOptionsList) : undefined);
+    if (cachedLongCommands && cachedLongCommands.has(currentCommandIndex)) {
+      currentOptions = cachedLongCommands.get(currentCommandIndex);
     }
   }
-  else if (inputOptionsString) {
-    const cachedLongCommands = cachedValueExists(user, cachedMenuLongCommandsWithParams) ? cachedValueGet(user, cachedMenuLongCommandsWithParams) : {};
-    if (cachedLongCommands.has(inputOptionsString)) {
-      currentOptions = cachedLongCommands.get(inputOptionsString);
-    }
-  }
-  return {command: currentCommand, options: currentOptions};
+  return {command: currentCommand, options: currentOptions, index: currentCommandIndex};
 }
 
 /**
@@ -8976,8 +8936,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     menuMessageObject = {};
   let
     currentMenuPosition = cachedValueGet(user, cachedMenuItem);
-  const [currentCommand, commandOptions] = commandsExtractCommandWithOptions(user, userInput);
-  if (cachedValueExists(user, cachedMenuLongCommandsWithParams)) cachedValueDelete(user, cachedMenuLongCommandsWithParams);
+  const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
+  // logs(`command = ${currentCommand}, commandOptions = ${JSON.stringify(commandOptions)}`, _l);
+  // if (cachedValueExists(user, cachedCommandsOptionsList)) cachedValueDelete(user, cachedCommandsOptionsList);
   // logs(`cachedCommand = ${cachedLongCommands}`, _l);
   // logs(`currentCommand = ${currentCommand}, commandOptions.dataType = ${commandOptions.dataType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentSubParam = ${currentSubParam}, currentSubValue = ${currentSubValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`, _l);
 
@@ -9333,7 +9294,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
 
               default: {
-                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemTextGet(user, commandOptions.attribute)}" = ${currentList[commandOptions.item][commandOptions.attribute]}:`;
+                menuMessageObject.menutext =  `${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemMenuGet(user, commandOptions.attribute)}" = ${currentList[commandOptions.item][commandOptions.attribute]}:`;
                 break;
               }
             }
@@ -9680,8 +9641,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     if (isTranslationFileOk) {
                       currentMenuPosition.push(
                         // @ts-ignore
-                        isNaN(commandOptions.translationPart)
-                          ? commandOptions.currentItem : Number(commandOptions.currentItem));
+                        isNaN(commandOptions.uploadMode)
+                          ? commandOptions.uploadMode : Number(commandOptions.uploadMode));
                       // logs(`currentMenuItem = ${currentMenuItem}`);
                       menuMenuDrawOnPosition(user, currentMenuPosition);
                     }
@@ -11298,10 +11259,13 @@ function telegramOnConnected(connected) {
               }
               else if (request.hasOwnProperty('document')) {
                 if (cachedValueExists(user, cachedIsWaitForInput)) {
-                  const [currentCommand, commandOptions] = commandsExtractCommandWithOptions(user, cachedValueGet(user, cachedIsWaitForInput));
+                  const
+                    {command: currentCommand, options: commandOptions, index: commandIndex} = commandsExtractCommandWithOptions(user, cachedValueGet(user, cachedIsWaitForInput)),
+                    commandsOptionsList = cachedValueExists(user, cachedCommandsOptionsList) ? cachedValueGet(user, cachedCommandsOptionsList) : undefined;
                   // logs(`isWaitForInput = ${isWaitForInput}, subMenuItemId = ${subMenuItemId}`);
                   if (currentCommand === cmdItemUpload) {
-                    cachedValueSet(user, cachedIsWaitForInput, commandsParamsPack(cmdItemUpload, JSON.stringify({...commandOptions, fileName: request.document.file_name, fileSize: request.document.file_size})));
+                    cachedValueSet(user, cachedIsWaitForInput, commandsCallbackDataPrepare(cmdItemUpload, {...commandOptions, fileName: request.document.file_name, fileSize: request.document.file_size}, commandIndex, commandsOptionsList));
+                    cachedValueSet(user, cachedCommandsOptionsList, commandsOptionsList);
                     on({id: telegramRequestPathFile, change: 'any'}, (obj)  => {
                       unsubscribe(telegramRequestPathFile);
                       commandsUserInputProcess(user, obj.state.val);
