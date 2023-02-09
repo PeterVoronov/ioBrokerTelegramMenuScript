@@ -829,7 +829,7 @@ class ConfigOptions {
    * @returns {object[]}
    */
   menuGenerateForArray(user, menuItemToProcess) {
-    logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
+    // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, _l);
     const
       {item: cfgItem, scope: optionScope} = menuItemToProcess.options,
       currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
@@ -862,6 +862,7 @@ class ConfigOptions {
     if (isThisLevelAllowModify) {
       subMenu.push(menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: subMenuIndex}));
     }
+    // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
     return subMenu;
   }
 
@@ -911,7 +912,7 @@ class ConfigOptions {
         if (isThisLevelAllowModify) currentItem.submenu = new Array();
         let subSubMenuIndex = 0;
         if (isCurrentAccessLevelFull) {
-          subSubMenuIndex = currentItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}.${itemOrder}`, subSubMenuIndex, {dataType: dataTypeTranslation, item: cfgItem}));
+          subSubMenuIndex = currentItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}.${itemOrder}`, subSubMenuIndex, {dataType: dataTypeTranslation, translationId: `${translationsCoreId}.${cfgItem}`}));
         }
         const optionScopes = isSystemLevelOption ? [configOptionScopeGlobal] : (isCurrentAccessLevelFull && (! isSystemLevelOption) ?  [configOptionScopeGlobal, configOptionScopeUser] : [configOptionScopeUser]);
         optionScopes.forEach(optionScope => {
@@ -1046,7 +1047,7 @@ class ConfigOptions {
                     let subSubMenuIndex = 0;
                     const currentCommandOptions = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope, index: graphsIntervalIndex};
                     [subMenuItem.submenu,  subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(user, subMenuItem.submenu,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex,  graphsIntervalIndex, currentIntervalsMaxIndex, currentCommandOptions);
-                    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {dataType: dataTypeTranslation, translationId: translationsItemGenerateId('text', 'TimeRange', graphsIntervalId)}));
+                    subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {dataType: dataTypeTranslation, translationId: translationsItemGenerateTextId('TimeRange', graphsIntervalId)}));
                     subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
                   }
                   subMenuIndex = subMenu.push(subMenuItem);
@@ -1066,12 +1067,12 @@ class ConfigOptions {
               switch (itemType) {
                 case 'array': {
                   if (isThisLevelAllowModify) {
-                    subMenuItem.submenu = (user, menuItemToProcess) => {this.menuGenerateForArray(user, menuItemToProcess)};
+                    subMenuItem.submenu = (user, menuItemToProcess) => {return this.menuGenerateForArray(user, menuItemToProcess)};
                   }
                   else {
                     currentItem.accessLevel = currentAccessLevel;
                     currentItem.options = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope};
-                    currentItem.submenu = (user, menuItemToProcess) => {this.menuGenerateForArray(user, menuItemToProcess)};
+                    currentItem.submenu = (user, menuItemToProcess) => {return this.menuGenerateForArray(user, menuItemToProcess)};
                   }
                   break;
                 }
@@ -2973,6 +2974,43 @@ function translationsItemGet(user, translationId) {
 }
 
 /**
+ * This functions generates translation Id by joining a list of items, and
+ * adding the "type" selector as prefix after `Core` identifier.
+ * @param {string} translationIdType - The "type" selector.
+ * @param  {...any} items - The one or several string arguments, array of strings.
+ * @returns {string} The translation Id.
+ */
+function translationsItemGenerateCoreId(translationIdType, ...items ) {
+  let result = `${translationsCoreId}.${translationIdType}`;
+  if ((items) && Array.isArray(items)) {
+    result += items.map(item => (stringCapitalize(item))).join('');
+  }
+  return result;
+}
+
+
+/**
+ * This functions generates translation Id by joining a list of items, and
+ * adding the 'text' "type" selector as prefix.
+ * @param  {...any} items - The one or several string arguments, array of strings.
+ * @returns {string} The translation Id.
+ */
+function translationsItemGenerateTextId(...items ) {
+  return translationsItemGenerateCoreId('text', ...items);
+}
+
+/**
+ * This functions generates translation Id by joining a list of items, and
+ * adding the 'menu' "type" selector as prefix.
+ * @param  {...any} items - The one or several string arguments, array of strings.
+ * @returns {string} The translation Id.
+ */
+function _translationsItemGenerateMenuId(...items ) {
+  return translationsItemGenerateCoreId('menu', ...items);
+}
+
+
+/**
  * This functions returns the value for the appropriate text translation Id,
  * which will be generated as a joint string, from the current user translation.
  * @param {object} user - The user object.
@@ -3370,7 +3408,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
             submenu: new Array()
           };
           if (isCurrentAccessLevelAllowModify) {
-            const currentCommandOptions = {dataType: dataTypeTranslation, translationId: `${translationsCoreId}.${translationKey}`};
+            const currentCommandOptions = {dataType: dataTypeTranslation, translationId: translationsItemGenerateCoreId('', translationKey)};
             subSubMenuIndex = subMenuItem.submenu.push(menuMenuItemGenerateRenameItem(user,`${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
             subMenuItem.submenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, currentCommandOptions));
           }
@@ -8272,7 +8310,6 @@ function menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetM
       currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
     }
     let currentSubMenuPos;
-    // logs('currentMenuItem = ' + JSON.stringify(currentMenuItem, null, 2));
     if ((menuItemToProcess.submenu.length > 0) && (targetMenuPos.length > 0)) {
       currentSubMenuPos = targetMenuPos.shift();
       if ((typeof(currentSubMenuPos) === 'string') && isNaN(Number(currentSubMenuPos))) {
@@ -8946,11 +8983,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   let
     currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
-  logs(`userInput = ${userInput}, command = ${currentCommand}, commandOptions = ${JSON.stringify(commandOptions)}, currentMenuItem = ${currentMenuPosition}`, _l);
-  // if (cachedValueExists(user, cachedCommandsOptionsList)) cachedValueDelete(user, cachedCommandsOptionsList);
-  // logs(`cachedCommand = ${cachedLongCommands}`, _l);
-  // logs(`currentCommand = ${currentCommand}, commandOptions.dataType = ${commandOptions.dataType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentSubParam = ${currentSubParam}, currentSubValue = ${currentSubValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`, _l);
-
+  // logs(`userInput = ${userInput}, userInputToProcess: ${userInputToProcess}, command = ${currentCommand}, commandOptions = ${JSON.stringify(commandOptions)}, currentMenuItem = ${currentMenuPosition}`, _l);
   if (isWaitForInput) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (currentCommand) {
@@ -9126,9 +9159,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         parsedValueArray = currentMask && currentMask.test(userInputToProcess) ? userInputToProcess.match(currentMask): [],
                         parsedValue = parsedValueArray && parsedValueArray.length && timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2]) ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]] : undefined;
                       newValue = parsedValue !== undefined ? {id: userInputToProcess, minutes: parsedValue} : null;
-                      menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${configItem})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
+                      menuMessageObject.menutext =  `${translationsItemTextGet(user, 'WrongValue')}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(user, 'ForConfig')} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(user, 'CurrentValue')} = ${userInputToProcess})${configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''}:`;
                     }
-                    if (newValue !== null) configItem.push(newValue);
+                    if (newValue !== null) {
+                      configItem.push(newValue);
+                      if (menuMessageObject.menutext) menuMessageObject.menutext = '';
+                    }
                   }
                   configOptions.setOption(commandOptions.item, user, configItem);
                 }
@@ -9215,6 +9251,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     }
     if (menuMessageObject.menutext) {
       menuMessageObject.menutext += botMessageStamp;
+      cachedValueSet(user, cachedLastMessage, '');
       telegramMessageFormatAndPushToMessageQueue(user, menuMessageObject,
         {
           clearBefore: (user.userId !== user.chatId) || (currentCommand !== cmdGetInput),
@@ -10465,12 +10502,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               currentMenuPosition.push(currentPos);
             }
           }
-          else if (jumpToItem) {
+          else if (jumpToItem !== undefined) {
             currentMenuPosition.push(jumpToItem);
           }
         });
         menuMenuItemsAndRowsClearCached(user);
-        logs(`currentMenuItem = ${currentMenuPosition}`, _l);
+        // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
         menuMenuDrawOnPosition(user, currentMenuPosition);
         break;
       }
