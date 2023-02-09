@@ -72,7 +72,7 @@ const
   cmdItemDeleteConfirm                  = `${cmdPrefix}ItemDelConfirm`,
   cmdItemMark                           = `${cmdPrefix}ItemMark`,
   cmdItemsProcess                       = `${cmdPrefix}ItemsProcess`,
-  cmdItemJumpTo                         = `${cmdPrefix}ItemsJumpTo`,
+  cmdItemJumpTo                         = `${cmdPrefix}ItemJumpTo`,
   cmdCreateReportEnum                   = `${cmdPrefix}CreateReportEnum`,
   cmdSetOffset                          = `${cmdPrefix}SetOffset`,
   cmdDeleteAllSentImages                = `${cmdPrefix}DelAllSentImages`,
@@ -224,6 +224,15 @@ const
   ;
 
 
+const attributesToCopyFromOriginToAlias = [
+  'read',
+  'write',
+  'min',
+  'max',
+  'step',
+  'states',
+  'unit'
+];
 
 //*** ConfigOptions - begin ***//
 
@@ -8212,9 +8221,9 @@ function menuMenuItemsAndRowsClearCached(user) {
  * @param {string[]} targetMenuPos - The position of the menu item in the menu tree, each item of array describes the position of item on each level of hierarchy of menu.
  * @param {object} preparedMessageObject - The prepared for "draw" the Telegram message object related to the the `targetMenuPos`. Will be filled additionally on each iteration.
  * @param {string} currentIndent - The current indent on this step of iteration for the text part of Telegram message.
- * @param {function} callback - The function, which will receive a result of calculation - function(preparedMessageObject, menuItemToProcess).
+ * @param {object} messageOptions - The options to draw the menu.
  */
-function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback) {
+function menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, messageOptions) {
   if (! preparedMessageObject) {
     const
       [savedMenu, savedRows, savedTab] = cachedValueExists(user, cachedMenuItemsAndRows) ?  cachedValueGet(user, cachedMenuItemsAndRows) : [null, null, 0],
@@ -8250,12 +8259,12 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
         targetMenuPos = [];
       }
       menuItemToProcess.externalMenu = null;
-      menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback);
+      menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
     });
   }
   else if (menuItemToProcess.submenu && (typeof(menuItemToProcess.submenu) === 'function')) {
     menuItemToProcess.submenu = menuItemToProcess.submenu(user, menuItemToProcess);
-    menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, callback);
+    menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
   }
   else {
     const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
@@ -8311,7 +8320,7 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
           }
         }
       }
-      menuMenuObjectPrepareOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, callback);
+      menuMenuObjectPrepareAndDrawOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
     }
     else {
       cachedValueDelete(user, cachedMenuItemsAndRows);
@@ -8419,13 +8428,21 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
           callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationRight]}, [currentIndex, 'right'].join('.'), callbackDataToCache)
         });
       }
-      // logs(`callbackDataToCache = ${JSON.stringify(callbackDataToCache, mapReplacer)}`);
-      if (callbackDataToCache.size) {
-        // logs(`callbackDataToCache.size = ${callbackDataToCache.size}`);
-        cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
+      preparedMessageObject.buttons = menuButtonsArraySplitIntoButtonsPerRowsArray(user, preparedMessageObject.buttons);
+      let lastRow = [{ text: translationsItemCoreGet(user, cmdClose), callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}` }];
+      if(preparedMessageObject.backIndex !== undefined) {
+        if (configOptions.getOption(cfgShowHomeButton, user)) {
+          lastRow.unshift({ text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome });
+        }
+        lastRow.unshift({ text: translationsItemCoreGet(user, cmdBack), callback_data: cmdBack + preparedMessageObject.backIndex});
       }
+      preparedMessageObject.buttons.push(lastRow);
+
+      cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
       // logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
-      callback(preparedMessageObject, menuItemToProcess);
+      if (! (messageOptions && messageOptions.hasOwnProperty('noDraw') && messageOptions.noDraw)) {
+        telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, messageOptions);
+      }
     }
   }
 }
@@ -8438,36 +8455,22 @@ function menuMenuObjectPrepareOnPosition(user, menuItemToProcess, targetMenuPos,
  * @param {boolean=} clearBefore - The selector, to identify, is it needed to be previous message from Auto Telegram Menu cleared.
  * @param {boolean=} clearUserMessage - The selector to identify, should be user message to be deleted.
  * @param {boolean=} isSilent - The selector, how to inform user about message (show or not update of menu as a new message).
+ * @param {boolean=} noDraw - The selector, to do only preparation work (i.e. some cached values).
  */
-function menuMenuDrawOnPosition(user, itemPos, clearBefore = false, clearUserMessage = false, isSilent = false) {
-
-  /**
-   * This function "draw" the received menu item, after it was prepared.
-   * @param {*} preparedMessageObject -(`object`) The prepared telegram message object (including buttons).
-   * @param {*} _menuItemToProcess -(`object`) The menu item, which have to be "drawn".
-   */
-  function menuPreparedMenuObjectDraw(preparedMessageObject, _menuItemToProcess) {
-    // logs(`preparedMessageObject = ${JSON.stringify(preparedMessageObject, null, 2)}`, _l);
-    // logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`);
-    preparedMessageObject.buttons = menuButtonsArraySplitIntoButtonsPerRowsArray(user, preparedMessageObject.buttons);
-    let lastRow = [{ text: translationsItemCoreGet(user, cmdClose), callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}` }];
-    if(preparedMessageObject.backIndex !== undefined) {
-      if (configOptions.getOption(cfgShowHomeButton, user)) {
-        lastRow.unshift({ text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome });
-      }
-      lastRow.unshift({ text: translationsItemCoreGet(user, cmdBack), callback_data: cmdBack + preparedMessageObject.backIndex});
-    }
-    preparedMessageObject.buttons.push(lastRow);
-    // logs(`preparedMessageObject.buttons = ${JSON.stringify(preparedMessageObject.buttons, null, 2)}`, _l);
-    telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, clearBefore, clearUserMessage, ! cachedValueGet(user, cachedMenuOn), isSilent);
-  }
+function menuMenuDrawOnPosition(user, itemPos, clearBefore = false, clearUserMessage = false, isSilent = false, noDraw = false) {
 
   if (itemPos === undefined) {
-    itemPos = cachedValueGet(user, cachedMenuItem);
+    itemPos = cachedValueExists(user, cachedMenuItem) ? cachedValueGet(user, cachedMenuItem) : [];
   }
-  cachedValueSet(user, cachedMenuItem, itemPos);
+  else {
+    cachedValueSet(user, cachedMenuItem, itemPos);
+  }
+  const rootMenu = user.rootMenu ? user.rootMenu : menuMenuReIndex(menuMenuItemGenerateRootMenu(user, itemPos && itemPos.length ? itemPos[0] : undefined ));
   // logs('itemPos = ' + JSON.stringify(itemPos), _l);
-  menuMenuObjectPrepareOnPosition(user, user.rootMenu ? user.rootMenu : menuMenuReIndex(menuMenuItemGenerateRootMenu(user, itemPos && itemPos.length ? itemPos[0] : undefined )), itemPos ? [...itemPos] : [], null, '', menuPreparedMenuObjectDraw);
+  menuMenuObjectPrepareAndDrawOnPosition(user, rootMenu, itemPos ? [...itemPos] : [], null, '', {clearBefore, clearUserMessage, createNewMessage: ! cachedValueGet(user, cachedMenuOn), isSilent, noDraw});
+  // (preparedMessageObject) => {
+    // telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, clearBefore, clearUserMessage, ! cachedValueGet(user, cachedMenuOn), isSilent);
+  // });
 }
 
 
@@ -8616,7 +8619,7 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
         scheduledRefresh.reference = schedule({hour: atTimeArray.shift(), minute: atTimeArray.pop()},
           () => {
               console.log(`Refresh is scheduled on ${atTime} for ${currentUser === menuRefreshTimeAllUsers ? 'all users' :` userId = ${currentUser}`}.`);
-              menuMenuMessageRenew(currentUser === idOfUser ? idOfUser : menuRefreshTimeAllUsers);
+              menuMenuMessageRenew(currentUser === idOfUser ? idOfUser : menuRefreshTimeAllUsers, false, false);
             }
         );
         menuRefreshScheduled.set(currentUser, scheduledRefresh);
@@ -8630,8 +8633,9 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
  * config item value `cfgUpdateMessageTime` set, including group chats.
  * @param {number} idOfUser - The user ID of the user to refresh the menu for. Can be empty, for all.
  * @param {boolean=} forceNow - The selector, to force the refresh for all users now, independently from configured value.
+ * @param {boolean=} noDraw - The selector, to do only preparation work (i.e. some cached values).
  */
-function menuMenuMessageRenew(idOfUser, forceNow = false) {
+function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
   let userIds = (idOfUser !== menuRefreshTimeAllUsers) && usersInMenu.validId(idOfUser) ? [idOfUser] : usersInMenu.getUsers();
   // logs('userIds = ' + JSON.stringify(userIds), _l);
   if (idOfUser === menuRefreshTimeAllUsers) {
@@ -8640,19 +8644,24 @@ function menuMenuMessageRenew(idOfUser, forceNow = false) {
   }
   userIds.forEach(userId => {
     // logs('userId = ' + JSON.stringify(userId), _l);
-    if ((idOfUser == userId) || ((idOfUser === menuRefreshTimeAllUsers) && ((! menuRefreshScheduled.has(userId)) || forceNow))) {
+    if ((idOfUser == userId) || ((idOfUser === menuRefreshTimeAllUsers) && ((! menuRefreshScheduled.has(userId)) || (forceNow || noDraw)))) {
       const user = telegramUserGenerateObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
       // logs('user = ' + JSON.stringify(user), _l);
       const
         [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta48),
         [_lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld(user, cachedBotSendMessageId, timeDelta24),
         isCachedMenuOn = cachedValueGet(user, cachedMenuOn);
-      if ((isCachedMenuOn === true) && (! isBotMessageOld48OrNotExists) && isBotMessageOld24OrNotExists) {
+      if ((isCachedMenuOn === true) && (((! isBotMessageOld48OrNotExists) && isBotMessageOld24OrNotExists) || noDraw)) {
         const itemPos = cachedValueGet(user, cachedMenuItem);
         console.warn('for user = ' +JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
         if ( (! cachedValueGet(user, cachedIsWaitForInput)) && (itemPos !== undefined)) {
-          console.warn(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu : null})}`);
-          menuMenuDrawOnPosition(user, itemPos, true, false, true);
+          if (noDraw) {
+            console.warn(`Make an menu object prepared for user/chat group = ${JSON.stringify({...user, rootMenu : null})}`);
+          }
+          else {
+            console.warn(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu : null})}`);
+          }
+          menuMenuDrawOnPosition(user, itemPos, true, false, true, noDraw);
         }
       }
       else if (! isBotMessageOld24OrNotExists) {
@@ -8852,7 +8861,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     if ((! result.error) || result.success) {
       menuMenuItemsAndRowsClearCached(user);
       if (isFromGetInput) {
-        menuMenuDrawOnPosition(user, undefined, user.userId !== user.chatId, user.userId === user.chatId, false);
+        menuMenuDrawOnPosition(user, undefined, user.userId !== user.chatId, user.userId === user.chatId, false, false);
       }
       else {
         menuMenuDrawOnPosition(user);
@@ -8937,7 +8946,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   let
     currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
-  // logs(`command = ${currentCommand}, commandOptions = ${JSON.stringify(commandOptions)}`, _l);
+  logs(`userInput = ${userInput}, command = ${currentCommand}, commandOptions = ${JSON.stringify(commandOptions)}, currentMenuItem = ${currentMenuPosition}`, _l);
   // if (cachedValueExists(user, cachedCommandsOptionsList)) cachedValueDelete(user, cachedCommandsOptionsList);
   // logs(`cachedCommand = ${cachedLongCommands}`, _l);
   // logs(`currentCommand = ${currentCommand}, commandOptions.dataType = ${commandOptions.dataType}, currentItem = ${currentItem}, currentParam = ${currentParam}, currentValue = ${currentValue}, currentSubParam = ${currentSubParam}, currentSubValue = ${currentSubValue}, currentMenuItem = ${JSON.stringify(currentMenuPosition)}`, _l);
@@ -9206,13 +9215,20 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     }
     if (menuMessageObject.menutext) {
       menuMessageObject.menutext += botMessageStamp;
-      telegramMessageFormatAndPushToMessageQueue(user, menuMessageObject, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId), false);
+      telegramMessageFormatAndPushToMessageQueue(user, menuMessageObject,
+        {
+          clearBefore: (user.userId !== user.chatId) || (currentCommand !== cmdGetInput),
+          clearUserMessage: user.userId === user.chatId,
+          createNewMessage: false,
+          isSilent: false
+        }
+      );
     }
     else {
       cachedValueSet(user, cachedIsWaitForInput, false);
       /** if it private chat - delete user input, if it group - clear menu, and recreate it after user input **/
       if (commandOptions.dataType !== dataTypeStateValue) {
-        menuMenuDrawOnPosition(user, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false);
+        menuMenuDrawOnPosition(user, currentMenuPosition, (user.userId !== user.chatId) || (currentCommand !== cmdGetInput), (user.userId === user.chatId) && (currentCommand === cmdGetInput), false, false);
       }
     }
   }
@@ -9239,7 +9255,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   else if (configOptions.getOption(cfgMessagesForMenuCall, user).includes(currentCommand)){
     // setCachedValue(user, cachedMenuOn, false);
     /** if it private chat - delete user input, if configured **/
-    menuMenuDrawOnPosition(user, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false);
+    menuMenuDrawOnPosition(user, undefined, true, configOptions.getOption(cfgClearMenuCall, user) && (user.userId === user.chatId), false, false);
   }
   else if (currentCommand.indexOf(menuItemButtonPrefix) === 0) {
     menuMenuDrawOnPosition(user, menuMenuItemExtractPosition(currentCommand.replace(menuItemButtonPrefix,'')));
@@ -9397,7 +9413,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         if (menuMessageObject.menutext) {
           menuMessageObject.menutext += botMessageStamp;
           cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
-          telegramMessageFormatAndPushToMessageQueue(user, menuMessageObject, false, false, false);
+          telegramMessageFormatAndPushToMessageQueue(user, menuMessageObject,
+            {
+              clearBefore: false,
+              clearUserMessage: false,
+              createNewMessage: false,
+              isSilent: false
+            }
+          );
         }
         else {
           menuMenuDrawOnPosition(user, currentMenuPosition);
@@ -9629,7 +9652,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               case doUploadDirectly: {
                 cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
                 cachedValueDelete(user, cachedTranslationsToUpload);
-                telegramMessageFormatAndPushToMessageQueue(user, {menutext: translationsItemTextGet(user, 'UploadTranslationFile')}, false, false, false);
+                telegramMessageFormatAndPushToMessageQueue(user, {menutext: translationsItemTextGet(user, 'UploadTranslationFile')},
+                  {
+                    clearBefore: false,
+                    clearUserMessage: false,
+                    createNewMessage: false,
+                    isSilent: false
+                  }
+                );
                 break;
               }
 
@@ -10440,7 +10470,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
         });
         menuMenuItemsAndRowsClearCached(user);
-        // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
+        logs(`currentMenuItem = ${currentMenuPosition}`, _l);
         menuMenuDrawOnPosition(user, currentMenuPosition);
         break;
       }
@@ -10604,13 +10634,12 @@ function telegramOnImageSendCommand(data, callback) {
  * This function finalize preparation of Telegram message object, to send or edit Telegram bot message, and push it to the sending queue.
  * @param {object} user - The user object.
  * @param {object} preparedMessageObject - The prepared for "draw" the Telegram message object.
- * @param {boolean=} clearBefore - The selector, to identify, is it needed to be previous message from Auto Telegram Menu cleared.
- * @param {boolean=} clearUserMessage - The selector to identify, should be user message to be deleted.
- * @param {boolean=} createNewMessage - The selector to create new Telegram message instead of edit exiting one.
- * @param {boolean=} isSilent - The selector, how to inform user about message (show or not update of menu as a new message).
+ * @param {object} messageOptions - The message options.
  */
-function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, clearBefore = false, clearUserMessage = false, createNewMessage = false, isSilent = false) {
-  const alertMessages = alertGetMessages(user, true);
+function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, messageOptions) {
+  const
+    {clearBefore, clearUserMessage, createNewMessage, isSilent} = messageOptions,
+    alertMessages = alertGetMessages(user, true);
   logs('alertMessages = ' + JSON.stringify(alertMessages));
   let alertMessage = '';
   if (alertMessages.length && (preparedMessageObject.buttons !== undefined) ) {
@@ -11364,10 +11393,11 @@ async function autoTelegramMenuInstanceInit() {
       },
       () => {
         console.log(`Refresh after start is scheduled on ${updateAt.toString()} fo all users!`);
-        menuMenuMessageRenew(menuRefreshTimeAllUsers, true);
+        menuMenuMessageRenew(menuRefreshTimeAllUsers, true, false);
       }
-  );
+    );
   }
+  menuMenuMessageRenew(menuRefreshTimeAllUsers, true, true);
 }
 
 
@@ -11420,16 +11450,6 @@ function stringCapitalize(string) {
   }
   return '';
 }
-
-const attributesToCopyFromOriginToAlias = [
-  'read',
-  'write',
-  'min',
-  'max',
-  'step',
-  'states',
-  'unit'
-];
 
 /**
  * This function extends standard `getObject`. If current object is an 'alias', it will enrich the `common`
