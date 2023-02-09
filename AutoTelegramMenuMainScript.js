@@ -4172,7 +4172,7 @@ function enumerationsLoad(enumerationType) {
  * @param {string} enumerationType - The string defines the enumerationItem type.
  */
 function enumerationsSave(enumerationType) {
-  logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`);
+  // logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`, _l);
   const listToSave = JSON.stringify({enums: enumerationsList[enumerationType].enums, list: enumerationsList[enumerationType].list});
   if (existsState(enumerationsList[enumerationType].state)) {
     logs(`  save ${enumerationsList[enumerationType].state}`);
@@ -4900,14 +4900,14 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
-    {dataType: enumerationType, dataTypeExtraId: enumerationTypeExtraId} = menuItemToProcess.options;
+    {dataType: enumerationType, dataTypeExtraId: enumerationTypeExtraId} = menuItemToProcess.options,
+    enumerationPrimaryType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId);
   if (enumerationType !== dataTypePrimaryEnums) {
-    const dataType = enumerationsSubTypes.includes(enumerationType) ? dataTypeFunction : enumerationType;
-    enumerationsLoad(dataType);
-    enumerationsInit(dataType);
+    enumerationsLoad(enumerationPrimaryType);
+    enumerationsInit(enumerationPrimaryType);
   }
   if (enumerationsSubTypes.includes(enumerationType)) {
-    if (Object.keys(enumerationsList[dataTypeFunction].list[enumerationTypeExtraId][enumerationType]).length === 0) {
+    if (Object.keys(enumerationsList[enumerationPrimaryType].list[enumerationTypeExtraId][enumerationType]).length === 0) {
       enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType, false);
     }
   }
@@ -5587,22 +5587,42 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
 /**
  * This function gets a menu list based on the enumerationType and enumerationTypeExtraId parameters.
  * @param {string} enumerationType - The primary enumerationType.
- * @param {string} enumerationTypeExtraId - The secondary (subordinated) enumerationType.
+ * @param {string} enumerationTypeExtraId - The extra (primary) enumerationType or item of it.
  * @returns {object} The appropriate enumerations object.
  */
 function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
   // logs(`dataType = ${dataType}, dataTypeExtraId = ${dataTypeExtraId}`);
-  return enumerationTypeExtraId ?
-    (enumerationsSubTypes.includes(enumerationType) ?
-      enumerationsList[dataTypeFunction].list[enumerationTypeExtraId][enumerationType] :
-      ( enumerationType === dataTypePrimaryEnums ?
-        enumerationsList[enumerationTypeExtraId].enums :
-        {}
+  const enumerationPrimaryType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId);
+  return enumerationTypeExtraId
+    ?
+      (
+        enumerationType === dataTypePrimaryEnums
+          ?
+            enumerationsList[enumerationPrimaryType].enums
+          :
+            enumerationsList[enumerationPrimaryType].list[enumerationTypeExtraId][enumerationType]
       )
-    ):
-    enumerationsList[enumerationType].list;
+    :
+      enumerationsList[enumerationType].list;
 }
 
+/**
+ * This function gets a primary enumeration type from on the enumerationType and enumerationTypeExtraId parameters.
+ * @param {string} enumerationType - The primary enumerationType.
+ * @param {string} enumerationTypeExtraId - The extra (primary) enumerationType or item of it.
+ * @returns {string} The appropriate enumeration type.
+ */
+function enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId) {
+  return enumerationTypeExtraId ?
+      (enumerationsSubTypes.includes(enumerationType) ?
+        dataTypeFunction :
+      ( enumerationType === dataTypePrimaryEnums ?
+        enumerationTypeExtraId :
+        enumerationType
+      )
+    ):
+    enumerationType;
+}
 /**
  * This function go thru the all ioBroker states, which are linked with
  * appropriate `functionId` enum, and gathers all fills their unique id's
@@ -9096,7 +9116,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   break;
                 }
               }
-              enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
+              enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
               break;
             }
 
@@ -9106,7 +9126,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 currentList[commandOptions.item].group = userInputToProcess;
               }
               // logs(`currentParam, currentValue = ${[commandOptions.dataType, currentItem, currentParam, currentValue,]}`, _l)
-              enumerationsSave(commandOptions.groupDataTypeExtraId ? commandOptions.groupDataTypeExtraId : commandOptions.groupDataType);
+              enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
               break;
             }
 
@@ -9559,7 +9579,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons, true);
                 }
               }
-              enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
+              enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             }
             break;
           }
@@ -9584,7 +9604,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             if (commandOptions.item && currentEnumeration && currentEnumeration.hasOwnProperty(commandOptions.item) && currentEnumeration[commandOptions.item]) {
               currentEnumeration[commandOptions.item].group = currentEnumeration[commandOptions.item].group === commandOptions.group ? '' : commandOptions.group;
             }
-            enumerationsSave(commandOptions.groupDataTypeExtraId ? commandOptions.groupDataTypeExtraId : commandOptions.groupDataType);
+            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             break;
           }
 
@@ -9763,7 +9783,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
             delete currentList[commandOptions.item];
             enumerationsReorderItems(currentList);
-            enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
+            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             currentMenuPosition.splice(-2, 2);
             logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
             break;
@@ -10376,7 +10396,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 currentList[commandOptions.item][commandOptions.attribute] = '';
               }
             }
-            enumerationsSave(dataTypeFunction);
+            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             menuMenuItemsAndRowsClearCached(user);
             break;
           }
@@ -10409,7 +10429,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               currentList[commandOptions.item].order = newOrder;
               currentMenuPosition.splice(-1, 1, newOrder);
             }
-            enumerationsSave(commandOptions.dataTypeExtraId ? commandOptions.dataTypeExtraId : commandOptions.dataType);
+            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             break;
           }
           case dataTypeConfig:   {
