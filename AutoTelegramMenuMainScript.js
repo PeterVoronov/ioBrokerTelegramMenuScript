@@ -5733,13 +5733,13 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
  * - `id` - The Extension Id,
  * - `name` - The Extension name,
  * - `icon` - The Extension Icon,
- * - `externalMenu` - The Extension Root menu item Id,
+ * - `extensionRootMenuId` - The Extension Root menu item Id,
  * - `scriptName` - The script name, which contains the Extension,
  * properties.
  * @param {function} callback - The callback function.
  */
 function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
-  const {id , nameTranslationId, icon, externalMenu, scriptName, translationsKeys} = extensionDetails;
+  const {id , nameTranslationId, icon, extensionRootMenuId, scriptName, translationsKeys} = extensionDetails;
   // logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`, _l);
   logs(`scriptName= ${JSON.stringify(scriptName)}`);
   const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
@@ -5747,7 +5747,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
   if (functionsList.hasOwnProperty(extensionId) && (functionsList[extensionId] !== undefined)) {
     functionsList[extensionId].isAvailable = true;
     functionsList[extensionId].scriptName = scriptName;
-    functionsList[extensionId].state = externalMenu;
+    functionsList[extensionId].state = extensionRootMenuId;
     functionsList[extensionId].nameTranslationId = nameTranslationId;
     functionsList[extensionId].translationsKeys = translationsKeys;
 }
@@ -5759,7 +5759,7 @@ function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
       nameTranslationId: nameTranslationId,
       order: Object.keys(functionsList).length,
       icon: icon,
-      state: externalMenu,
+      state: extensionRootMenuId,
       deviceAttributes: {},
       scriptName: scriptName,
       translationsKeys: translationsKeys,
@@ -5927,7 +5927,9 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
  */
 function alertsGetIcon(user, menuItemToProcess) {
   const alerts = alertsGet();
-  if (alerts && alerts.hasOwnProperty(menuItemToProcess.state) && alerts[menuItemToProcess.state].chatIds.has(user.chatId)) return iconItemAlertOn;
+  if (alerts && menuItemToProcess.hasOwnProperty('options') && menuItemToProcess.options.hasOwnProperty('state') &&
+    alerts.hasOwnProperty(menuItemToProcess.options.state) && alerts[menuItemToProcess.options.state].chatIds.has(user.chatId))
+    return iconItemAlertOn;
   return iconItemAlertOff;
 }
 
@@ -6400,8 +6402,6 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             index: `${currentIndex}.${objectMenuIndex}`,
             name: `${objectsIdList[objectId]['name']}`,
             icon: menuItemToProcess.icon,
-            funcEnum: currentFuncId,
-            destEnum: currentDestId,
             accessLevel: currentAccessLevel,
             options: {function: currentFuncId, destination: currentDestId, item: objectsIdList[objectId]['index']},
             submenu: alertsMenuGenerateSubscribed
@@ -6472,7 +6472,6 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemState, item
     menuItem = {
       index: itemIndex,
       name: itemName,
-      state: itemState,
       icons: alertsGetIcon,
       group: 'alerts',
       command: cmdAlertSubscribe,
@@ -6552,7 +6551,6 @@ function alertsMenuGenerateManageBoolean(user, menuItemToProcess) {
       name: `${currentName}${isAlertDetailsSetChanged ?  ` (${iconItemEdit})` : ''}`,
       icons: alertsGetIcon,
       group: cmdItemsProcess,
-      state: currentStateId,
       command: cmdAlertSubscribe,
       options: {function: currentFunctionId, destination: currentDestinationId, state: currentStateId},
       submenu: [],
@@ -6637,7 +6635,6 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
         name: `${currentName}${isThresholdsSetChanged ?  ` (${iconItemEdit})` : ''}`,
         icons: alertsGetIcon,
         group: cmdItemsProcess,
-        state: currentStateId,
         command: cmdAlertSubscribe,
         options: {function: currentFunctionId, destination: currentDestinationId, state: currentStateId},
         submenu: [],
@@ -6705,7 +6702,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
   logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId, device: devicePrefix} = menuItemToProcess.options,
+    {function: currentFunctionId, destination: currentDestinationId, state: _primaryStateId, device: devicePrefix} = menuItemToProcess.options,
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[currentDestinationId],
     currentDestinationEnum = currentDestination.enum,
@@ -6739,7 +6736,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
                 const
                   stateIndex = `${currentIndex}.${subMenuIndex}`,
                   stateName = `${translationsGetObjectName(user, currentStateObject, currentFunctionId)}`,
-                  subMenuItem = alertsMenuItemGenerateSubscribedOn(stateIndex, stateName, currentStateId, currentStateObject, {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId}, true);
+                  subMenuItem = alertsMenuItemGenerateSubscribedOn(stateIndex, stateName, currentStateId, currentStateObject, {function: currentFunctionId, destination: currentDestinationId, state: currentStateId}, true);
                 if (subMenuItem) {
                   // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 1)}`, _l)
                   subMenuIndex = subMenu.push(subMenuItem);
@@ -7794,8 +7791,8 @@ const
       }
       if (currentItem.isExternal) {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId));
-        menuItem.externalMenu = currentItem.state;
-        menuItem.submenu = [];
+        menuItem.submenu = currentItem.state;
+        menuItem.extensionId = itemId;
       }
       else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
@@ -8131,11 +8128,8 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           const deviceMenuItem = {
             index: `${currentIndex}.${currentLevelMenuItemId}.${deviceId}`,
             name: `${translationsGetObjectName(user, devicePrefix, functionId, destinationId)}`,
-            state: deviceStateId,
             type: menuItemToProcess.type,
             id: menuItemId,
-            [primaryEnumId]: primaryLevelMenuItemId,
-            [secondaryEnumId]: currentLevelMenuItemId,
             accessLevel: currentAccessLevel,
             options: {[primaryOptionsEnumId]: primaryLevelMenuItemId, [secondaryOptionsEnumId]: currentLevelMenuItemId, state: deviceStateId, device: devicePrefix},
             function: enumerationsMenuItemDetailsDevice,
@@ -8196,9 +8190,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
         currentSubMenuItem = subMenu[subMenuIndex],
         currentSubMenuItemSubmenu = currentSubMenuItem.submenu;
       if (typeOf(currentSubMenuItemSubmenu,'array') && (currentSubMenuItemSubmenu.length === 0)) {
-        if (! (currentSubMenuItem.hasOwnProperty('externalMenu')) || (! currentSubMenuItem.externalMenu)) {
-          delete subMenu[subMenuIndex];
-        }
+        delete subMenu[subMenuIndex];
       }
     }
     subMenu = subMenu.filter(item => (item));
@@ -8278,209 +8270,209 @@ function menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetM
     else {
       preparedMessageObject = {
         menutext: '',
-        state: '',
         buttons: []
       };
     }
   }
-  if (menuItemToProcess.externalMenu) {
-    messageTo(menuItemToProcess.externalMenu, {user, data: menuItemToProcess, funcEnum: menuItemToProcess.funcEnum, translations: translationsGetForExtension(user, menuItemToProcess.funcEnum)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, function subMenuUpdated(subMenu){
-      // logs(`menuItemToProcess.externalMenu = ${menuItemToProcess.externalMenu}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.funcEnum))}`, _l);
-      if ( ! ((typeof(subMenu) === 'object') && ( subMenu.hasOwnProperty('error'))) && subMenu.hasOwnProperty('name')) {
-        logs(`subMenu = ${JSON.stringify(subMenu, null, 2)}`);
-        menuItemToProcess = menuMenuReIndex(subMenu);
-        logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`);
-      }
-      else {
-        if ((typeof(subMenu) === 'object') && subMenu.hasOwnProperty('error')) {
-          console.warn(`Can't update subMenu from externalMenu ${menuItemToProcess.externalMenu}! No result. Error is ${subMenu.error}`);
+  switch (typeOf(menuItemToProcess.submenu)) {
+    case 'string': {
+      const extensionMenuId = menuItemToProcess.submenu;
+      messageTo(extensionMenuId, {user, data: menuItemToProcess, extensionId: menuItemToProcess.extensionId, translations: translationsGetForExtension(user, menuItemToProcess.extensionId)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, (newMenuItem) => {
+        // logs(`extensionMenuId = ${extensionMenuId}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.extensionId))}`, _l);
+        if ( ! ((typeof(newMenuItem) === 'object') && ( newMenuItem.hasOwnProperty('error'))) && newMenuItem.hasOwnProperty('name')) {
+          // logs(`subMenu = ${JSON.stringify(newMenuItem, null, 2)}`);
+          menuItemToProcess = menuMenuReIndex(newMenuItem);
+          // logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`, _l);
         }
-        targetMenuPos = [];
-      }
-      menuItemToProcess.externalMenu = null;
+        else {
+          if ((typeof(newMenuItem) === 'object') && newMenuItem.hasOwnProperty('error')) {
+            console.warn(`Can't update subMenu from extensionMenuId ${extensionMenuId}! No result. Error is ${newMenuItem.error}`);
+          }
+          targetMenuPos = [];
+        }
+        menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
+      });
+      break;
+    }
+    case 'function': {
+      menuItemToProcess.submenu = menuItemToProcess.submenu(user, menuItemToProcess);
       menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
-    });
-  }
-  else if (menuItemToProcess.submenu && (typeof(menuItemToProcess.submenu) === 'function')) {
-    menuItemToProcess.submenu = menuItemToProcess.submenu(user, menuItemToProcess);
-    menuMenuObjectPrepareAndDrawOnPosition(user, menuItemToProcess, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
-  }
-  else {
-    const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
-    if (hierarchicalCaption) {
-      currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
+      break;
     }
-    let currentSubMenuPos;
-    if ((menuItemToProcess.submenu.length > 0) && (targetMenuPos.length > 0)) {
-      currentSubMenuPos = targetMenuPos.shift();
-      if ((typeof(currentSubMenuPos) === 'string') && isNaN(Number(currentSubMenuPos))) {
-        currentSubMenuPos = menuItemToProcess.submenu.findIndex((item) => ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos)));
-        // logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}, currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`, _l);
+    default: {
+      const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
+      if (hierarchicalCaption) {
+        currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
+      }
+      let currentSubMenuPos;
+      if ((menuItemToProcess.submenu.length > 0) && (targetMenuPos.length > 0)) {
+        currentSubMenuPos = targetMenuPos.shift();
+        if ((typeof(currentSubMenuPos) === 'string') && isNaN(Number(currentSubMenuPos))) {
+          currentSubMenuPos = menuItemToProcess.submenu.findIndex((item) => ((item.hasOwnProperty('id') && item.id === currentSubMenuPos) || (item.index.split('.').pop() === currentSubMenuPos)));
+          // logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}, currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`, _l);
+        }
+        else {
+          currentSubMenuPos = Number(currentSubMenuPos);
+        }
+      }
+      if ((currentSubMenuPos !== undefined) && (currentSubMenuPos >= 0) && (menuItemToProcess.submenu.length > 0) && (currentSubMenuPos < menuItemToProcess.submenu.length)) {
+        logs(`currentSubMenuPos = ${currentSubMenuPos}, currentMenuItem = ${JSON.stringify(menuItemToProcess, null, 2)}`);
+        preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ' ' + iconItemToSubItemByArrow + ' ' : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
+        const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
+        // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`, _l);
+        preparedMessageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
+        preparedMessageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
+        preparedMessageObject.options = subMenuItem.hasOwnProperty('options')  && (subMenuItem.options !== undefined) ? subMenuItem.options : {};
+        if (preparedMessageObject.navigationLeft !== undefined) preparedMessageObject.navigationLeft = undefined;
+        if (preparedMessageObject.navigationRight !== undefined) preparedMessageObject.navigationRight = undefined;
+        const
+          currentSubMenuMaxIndex = menuItemToProcess.submenu.length - 1,
+          currentOptions = preparedMessageObject.options,
+          horizontalNavigation = currentOptions && currentOptions.hasOwnProperty(menuOptionHorizontalNavigation) ? (currentOptions[menuOptionHorizontalNavigation] ? 1 : -1) : 0;
+        if ((currentSubMenuMaxIndex > 0) && ((horizontalNavigation > 0) || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
+        (! (horizontalNavigation < 0))) {
+          if (currentSubMenuPos > 0)  {
+            for (let itemPos = currentSubMenuPos - 1; itemPos >= 0; itemPos--) {
+              if ((menuItemToProcess.submenu[itemPos].command === undefined) || (! menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix))) {
+                preparedMessageObject.navigationLeft = itemPos;
+                break;
+              }
+            }
+          }
+          if (currentSubMenuPos < currentSubMenuMaxIndex)  {
+            for (let itemPos = currentSubMenuPos + 1; itemPos <= currentSubMenuMaxIndex; itemPos++) {
+              if ((menuItemToProcess.submenu[itemPos].command === undefined) || (! menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix))) {
+                preparedMessageObject.navigationRight = itemPos;
+                break;
+              }
+            }
+          }
+        }
+        menuMenuObjectPrepareAndDrawOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
       }
       else {
-        currentSubMenuPos = Number(currentSubMenuPos);
-      }
-    }
-    if ((currentSubMenuPos !== undefined) && (currentSubMenuPos >= 0) && (menuItemToProcess.submenu.length > 0) && (currentSubMenuPos < menuItemToProcess.submenu.length)) {
-      logs(`currentSubMenuPos = ${currentSubMenuPos}, currentMenuItem = ${JSON.stringify(menuItemToProcess, null, 2)}`);
-      preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ' ' + iconItemToSubItemByArrow + ' ' : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
-      const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
-      // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`, _l);
-      preparedMessageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
-      preparedMessageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
-      preparedMessageObject.state = subMenuItem.hasOwnProperty('state') ? subMenuItem.state : undefined;
-      preparedMessageObject.type = subMenuItem.hasOwnProperty('type') ? subMenuItem.type : undefined;
-      preparedMessageObject.destEnum = subMenuItem.hasOwnProperty('destEnum') ? subMenuItem.destEnum : undefined;
-      preparedMessageObject.funcEnum = subMenuItem.hasOwnProperty('funcEnum') ? subMenuItem.funcEnum : undefined;
-      preparedMessageObject.options = subMenuItem.hasOwnProperty('options')  && (subMenuItem.options !== undefined) ? subMenuItem.options : {};
-      if (preparedMessageObject.navigationLeft !== undefined) preparedMessageObject.navigationLeft = undefined;
-      if (preparedMessageObject.navigationRight !== undefined) preparedMessageObject.navigationRight = undefined;
-      const
-        currentSubMenuMaxIndex = menuItemToProcess.submenu.length - 1,
-        currentOptions = preparedMessageObject.options,
-        horizontalNavigation = currentOptions && currentOptions.hasOwnProperty(menuOptionHorizontalNavigation) ? (currentOptions[menuOptionHorizontalNavigation] ? 1 : -1) : 0;
-      if ((currentSubMenuMaxIndex > 0) && ((horizontalNavigation > 0) || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
-      (! (horizontalNavigation < 0))) {
-        if (currentSubMenuPos > 0)  {
-          for (let itemPos = currentSubMenuPos - 1; itemPos >= 0; itemPos--) {
-            if ((menuItemToProcess.submenu[itemPos].command === undefined) || (! menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix))) {
-              preparedMessageObject.navigationLeft = itemPos;
-              break;
+        cachedValueDelete(user, cachedMenuItemsAndRows);
+        if (currentSubMenuPos >= menuItemToProcess.submenu.length) {
+          let savedPos = cachedValueGet(user, cachedMenuItem);
+          if (targetMenuPos.length) {
+            for (let i = targetMenuPos.length -1; i >=0 ; i-- ) {
+              if (savedPos[savedPos.length - 1] === targetMenuPos[i]) {
+                savedPos.pop();
+              }
+            }
+          }
+          if (savedPos[savedPos.length - 1] === currentSubMenuPos) {
+            savedPos.pop();
+          }
+          cachedValueSet(user, cachedMenuItem, savedPos);
+        }
+        if (menuItemToProcess.submenu.length) {
+          cachedValueSet(user, cachedMenuItemsAndRows, [menuItemToProcess, {...preparedMessageObject}, currentIndent]);
+        }
+        preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ` ${iconItemToSubItemByArrow} ` : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
+        if ( preparedMessageObject.hasOwnProperty('function') && (typeof preparedMessageObject.function === "function") ) {
+          const functionResult = preparedMessageObject.function(user, menuItemToProcess);
+          if (typeof functionResult === 'string') {
+            preparedMessageObject.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
+          }
+        }
+        else if (menuItemToProcess.hasOwnProperty('text') && (menuItemToProcess.text !== undefined)) {
+          preparedMessageObject.menutext += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
+        }
+        preparedMessageObject.buttons = [];
+        const
+          currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+          currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '' ,
+          maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
+        let buttonsCount = menuItemToProcess.submenu.length;
+        let buttonsOffset = 0;
+        if (buttonsCount > maxButtonsCount) {
+          if (cachedValueExists(user, cachedMenuButtonsOffset)) {
+            if (currentIndex) cachedAddToDelCachedOnBack(user, currentBackIndex, cachedMenuButtonsOffset);
+            const [forIndex, currentOffset] = commandsParamsUnpack(cachedValueGet(user, cachedMenuButtonsOffset));
+            if (currentIndex === forIndex) {
+              buttonsOffset = Number(currentOffset);
+              buttonsCount = buttonsCount - buttonsOffset;
+            }
+            else {
+              cachedValueDelete(user, cachedMenuButtonsOffset);
             }
           }
         }
-        if (currentSubMenuPos < currentSubMenuMaxIndex)  {
-          for (let itemPos = currentSubMenuPos + 1; itemPos <= currentSubMenuMaxIndex; itemPos++) {
-            if ((menuItemToProcess.submenu[itemPos].command === undefined) || (! menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix))) {
-              preparedMessageObject.navigationRight = itemPos;
-              break;
+        if (currentIndex) preparedMessageObject.backIndex = currentBackIndex;
+        // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
+        const
+          _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
+          callbackDataToCache = new Map();
+        // currentMenuItem.submenu.forEach(currentSubMenuItem => {
+        for (let buttonsIndex = 0; buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount); buttonsIndex++) {
+          const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
+          // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`, _l);
+          // logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
+          const currentSubIndex = currentSubMenuItem.index;
+          let callbackData = menuItemButtonPrefix + currentSubIndex;
+          if (currentSubMenuItem.hasOwnProperty('command') && (typeof(currentSubMenuItem.command) === 'string') && (currentSubMenuItem.command.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.command !== cmdPrefix)) {
+            if (currentSubMenuItem.options) {
+              callbackData = commandsCallbackDataPrepare(currentSubMenuItem.command, currentSubMenuItem.options, currentSubIndex, callbackDataToCache);
+            }
+            else {
+              callbackData = currentSubMenuItem.command;
             }
           }
-        }
-      }
-      menuMenuObjectPrepareAndDrawOnPosition(user, subMenuItem, targetMenuPos, preparedMessageObject, currentIndent, messageOptions);
-    }
-    else {
-      cachedValueDelete(user, cachedMenuItemsAndRows);
-      if (currentSubMenuPos >= menuItemToProcess.submenu.length) {
-        let savedPos = cachedValueGet(user, cachedMenuItem);
-        if (targetMenuPos.length) {
-          for (let i = targetMenuPos.length -1; i >=0 ; i-- ) {
-            if (savedPos[savedPos.length - 1] === targetMenuPos[i]) {
-              savedPos.pop();
-            }
+          else if (currentSubMenuItem.hasOwnProperty('extensionCommandId')) {
+            callbackData = commandsCallbackDataPrepare(cmdExternalCommand, {function: currentSubMenuItem.extensionId, item: currentSubMenuItem.extensionCommandId, attribute: currentSubMenuItem.externalCommandParams}, currentSubIndex, callbackDataToCache);
           }
+          preparedMessageObject.buttons.push({
+            text:  `${menuMenuItemGetIcon(user, currentSubMenuItem)}${currentSubMenuItem.name}`,
+            group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
+            callback_data: callbackData
+          });
         }
-        if (savedPos[savedPos.length - 1] === currentSubMenuPos) {
-          savedPos.pop();
+        if (buttonsOffset > 0) {
+          preparedMessageObject.buttons.push({
+            text:  `${iconItemPrevious}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
+            group: 'offset',
+            callback_data: commandsCallbackDataPrepare(cmdSetOffset, {index: currentIndex, offset: buttonsOffset - maxButtonsCount}, [currentIndex, 'prev'].join('.'), callbackDataToCache)
+          });
         }
-        cachedValueSet(user, cachedMenuItem, savedPos);
-      }
-      if (menuItemToProcess.submenu.length) {
-        cachedValueSet(user, cachedMenuItemsAndRows, [menuItemToProcess, {...preparedMessageObject}, currentIndent]);
-      }
-      preparedMessageObject.menutext += (hierarchicalCaption ? '\n\r' + (preparedMessageObject.menutext ? currentIndent + iconItemToSubItem : ''): (preparedMessageObject.menutext ? ` ${iconItemToSubItemByArrow} ` : ''))  + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
-      if ( preparedMessageObject.hasOwnProperty('function') && (typeof preparedMessageObject.function === "function") ) {
-        const functionResult = preparedMessageObject.function(user, menuItemToProcess);
-        if (typeof functionResult === 'string') {
-          preparedMessageObject.menutext += functionResult.length > 0 ? '\r\n' + functionResult : '';
+        if (buttonsCount > maxButtonsCount) {
+          preparedMessageObject.buttons.push({
+            text:  `${iconItemNext}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
+            group: 'offset',
+            callback_data: commandsCallbackDataPrepare(cmdSetOffset, {index: currentIndex, offset: buttonsOffset + maxButtonsCount}, [currentIndex, 'next'].join('.'), callbackDataToCache)
+          });
         }
-      }
-      else if (menuItemToProcess.hasOwnProperty('text') && (menuItemToProcess.text !== undefined)) {
-        preparedMessageObject.menutext += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
-      }
-      preparedMessageObject.buttons = [];
-      const
-        currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-        currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '' ,
-        maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
-      let buttonsCount = menuItemToProcess.submenu.length;
-      let buttonsOffset = 0;
-      if (buttonsCount > maxButtonsCount) {
-        if (cachedValueExists(user, cachedMenuButtonsOffset)) {
-          if (currentIndex) cachedAddToDelCachedOnBack(user, currentBackIndex, cachedMenuButtonsOffset);
-          const [forIndex, currentOffset] = commandsParamsUnpack(cachedValueGet(user, cachedMenuButtonsOffset));
-          if (currentIndex === forIndex) {
-            buttonsOffset = Number(currentOffset);
-            buttonsCount = buttonsCount - buttonsOffset;
+        if (preparedMessageObject.navigationLeft !== undefined) {
+          preparedMessageObject.buttons.push({
+            text:  `${iconItemMoveLeft}`,
+            group: menuOptionHorizontalNavigation,
+            callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationLeft]}, [currentIndex, 'left'].join('.'), callbackDataToCache)
+          });
+        }
+        if (preparedMessageObject.navigationRight !== undefined) {
+          preparedMessageObject.buttons.push({
+            text:  `${iconItemMoveRight}`,
+            group: menuOptionHorizontalNavigation,
+            callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationRight]}, [currentIndex, 'right'].join('.'), callbackDataToCache)
+          });
+        }
+        preparedMessageObject.buttons = menuButtonsArraySplitIntoButtonsPerRowsArray(user, preparedMessageObject.buttons);
+        let lastRow = [{ text: translationsItemCoreGet(user, cmdClose), callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}` }];
+        if(preparedMessageObject.backIndex !== undefined) {
+          if (configOptions.getOption(cfgShowHomeButton, user)) {
+            lastRow.unshift({ text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome });
           }
-          else {
-            cachedValueDelete(user, cachedMenuButtonsOffset);
-          }
+          lastRow.unshift({ text: translationsItemCoreGet(user, cmdBack), callback_data: cmdBack + preparedMessageObject.backIndex});
         }
-      }
-      if (currentIndex) preparedMessageObject.backIndex = currentBackIndex;
-      // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
-      const
-        _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
-        callbackDataToCache = new Map();
-      // currentMenuItem.submenu.forEach(currentSubMenuItem => {
-      for (let buttonsIndex = 0; buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount); buttonsIndex++) {
-        const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
-        // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`, _l);
-        // logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
-        const currentSubIndex = currentSubMenuItem.index;
-        let callbackData = menuItemButtonPrefix + currentSubIndex;
-        if (currentSubMenuItem.hasOwnProperty('command') && (typeof(currentSubMenuItem.command) === 'string') && (currentSubMenuItem.command.indexOf(cmdPrefix) === 0) && (currentSubMenuItem.command !== cmdPrefix)) {
-          if (currentSubMenuItem.options) {
-            callbackData = commandsCallbackDataPrepare(currentSubMenuItem.command, currentSubMenuItem.options, currentSubIndex, callbackDataToCache);
-          }
-          else {
-            callbackData = currentSubMenuItem.command;
-          }
-        }
-        else if (currentSubMenuItem.hasOwnProperty('externalCommand')) {
-          callbackData = commandsCallbackDataPrepare(cmdExternalCommand, {function: currentSubMenuItem.funcEnum, item: currentSubMenuItem.externalCommand, attribute: currentSubMenuItem.externalCommandParams}, currentSubIndex, callbackDataToCache);
-        }
-        preparedMessageObject.buttons.push({
-          text:  `${menuMenuItemGetIcon(user, currentSubMenuItem)}${currentSubMenuItem.name}`,
-          group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
-          callback_data: callbackData
-        });
-      }
-      if (buttonsOffset > 0) {
-        preparedMessageObject.buttons.push({
-          text:  `${iconItemPrevious}${translationsItemMenuGet(user, 'Prev')} (${buttonsOffset/maxButtonsCount})`,
-          group: 'offset',
-          callback_data: commandsCallbackDataPrepare(cmdSetOffset, {index: currentIndex, offset: buttonsOffset - maxButtonsCount}, [currentIndex, 'prev'].join('.'), callbackDataToCache)
-        });
-      }
-      if (buttonsCount > maxButtonsCount) {
-        preparedMessageObject.buttons.push({
-          text:  `${iconItemNext}${translationsItemMenuGet(user, 'Next')} (${Math.ceil(buttonsCount/maxButtonsCount) - 1})`,
-          group: 'offset',
-          callback_data: commandsCallbackDataPrepare(cmdSetOffset, {index: currentIndex, offset: buttonsOffset + maxButtonsCount}, [currentIndex, 'next'].join('.'), callbackDataToCache)
-        });
-      }
-      if (preparedMessageObject.navigationLeft !== undefined) {
-        preparedMessageObject.buttons.push({
-          text:  `${iconItemMoveLeft}`,
-          group: menuOptionHorizontalNavigation,
-          callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationLeft]}, [currentIndex, 'left'].join('.'), callbackDataToCache)
-        });
-      }
-      if (preparedMessageObject.navigationRight !== undefined) {
-        preparedMessageObject.buttons.push({
-          text:  `${iconItemMoveRight}`,
-          group: menuOptionHorizontalNavigation,
-          callback_data: commandsCallbackDataPrepare(cmdItemJumpTo, {jumpToArray: [jumpToUp, preparedMessageObject.navigationRight]}, [currentIndex, 'right'].join('.'), callbackDataToCache)
-        });
-      }
-      preparedMessageObject.buttons = menuButtonsArraySplitIntoButtonsPerRowsArray(user, preparedMessageObject.buttons);
-      let lastRow = [{ text: translationsItemCoreGet(user, cmdClose), callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}` }];
-      if(preparedMessageObject.backIndex !== undefined) {
-        if (configOptions.getOption(cfgShowHomeButton, user)) {
-          lastRow.unshift({ text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome });
-        }
-        lastRow.unshift({ text: translationsItemCoreGet(user, cmdBack), callback_data: cmdBack + preparedMessageObject.backIndex});
-      }
-      preparedMessageObject.buttons.push(lastRow);
+        preparedMessageObject.buttons.push(lastRow);
 
-      cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
-      // logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
-      if (! (messageOptions && messageOptions.hasOwnProperty('noDraw') && messageOptions.noDraw)) {
-        telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, messageOptions);
+        cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
+        // logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
+        if (! (messageOptions && messageOptions.hasOwnProperty('noDraw') && messageOptions.noDraw)) {
+          telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject, messageOptions);
+        }
       }
+      break;
     }
   }
 }
@@ -8806,13 +8798,9 @@ function menuMenuReIndex(inputMenu, indexPrefix) {
     }
   }
   else if ((typeof inputMenu === 'object') && inputMenu.hasOwnProperty('submenu')) {
-    newMenuRow = {};
-    newMenuRow['icon'] = inputMenu.icon;
-    newMenuRow['index'] = inputMenu.index !== undefined ? inputMenu.index : '';
-    newMenuRow['name'] = inputMenu.name;
-    newMenuRow['submenu'] = menuMenuReIndex(inputMenu.submenu, newMenuRow['index']);
-    if (inputMenu.hasOwnProperty('text') ) newMenuRow['text'] = inputMenu.text;
-    if (inputMenu.hasOwnProperty('externalCommand') ) newMenuRow['externalCommand'] = inputMenu.externalCommand;
+    newMenuRow = objectDeepClone({...inputMenu, submenu: undefined});
+    newMenuRow.index = newMenuRow.index !== undefined ? newMenuRow.index : '';
+    newMenuRow.submenu = typeOf(inputMenu.submenu, 'array') ? menuMenuReIndex(inputMenu.submenu, newMenuRow.index) : inputMenu.submenu;
   }
   return newMenuRow;
 }
@@ -9494,7 +9482,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(`External command ${commandOptions.item} for function ${commandOptions.function}, with params ${commandOptions.attribute}`, _l);
         menuMenuDrawOnPosition(user);
-        messageTo(commandOptions.item, {user, data: commandOptions.attribute, funcEnum: commandOptions.function, translations: translationsGetForExtension(user, commandOptions.function)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, result => (stateOrCommandProcessed(user, result)));
+        messageTo(commandOptions.item, {user, data: commandOptions.attribute, extensionId: commandOptions.function, translations: translationsGetForExtension(user, commandOptions.function)}, {timeout: configOptions.getOption(cfgExternalMenuTimeout)}, result => (stateOrCommandProcessed(user, result)));
         break;
       }
       case cmdAcknowledgeAlert:
