@@ -3089,11 +3089,11 @@ function translationsItemDelete(user, translationId) {
       if (object && (((typeof(object) === 'object') && object.hasOwnProperty('_id')) || (typeof(object) === 'string'))) {
         const
           currentFunction = functionsList[functionId],
-          funcEnum = currentFunction.enum,
+          currentEnum = currentFunction.enum,
           objectId = typeof(object) === 'string' ? object : object._id,
           prefixId = objectId.split('.').slice(0, currentFunction.statesInFolders ? -2 : -1).join('.');
         functionId = functionId.replace('.','_');
-        translationId = `${isCommon ? translationsCommonFunctionsAttributesPrefix : `${idFunctions}.${funcEnum}.${functionId}`}.${destinationId ? `${idDestinations}.${destinationId}.${objectId.split('.').join('_')}` : objectId.replace(`${prefixId}.`, '').split('.').join('_')}`;
+        translationId = `${isCommon ? translationsCommonFunctionsAttributesPrefix : `${idFunctions}.${currentEnum}.${functionId}`}.${destinationId ? `${idDestinations}.${destinationId}.${objectId.split('.').join('_')}` : objectId.replace(`${prefixId}.`, '').split('.').join('_')}`;
       }
     }
   }
@@ -5024,7 +5024,6 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
           const subMenuItem = {
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
-            funcEnum: menuItemToProcess.funcEnum,
             icon: iconItemPlus,
             group: cmdItemAdd,
             submenu: new Array(),
@@ -5071,7 +5070,7 @@ function enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) {
 function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId} = menuItemToProcess.options,
+    {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId, device: devicePrefix} = menuItemToProcess.options,
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[currentDestinationId],
     currentDestinationEnum = currentDestination.enum,
@@ -5085,8 +5084,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     currentDeviceAttributes = deviceAttributesList ? Object.keys(deviceAttributesList).filter((deviceAttr) => (deviceAttributesList[deviceAttr].isEnabled)).sort((a, b) => (deviceAttributesList[a].order - deviceAttributesList[b].order)) : [],
     deviceButtonsList = currentFunction.deviceButtons,
     currentDeviceButtons = deviceButtonsList ? Object.keys(deviceButtonsList).filter((deviceButton) => (deviceButtonsList[deviceButton].isEnabled)).sort((a, b) => (deviceButtonsList[a].order - deviceButtonsList[b].order)) : [],
-    idPrefix = primaryStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
-    primaryStateShortId = primaryStateId.replace(`${idPrefix}.`,''),
+    primaryStateShortId = primaryStateId.replace(`${devicePrefix}.`,''),
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     isCurrentAccessLevelNonSilent = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelSilent) < 0,
@@ -5106,7 +5104,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
   if (isGraphsEnabled) {
     currentDeviceAttributes.forEach((deviceAttributeId) => {
       const
-        stateIdFull = `${idPrefix}.${deviceAttributeId}`,
+        stateIdFull = `${devicePrefix}.${deviceAttributeId}`,
         stateShortIdSectionsCount = deviceAttributeId.split('.').length;
       if (existsObject(stateIdFull) && (( stateShortIdSectionsCount == 1) || (isStatesInFolders && ( stateShortIdSectionsCount == 2)))) {
         const stateObject = getObjectEnriched(stateIdFull, '*');
@@ -5122,7 +5120,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
   }
   currentDeviceButtons.forEach((deviceButtonId) => {
     const
-      stateIdFull = `${idPrefix}.${deviceButtonId}`,
+      stateIdFull = `${devicePrefix}.${deviceButtonId}`,
       stateShortIdSectionsCount = deviceButtonId.split('.').length,
       currentButton = deviceButtonsList[deviceButtonId],
       convertValueCode = currentButton.convertValueCode,
@@ -5148,24 +5146,20 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             let
               subSubMenuIndex = 0,
               currentState = existsState(stateIdFull) ? getState(stateIdFull): undefined,
-              stateValue = currentState !== undefined ? currentState.val : undefined,
+              stateValue = currentState !== undefined ? enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode) : undefined,
               states = [];
             const subMenuItem = {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${stateName}`,
-              funcEnum: currentFunctionId,
               group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
               submenu: new Array()
             };
-            stateValue = enumerationsEvaluateValueConversionCode(user, stateValue, convertValueCode);
             logs('stateObject = ' + JSON.stringify(stateObject, null, 2));
+            const currentOptions = {function: currentFunctionId, state: stateIdFull, valueType: currentStateType, device: devicePrefix};
             if (currentStateType === 'boolean') {
-              // if (stateValue === undefined) stateValue = false;
-              // subMenuItem.icons = deviceButtonId === primaryStateId ?  {on: currentFunction.iconOn, off: currentFunction.iconOff} :  {on: defaultIconOn, off: defaultIconOff};
-              subMenuItem.state = stateIdFull;
               subMenuItem.icon  = (stateValue  === undefined) || (stateValue  === null) ? iconItemNotFound : (deviceButtonId === primaryStateId ? (stateValue ? currentFunction.iconOn : currentFunction.iconOff) :  (stateValue ? defaultIconOn : defaultIconOff));
               subMenuItem.command = cmdSetState;
-              subMenuItem.options = {function: currentFunctionId, state: stateIdFull, valueType: currentStateType};
+              subMenuItem.options = currentOptions;
             }
             else if (stateObject.common.hasOwnProperty('states') && (['string','number'].includes(currentStateType) )) {
               states = enumerationsExtractPossibleValueStates(stateObject.common['states']);
@@ -5177,11 +5171,9 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                     logs(`possibleValue = ${JSON.stringify(possibleValue)}, possibleName = ${JSON.stringify(possibleName)}`);
                     const subSubMenuItem = {
                       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                      name: `${enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString'] /*  possibleName !== undefined ? possibleName : possibleValue */}`,
-                      state: commandsParamsPack(stateIdFull, possibleValue),
+                      name: `${enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})['valueString']}`,
                       command: cmdSetState,
-                      options: {function: currentFunctionId, state: stateIdFull, valueType: currentStateType, value: possibleValue},
-                      funcEnum: currentFunctionId,
+                      options: {...currentOptions, value: possibleValue},
                       group: 'possibleValues',
                       icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
                       submenu: []
@@ -5213,10 +5205,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   const subSubMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${possibleValue}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' }`,
-                    state: commandsParamsPack(stateIdFull, possibleValue),
                     command: cmdSetState,
-                    options: {function: currentFunctionId, state: stateIdFull, valueType: currentStateType, value: possibleValue},
-                    funcEnum: currentFunctionId,
+                    options: {...currentOptions, value: possibleValue},
                     group: 'possibleValues',
                     icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
                     submenu: []
@@ -5228,9 +5218,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                   name: `${translationsItemMenuGet(user, 'SetValue')} (${stateValue ? stateValue : ''}${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : '' })`,
                   icon: iconItemEdit,
-                  funcEnum: currentFunctionId,
                   command: cmdGetInput,
-                  options: {dataType: dataTypeStateValue, state: stateIdFull,  function: currentFunctionId, valueType: currentStateType},
+                  options: {...currentOptions, dataType: dataTypeStateValue},
                   submenu: []
                 });
               }
@@ -5262,7 +5251,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, 'AlertsSubscriptionExtended')}`,
-      options: {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId},
+      options: {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId, device: devicePrefix},
       accessLevel: currentAccessLevel,
       icon: iconItemAlerts,
       function: enumerationsMenuItemDetailsDevice,
@@ -5515,11 +5504,9 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
   logs(`user = ${JSON.stringify(user)}`);
   let text = '';
   const
-    {function: currentFunctionId, destination: _currentDestinationId, state: primaryStateId} = menuItemToProcess.options,
+    {function: currentFunctionId, destination: _currentDestinationId, state: primaryStateId, device: devicePrefix} = menuItemToProcess.options,
     functionsList = enumerationsList[dataTypeFunction].list,
-    currentFunction = functionsList[currentFunctionId],
-    isStatesInFolders = currentFunction.statesInFolders,
-    idPrefix = primaryStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.');
+    currentFunction = functionsList[currentFunctionId];
   if (currentFunction && currentFunction.hasOwnProperty('deviceAttributes')) {
     const
       primaryObject = getObjectEnriched(primaryStateId),
@@ -5568,7 +5555,7 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
           break;
         }
         default: {
-          const deviceAttributeId = `${idPrefix}.${deviceAttribute}`;
+          const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`;
           logs(`deviceAttributeId = ${JSON.stringify(deviceAttributeId)}`);
           if (existsObject(deviceAttributeId)) {
             const currObject = deviceAttributeId === primaryStateId ? primaryObject : getObjectEnriched(deviceAttributeId);
@@ -6307,11 +6294,9 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     funcsList = enumerationsList[dataTypeFunction].list,
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
-    currentFuncId = menuItemToProcess.funcEnum,
-    currentDestId = menuItemToProcess.destEnum,
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    {item: currentObjectIndex} = menuItemToProcess.options;
+    {function: currentFuncId, destination: currentDestId, item: currentObjectIndex} = menuItemToProcess.options;
   let
     alertsBy = {},
     subMenu = [];
@@ -6361,7 +6346,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
       const
         levelList = isFunctionsFirst ?  funcsList : destList,
         inputLevel = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
-        levelEnum = isFunctionsFirst ? 'funcEnum' : 'destEnum';
+        levelEnum = isFunctionsFirst ? 'function' : 'destination';
       if ((! currentFuncId) && (! currentDestId) && (currentObjectIndex === undefined)) {
         Object.keys(levelList)
         .filter((levelId) => (levelList[levelId].isEnabled && levelList[levelId].isAvailable))
@@ -6372,7 +6357,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                 index: `${currentIndex}.${levelMenuIndex}`,
                 name: `${translationsGetEnumName(user, inputLevel, alertLevel)}`,
                 icon: levelList[alertLevel].icon,
-                [levelEnum]: alertLevel,
+                options: {[levelEnum]: alertLevel},
                 accessLevel: currentAccessLevel,
                 submenu: alertsMenuGenerateSubscribed
               });
@@ -6400,9 +6385,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
               levelMenuIndex = subMenu.push({
                 index: `${currentIndex}.${levelMenuIndex}`,
                 name: `${translationsGetEnumName(user, currentInputType, alertLevel)}`,
-                icon: isFunctionsFirst ? menuItemToProcess.icon : levelList[alertLevel].icon,
-                funcEnum: isFunctionsFirst ? currentFuncId : alertLevel,
-                destEnum: isFunctionsFirst ? alertLevel : currentDestId,
+                options: {function: isFunctionsFirst ? currentFuncId : alertLevel, destination: isFunctionsFirst ? alertLevel : currentDestId},
                 accessLevel: currentAccessLevel,
                 submenu: alertsMenuGenerateSubscribed
               });
@@ -6420,7 +6403,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             funcEnum: currentFuncId,
             destEnum: currentDestId,
             accessLevel: currentAccessLevel,
-            options: {item: objectsIdList[objectId]['index']},
+            options: {function: currentFuncId, destination: currentDestId, item: objectsIdList[objectId]['index']},
             submenu: alertsMenuGenerateSubscribed
           });
         });
@@ -6722,7 +6705,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
   logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   const
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-    {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId} = menuItemToProcess.options,
+    {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId, device: devicePrefix} = menuItemToProcess.options,
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[currentDestinationId],
     currentDestinationEnum = currentDestination.enum,
@@ -6731,21 +6714,19 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
     currentFunction = functionsList[currentFunctionId],
     currentFunctionEnum = currentFunction.enum,
     fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${currentFunctionId}`,
-    isStatesInFolders = currentFunction.statesInFolders,
     _currentIcons = {on: currentFunction.iconOn, off: currentFunction.iconOff},
     deviceAttributesList = currentFunction.deviceAttributes,
     currentDeviceAttributes = deviceAttributesList ? Object.keys(deviceAttributesList).filter((deviceAttr) => (deviceAttributesList[deviceAttr].isEnabled)).sort((a, b) => (deviceAttributesList[a].order - deviceAttributesList[b].order)) : [],
     deviceButtonsList = currentFunction.deviceButtons,
     currentDeviceButtons = deviceButtonsList ? Object.keys(deviceButtonsList).filter((deviceButton) => (deviceButtonsList[deviceButton].isEnabled)).sort((a, b) => (deviceButtonsList[a].order - deviceButtonsList[b].order)) : [],
     currentDeviceStates = [...currentDeviceAttributes, ...currentDeviceButtons],
-    idPrefix = primaryStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
     currentAccessLevel = menuItemToProcess.accessLevel;
   let
     subMenu = [],
     subMenuIndex = 0;
     currentDeviceStates.forEach((shortStateId, stateIndex) => {
       if (! enumerationsDeviceBasicAttributes.includes(shortStateId)  && (currentDeviceStates.indexOf(shortStateId) === stateIndex)) {
-        const currentStateId = [idPrefix, shortStateId].join('.');
+        const currentStateId = [devicePrefix, shortStateId].join('.');
         if (currentDeviceAttributes.includes(shortStateId) ||
           (currentDeviceButtons.includes(shortStateId) && (MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[shortStateId].showAccessLevel) <= 0))) {
           if (existsObject(currentStateId)) {
@@ -8144,19 +8125,19 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
         // logs('deviceList[currentLevelMenuItemId] = ' + JSON.stringify(deviceList[currentLevelMenuItemId]));
         if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelForbidden) < 0 ) deviceList[currentLevelMenuItemId].forEach((deviceStateId, _deviceIndex) => {
           const
-            idPrefix = deviceStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
-            deviceId = idPrefix.split('.').pop();
+            devicePrefix = deviceStateId.split('.').slice(0, isStatesInFolders ? -2 : -1).join('.'),
+            deviceId = devicePrefix.split('.').pop();
           logs(`stateId = ${JSON.stringify(deviceStateId)}`);
           const deviceMenuItem = {
             index: `${currentIndex}.${currentLevelMenuItemId}.${deviceId}`,
-            name: `${translationsGetObjectName(user, idPrefix, functionId, destinationId)}`,
+            name: `${translationsGetObjectName(user, devicePrefix, functionId, destinationId)}`,
             state: deviceStateId,
             type: menuItemToProcess.type,
             id: menuItemId,
             [primaryEnumId]: primaryLevelMenuItemId,
             [secondaryEnumId]: currentLevelMenuItemId,
             accessLevel: currentAccessLevel,
-            options: {[primaryOptionsEnumId]: primaryLevelMenuItemId, [secondaryOptionsEnumId]: currentLevelMenuItemId, state: deviceStateId},
+            options: {[primaryOptionsEnumId]: primaryLevelMenuItemId, [secondaryOptionsEnumId]: currentLevelMenuItemId, state: deviceStateId, device: devicePrefix},
             function: enumerationsMenuItemDetailsDevice,
             icons: currentIcons,
             icon: currentIcon,
@@ -8570,30 +8551,32 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId ) {
  */
 function menuMenuItemGetIcon(user, menuItemToProcess) {
   // logs(`\nsubMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
-  let icon = menuItemToProcess.icon ? menuItemToProcess.icon : '';
+  let icon = '';
   if (menuItemToProcess !== undefined) {
-    const
-      currentFunction = menuItemToProcess.hasOwnProperty('funcEnum') && enumerationsList[dataTypeFunction].list.hasOwnProperty(menuItemToProcess.funcEnum) ? enumerationsList[dataTypeFunction].list[menuItemToProcess.funcEnum] : undefined,
-      currentStateId = menuItemToProcess.hasOwnProperty('state') && menuItemToProcess.state ? menuItemToProcess.state : '';
-
-    if (currentFunction && currentStateId) {
-      if (! menuItemIsAvailable(currentFunction, currentStateId)) icon = iconItemUnavailable;
-    }
-    if (icon !== iconItemUnavailable) {
-      if (typeOf(menuItemToProcess.icons,'object')) {
-        if (currentStateId && existsObject(currentStateId) && (getObject(currentStateId).common.type === 'boolean')) {
-          const
-            currentAttributeId = currentStateId.split('.').slice( - currentFunction.state.split('.').length).join('.'),
-            currentFunctionDeviceButtonsAndAttributes = {...currentFunction.deviceAttributes, ...currentFunction.deviceButtons},
-            convertValueCode = currentFunctionDeviceButtonsAndAttributes.hasOwnProperty(currentAttributeId) ? currentFunctionDeviceButtonsAndAttributes[currentAttributeId].convertValueCode : "",
-            currentValue = existsState(currentStateId) ? getState(currentStateId).val : undefined;
-          icon = (currentValue === undefined)  || (currentValue === null) ? iconItemNotFound : (enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode) ? menuItemToProcess.icons.on : menuItemToProcess.icons.off);
+    if (menuItemToProcess.hasOwnProperty('options')) {
+      const
+        {function: currentFunctionId, state: currentStateId, device: devicePrefix} = menuItemToProcess.options,
+        currentFunction =currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId) ? enumerationsList[dataTypeFunction].list[currentFunctionId] : undefined;
+      if (currentFunction && currentStateId) {
+        if (! menuItemIsAvailable(currentFunction, currentStateId)) icon = iconItemUnavailable;
+      }
+      if (icon !== iconItemUnavailable) {
+        if (typeOf(menuItemToProcess.icons,'object')) {
+          if (currentStateId && existsObject(currentStateId) && (getObject(currentStateId).common.type === 'boolean')) {
+            const
+              currentAttributeId = currentStateId.replace(`${devicePrefix}.`, ''),
+              currentFunctionDeviceButtonsAndAttributes = {...currentFunction.deviceAttributes, ...currentFunction.deviceButtons},
+              convertValueCode = currentFunctionDeviceButtonsAndAttributes.hasOwnProperty(currentAttributeId) ? currentFunctionDeviceButtonsAndAttributes[currentAttributeId].convertValueCode : "",
+              currentValue = existsState(currentStateId) ? getState(currentStateId).val : undefined;
+            icon = (currentValue === undefined)  || (currentValue === null) ? iconItemNotFound : (enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode) ? menuItemToProcess.icons.on : menuItemToProcess.icons.off);
+          }
+        }
+        else if (typeOf(menuItemToProcess.icons, 'function')) {
+          icon = menuItemToProcess.icons(user, menuItemToProcess);
         }
       }
-      else if (typeOf(menuItemToProcess.icons, 'function')) {
-        icon = menuItemToProcess.icons(user, menuItemToProcess);
-      }
     }
+    if ((icon === undefined || icon === '') && menuItemToProcess.icon) icon = menuItemToProcess.icon;
   }
   return icon;
 }
