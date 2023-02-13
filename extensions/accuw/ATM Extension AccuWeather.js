@@ -12,6 +12,7 @@ function autoTelegramMenuExtensionAccuWeather() {
       : 'autoTelegramMenuExtensionsRegister',
     autoTelegramMenuExtensionsTimeout = 500,
     autoTelegramMenuExtensionId = 'accuw',
+    autoTelegramMenuExtensionMenuId = 'menuAccuWeatherForecast',
     autoTelegramMenuExtensionTranslationsKeys = [
       'WeatherForecast',
       'ForecastDetailed',
@@ -67,7 +68,7 @@ function autoTelegramMenuExtensionAccuWeather() {
         id: autoTelegramMenuExtensionId,
         nameTranslationId: 'WeatherForecast',
         icon: '☂️',
-        extensionRootMenuId: 'menuAccuWeatherForecast',
+        extensionRootMenuId: autoTelegramMenuExtensionMenuId,
         scriptName: scriptName,
         translationsKeys: autoTelegramMenuExtensionTranslationsKeys,
       },
@@ -434,112 +435,100 @@ function autoTelegramMenuExtensionAccuWeather() {
     return text;
   }
 
-  onMessage('menuAccuWeatherForecast', ({user: _user, data, extensionId, translations}, callback) => {
+  onMessage(autoTelegramMenuExtensionMenuId, ({user: _user, data, extensionId, translations}, callback) => {
     // console.log(`Received translations for weatherForecast: ${JSON.stringify(translations, null, ' ')}`);
     if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
-      data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
-      const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
-      const currentHour = new Date().getHours();
-      data.text = getTodaysForecast(translations);
-      data.submenu = [
-        {
-          name: translations['ForecastDetailed'],
-          extensionId: extensionId,
-          icon: data.icon,
-          submenu: 'menuAccuWeatherForecastDetailed',
-        },
-        {
-          name: translations['ForecastHourly'],
-          extensionId: extensionId,
-          icon: accuWeatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
-          submenu: 'menuAccuWeatherForecastHourly',
-        },
-        {
-          name: `${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Minimum`).val} ${degrees} .. ${
-            getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Maximum`).val
-          } ${degrees} - ${translations['ForecastTomorrow']}`,
-          extensionId: extensionId,
-          icon: accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
-          submenu: 'menuAccuWeatherForecastTomorrow',
-        },
-        {
-          name: `- ${translations['ForecastLong']}`,
-          extensionId: extensionId,
-          icon:
-            accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d3').val].icon +
-            ' ' +
-            accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d4').val].icon +
-            ' ' +
-            accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d5').val].icon,
-          submenu: 'menuAccuWeatherForecastLong',
-        },
-      ];
-      callback(data);
-    }
-  });
-
-  onMessage(
-    'menuAccuWeatherForecastDetailed',
-    ({user: _user, data, extensionId: _extensionId, translations}, callback) => {
-      if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
-        data.text = getDetailedForecast(1, translations);
-        data.submenu = [];
-        callback(data);
-      }
-    },
-  );
-
-  onMessage(
-    'menuAccuWeatherForecastTomorrow',
-    ({user: _user, data, extensionId: _extensionId, translations}, callback) => {
-      if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
-        data.text = getDetailedForecast(2, translations);
-        data.submenu = [];
-        callback(data);
-      }
-    },
-  );
-
-  onMessage(
-    'menuAccuWeatherForecastHourly',
-    ({user: _user, data, extensionId: _extensionId, translations}, callback) => {
-      if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
-        data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
-        const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
-        const mainHour = new Date().getHours();
-        data.text = getHourlyForecast(mainHour, translations);
-        data.submenu = [];
-        for (let currentHour = new Date().getHours(); currentHour < 24; currentHour++) {
-          data.submenu.push({
-            name: `${
-              getState(`accuweather.0.Hourly.h${currentHour}.RealFeelTemperature`).val
-            } ${degrees} (${currentHour})`,
-            text: getHourlyForecast(currentHour, translations),
-            icon: accuWeatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
-            submenu: [],
-          });
+      switch (data.id) {
+        case 'ForecastDetailed': {
+          data.text = getDetailedForecast(1, translations);
+          data.submenu = [];
+          break;
         }
-        callback(data);
-      }
-    },
-  );
-
-  onMessage('menuAccuWeatherForecastLong', ({user: _user, data, extensionId: _extensionId, translations}, callback) => {
-    if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
-      data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
-      const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
-      data.submenu = [];
-      for (let day = 3; day <= 5; day++) {
-        const currentDate = new Date(getState(`accuweather.0.Summary.DateTime_d${day}`).val);
-        const currentDay = `${getState(`accuweather.0.Summary.DayOfWeek_d${day}`).val} ${currentDate.getDate()}`;
-        data.submenu.push({
-          name: `${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val} ${degrees} .. ${
-            getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val
-          } ${degrees} (${currentDay})`,
-          text: getDetailedForecast(day, translations),
-          icon: accuWeatherIcons[getState(`accuweather.0.Summary.WeatherIcon_d${day}`).val].icon,
-          submenu: [],
-        });
+        case 'ForecastHourly': {
+          data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
+          const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
+          const mainHour = new Date().getHours();
+          data.text = getHourlyForecast(mainHour, translations);
+          data.submenu = [];
+          for (let currentHour = new Date().getHours(); currentHour < 24; currentHour++) {
+            data.submenu.push({
+              name: `${
+                getState(`accuweather.0.Hourly.h${currentHour}.RealFeelTemperature`).val
+              } ${degrees} (${currentHour})`,
+              text: getHourlyForecast(currentHour, translations),
+              icon: accuWeatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
+              submenu: [],
+            });
+          }
+          break;
+        }
+        case 'ForecastTomorrow': {
+          data.text = getDetailedForecast(2, translations);
+          data.submenu = [];
+          break;
+        }
+        case 'ForecastLong': {
+          data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
+          const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
+          data.submenu = [];
+          for (let day = 3; day <= 5; day++) {
+            const currentDate = new Date(getState(`accuweather.0.Summary.DateTime_d${day}`).val);
+            const currentDay = `${getState(`accuweather.0.Summary.DayOfWeek_d${day}`).val} ${currentDate.getDate()}`;
+            data.submenu.push({
+              name: `${getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val} ${degrees} .. ${
+                getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val
+              } ${degrees} (${currentDay})`,
+              text: getDetailedForecast(day, translations),
+              icon: accuWeatherIcons[getState(`accuweather.0.Summary.WeatherIcon_d${day}`).val].icon,
+              submenu: [],
+            });
+          }
+          break;
+        }
+        default:{
+          data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
+          const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
+          const currentHour = new Date().getHours();
+          data.text = getTodaysForecast(translations);
+          data.submenu = [
+            {
+              id: 'ForecastDetailed',
+              name: translations['ForecastDetailed'],
+              extensionId: extensionId,
+              icon: data.icon,
+              submenu: autoTelegramMenuExtensionMenuId,
+            },
+            {
+              id: 'ForecastHourly',
+              name: translations['ForecastHourly'],
+              extensionId: extensionId,
+              icon: accuWeatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
+              submenu: autoTelegramMenuExtensionMenuId,
+            },
+            {
+              id: 'ForecastTomorrow',
+              name: `${getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Minimum`).val} ${degrees} .. ${
+                getState(`accuweather.0.Daily.Day2.RealFeelTemperature.Maximum`).val
+              } ${degrees} - ${translations['ForecastTomorrow']}`,
+              extensionId: extensionId,
+              icon: accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
+              submenu: autoTelegramMenuExtensionMenuId,
+            },
+            {
+              id: 'ForecastLong',
+              name: `- ${translations['ForecastLong']}`,
+              extensionId: extensionId,
+              icon:
+                accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d3').val].icon +
+                ' ' +
+                accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d4').val].icon +
+                ' ' +
+                accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d5').val].icon,
+              submenu: autoTelegramMenuExtensionMenuId,
+            },
+          ];
+          break;
+        }
       }
       callback(data);
     }
