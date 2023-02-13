@@ -4239,7 +4239,7 @@ function cachedValueDelete(user, valueId) {
  * @param {any} data
  * @param {function} callback
  */
-function cachedOnGetCachedState(data, callback) {
+function cachedActionOnGetCachedState(data, callback) {
   const {user, valueId} = data;
   logs(`user= ${user}`);
   logs(`valueId= ${JSON.stringify(valueId)}`);
@@ -4259,7 +4259,7 @@ function cachedOnGetCachedState(data, callback) {
  * @param {any} data
  * @param {function} callback
  */
-function cachedOnSetCachedState(data, callback) {
+function cachedActionOnSetCachedState(data, callback) {
   const {user, valueId, value} = data;
   logs(`user= ${user}`);
   logs(`valueId= ${JSON.stringify(valueId)}`);
@@ -6595,7 +6595,7 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
  * properties.
  * @param {function} callback - The callback function.
  */
-function extensionsOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
+function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
   const {id, nameTranslationId, icon, extensionRootMenuId, scriptName, translationsKeys} = extensionDetails;
   // logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`, _l);
   logs(`scriptName= ${JSON.stringify(scriptName)}`);
@@ -6794,7 +6794,7 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
     const chatsMap = new Map();
     chatsMap.set(user.chatId, alertDetailsOrThresholds);
     alerts[alertId] = {function: alertFunc, destination: alertDest, chatIds: chatsMap};
-    on({id: alertId, change: 'ne'}, alertsOnSubscribedState);
+    on({id: alertId, change: 'ne'}, alertsActionOnSubscribedState);
   }
   logs(`alerts = ${JSON.stringify(alerts)}`);
   cachedValueDelete(user, alertThresholdSet);
@@ -6838,7 +6838,7 @@ function alertsInit(checkStates = false) {
   statesToSubscribe.forEach((stateId) => {
     if (!currentlySubscribedStates.includes(stateId)) {
       // logs(`subscribe on ${stateId}`, _l);
-      if (existsState(stateId)) on({id: stateId, change: 'ne'}, alertsOnSubscribedState);
+      if (existsState(stateId)) on({id: stateId, change: 'ne'}, alertsActionOnSubscribedState);
     }
   });
   currentlySubscribedStates.forEach((stateId) => {
@@ -6856,7 +6856,7 @@ function alertsInit(checkStates = false) {
         const currentValue = getState(stateId).val,
           oldValue = alerts[stateId].value;
         if (currentValue !== undefined && currentValue !== oldValue) {
-          alertsOnSubscribedState({id: stateId, state: {val: currentValue}, oldState: {val: oldValue}});
+          alertsActionOnSubscribedState({id: stateId, state: {val: currentValue}, oldState: {val: oldValue}});
         }
       }
     });
@@ -6985,7 +6985,7 @@ function alertsProcessMessageTemplate(user, template, variables) {
  * This function is called when state of any subscribed for alert objects is changed.
  * @param {object} object - This object contained all information about changed state.
  */
-function alertsOnSubscribedState(object) {
+function alertsActionOnSubscribedState(object) {
   const alerts = alertsGet(),
     activeChatGroups = telegramGetGroupChats(true),
     objectId = object.id;
@@ -7013,7 +7013,7 @@ function alertsOnSubscribedState(object) {
       alerts[objectId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
         const user =
-          chatId > 0 ? telegramUserGenerateObjectFromId(chatId) : telegramUserGenerateObjectFromId(undefined, chatId);
+          chatId > 0 ? telegramGenerateUserObjectFromId(chatId) : telegramGenerateUserObjectFromId(undefined, chatId);
         if (chatId > 0 || activeChatGroups.includes(chatId)) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
@@ -7172,8 +7172,8 @@ function alertsOnAlertToTelegram(data, callback) {
       typeOf(user, 'object') && (user.hasOwnProperty('userId') || user.hasOwnProperty('chatId'))
         ? user
         : Number(user) > 0
-        ? telegramUserGenerateObjectFromId(Number(user))
-        : telegramUserGenerateObjectFromId(undefined, Number(user));
+        ? telegramGenerateUserObjectFromId(Number(user))
+        : telegramGenerateUserObjectFromId(undefined, Number(user));
   alertsMessagePush(userObject, id, alertMessage);
   callback({success: true});
 }
@@ -10125,7 +10125,7 @@ function menuMenuUpdateBySchedule() {
   const usersIds = usersInMenu.getUsers();
   for (const userId of usersIds) {
     logs('user = ' + JSON.stringify(userId));
-    const user = telegramUserGenerateObjectFromId(userId);
+    const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
       logs('for user = ' + JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
@@ -10198,7 +10198,7 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
       idOfUser == userId ||
       (idOfUser === menuRefreshTimeAllUsers && (!menuRefreshScheduled.has(userId) || forceNow || noDraw))
     ) {
-      const user = telegramUserGenerateObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
+      const user = telegramGenerateUserObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
       // logs('user = ' + JSON.stringify(user), _l);
       const [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
@@ -12488,7 +12488,7 @@ function telegramGetGroupChats(activeOnly) {
     const chatId = Number(stateId.split('.').slice(-2, -1));
     if (!isNaN(chatId) && chatId < 0) {
       if (activeOnly) {
-        const user = telegramUserGenerateObjectFromId(undefined, chatId),
+        const user = telegramGenerateUserObjectFromId(undefined, chatId),
           [_lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
             user,
             cachedBotSendMessageId,
@@ -12531,7 +12531,7 @@ function telegramFileSend(user, fileFullPath, callback) {
         text: fileFullPath,
         type: 'document',
       };
-      if (user.userId) documentTelegramObject.user = telegramUserGetIdForTelegram(user);
+      if (user.userId) documentTelegramObject.user = telegramGetUserIdForTelegram(user);
       if (user.userId != user.chatId) {
         documentTelegramObject.chatId = user.chatId;
       }
@@ -12563,7 +12563,7 @@ function telegramImageSend(user, imageFullPath, callback) {
         text: imageFullPath,
         type: 'photo',
       };
-      if (user.userId) imageTelegramObject.user = telegramUserGetIdForTelegram(user);
+      if (user.userId) imageTelegramObject.user = telegramGetUserIdForTelegram(user);
       if (user.userId != user.chatId) {
         imageTelegramObject.chatId = user.chatId;
       }
@@ -12580,7 +12580,7 @@ function telegramImageSend(user, imageFullPath, callback) {
  * @param {object} data - The object with the 'user'(the uses object) and 'fileFullPath' properties.
  * @param {function} callback - The function to return status to extension.
  */
-function telegramOnFileSendCommand(data, callback) {
+function telegramActionOnFileSendCommand(data, callback) {
   const {user, fileFullPath} = data;
   if (user && fileFullPath) {
     telegramFileSend(user, fileFullPath, callback);
@@ -12596,7 +12596,7 @@ function telegramOnFileSendCommand(data, callback) {
  * @param {object} data - The object with the 'user'(the uses object) and 'imageFullPath' properties.
  * @param {function} callback - The function to return status to extension.
  */
-function telegramOnImageSendCommand(data, callback) {
+function telegramActionOnImageSendCommand(data, callback) {
   const {user, imageFullPath} = data;
   if (user && imageFullPath) {
     telegramImageSend(user, imageFullPath, callback);
@@ -12676,7 +12676,7 @@ function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject,
           preparedMessageObject.menutext,
         parse_mode: 'HTML',
       };
-      if (user.userId) telegramObject.user = telegramUserGetIdForTelegram(user);
+      if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       if (user.userId != user.chatId) {
         telegramObject.chatId = user.chatId;
       }
@@ -13040,7 +13040,7 @@ function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegram
         isBotMessage: !isUserMessageToDelete,
       },
     };
-    if (user.userId) telegramObject.user = telegramUserGetIdForTelegram(user);
+    if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
     if (user.userId != user.chatId) {
       telegramObject.chatId = user.chatId;
     }
@@ -13071,7 +13071,7 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
     }
     /** Can send pop-up only in private chat **/
     if (user.userId == user.chatId) {
-      if (user.userId) telegramObject.user = telegramUserGetIdForTelegram(user);
+      if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       sendTo(telegramAdapter, telegramObject, (result) => {
         if (!result) {
           console.warn(
@@ -13099,14 +13099,17 @@ const telegramQueuesIsWaitingConnection = [],
   telegramErrorLevelFatal = 'EFATAL',
   telegramErrorLevelTelegram = 'ETELEGRAM',
   telegramDelayToSendReTry = 3000,
-  telegramDelayToCatchLog = 20;
+  telegramDelayToCatchLog = 20,
+  telegramBotSendRawId = `${telegramAdapter}.communicate.botSendRaw`,
+  telegramRequestRawId = `${telegramAdapter}.communicate.requestRaw`,
+  telegramRequestPathFile = `${telegramAdapter}.communicate.pathFile`;
 
 /**
  * This function extracts the user Id for the Telegram message object.
  * @param {object} user - The user object.
  * @returns {string|number} The userId
  */
-function telegramUserGetIdForTelegram(user) {
+function telegramGetUserIdForTelegram(user) {
   if (!(user.hasOwnProperty('userName') && user.hasOwnProperty('firstName')) && cachedValueExists(user, cachedUser)) {
     user = cachedValueGet(user, cachedUser);
   }
@@ -13124,7 +13127,7 @@ function telegramUserGetIdForTelegram(user) {
  * @param {number=} chatId
  * @returns
  */
-function telegramUserGenerateObjectFromId(userId, chatId) {
+function telegramGenerateUserObjectFromId(userId, chatId) {
   let user = {
     userId: userId,
     chatId: userId ? userId : chatId,
@@ -13143,7 +13146,12 @@ function telegramUserGenerateObjectFromId(userId, chatId) {
   return user;
 }
 
-function telegramOnLogError(logRecord) {
+/**
+ * This function is used to process the error log records, related to telegram, to catch and process
+ * errors in iteracting with Telegram.
+ * @param {any} logRecord
+ */
+function telegramActionOnLogError(logRecord) {
   if (typeOf(logRecord, 'object') && logRecord.hasOwnProperty('from') && logRecord.from === telegramAdapter) {
     try {
       const telegramErrorParsed = telegramErrorParseRegExp.exec(logRecord.message);
@@ -13177,217 +13185,227 @@ function telegramOnLogError(logRecord) {
   }
 }
 
+
+/**
+ * This function used to process changes in appropriate `requestRaw` state for Telegram Adapter, to process the user
+ * input, menu button pressing and file sending.
+ * @param {object} obj - The `requestRaw` state change object.
+ */
+function telegramActionOnUserRequestRaw(obj) {
+  let userRequest = {};
+  try {
+    userRequest = JSON.parse(obj.state.val);
+  } catch (err) {
+    logs(`JSON parse error: ${JSON.stringify(err)}`);
+  }
+  logs(`raw = ${JSON.stringify(userRequest, null, 2)}`);
+  if (typeOf(userRequest, 'object') && userRequest.hasOwnProperty('from') && userRequest.from.hasOwnProperty('id')) {
+    const userId = userRequest.from.id,
+      users = usersInMenu.getUsers();
+    if (users.includes(userId)) {
+      let messageId, chatId, command;
+      if (userRequest.hasOwnProperty('message_id')) {
+        messageId = userRequest.message_id;
+      } else if (userRequest.hasOwnProperty('message') && userRequest.message.hasOwnProperty('message_id')) {
+        messageId = userRequest.message.message_id;
+      }
+      if (messageId !== undefined) {
+        if (userRequest.hasOwnProperty('chat') && userRequest.chat.hasOwnProperty('id')) {
+          chatId = userRequest.chat.id;
+        } else if (
+          userRequest.hasOwnProperty('message') &&
+          userRequest.message.hasOwnProperty('chat') &&
+          userRequest.message.chat.hasOwnProperty('id')
+        ) {
+          chatId = userRequest.message.chat.id;
+        }
+        if (chatId != undefined) {
+          if (userRequest.hasOwnProperty('text')) {
+            command = userRequest.text;
+          } else if (userRequest.hasOwnProperty('data')) {
+            command = userRequest.data;
+          }
+          logs(
+            `user = ${JSON.stringify(userId)}, chatId = ${JSON.stringify(chatId)}, messageId = ${JSON.stringify(
+              messageId,
+            )}, command = ${JSON.stringify(command)}`,
+          );
+          let user = {};
+          if (command !== undefined || userRequest.hasOwnProperty('document')) {
+            user = {
+              userId: userRequest.from.id,
+              chatId: chatId,
+              firstName: userRequest.from.first_name,
+              lastName: userRequest.from.last_name,
+              userName: userRequest.from.username,
+            };
+            if (user.userId == user.chatId) cachedValueSet(user, cachedUser, user);
+          }
+          if (command !== undefined) {
+            if (userRequest.data) {
+              /** if by some reason the menu is freezed - delete freezed queue ...**/
+              if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
+                console.warn(
+                  `Some output is in cache:\n${JSON.stringify(
+                    cachedValueGet(user, cachedTelegramMessagesQueue),
+                  )}.\nGoing to delete it!`,
+                );
+                cachedValueDelete(user, cachedTelegramMessagesQueue);
+              }
+              /** and as we received command - the menu is on now **/
+              // setCachedState(user, cachedMenuOn, true);
+            }
+            cachedValueSet(user, cachedMessageId, messageId);
+            commandsUserInputProcess(user, command);
+          } else if (userRequest.hasOwnProperty('document')) {
+            if (cachedValueExists(user, cachedIsWaitForInput)) {
+              const {
+                  command: currentCommand,
+                  options: commandOptions,
+                  index: commandIndex,
+                } = commandsExtractCommandWithOptions(user, cachedValueGet(user, cachedIsWaitForInput)),
+                commandsOptionsList = cachedValueExists(user, cachedCommandsOptionsList)
+                  ? cachedValueGet(user, cachedCommandsOptionsList)
+                  : undefined;
+              // logs(`isWaitForInput = ${isWaitForInput}, subMenuItemId = ${subMenuItemId}`);
+              if (currentCommand === cmdItemUpload) {
+                cachedValueSet(
+                  user,
+                  cachedIsWaitForInput,
+                  commandsCallbackDataPrepare(
+                    cmdItemUpload,
+                    {...commandOptions, fileName: userRequest.document.file_name, fileSize: userRequest.document.file_size},
+                    commandIndex,
+                    commandsOptionsList,
+                  ),
+                );
+                cachedValueSet(user, cachedCommandsOptionsList, commandsOptionsList);
+                on({id: telegramRequestPathFile, change: 'any'}, (obj) => {
+                  unsubscribe(telegramRequestPathFile);
+                  commandsUserInputProcess(user, obj.state.val);
+                });
+              }
+            }
+          }
+        }
+      }
+    } else {
+      console.warn(
+        `Access denied. User ${JSON.stringify(userRequest.from.first_name)} ${JSON.stringify(
+          userRequest.from.last_name,
+        )} (${JSON.stringify(userRequest.from.username)}) with id = ${userId} not in the list!`,
+      );
+    }
+  }
+}
+
+/**
+ * This function is used to parse the Telegram message sent to uses, to more clear identification what and to whom
+ * it was sent. Especially it needed to clear separation message ID's between multiple users and group chats.
+ * @param {object} obj - The `botSendRaw` state change object.
+ */
+function telegramActionOnSendToUserRaw(obj) {
+  let botMessage;
+  try {
+    botMessage = JSON.parse(obj.state.val);
+  } catch (err) {
+    logs(`JSON parse error: ${JSON.stringify(err)}`);
+  }
+  // logs(`sent = ${JSON.stringify(sent, null, 2)}`);
+  if (
+    typeOf(botMessage, 'object') &&
+    botMessage.hasOwnProperty('message_id') &&
+    botMessage.message_id &&
+    botMessage.hasOwnProperty('chat') &&
+    botMessage.chat.hasOwnProperty('type')
+  ) {
+    let user = {};
+    const messageId = botMessage.message_id;
+    if (botMessage.chat.type === 'private') {
+      user = {
+        userId: botMessage.chat.id,
+        chatId: botMessage.chat.id,
+        firstName: botMessage.chat.first_name,
+        lastName: botMessage.chat.last_name,
+        userName: botMessage.chat.username,
+      };
+    } else {
+      user.chatId = botMessage.chat.id;
+    }
+    let isBotMessage = false,
+      isDocument = false,
+      userId = 0;
+    logs(`user = ${JSON.stringify(user)}, botSendMessageId = ${JSON.stringify(messageId)}`);
+    if (
+      botMessage.hasOwnProperty('reply_markup') &&
+      botMessage.reply_markup.hasOwnProperty('inline_keyboard') &&
+      botMessage.reply_markup.inline_keyboard !== undefined
+    ) {
+      const inline_keyboard = botMessage.reply_markup.inline_keyboard;
+      logs('inline_keyboard = ' + JSON.stringify(inline_keyboard, null, 2));
+      isBotMessage =
+        inline_keyboard.findIndex(
+          (keyboard) =>
+            keyboard.findIndex((element) => {
+              if (element.hasOwnProperty('callback_data') && element.callback_data.indexOf(cmdClose) === 0) {
+                userId = element.callback_data.split(itemsDelimiter).pop();
+                return true;
+              }
+              return false;
+            }) >= 0,
+        ) >= 0;
+      if (isBotMessage && messageId) cachedValueSet(user, cachedBotSendMessageId, messageId);
+      logs(`isBotMessage = ${JSON.stringify(isBotMessage)}, botSendMessageId = ${JSON.stringify(messageId)}`);
+    } else if (botMessage.hasOwnProperty('text') && botMessage.text.includes(botMessageStamp)) {
+      logs(`is Bot Message - ${botMessage.text}`);
+      isBotMessage = true;
+    }
+    if (botMessage.hasOwnProperty('photo')) {
+      // logs(`Photo, messageId =  ${sent.message_id}`);
+      sentImageStore(user, botMessage.message_id);
+      isDocument = true;
+    } else if (botMessage.hasOwnProperty('document')) {
+      isDocument = true;
+    }
+    if (isBotMessage) {
+      if (!user.userId && userId) {
+        user.userId = Number(userId);
+        user = {...cachedValueGet({userId, chatId: userId}, cachedUser), ...user};
+        logs(`user = ${JSON.stringify(user)}`);
+      }
+      cachedValueSet(user, cachedMenuOn, true);
+      telegramMessageQueueProcess(user, messageId);
+    } else if (isDocument) {
+      if (!user.userId) {
+        user = {...cachedValueGet(user, cachedUser), ...user};
+      }
+      // logs(`CachedState(user, cachedMenuOn) = ${getCachedState(user, cachedMenuOn)}, CachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)}`)
+      menuMenuItemsAndRowsClearCached(user);
+      cachedValueDelete(user, cachedMenuOn);
+      menuMenuDrawOnPosition(user);
+    }
+  }
+}
+
+
 /**
  * This function used to watch the state `connected` of the Telegram adapter.
  * @param {object} connected - The special object, if called from subscription on changes.
  */
-function telegramOnConnected(connected) {
+function telegramActionOnConnected(connected) {
   logs('connected = ' + JSON.stringify(connected));
   if (typeOf(connected, 'object') && connected.hasOwnProperty('state') && connected.state.hasOwnProperty('val')) {
     telegramIsConnected = connected.state.val;
   } else {
     telegramIsConnected = false;
   }
-  const telegramBotSendRawId = `${telegramAdapter}.communicate.botSendRaw`,
-    telegramRequestRawId = `${telegramAdapter}.communicate.requestRaw`,
-    telegramRequestPathFile = `${telegramAdapter}.communicate.pathFile`;
   unsubscribe(telegramBotSendRawId);
   unsubscribe(telegramRequestRawId);
   if (telegramIsConnected) {
     /** answerRawSubscribe */
-    on({id: telegramBotSendRawId, change: 'ne'}, function answerRawSubscribe(obj) {
-      let sent;
-      try {
-        sent = JSON.parse(obj.state.val);
-      } catch (err) {
-        logs(`JSON parse error: ${JSON.stringify(err)}`);
-        return undefined;
-      }
-      // logs(`sent = ${JSON.stringify(sent, null, 2)}`);
-      if (
-        sent &&
-        typeof sent === 'object' &&
-        sent.hasOwnProperty('message_id') &&
-        sent.message_id &&
-        sent.hasOwnProperty('chat') &&
-        sent.chat.hasOwnProperty('type')
-      ) {
-        let user = {};
-        const messageId = sent.message_id;
-        if (sent.chat.type === 'private') {
-          user = {
-            userId: sent.chat.id,
-            chatId: sent.chat.id,
-            firstName: sent.chat.first_name,
-            lastName: sent.chat.last_name,
-            userName: sent.chat.username,
-          };
-        } else {
-          user.chatId = sent.chat.id;
-        }
-        let isBotMessage = false,
-          isDocument = false,
-          userId = 0;
-        logs(`user = ${JSON.stringify(user)}, botSendMessageId = ${JSON.stringify(messageId)}`);
-        if (
-          sent.hasOwnProperty('reply_markup') &&
-          sent.reply_markup.hasOwnProperty('inline_keyboard') &&
-          sent.reply_markup.inline_keyboard !== undefined
-        ) {
-          const inline_keyboard = sent.reply_markup.inline_keyboard;
-          logs('inline_keyboard = ' + JSON.stringify(inline_keyboard, null, 2));
-          isBotMessage =
-            inline_keyboard.findIndex(
-              (keyboard) =>
-                keyboard.findIndex((element) => {
-                  if (element.hasOwnProperty('callback_data') && element.callback_data.indexOf(cmdClose) === 0) {
-                    userId = element.callback_data.split(itemsDelimiter).pop();
-                    return true;
-                  }
-                  return false;
-                }) >= 0,
-            ) >= 0;
-          if (isBotMessage && messageId) cachedValueSet(user, cachedBotSendMessageId, messageId);
-          logs(`isBotMessage = ${JSON.stringify(isBotMessage)}, botSendMessageId = ${JSON.stringify(messageId)}`);
-        } else if (sent.hasOwnProperty('text') && sent.text.includes(botMessageStamp)) {
-          logs(`is Bot Message - ${sent.text}`);
-          isBotMessage = true;
-        }
-        if (sent.hasOwnProperty('photo')) {
-          // logs(`Photo, messageId =  ${sent.message_id}`);
-          sentImageStore(user, sent.message_id);
-          isDocument = true;
-        } else if (sent.hasOwnProperty('document')) {
-          isDocument = true;
-        }
-        if (isBotMessage) {
-          if (!user.userId && userId) {
-            user.userId = Number(userId);
-            user = {...cachedValueGet({userId, chatId: userId}, cachedUser), ...user};
-            logs(`user = ${JSON.stringify(user)}`);
-          }
-          cachedValueSet(user, cachedMenuOn, true);
-          telegramMessageQueueProcess(user, messageId);
-        } else if (isDocument) {
-          if (!user.userId) {
-            user = {...cachedValueGet(user, cachedUser), ...user};
-          }
-          // logs(`CachedState(user, cachedMenuOn) = ${getCachedState(user, cachedMenuOn)}, CachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)}`)
-          menuMenuItemsAndRowsClearCached(user);
-          cachedValueDelete(user, cachedMenuOn);
-          menuMenuDrawOnPosition(user);
-        }
-      }
-    });
+    on({id: telegramBotSendRawId, change: 'ne'}, telegramActionOnSendToUserRaw);
     /** requestRawSubscribe */
-    on({id: telegramRequestRawId, change: 'ne'}, function requestRawSubscribe(obj) {
-      let request;
-      try {
-        request = JSON.parse(obj.state.val);
-      } catch (err) {
-        logs(`JSON parse error: ${JSON.stringify(err)}`);
-        return undefined;
-      }
-      logs(`raw = ${JSON.stringify(request, null, 2)}`);
-      if (request.hasOwnProperty('from') && request.from.hasOwnProperty('id')) {
-        const userId = request.from.id,
-          users = usersInMenu.getUsers();
-        if (users.includes(userId)) {
-          let messageId, chatId, command;
-          if (request.hasOwnProperty('message_id')) {
-            messageId = request.message_id;
-          } else if (request.hasOwnProperty('message') && request.message.hasOwnProperty('message_id')) {
-            messageId = request.message.message_id;
-          }
-          if (messageId !== undefined) {
-            if (request.hasOwnProperty('chat') && request.chat.hasOwnProperty('id')) {
-              chatId = request.chat.id;
-            } else if (
-              request.hasOwnProperty('message') &&
-              request.message.hasOwnProperty('chat') &&
-              request.message.chat.hasOwnProperty('id')
-            ) {
-              chatId = request.message.chat.id;
-            }
-            if (chatId != undefined) {
-              if (request.hasOwnProperty('text')) {
-                command = request.text;
-              } else if (request.hasOwnProperty('data')) {
-                command = request.data;
-              }
-              logs(
-                `user = ${JSON.stringify(userId)}, chatId = ${JSON.stringify(chatId)}, messageId = ${JSON.stringify(
-                  messageId,
-                )}, command = ${JSON.stringify(command)}`,
-              );
-              let user = {};
-              if (command !== undefined || request.hasOwnProperty('document')) {
-                user = {
-                  userId: request.from.id,
-                  chatId: chatId,
-                  firstName: request.from.first_name,
-                  lastName: request.from.last_name,
-                  userName: request.from.username,
-                };
-                if (user.userId == user.chatId) cachedValueSet(user, cachedUser, user);
-              }
-              if (command !== undefined) {
-                if (request.data) {
-                  /** if by some reason the menu is freezed - delete freezed queue ...**/
-                  if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
-                    console.warn(
-                      `Some output is in cache:\n${JSON.stringify(
-                        cachedValueGet(user, cachedTelegramMessagesQueue),
-                      )}.\nGoing to delete it!`,
-                    );
-                    cachedValueDelete(user, cachedTelegramMessagesQueue);
-                  }
-                  /** and as we received command - the menu is on now **/
-                  // setCachedState(user, cachedMenuOn, true);
-                }
-                cachedValueSet(user, cachedMessageId, messageId);
-                commandsUserInputProcess(user, command);
-              } else if (request.hasOwnProperty('document')) {
-                if (cachedValueExists(user, cachedIsWaitForInput)) {
-                  const {
-                      command: currentCommand,
-                      options: commandOptions,
-                      index: commandIndex,
-                    } = commandsExtractCommandWithOptions(user, cachedValueGet(user, cachedIsWaitForInput)),
-                    commandsOptionsList = cachedValueExists(user, cachedCommandsOptionsList)
-                      ? cachedValueGet(user, cachedCommandsOptionsList)
-                      : undefined;
-                  // logs(`isWaitForInput = ${isWaitForInput}, subMenuItemId = ${subMenuItemId}`);
-                  if (currentCommand === cmdItemUpload) {
-                    cachedValueSet(
-                      user,
-                      cachedIsWaitForInput,
-                      commandsCallbackDataPrepare(
-                        cmdItemUpload,
-                        {...commandOptions, fileName: request.document.file_name, fileSize: request.document.file_size},
-                        commandIndex,
-                        commandsOptionsList,
-                      ),
-                    );
-                    cachedValueSet(user, cachedCommandsOptionsList, commandsOptionsList);
-                    on({id: telegramRequestPathFile, change: 'any'}, (obj) => {
-                      unsubscribe(telegramRequestPathFile);
-                      commandsUserInputProcess(user, obj.state.val);
-                    });
-                  }
-                }
-              }
-            }
-          }
-        } else {
-          console.warn(
-            `Access denied. User ${JSON.stringify(request.from.first_name)} ${JSON.stringify(
-              request.from.last_name,
-            )} (${JSON.stringify(request.from.username)}) with id = ${userId} not in the list!`,
-          );
-        }
-      }
-    });
+    on({id: telegramRequestRawId, change: 'ne'}, telegramActionOnUserRequestRaw);
     setTimeout(() => {
       while (telegramQueuesIsWaitingConnection.length) {
         telegramMessageQueueProcess(telegramQueuesIsWaitingConnection.shift());
@@ -13421,15 +13439,15 @@ async function autoTelegramMenuInstanceInit() {
 
   /** Cached states */
   // @ts-ignore
-  onMessage(extensionsGetCachedStateCommand, cachedOnGetCachedState); // 4
+  onMessage(extensionsGetCachedStateCommand, cachedActionOnGetCachedState); // 4
   // @ts-ignore
-  onMessage(extensionsSetCachedStateCommand, cachedOnSetCachedState); // 5
+  onMessage(extensionsSetCachedStateCommand, cachedActionOnSetCachedState); // 5
 
   /** send File or Image */
   // @ts-ignore
-  onMessage(extensionsSendFileCommand, telegramOnFileSendCommand);
+  onMessage(extensionsSendFileCommand, telegramActionOnFileSendCommand);
   // @ts-ignore
-  onMessage(extensionsSendImageCommand, telegramOnImageSendCommand);
+  onMessage(extensionsSendImageCommand, telegramActionOnImageSendCommand);
 
   /** update translation */
   translationsLoad();
@@ -13441,7 +13459,7 @@ async function autoTelegramMenuInstanceInit() {
   /** enumerationItems Init */
   //External Scripts Init
   // @ts-ignore
-  onMessage(extensionsRegisterCommand, extensionsOnRegisterToAutoTelegramMenu); // 6
+  onMessage(extensionsRegisterCommand, extensionsActionOnRegisterToAutoTelegramMenu); // 6
 
   Object.keys(enumerationsList).forEach((itemType) => {
     enumerationsLoad(itemType);
@@ -13451,9 +13469,9 @@ async function autoTelegramMenuInstanceInit() {
 
   const telegramConnectedId = `system.adapter.${telegramAdapter}.connected`;
   /*** subscribe on Telegram ***/
-  telegramOnConnected({state: getState(telegramConnectedId)});
-  on({id: telegramConnectedId, change: 'ne'}, telegramOnConnected);
-  onLog('error', telegramOnLogError);
+  telegramActionOnConnected({state: getState(telegramConnectedId)});
+  on({id: telegramConnectedId, change: 'ne'}, telegramActionOnConnected);
+  onLog('error', telegramActionOnLogError);
 
   /** load and subcribe on alerts */
   alertsInit(true);
@@ -13625,28 +13643,21 @@ function objectDeepClone(obj) {
 function objectAssignToTemplateLevelOne(template, inputObject, level = 0) {
   // Clone the input object to prevent mutating it
   const clonedInput = objectDeepClone(inputObject);
-
   // Return the cloned input object if it's not an object
   if (typeof clonedInput !== 'object' || clonedInput === null) return clonedInput;
-
   // Return the cloned input object if the level is greater than 0
   if (level > 0) return clonedInput;
-
   // Create an empty object to store the result
   const result = {};
-
   // Loop over the properties in the template object
   for (const key of Object.keys(template)) {
     // Get the value of the property in the input object
     const inputValue = clonedInput[key];
-
     // Recursively call the function for the property value
     const newValue = objectAssignToTemplateLevelOne(template[key], inputValue, level + 1);
-
     // Add the new value to the result object if it's defined
     if (newValue !== undefined) result[key] = newValue;
   }
-
   // Return the result object
   return result;
 }
@@ -13657,20 +13668,25 @@ function objectAssignToTemplateLevelOne(template, inputObject, level = 0) {
  * @returns {object} The "sorted" object.
  */
 function objectKeysSort(inputObject) {
-  const sortedObject = {};
-  if (typeof inputObject === 'object') {
-    Object.keys(inputObject)
-      .sort()
-      .forEach((id) => {
-        if (typeof inputObject[id] === 'object') {
-          sortedObject[id] = objectKeysSort(inputObject[id]);
-        } else {
-          sortedObject[id] = inputObject[id];
-        }
-      });
+  let sortedObject = {};
+  // Check for type of inputObject and sort by alphabetical order
+  if (typeOf(inputObject) === 'object') {
+    const keys = Object.keys(inputObject).sort();
+    // Iterate through each key and copy values to sortedObject
+    keys.forEach((id) => {
+      // Recursive call of function when encountering object value
+      if (typeof inputObject[id] === 'object') {
+        sortedObject[id] = objectKeysSort(inputObject[id]);
+      } else {
+        sortedObject[id] = inputObject[id];
+      }
+    });
+  } else {
+    sortedObject = inputObject;
   }
   return sortedObject;
 }
+
 
 /**
  * This function logs the message, in case of debug variable is set.
