@@ -9879,7 +9879,8 @@ function menuMenuObjectPrepareAndDrawOnPosition(
             );
           }
           preparedMessageObject.buttons.push({
-            text: `${menuMenuItemGetIcon(user, currentSubMenuItem)}${currentSubMenuItem.name}`,
+            icon: menuMenuItemGetIcon(user, currentSubMenuItem),
+            text: currentSubMenuItem.name,
             group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
             callback_data: callbackData,
           });
@@ -10244,57 +10245,48 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
 }
 
 /**
- * This function splits the input buttonsArray to the Array of buttons Arrays, based on configured `cfgSummaryTextLengthMax` and the buttons groups assignment.
+ * This function splits the input `buttonsArray` to the `buttonsRowsArray`, based on configured `cfgSummaryTextLengthMax`
+ * and the buttons groups assignment.
  * @param {object} user - The user object.
  * @param {object[]} buttonsArray - The plain array with buttons objects.
  * @returns {array[]} The Array of Arrays of buttons objects, represented the rows.
  */
 function menuButtonsArraySplitIntoButtonsPerRowsArray(user, buttonsArray) {
-  logs('menuArr = ' + JSON.stringify(buttonsArray));
-  let resultArr = [];
-  const defaultButtonKeys = ['text', 'callback_data'],
-    maxTextLength = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user);
-  // logs(`maxTextLength = ${maxTextLength}`, _l);
-  let buttonsRow = [],
+  const maxTextLength = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user),
+    menuButtonsDefaultGroup = 'defaultGroup';
+  let buttonsRowsArray = [],
+    buttonsRow = [],
+    currentRowLength = 0,
     currentGroup = '';
-  for (let i = 0; i < buttonsArray.length; i++) {
-    buttonsRow = [];
-    logs('menuArr[ i = ' + i + ' ].length = ' + JSON.stringify(buttonsArray[i].text.length));
-    let countLength = 0;
-    for (let j = i; j < buttonsArray.length; j++) {
-      const currentButton = buttonsArray[j],
-        currentLength = currentButton.text.length + (currentButton.icon ? 1 : 0);
-      logs(
-        `currentButton.text = ${currentButton.text}, currentButton.group = ${currentButton.group}, currentGroup = ${currentGroup}`,
-      );
-      if (
-        (countLength > 0 && countLength + currentLength > maxTextLength) ||
-        (currentGroup && currentGroup !== currentButton.group)
-      ) {
-        currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
-        logs(`currentGroup = ${currentGroup}`);
-        if (countLength > 0) break;
-      } else {
-        currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
-        countLength += currentLength + (countLength === 0 ? 0 : 3);
-        Object.keys(currentButton).forEach((buttonKey) => {
-          if (!defaultButtonKeys.includes(buttonKey)) delete currentButton[buttonKey];
-        });
-        buttonsRow.push(currentButton);
-        i = j;
-      }
+  buttonsArray.forEach((currentButton, _buttonIndex) => {
+    const currentLength = currentButton.text.length + (currentButton.icon ? 2 : 0);
+    if (
+      (buttonsRow.length > 0 && currentRowLength + currentLength > maxTextLength) ||
+      (currentGroup && currentGroup !== currentButton.group)
+    ) {
+      currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
+      buttonsRowsArray.push(buttonsRow);
+      buttonsRow = [];
+      currentRowLength = 0;
     }
-    logs('i = ' + JSON.stringify(i));
-    // logs('buttonsRow = ' + JSON.stringify(buttonsRow), _l);
-    resultArr.push(buttonsRow);
+    currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
+    buttonsRow.push({
+      text: `${currentButton.icon ? currentButton.icon : ''}${currentButton.text}`,
+      callback_data: currentButton.callback_data,
+    });
+    currentRowLength += currentLength;
+  });
+  if (buttonsRow.length > 0) {
+    buttonsRowsArray.push(buttonsRow);
   }
-  // logs('resultArr = ' + JSON.stringify(resultArr, null, 2), _l);
-  return resultArr;
+  return buttonsRowsArray;
 }
 
 /**
- * This function go thru the menu item with submenus or thru the submenu array and create a new one, with `index` property filled with string,
- * consist the each menu item "coordinates", based on the `indexPrefix`.
+ * This function is a re-indexing of an input menu. It takes the input menu, which can be either an object or an array
+ * of objects, and then creates a new menu with an index property filled with strings consisting of “coordinates” based
+ * off of the given indexPrefix. In filling the index, it takes the id property of the menu item (if it exists) or the
+ * current index of the item in the array.
  * @param {object|object[]} inputMenu - The menu object or array of menu objects, which to be indexed.
  * @param {string=} indexPrefix - The index prefix for the current menu level.
  * @returns {object|object[]} Newly created menu item or submenu array.
@@ -10303,40 +10295,39 @@ function menuMenuReIndex(inputMenu, indexPrefix) {
   let newMenuRow;
   if (typeOf(inputMenu, 'array')) {
     newMenuRow = [];
-    for (const key of inputMenu.keys()) {
+    inputMenu.forEach((currentMenuItem, currentMenuItemIndex) => {
       const newMenuRowItem = {},
-        currentInputMenuRowItem = inputMenu[key],
         indexSuffix =
-          currentInputMenuRowItem.hasOwnProperty('id') &&
-          currentInputMenuRowItem.id &&
-          !currentInputMenuRowItem.id.includes('.')
-            ? currentInputMenuRowItem.id
-            : key;
+          currentMenuItem.hasOwnProperty('id') &&
+          currentMenuItem.id &&
+          !currentMenuItem.id.includes('.')
+            ? currentMenuItem.id
+            : currentMenuItemIndex;
       newMenuRowItem.index = indexPrefix && indexPrefix.length > 0 ? [indexPrefix, indexSuffix].join('.') : indexSuffix;
-      Object.keys(currentInputMenuRowItem).forEach((attributeId) => {
+      Object.keys(currentMenuItem).forEach((attributeId) => {
         switch (attributeId) {
           case 'index': {
             break;
           }
           case 'subordinates': {
-            newMenuRowItem[attributeId] = [...currentInputMenuRowItem[attributeId]];
+            newMenuRowItem[attributeId] = [...currentMenuItem[attributeId]];
             break;
           }
           case 'submenu': {
-            if (typeOf(currentInputMenuRowItem.submenu, 'array') && currentInputMenuRowItem.submenu.length) {
-              newMenuRowItem.submenu = menuMenuReIndex(currentInputMenuRowItem.submenu, newMenuRowItem.index);
+            if (typeOf(currentMenuItem.submenu, 'array') && currentMenuItem.submenu.length) {
+              newMenuRowItem.submenu = menuMenuReIndex(currentMenuItem.submenu, newMenuRowItem.index);
             } else {
-              newMenuRowItem.submenu = currentInputMenuRowItem.submenu;
+              newMenuRowItem.submenu = currentMenuItem.submenu;
             }
             break;
           }
           default:
-            newMenuRowItem[attributeId] = currentInputMenuRowItem[attributeId];
+            newMenuRowItem[attributeId] = currentMenuItem[attributeId];
             break;
         }
       });
       newMenuRow.push(newMenuRowItem);
-    }
+    });
   } else if (typeof inputMenu === 'object' && inputMenu.hasOwnProperty('submenu')) {
     newMenuRow = objectDeepClone({...inputMenu, submenu: undefined});
     newMenuRow.index = newMenuRow.index !== undefined ? newMenuRow.index : '';
