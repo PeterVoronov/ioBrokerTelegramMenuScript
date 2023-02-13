@@ -1811,7 +1811,7 @@ class MenuRoles {
       };
       const
         currentItemId = holderItemId ? `${holderItemId}.${menuItemToProcess.id}` : menuItemToProcess.id,
-        enumId = isMenuFunctionsFirst ? 'funcEnum' : 'destEnum',
+        enumerationId = isMenuFunctionsFirst ? 'function' : 'destination',
         enumNameDeclinationKey = isMenuFunctionsFirst ? enumerationsNamesMain : enumerationsNamesMany,
         secondLevelDataType = isMenuFunctionsFirst ? dataTypeDestination : dataTypeFunction,
         jumpToArray = [jumpToUp, rootMenu.submenu.length],
@@ -1819,7 +1819,7 @@ class MenuRoles {
         secondLevelListIds = Object.keys(secondLevelList).filter((itemId) => (secondLevelList[itemId].isEnabled && secondLevelList[itemId].isAvailable)).sort((itemA, itemB) => (secondLevelList[itemA].order - secondLevelList[itemB].order));
       if (holderItemId) jumpToArray.unshift(jumpToUp);
       let subIndex = 0;
-      if (menuItemToProcess.hasOwnProperty(enumId)) {
+      if (menuItemToProcess.hasOwnProperty('options') && menuItemToProcess.options.hasOwnProperty(enumerationId) && menuItemToProcess.options[enumerationId]) {
         if (menuItemToProcess.hasOwnProperty('subordinates')) {
           menuItemToProcess.subordinates.forEach(subordinatedItem => {
             subIndex = resultItem.submenu.push(menuGenerateItemWithSubMenus(user, subordinatedItem, `${currentIndex}.${subIndex}`, menuItemToProcess.id));
@@ -7581,7 +7581,7 @@ const
       .filter((dest) => (destinationsList[dest].isEnabled && destinationsList[dest].isAvailable))
       .sort((a, b) => (destinationsList[a].order - destinationsList[b].order)),
     currentDataType = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
-    currentEnumId = isFunctionsFirst ? 'funcEnum' : 'destEnum',
+    currentEnumerationId = isFunctionsFirst ? 'function' : 'destination',
     currentNameId = isFunctionsFirst ? enumerationsNamesMany : enumerationsNamesMain,
     currentList = isFunctionsFirst ? functionsList : destinationsList,
     currentListIds =  isFunctionsFirst ? functionsListIds : destinationsListIds;
@@ -7781,7 +7781,7 @@ const
         menuItem = {
           icon: currentItem.icon,
           id: isSubordinated ? itemId.split('.').pop() : itemId,
-          [currentEnumId]: itemId,
+          options: {[currentEnumerationId]: itemId, [menuOptionHorizontalNavigation]: true},
           subordinates: new Array(),
           group: currentItem.group ? currentItem.group : menuButtonsDefaultGroup,
         };
@@ -7796,7 +7796,6 @@ const
       }
       else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
-        menuItem.options = {[menuOptionHorizontalNavigation]: true};
         menuItem.submenu = menuMenuGenerateFirstLevelAfterRoot;
         const subordinatedIds = currentListIds.filter(itemListId => (currentList[itemListId].holder === itemId));
         subordinatedIds.forEach(itemSubordinatedId => {
@@ -8040,10 +8039,8 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
   // logs('primaryLevelMenuItemId = ' + JSON.stringify(primaryLevelMenuItemId), _l);
   if (primaryMenuItemsList.hasOwnProperty(primaryLevelMenuItemId)) {
     const
-      primaryEnumId =  isFunctionsFirst ? 'funcEnum' : 'destEnum',
-      secondaryEnumId =  isFunctionsFirst ? 'destEnum' : 'funcEnum',
-      primaryOptionsEnumId =  isFunctionsFirst ? 'function' : 'destination',
-      secondaryOptionsEnumId =  isFunctionsFirst ? 'destination' : 'function',
+      primaryEnumerationId =  isFunctionsFirst ? 'function' : 'destination',
+      secondaryEnumerationId =  isFunctionsFirst ? 'destination' : 'function',
       secondaryInputType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
       namesCurrent = isFunctionsFirst ? enumerationsNamesMain : enumerationsNamesMany,
       isFunctionsFirstGlobal = configOptions.getOption(cfgMenuFunctionsFirst),
@@ -8061,10 +8058,11 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     if (menuItemToProcess.hasOwnProperty('subordinates') && typeOf(menuItemToProcess.subordinates, 'array') && menuItemToProcess.subordinates.length) {
       subMenu = menuMenuReIndex(menuItemToProcess.subordinates, currentIndex);
     }
-    /** this way to find an objects only by function and then filter by dest/destEnum, is a ten times faster than include destEnum in search pattern
-     like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`) */
-    // logs(`state[id=*${isFunctionsFirst ? `.${primaryState}` : ''}](${primaryMenuItem.enum}=${currentMenuId})`);
-    // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess, null, 2)}`)
+    /**
+     * this way to find an objects only by function and then filter by destination,
+     * is a ten times faster than include destination in search pattern,
+     * like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`)
+     */
     $(`state[id=*${isFunctionsFirst ? `.${primaryState}` : ''}](${primaryMenuItem.enum}=${primaryLevelMenuItemId})`).each( (stateId) =>  {
       if (existsObject(stateId)) {
         const currentObject = getObjectEnriched(stateId, '*');
@@ -8073,8 +8071,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           secondaryMenuItemsIndex.forEach((currentLevelMenuItemId) => {
             const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId];
             if (! isFunctionsFirst ) shortStateId = stateId.split('.').slice(- currentLevelMenuItem.state.split('.').length).join('.');
-            //  logs(`\n shortStateId = ${shortStateId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentLevelMenuItem = ${JSON.stringify(currentLevelMenuItem)}`, _l);
-            //  logs(`currentObject(${stateId})['enumIds'].includes(${enumsPrefix}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}) = ${currentObject['enumIds'].includes(`${prefixEnums}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)}`)
             if ((isFunctionsFirst || (currentLevelMenuItem.state === shortStateId)) && currentObject['enumIds'].includes(`${prefixEnums}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`)) {
               if (! deviceList.hasOwnProperty(currentLevelMenuItemId)) deviceList[currentLevelMenuItemId] = [];
               if (! deviceList[currentLevelMenuItemId].includes(stateId)) deviceList[currentLevelMenuItemId].push(stateId);
@@ -8112,8 +8108,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           name: `${stringCapitalize(translationsGetEnumName(user, secondaryInputType, currentLevelMenuItemId, namesCurrent))}`,
           icon: currentIcon,
           id: currentLevelMenuItemId,
-          [primaryEnumId]: primaryLevelMenuItemId,
-          [secondaryEnumId]: currentLevelMenuItemId,
+          options: {[primaryEnumerationId]: primaryLevelMenuItemId, [secondaryEnumerationId]: currentLevelMenuItemId, [menuOptionHorizontalNavigation]: true},
           accessLevel: currentAccessLevel,
           group: currentLevelMenuItem.group ? currentLevelMenuItem.group : menuButtonsDefaultGroup,
           submenu: new Array()
@@ -8131,7 +8126,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
             type: menuItemToProcess.type,
             id: menuItemId,
             accessLevel: currentAccessLevel,
-            options: {[primaryOptionsEnumId]: primaryLevelMenuItemId, [secondaryOptionsEnumId]: currentLevelMenuItemId, state: deviceStateId, device: devicePrefix},
+            options: {[primaryEnumerationId]: primaryLevelMenuItemId, [secondaryEnumerationId]: currentLevelMenuItemId, state: deviceStateId, device: devicePrefix},
             function: enumerationsMenuItemDetailsDevice,
             icons: currentIcons,
             icon: currentIcon,
@@ -8140,7 +8135,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           // logs('deviceMenuItem = ' + JSON.stringify(deviceMenuItem, null, 2), _l);
           currentMenuItem.submenu.push(deviceMenuItem);
         });
-        currentMenuItem.options = {[menuOptionHorizontalNavigation]: true};
         if (((isFunctionsFirst && primaryMenuItem.simplifyMenuWithOneDevice) ||
           ((! isFunctionsFirst) && (! currentLevelMenuItemId.includes('.')) && currentLevelMenuItem.simplifyMenuWithOneDevice)) &&
           (currentMenuItem.submenu.length === 1)) {
@@ -8154,7 +8148,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
         }
         if (currentLevelMenuItemId.includes('.')) {
           const [holderId, subordinatedId] = currentLevelMenuItemId.split('.');
-          let holderItem = subMenu.find(subMenuItem => ((subMenuItem[secondaryEnumId] === holderId)));
+          let holderItem = subMenu.find(subMenuItem => ((subMenuItem.id === holderId)));
           if (holderItem ) {
             const holderSubMenu = holderItem.submenu;
             currentMenuItem.holderId = holderId;
