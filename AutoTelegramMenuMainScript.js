@@ -7239,7 +7239,11 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    {function: currentFuncId, destination: currentDestId, item: currentObjectIndex} = menuItemToProcess.options;
+    {function: currentFuncId, destination: currentDestId, item: currentObjectIndex} = menuItemToProcess.options
+      ? menuItemToProcess.options
+      : {function: undefined, destination: undefined, item: undefined},
+    levelFirstId = isFunctionsFirst ? currentFuncId : currentDestId,
+    levelSecondId = isFunctionsFirst ? currentDestId : currentFuncId;
   let alertsBy = {},
     subMenu = [];
   logs(`currentFuncId = ${currentFuncId}, currentDestId = ${currentDestId}`);
@@ -7251,20 +7255,9 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
           alertDestId = alertsList[alertId].destination,
           alertFirstLevelId = isFunctionsFirst ? alertFuncId : alertDestId,
           alertSecondLevelId = isFunctionsFirst ? alertDestId : alertFuncId;
-        if (
-          alertObject &&
-          ((isFunctionsFirst && !currentFuncId) ||
-            alertFirstLevelId === currentFuncId ||
-            (!isFunctionsFirst && !currentDestId) ||
-            alertFirstLevelId === currentDestId)
-        ) {
+        if (alertObject && (!levelFirstId || alertFirstLevelId.indexOf(levelFirstId) === 0)) {
           if (!alertsBy.hasOwnProperty(alertFirstLevelId)) alertsBy[alertFirstLevelId] = {};
-          if (
-            (isFunctionsFirst && !currentDestId) ||
-            alertSecondLevelId === currentDestId ||
-            (!isFunctionsFirst && !currentFuncId) ||
-            alertSecondLevelId === currentFuncId
-          ) {
+          if (!levelSecondId || alertSecondLevelId.indexOf(levelSecondId) === 0) {
             if (!alertsBy[alertFirstLevelId].hasOwnProperty(alertSecondLevelId))
               alertsBy[alertFirstLevelId][alertSecondLevelId] = {};
             const alertIdShort = alertId.split('.').pop(),
@@ -7296,69 +7289,80 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     logs(`alertsBy = ${JSON.stringify(alertsBy, null, 2)}`);
     if (alertsBy && Object.keys(alertsBy).length) {
       let levelMenuIndex = 0;
-      const levelList = isFunctionsFirst ? funcsList : destList,
-        inputLevel = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
-        levelEnum = isFunctionsFirst ? 'function' : 'destination';
-      if (!currentFuncId && !currentDestId && currentObjectIndex === undefined) {
-        Object.keys(levelList)
-          .filter((levelId) => levelList[levelId].isEnabled && levelList[levelId].isAvailable)
-          .sort((a, b) => levelList[a].order - levelList[b].order)
+      const levelFirstList = isFunctionsFirst ? funcsList : destList,
+        isLevelFirstIdHolder = levelFirstId  && !levelFirstId.includes('.'),
+        isLevelSecondIdHolder = levelSecondId  && !levelSecondId.includes('.'),
+        levelFirstType = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
+        levelSecondType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
+        levelFirstEnum = isFunctionsFirst ? 'function' : 'destination',
+        levelSecondEnum = isFunctionsFirst ? 'destination' : 'function';
+      if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && currentObjectIndex === undefined) {
+        const levelFirstProceed = [];
+        Object.keys(levelFirstList)
+          .filter((levelId) => levelFirstList[levelId].isEnabled && levelFirstList[levelId].isAvailable)
+          .filter((levelId) => !levelFirstId || isLevelFirstIdHolder && levelId !== levelFirstId && levelId.indexOf(levelFirstId) === 0)
+          .sort((a, b) => levelFirstList[a].order - levelFirstList[b].order)
           .forEach((alertLevel) => {
             if (alertsBy.hasOwnProperty(alertLevel)) {
-              levelMenuIndex = subMenu.push({
-                index: `${currentIndex}.${levelMenuIndex}`,
-                name: `${translationsGetEnumName(user, inputLevel, alertLevel)}`,
-                icon: levelList[alertLevel].icon,
-                options: {[levelEnum]: alertLevel},
-                accessLevel: currentAccessLevel,
-                submenu: alertsMenuGenerateSubscribed,
-              });
+              if (!isLevelFirstIdHolder) alertLevel = `${alertLevel.split('.').shift()}`;
+              if (!levelFirstProceed.includes(alertLevel)) {
+                levelMenuIndex = subMenu.push({
+                  index: `${currentIndex}.${levelMenuIndex}`,
+                  name: `${translationsGetEnumName(user, levelFirstType, alertLevel)}`,
+                  icon: levelFirstList[alertLevel].icon,
+                  options: {[levelFirstEnum]: alertLevel},
+                  accessLevel: currentAccessLevel,
+                  submenu: alertsMenuGenerateSubscribed,
+                });
+                levelFirstProceed.push(alertLevel);
+              }
             }
           });
-      } else if (
-        ((isFunctionsFirst && !currentDestId) || (!isFunctionsFirst && !currentFuncId)) &&
-        currentObjectIndex === undefined
-      ) {
-        const levelList = isFunctionsFirst ? destList : funcsList,
-          currentInputType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
-          currentId = isFunctionsFirst ? currentFuncId : currentDestId,
-          alertsDestList = alertsBy[currentId];
-        let levelMenuIndex = 0;
-        Object.keys(levelList)
-          .filter((levelId) => levelList[levelId].isEnabled && levelList[levelId].isAvailable)
-          .sort((a, b) => levelList[a].order - levelList[b].order)
-          .forEach((alertLevel) => {
-            if (alertsDestList.hasOwnProperty(alertLevel)) {
-              levelMenuIndex = subMenu.push({
-                index: `${currentIndex}.${levelMenuIndex}`,
-                name: `${translationsGetEnumName(user, currentInputType, alertLevel)}`,
-                options: {
-                  function: isFunctionsFirst ? currentFuncId : alertLevel,
-                  destination: isFunctionsFirst ? alertLevel : currentDestId,
-                },
-                accessLevel: currentAccessLevel,
-                submenu: alertsMenuGenerateSubscribed,
-              });
-            }
-          });
-      } else if (currentObjectIndex === undefined) {
-        let objectMenuIndex = 0;
-        const objectsIdList = isFunctionsFirst
-          ? alertsBy[currentFuncId][currentDestId]
-          : alertsBy[currentDestId][currentFuncId];
-        Object.keys(objectsIdList)
-          .sort()
-          .forEach((objectId) => {
-            objectMenuIndex = subMenu.push({
-              index: `${currentIndex}.${objectMenuIndex}`,
-              name: `${objectsIdList[objectId]['name']}`,
-              icon: menuItemToProcess.icon,
-              accessLevel: currentAccessLevel,
-              options: {function: currentFuncId, destination: currentDestId, item: objectsIdList[objectId]['index']},
-              submenu: alertsMenuGenerateSubscribed,
+      }
+      if (levelFirstId && (!levelSecondId || isLevelSecondIdHolder) && currentObjectIndex === undefined) {
+        const levelSecondList = isFunctionsFirst ? destList : funcsList,
+          alertsSecondLevelList = alertsBy[levelFirstId],
+          levelSecondProceed = [];
+        if (alertsSecondLevelList)
+          Object.keys(levelSecondList)
+            .filter((levelId) => levelSecondList[levelId].isEnabled && levelSecondList[levelId].isAvailable)
+            .filter((levelId) => !levelSecondId || isLevelSecondIdHolder && levelId !== levelSecondId && levelId.indexOf(levelSecondId) === 0)
+            .sort((a, b) => levelSecondList[a].order - levelSecondList[b].order)
+            .forEach((alertLevel) => {
+              if (alertsSecondLevelList.hasOwnProperty(alertLevel)) {
+                if (!isLevelSecondIdHolder) alertLevel = `${alertLevel.split('.').shift()}`;
+                if (!levelSecondProceed.includes(alertLevel)) {
+                  levelMenuIndex = subMenu.push({
+                    index: `${currentIndex}.${levelMenuIndex}`,
+                    name: `${translationsGetEnumName(user, levelSecondType, alertLevel)}`,
+                    options: {
+                      [levelFirstEnum]: levelFirstId,
+                      [levelSecondEnum]: alertLevel,
+                    },
+                    accessLevel: currentAccessLevel,
+                    submenu: alertsMenuGenerateSubscribed,
+                  });
+                  levelSecondProceed.push(alertLevel);
+                }
+              }
             });
-          });
-      } else {
+      }
+      if (levelFirstId && levelSecondId && currentObjectIndex === undefined) {
+        const objectsIdList = alertsBy[levelFirstId][levelSecondId];
+        if (objectsIdList)
+          Object.keys(objectsIdList)
+            .sort()
+            .forEach((objectId) => {
+              levelMenuIndex = subMenu.push({
+                index: `${currentIndex}.${levelMenuIndex}`,
+                name: `${objectsIdList[objectId]['name']}`,
+                icon: menuItemToProcess.icon,
+                accessLevel: currentAccessLevel,
+                options: {function: currentFuncId, destination: currentDestId, item: objectsIdList[objectId]['index']},
+                submenu: alertsMenuGenerateSubscribed,
+              });
+            });
+      } else if (levelFirstId && levelSecondId) {
         let alertMenuIndex = 0;
         logs(
           `alertsList = ${JSON.stringify(
@@ -7368,9 +7372,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
           )}`,
         );
         const currentObject = Object.keys(alertsList)[currentObjectIndex].split('.').slice(0, -1).join('.'),
-          alertsIdList = isFunctionsFirst
-            ? alertsBy[currentFuncId][currentDestId][currentObject]
-            : alertsBy[currentDestId][currentFuncId][currentObject];
+          alertsIdList = alertsBy[levelFirstId][levelSecondId][currentObject];
         logs(`alertsIdList = ${JSON.stringify(alertsIdList)}, currentObject = ${currentObject}`);
         Object.keys(alertsIdList)
           .filter((key) => !['name', 'index'].includes(key))
