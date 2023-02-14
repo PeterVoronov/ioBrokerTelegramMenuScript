@@ -7115,7 +7115,7 @@ function alertsActionOnSubscribedState(object) {
                   if (storedTimerOn) {
                     const currentTimerStatus =
                       storedTimerStatus + (storedTimerStatus > 0 ? (isLess ? -1 : 0) : isAbove ? 1 : 0);
-                    if (currentTimerStatus === 0) {
+                    if (currentTimerStatus === 0 && storedTimerStatus !== 0) {
                       clearTimeout(storedTimerOn);
                       alertsStoredVariables.delete(idStoredTimerOn);
                       alertsStoredVariables.delete(idStoredTimerStatus);
@@ -7123,14 +7123,15 @@ function alertsActionOnSubscribedState(object) {
                   } else {
                     const currentTimerStatus = isLess && onLess ? -1 : isAbove && onAbove ? 1 : 0;
                     if (currentTimerStatus !== 0) {
+                      const alertMessageDelayed = () => {
+                        alertsStoredVariables.delete(idStoredTimerOn);
+                        alertsStoredVariables.delete(idStoredTimerStatus);
+                        alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
+                      };
                       alertsStoredVariables.set(idStoredTimerStatus, currentTimerStatus);
                       alertsStoredVariables.set(
                         idStoredTimerOn,
-                        setTimeout((idStoredTimerOn, idStoredTimerStatus) => {
-                          alertsStoredVariables.delete(idStoredTimerOn);
-                          alertsStoredVariables.delete(idStoredTimerStatus);
-                          alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
-                        }, onTimeInterval * 1000),
+                        setTimeout(alertMessageDelayed, onTimeInterval * 1000),
                       );
                     }
                   }
