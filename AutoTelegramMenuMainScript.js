@@ -33,7 +33,8 @@ const _l = true;
 
 /*** Make functions to be printable in JSON.stringify with names ***/
 Object.defineProperty(Function.prototype, 'toJSON', {
-  value: function() {
+  // eslint-disable-next-line space-before-function-paren
+  value: function () {
     return `function ${this.name}`;
   },
 });
@@ -5860,11 +5861,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             stateObjectEnums.includes(fullDestinationId),
           isCurrentStateWritable = stateObject.common.hasOwnProperty('write') ? stateObject.common.write : false,
           currentStateType = stateObject.common['type'];
-        // logs(`stateObjectEnums = ${JSON.stringify(stateObjectEnums)}, fullFunctionId = ${fullFunctionId}, fullDestinationId = ${fullDestinationId}`);
-        // logs(`isStateObjectRight = ${JSON.stringify(isStateObjectRight)}, isCurrentStateWritable = ${isCurrentStateWritable} `);
         if (isStateObjectRight && isCurrentStateWritable) {
           const stateName = translationsGetObjectName(user, stateObject, currentFunctionId);
-          // logs(`stateName = ${JSON.stringify(stateName)}`);
           if (stateName) {
             let subSubMenuIndex = 0,
               currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
@@ -6004,8 +6002,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     const alertSubscribeItem = alertsMenuItemGenerateSubscribedOn(
       `${currentIndex}.${subMenuIndex}`,
       `${translationsItemCoreGet(user, cmdAlertSubscribe)}`,
-      primaryStateId,
-      undefined,
       {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId},
     );
     if (alertSubscribeItem) {
@@ -6670,6 +6666,7 @@ function extensionsInit() {
 
 const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
   cachedAlertMessages = 'alertMessages',
+  cachedAlertsListPrepared = 'alertsListPrepared',
   alertThresholdSet = 'alertThresholdSet',
   alertThresholdId = 'threshold',
   alertThresholdOnTimeIntervalId = 'onTimeInterval',
@@ -6779,7 +6776,8 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
   if (alerts.hasOwnProperty(alertId)) {
     if (
       alerts[alertId].chatIds.has(user.chatId) &&
-      JSON.stringify(alerts[alertId].chatIds.get(user.chatId)) === JSON.stringify(alertDetailsOrThresholds)
+      (JSON.stringify(alerts[alertId].chatIds.get(user.chatId)) === JSON.stringify(alertDetailsOrThresholds) ||
+        JSON.stringify(alertDetailsOrThresholds) === '{}')
     ) {
       if (alerts[alertId].chatIds.size === 1) {
         delete alerts[alertId];
@@ -6798,6 +6796,7 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
   }
   logs(`alerts = ${JSON.stringify(alerts)}`);
   cachedValueDelete(user, alertThresholdSet);
+  cachedValueDelete(user, cachedAlertsListPrepared);
   alertsStore(alerts);
 }
 
@@ -7231,166 +7230,172 @@ function alertsHistoryClearOld(user, alertsMessages) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   const alertsList = alertsGet(),
-    destList = enumerationsList[dataTypeDestination].list,
-    funcsList = enumerationsList[dataTypeFunction].list,
+    destinationsList = enumerationsList[dataTypeDestination].list,
+    functionsList = enumerationsList[dataTypeFunction].list,
     currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     currentAccessLevel = menuItemToProcess.accessLevel,
-    isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    {function: currentFuncId, destination: currentDestId, item: currentObjectIndex} = menuItemToProcess.options;
-  let alertsBy = {},
+    _isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
+    {function: currentFunctionId, destination: currentDestinationId, item: currentDeviceId} = menuItemToProcess.options,
+    levelFirstId = isFunctionsFirst ? currentFunctionId : currentDestinationId,
+    levelSecondId = isFunctionsFirst ? currentDestinationId : currentFunctionId;
+  let alertsListPrepared = {},
     subMenu = [];
-  logs(`currentFuncId = ${currentFuncId}, currentDestId = ${currentDestId}`);
   if (alertsList && Object.keys(alertsList).length) {
-    Object.keys(alertsList).forEach((alertId, alertIndex) => {
-      if (alertsList[alertId].chatIds.has(user.chatId) && existsObject(alertId)) {
-        const alertObject = getObjectEnriched(alertId),
-          alertFuncId = alertsList[alertId].function,
-          alertDestId = alertsList[alertId].destination,
-          alertFirstLevelId = isFunctionsFirst ? alertFuncId : alertDestId,
-          alertSecondLevelId = isFunctionsFirst ? alertDestId : alertFuncId;
-        if (
-          alertObject &&
-          ((isFunctionsFirst && !currentFuncId) ||
-            alertFirstLevelId === currentFuncId ||
-            (!isFunctionsFirst && !currentDestId) ||
-            alertFirstLevelId === currentDestId)
-        ) {
-          if (!alertsBy.hasOwnProperty(alertFirstLevelId)) alertsBy[alertFirstLevelId] = {};
-          if (
-            (isFunctionsFirst && !currentDestId) ||
-            alertSecondLevelId === currentDestId ||
-            (!isFunctionsFirst && !currentFuncId) ||
-            alertSecondLevelId === currentFuncId
-          ) {
-            if (!alertsBy[alertFirstLevelId].hasOwnProperty(alertSecondLevelId))
-              alertsBy[alertFirstLevelId][alertSecondLevelId] = {};
-            const alertIdShort = alertId.split('.').pop(),
-              alertTopId = alertId.split('.').slice(0, -1).join('.');
-            if (!alertsBy[alertFirstLevelId][alertSecondLevelId].hasOwnProperty('alertTopId')) {
-              logs(`alertTopId = ${JSON.stringify(alertTopId)}, alertFunc = ${alertFirstLevelId}`);
-              alertsBy[alertFirstLevelId][alertSecondLevelId][alertTopId] = {
-                name: translationsGetObjectName(user, alertTopId, alertFuncId, alertDestId),
-                index: alertIndex,
-              };
+    if (cachedValueExists(user, cachedAlertsListPrepared)) {
+      alertsListPrepared = cachedValueGet(user, cachedAlertsListPrepared);
+    } else {
+      Object.keys(alertsList).forEach((alertId) => {
+        if (alertsList[alertId].chatIds.has(user.chatId) && existsObject(alertId)) {
+          const alertObject = getObjectEnriched(alertId),
+            alertFuncId = alertsList[alertId].function,
+            alertDestId = alertsList[alertId].destination,
+            alertFirstLevelId = isFunctionsFirst ? alertFuncId : alertDestId,
+            alertSecondLevelId = isFunctionsFirst ? alertDestId : alertFuncId,
+            currentFunction = functionsList[alertFuncId],
+            currentFunctionStateParts = currentFunction.state.split('.').length;
+          if (alertObject && (!levelFirstId || alertFirstLevelId.indexOf(levelFirstId) === 0)) {
+            if (!alertsListPrepared.hasOwnProperty(alertFirstLevelId)) alertsListPrepared[alertFirstLevelId] = {};
+            if (!levelSecondId || alertSecondLevelId.indexOf(levelSecondId) === 0) {
+              if (!alertsListPrepared[alertFirstLevelId].hasOwnProperty(alertSecondLevelId))
+                alertsListPrepared[alertFirstLevelId][alertSecondLevelId] = {};
+              const alertTopId = alertId.split('.').slice(0, -currentFunctionStateParts).join('.'),
+                alertIdShort = alertId.replace(alertTopId, '');
+              if (!alertsListPrepared[alertFirstLevelId][alertSecondLevelId].hasOwnProperty(alertTopId)) {
+                alertsListPrepared[alertFirstLevelId][alertSecondLevelId][alertTopId] = {
+                  name: translationsGetObjectName(user, alertTopId, alertFuncId, alertDestId),
+                };
+              }
+              alertsListPrepared[alertFirstLevelId][alertSecondLevelId][alertTopId][alertId] =
+                translationsGetObjectName(
+                  user,
+                  alertIdShort === functionsList[alertFuncId].state ? translationsPrimaryStateId : alertObject,
+                  alertFuncId,
+                );
             }
-            logs(`funcsList[${alertFirstLevelId}] = ${JSON.stringify(funcsList[alertFuncId], null, 2)}`);
-            alertsBy[alertFirstLevelId][alertSecondLevelId][alertTopId][alertId] = translationsGetObjectName(
-              user,
-              alertIdShort === funcsList[alertFuncId].state ? translationsPrimaryStateId : alertObject,
-              alertFuncId,
-            );
-            logs(
-              `alertsByFunctions[${alertFirstLevelId}][${alertSecondLevelId}][${alertTopId}] = ${JSON.stringify(
-                alertsBy[alertFirstLevelId][alertSecondLevelId][alertTopId],
-                null,
-                2,
-              )}`,
-            );
           }
         }
+      });
+      if (!levelFirstId && !levelSecondId) {
+        cachedValueSet(user, cachedAlertsListPrepared, alertsListPrepared);
+        cachedAddToDelCachedOnBack(user, currentIndex.split('.').slice(0, -1).join('.'), cachedAlertsListPrepared);
       }
-    });
-    logs(`alertsBy = ${JSON.stringify(alertsBy, null, 2)}`);
-    if (alertsBy && Object.keys(alertsBy).length) {
+    }
+    if (alertsListPrepared && Object.keys(alertsListPrepared).length) {
       let levelMenuIndex = 0;
-      const levelList = isFunctionsFirst ? funcsList : destList,
-        inputLevel = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
-        levelEnum = isFunctionsFirst ? 'function' : 'destination';
-      if (!currentFuncId && !currentDestId && currentObjectIndex === undefined) {
-        Object.keys(levelList)
-          .filter((levelId) => levelList[levelId].isEnabled && levelList[levelId].isAvailable)
-          .sort((a, b) => levelList[a].order - levelList[b].order)
+      const levelFirstList = isFunctionsFirst ? functionsList : destinationsList,
+        isLevelFirstIdHolder = levelFirstId && !levelFirstId.includes('.'),
+        isLevelSecondIdHolder = levelSecondId && !levelSecondId.includes('.'),
+        levelFirstType = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
+        levelSecondType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
+        levelFirstEnum = isFunctionsFirst ? 'function' : 'destination',
+        levelSecondEnum = isFunctionsFirst ? 'destination' : 'function';
+      if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && currentDeviceId === undefined) {
+        const levelFirstProceed = [];
+        Object.keys(levelFirstList)
+          .filter((levelId) => levelFirstList[levelId].isEnabled && levelFirstList[levelId].isAvailable)
+          .filter(
+            (levelId) =>
+              !levelFirstId ||
+              (isLevelFirstIdHolder && levelId !== levelFirstId && levelId.indexOf(levelFirstId) === 0),
+          )
+          .sort((a, b) => levelFirstList[a].order - levelFirstList[b].order)
           .forEach((alertLevel) => {
-            if (alertsBy.hasOwnProperty(alertLevel)) {
-              levelMenuIndex = subMenu.push({
-                index: `${currentIndex}.${levelMenuIndex}`,
-                name: `${translationsGetEnumName(user, inputLevel, alertLevel)}`,
-                icon: levelList[alertLevel].icon,
-                options: {[levelEnum]: alertLevel},
-                accessLevel: currentAccessLevel,
-                submenu: alertsMenuGenerateSubscribed,
-              });
+            if (alertsListPrepared.hasOwnProperty(alertLevel)) {
+              if (!isLevelFirstIdHolder) alertLevel = `${alertLevel.split('.').shift()}`;
+              if (!levelFirstProceed.includes(alertLevel)) {
+                levelMenuIndex = subMenu.push({
+                  index: `${currentIndex}.${levelMenuIndex}`,
+                  name: `${translationsGetEnumName(user, levelFirstType, alertLevel)}`,
+                  icon: levelFirstList[alertLevel].icon,
+                  options: {[levelFirstEnum]: alertLevel},
+                  accessLevel: currentAccessLevel,
+                  submenu: alertsMenuGenerateSubscribed,
+                });
+                levelFirstProceed.push(alertLevel);
+              }
             }
           });
-      } else if (
-        ((isFunctionsFirst && !currentDestId) || (!isFunctionsFirst && !currentFuncId)) &&
-        currentObjectIndex === undefined
-      ) {
-        const levelList = isFunctionsFirst ? destList : funcsList,
-          currentInputType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
-          currentId = isFunctionsFirst ? currentFuncId : currentDestId,
-          alertsDestList = alertsBy[currentId];
-        let levelMenuIndex = 0;
-        Object.keys(levelList)
-          .filter((levelId) => levelList[levelId].isEnabled && levelList[levelId].isAvailable)
-          .sort((a, b) => levelList[a].order - levelList[b].order)
-          .forEach((alertLevel) => {
-            if (alertsDestList.hasOwnProperty(alertLevel)) {
-              levelMenuIndex = subMenu.push({
-                index: `${currentIndex}.${levelMenuIndex}`,
-                name: `${translationsGetEnumName(user, currentInputType, alertLevel)}`,
-                options: {
-                  function: isFunctionsFirst ? currentFuncId : alertLevel,
-                  destination: isFunctionsFirst ? alertLevel : currentDestId,
-                },
-                accessLevel: currentAccessLevel,
-                submenu: alertsMenuGenerateSubscribed,
-              });
-            }
-          });
-      } else if (currentObjectIndex === undefined) {
-        let objectMenuIndex = 0;
-        const objectsIdList = isFunctionsFirst
-          ? alertsBy[currentFuncId][currentDestId]
-          : alertsBy[currentDestId][currentFuncId];
-        Object.keys(objectsIdList)
-          .sort()
-          .forEach((objectId) => {
-            objectMenuIndex = subMenu.push({
-              index: `${currentIndex}.${objectMenuIndex}`,
-              name: `${objectsIdList[objectId]['name']}`,
-              icon: menuItemToProcess.icon,
-              accessLevel: currentAccessLevel,
-              options: {function: currentFuncId, destination: currentDestId, item: objectsIdList[objectId]['index']},
-              submenu: alertsMenuGenerateSubscribed,
+      }
+      if (levelFirstId && (!levelSecondId || isLevelSecondIdHolder) && currentDeviceId === undefined) {
+        const levelSecondList = isFunctionsFirst ? destinationsList : functionsList,
+          alertsSecondLevelList = alertsListPrepared[levelFirstId],
+          levelSecondProceed = [];
+        if (alertsSecondLevelList)
+          Object.keys(levelSecondList)
+            .filter((levelId) => levelSecondList[levelId].isEnabled && levelSecondList[levelId].isAvailable)
+            .filter(
+              (levelId) =>
+                !levelSecondId ||
+                (isLevelSecondIdHolder && levelId !== levelSecondId && levelId.indexOf(levelSecondId) === 0),
+            )
+            .sort((a, b) => levelSecondList[a].order - levelSecondList[b].order)
+            .forEach((alertLevel) => {
+              if (alertsSecondLevelList.hasOwnProperty(alertLevel)) {
+                if (!isLevelSecondIdHolder) alertLevel = `${alertLevel.split('.').shift()}`;
+                if (!levelSecondProceed.includes(alertLevel)) {
+                  levelMenuIndex = subMenu.push({
+                    index: `${currentIndex}.${levelMenuIndex}`,
+                    name: `${translationsGetEnumName(user, levelSecondType, alertLevel)}`,
+                    options: {
+                      [levelFirstEnum]: levelFirstId,
+                      [levelSecondEnum]: alertLevel,
+                    },
+                    accessLevel: currentAccessLevel,
+                    submenu: alertsMenuGenerateSubscribed,
+                  });
+                  levelSecondProceed.push(alertLevel);
+                }
+              }
             });
-          });
-      } else {
+      }
+      if (levelFirstId && levelSecondId && currentDeviceId === undefined) {
+        const objectsIdList = alertsListPrepared[levelFirstId][levelSecondId];
+        if (objectsIdList)
+          Object.keys(objectsIdList)
+            .sort()
+            .forEach((objectId) => {
+              levelMenuIndex = subMenu.push({
+                index: `${currentIndex}.${levelMenuIndex}`,
+                name: `${objectsIdList[objectId]['name']}`,
+                icon: menuItemToProcess.icon,
+                accessLevel: currentAccessLevel,
+                options: {function: currentFunctionId, destination: currentDestinationId, item: objectId},
+                submenu: alertsMenuGenerateSubscribed,
+              });
+            });
+      } else if (levelFirstId && levelSecondId) {
         let alertMenuIndex = 0;
-        logs(
-          `alertsList = ${JSON.stringify(
-            alertsList,
-          )}, Object.keys(alertsList)[${currentObjectIndex}] = ${JSON.stringify(
-            Object.keys(alertsList)[currentObjectIndex],
-          )}`,
-        );
-        const currentObject = Object.keys(alertsList)[currentObjectIndex].split('.').slice(0, -1).join('.'),
-          alertsIdList = isFunctionsFirst
-            ? alertsBy[currentFuncId][currentDestId][currentObject]
-            : alertsBy[currentDestId][currentFuncId][currentObject];
-        logs(`alertsIdList = ${JSON.stringify(alertsIdList)}, currentObject = ${currentObject}`);
-        Object.keys(alertsIdList)
-          .filter((key) => !['name', 'index'].includes(key))
-          .sort()
-          .forEach((alertId) => {
-            alertMenuIndex = subMenu.push({
-              index: `${currentIndex}.${alertMenuIndex}`,
-              name: `${alertsIdList[alertId]}`,
-              icon: menuItemToProcess.icon,
-              command: isCurrentAccessLevelAllowModify ? '' : cmdNoOperation,
-              submenu: isCurrentAccessLevelAllowModify
-                ? [
-                    menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${alertMenuIndex}`, 0, {
-                      dataType: dataTypeAlertSubscribed,
-                      state: alertId,
-                    }),
-                  ]
-                : [],
-            });
-          });
+        const alertsIdList = alertsListPrepared[levelFirstId][levelSecondId][currentDeviceId],
+          currentFunction = functionsList[currentFunctionId],
+          deviceAttributesList = currentFunction.deviceAttributes,
+          currentDeviceAttributes = deviceAttributesList
+            ? Object.keys(deviceAttributesList).sort(
+                (a, b) => deviceAttributesList[a].order - deviceAttributesList[b].order,
+              )
+            : [],
+          deviceButtonsList = currentFunction.deviceButtons,
+          currentDeviceButtons = deviceButtonsList
+            ? Object.keys(deviceButtonsList).sort((a, b) => deviceButtonsList[a].order - deviceButtonsList[b].order)
+            : [],
+          currentDeviceStates = [...currentDeviceAttributes, ...currentDeviceButtons],
+          deviceStatesProceed = [];
+        currentDeviceStates.forEach((deviceState) => {
+          const alertId = [currentDeviceId, deviceState].join('.');
+          if (alertsIdList.hasOwnProperty(alertId) && !deviceStatesProceed.includes(alertId)) {
+            deviceStatesProceed.push(alertId);
+            alertMenuIndex = subMenu.push(
+              alertsMenuItemGenerateSubscribedOn(
+                `${currentIndex}.${alertMenuIndex}`,
+                alertsIdList[alertId],
+                {function: currentFunctionId, destination: currentDestinationId, state: alertId},
+                undefined,
+                true,
+              ),
+            );
+          }
+        });
       }
     }
   }
@@ -7431,21 +7436,14 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth = fals
  * subscription management for the appropriate ioBroker state (`itemState`).
  * @param {string} itemIndex - The positional index for new menu item.
  * @param {string} itemName - The name of the new menu item.
- * @param {string} itemState - The related ioBroker state.
- * @param {object} itemStateObject - The related ioBroker state object (can be `undefined`).
  * @param {object} itemOptions - The menu item object options.
+ * @param {object=} itemStateObject - The related ioBroker state object (can be `undefined`).
  * @param {boolean=} isExtraMenu - The selector to show more detailed params.
  * @returns {object} Menu item object.
  */
-function alertsMenuItemGenerateSubscribedOn(
-  itemIndex,
-  itemName,
-  itemState,
-  itemStateObject,
-  itemOptions,
-  isExtraMenu = false,
-) {
+function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemOptions, itemStateObject, isExtraMenu = false) {
   let menuItem;
+  const itemState = itemOptions.state;
   if (itemStateObject === undefined || itemStateObject === null) itemStateObject = getObjectEnriched(itemState);
   if (itemStateObject && itemStateObject.hasOwnProperty('common') && itemStateObject.common) {
     const itemStateType = itemStateObject.common['type'];
@@ -7890,9 +7888,8 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
                 subMenuItem = alertsMenuItemGenerateSubscribedOn(
                   stateIndex,
                   stateName,
-                  currentStateId,
-                  currentStateObject,
                   {function: currentFunctionId, destination: currentDestinationId, state: currentStateId},
+                  currentStateObject,
                   true,
                 );
               if (subMenuItem) {
@@ -8921,6 +8918,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
               id: 'alertsSubscribed',
               icon: iconItemAlerts,
               submenu: alertsMenuGenerateSubscribed,
+              options: {},
             },
           ],
         },
@@ -10298,9 +10296,7 @@ function menuMenuReIndex(inputMenu, indexPrefix) {
     inputMenu.forEach((currentMenuItem, currentMenuItemIndex) => {
       const newMenuRowItem = {},
         indexSuffix =
-          currentMenuItem.hasOwnProperty('id') &&
-          currentMenuItem.id &&
-          !currentMenuItem.id.includes('.')
+          currentMenuItem.hasOwnProperty('id') && currentMenuItem.id && !currentMenuItem.id.includes('.')
             ? currentMenuItem.id
             : currentMenuItemIndex;
       newMenuRowItem.index = indexPrefix && indexPrefix.length > 0 ? [indexPrefix, indexSuffix].join('.') : indexSuffix;
@@ -13185,7 +13181,6 @@ function telegramActionOnLogError(logRecord) {
   }
 }
 
-
 /**
  * This function used to process changes in appropriate `requestRaw` state for Telegram Adapter, to process the user
  * input, menu button pressing and file sending.
@@ -13274,7 +13269,11 @@ function telegramActionOnUserRequestRaw(obj) {
                   cachedIsWaitForInput,
                   commandsCallbackDataPrepare(
                     cmdItemUpload,
-                    {...commandOptions, fileName: userRequest.document.file_name, fileSize: userRequest.document.file_size},
+                    {
+                      ...commandOptions,
+                      fileName: userRequest.document.file_name,
+                      fileSize: userRequest.document.file_size,
+                    },
                     commandIndex,
                     commandsOptionsList,
                   ),
@@ -13386,7 +13385,6 @@ function telegramActionOnSendToUserRaw(obj) {
     }
   }
 }
-
 
 /**
  * This function used to watch the state `connected` of the Telegram adapter.
@@ -13686,7 +13684,6 @@ function objectKeysSort(inputObject) {
   }
   return sortedObject;
 }
-
 
 /**
  * This function logs the message, in case of debug variable is set.
