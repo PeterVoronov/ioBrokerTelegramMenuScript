@@ -4047,15 +4047,15 @@ const cachedValuesStatesCommonAttributes = {
     role: 'id',
   },
   [cachedMessageId]: {name: 'Message ID of last received request', type: 'number', read: true, write: true, role: 'id'},
-  [cachedUser]: {name: 'user data as json', type: 'json', read: true, write: true, role: 'text'},
+  [cachedUser]: {name: 'user data as json', type: 'json', read: true, write: true, role: 'json'},
   [cachedMenuOn]: {name: 'Is menu shown to the user', type: 'boolean', read: true, write: true, role: 'state'},
   [cachedMenuItem]: {name: 'Last menu item shown to the user', type: 'json', read: true, write: true, role: 'json'},
   [cachedLastMessage]: {
     name: 'Last menu message sent to the user',
-    type: 'json',
+    type: 'text',
     read: true,
     write: true,
-    role: 'json',
+    role: 'text',
   },
   [cachedCurrentState]: {
     name: 'State currently processed in Menu',
@@ -4066,7 +4066,7 @@ const cachedValuesStatesCommonAttributes = {
   },
   [cachedMode]: {name: 'Current user mode', type: 'number', read: true, write: true, role: 'number'},
   enumerationItems: {name: 'List of Items for menu', type: 'json', read: true, write: true, role: 'json'},
-  [prefixExternalStates]: {name: 'External state', type: 'json', read: true, write: true, role: 'state'},
+  [prefixExternalStates]: {name: 'External state', type: 'json', read: true, write: true, role: 'json'},
   [cachedSentImages]: {name: 'List of sent images', type: 'json', read: true, write: true, role: 'json'},
 };
 const cachedValuesMap = new Map();
@@ -4123,11 +4123,7 @@ function cachedValueGet(user, valueId, getLastChange = false) {
         if (currentState !== undefined) {
           let cachedVal = currentState.val;
           stateLastChange = currentState.lc;
-          if (
-            (cachedValuesStatesCommonAttributes[valueId].type === 'string' ||
-              cachedValuesStatesCommonAttributes[valueId].type === 'json') &&
-            cachedVal.length > 0
-          ) {
+          if (cachedValuesStatesCommonAttributes[valueId].type === 'json' && cachedVal.length > 0) {
             try {
               cachedVal = JSON.parse(cachedVal, JSONReviverWithMap);
             } catch (err) {
@@ -4192,12 +4188,12 @@ function cachedValueSet(user, valueId, value) {
         valueId = prefixExternalStates;
       }
       if (cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
-        if (
-          (cachedValuesStatesCommonAttributes[valueId].type === 'string' ||
-            cachedValuesStatesCommonAttributes[valueId].type === 'json') &&
-          typeOf(value) !== 'string'
-        ) {
-          value = JSON.stringify(value, JSONReplacerWithMap);
+        if (!typeOf(value, 'string')) {
+          if (cachedValuesStatesCommonAttributes[valueId].type === 'string') {
+            value = `${value}`;
+          } else if (cachedValuesStatesCommonAttributes[valueId].type === 'json') {
+            value = JSON.stringify(value, JSONReplacerWithMap);
+          }
         }
         if (existsState(id)) {
           setState(id, value, true);
@@ -6883,8 +6879,10 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) 
       cachedBotSendMessageId,
       timeDelta96,
     );
-  if (isMenuOn && itemPos && !isUserMessageOldOrNotExists && !isAcknowledged)
+  if (isMenuOn && itemPos && !isUserMessageOldOrNotExists && !isAcknowledged) {
+    menuMenuItemsAndRowsClearCached(user);
     menuMenuDrawOnPosition(user, undefined, true);
+  }
 }
 
 /**
@@ -7173,20 +7171,35 @@ function alertsOnAlertToTelegram(data, callback) {
  */
 function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
   const alertMessages = alertGetMessages(user),
-    currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '';
+    alertMessagesMaxIndex = alertMessages.length - 1,
+    currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    alertMessageAcknowledge = (user, menuItemToProcess) => {
+      const {item: alertIndex} = menuItemToProcess.options,
+        alertMessages = alertGetMessages(user),
+        alertMessage = alertMessages[alertIndex];
+      if (!alertMessage.ack) {
+        alertMessage.ack = true;
+        alertsStoreMessagesToCache(user, alertMessages);
+        menuMenuItemsAndRowsClearCached(user);
+        setTimeout(() => {menuMenuDrawOnPosition(user)}, 10);
+      }
+      return [];
+    };
   let subMenu = [],
     subMenuIndex = 0;
-  for (let alertIndex = alertMessages.length - 1; alertIndex >= 0; alertIndex--) {
-    const alertMessage = alertMessages[alertIndex],
-      // @ts-ignore
-      alertDate = formatDate(new Date(alertMessage.date), configOptions.getOption(cfgDateTimeTemplate, user));
-    subMenuIndex = subMenu.push({
-      index: `${currentIndex}.${subMenuIndex}`,
-      name: `${alertDate}: ${alertMessage.message}`,
-      icon: alertMessage.ack ? iconItemAlertOff : iconItemAlertOn,
-      options: {[menuOptionHorizontalNavigation]: true},
-      submenu: [],
-    });
+  if (alertMessagesMaxIndex >= 0) {
+    for (let alertIndex = alertMessagesMaxIndex; alertIndex >= 0; alertIndex--) {
+      const alertMessage = alertMessages[alertIndex],
+        alertDate = formatDate(new Date(alertMessage.date), configOptions.getOption(cfgDateTimeTemplate, user));
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: `${alertDate}: ${alertMessage.message}`,
+        icon: alertMessage.ack ? iconItemAlertOff : iconItemAlertOn,
+        options: {[menuOptionHorizontalNavigation]: true, item: alertIndex},
+        function: alertMessageAcknowledge,
+        submenu: [],
+      });
+    }
   }
   return subMenu;
 }
@@ -11217,37 +11230,26 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         break;
       }
       case cmdAcknowledgeAlert:
+      case cmdAcknowledgeAllAlerts:
       case cmdAcknowledgeAndUnsubscribeAlert: {
-        const alertMessages = alertGetMessages(user);
-        let alertLastNonAcknowledgedMessage;
-        for (let i = alertMessages.length - 1; i >= 0; --i) {
-          const alertMessage = alertMessages[i];
-          if (!alertMessage.ack) {
-            alertLastNonAcknowledgedMessage = alertMessage;
-            break;
-          }
-        }
-        logs('alertMessages = ' + JSON.stringify(alertMessages));
-        if (alertLastNonAcknowledgedMessage !== undefined) {
-          alertLastNonAcknowledgedMessage.ack = true;
-          alertsStoreMessagesToCache(user, alertMessages);
-          if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert)
-            alertsManage(user, alertLastNonAcknowledgedMessage.id);
-        }
-        menuMenuItemsAndRowsClearCached(user);
-        menuMenuDrawOnPosition(user, currentMenuPosition);
-        break;
-      }
-      case cmdAcknowledgeAllAlerts: {
-        const alertMessages = alertGetMessages(user);
-        alertMessages
-          .filter((alertMessage) => !alertMessage.ack)
-          .forEach((alertMessage) => {
+        const alertMessages = alertGetMessages(user),
+          alertMessagesNonAcknowledged = alertMessages.filter((alertMessage) => !alertMessage.ack),
+          alertMessagesMaxIndex = alertMessagesNonAcknowledged.length - 1;
+        if (alertMessagesMaxIndex >= 0) {
+          const alertMessagesMinIndex = currentCommand === cmdAcknowledgeAllAlerts  || alertMessagesMaxIndex === 0
+            ?
+              0
+            :
+              alertMessagesMaxIndex - 1;
+          for (let i = alertMessagesMaxIndex; i >= alertMessagesMinIndex; i--) {
+            const alertMessage = alertMessagesNonAcknowledged[i];
             alertMessage.ack = true;
-          });
-        alertsStoreMessagesToCache(user, alertMessages);
-        menuMenuItemsAndRowsClearCached(user);
-        menuMenuDrawOnPosition(user, currentMenuPosition);
+            if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert) alertsManage(user, alertMessage.id);
+          }
+          alertsStoreMessagesToCache(user, alertMessages);
+          menuMenuItemsAndRowsClearCached(user);
+          menuMenuDrawOnPosition(user, currentMenuPosition);
+        }
         break;
       }
       case cmdItemPress: {
@@ -12605,7 +12607,7 @@ function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject,
       configOptions.getOption(cfgDateTimeTemplate, user),
     );
     alertMessage = `<b><u>${alertDate}:</u> ${alertMessages[alertMessages.length - 1].message}</b>\r\n\r\n`;
-    logs('alertMessage = ' + JSON.stringify(alertMessages[alertMessages.length - 1].message));
+    // logs('alertMessage = ' + JSON.stringify(alertMessages[alertMessages.length - 1].message));
     let alertRow = [
       {
         text: translationsItemCoreGet(user, cmdAcknowledgeAlert),
@@ -12634,16 +12636,15 @@ function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject,
     }
   }
   const isMenuOn = cachedValueExists(user, cachedMenuOn) && cachedValueGet(user, cachedMenuOn);
-  logs(`isMenuOn = ${JSON.stringify(isMenuOn)}, toDisplayMenu = ${JSON.stringify(createNewMessage)}`);
+  // logs(`isMenuOn = ${JSON.stringify(isMenuOn)}, toDisplayMenu = ${JSON.stringify(createNewMessage)}`);
   if (isMenuOn || createNewMessage) {
-    // @ts-ignore
-    const timeStamp = '<i>' + formatDate(new Date(), configOptions.getOption(cfgDateTimeTemplate, user)) + '</i> ';
-    const lastMessage = cachedValueGet(user, cachedLastMessage);
-    if (lastMessage != JSON.stringify(preparedMessageObject) || createNewMessage || clearBefore) {
-      logs('lastMessage is not equal to preparedMessageObject, sendTo Telegram initiated');
-      logs('lastMessage = ' + JSON.stringify(lastMessage));
-      logs('preparedMessageObject = ' + JSON.stringify(preparedMessageObject));
-      cachedValueSet(user, cachedLastMessage, JSON.stringify(preparedMessageObject));
+    const
+      timeStamp = '<i>' + formatDate(new Date(), configOptions.getOption(cfgDateTimeTemplate, user)) + '</i> ',
+      lastMessageText = cachedValueExists(user, cachedLastMessage) ? cachedValueGet(user, cachedLastMessage) : '',
+      currentMessageText =JSON.stringify(preparedMessageObject);
+    // logs(`\n\nlastMessage = ${lastMessageText}, \ncurrMessage = ${currentMessageText}`, _l);
+    if (lastMessageText !=currentMessageText|| createNewMessage || clearBefore) {
+      cachedValueSet(user, cachedLastMessage, currentMessageText);
       const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
         user,
         cachedBotSendMessageId,
