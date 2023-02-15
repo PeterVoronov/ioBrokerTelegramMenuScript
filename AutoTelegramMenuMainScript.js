@@ -228,6 +228,7 @@ const cfgPrefix = 'cfg',
   cfgShowResultMessages = `${cfgPrefix}ShowResultMessages`,
   cfgMenuRefreshInterval = `${cfgPrefix}MenuRefreshInterval`,
   cfgUseAliasOriginForCommonAttrs = `${cfgPrefix}UseAliasOriginForCommonAttrs`,
+  cfgSkipAttributesWithNullValue = `${cfgPrefix}SkipAttributesWithNullValue`,
   cfgAllowToDeleteEmptyEnums = `${cfgPrefix}AllowToDeleteEmptyEnums`,
   cfgConfigBackupCopiesCount = `${cfgPrefix}ConfigBackupCopiesCount`,
   cfgAlertMessageTemplateMain = `${cfgPrefix}AlertMessageTemplateMain`,
@@ -261,6 +262,7 @@ const configDefaultOptions = {
     [cfgHistoryAdapter]: '', // History adapter for eCharts
     [cfgGraphsTemplates]: '', // Folder with e-charts templates
     [cfgUseAliasOriginForCommonAttrs]: true, // Get object 'common' description from alias "source".
+    [cfgSkipAttributesWithNullValue]: true, //Don't show device attributes with `null` value. Not applicable on buttons and PrimaryState
     [cfgAllowToDeleteEmptyEnums]: true, // Allow to delete an empty enums (functions, destinations, reports)
     [cfgConfigBackupCopiesCount]: 7, // Max backup copies of config to be stored. If 0 - automatic backup will not work
     [cfgAlertMessageTemplateMain]: alertMessageTemplateDefault,
@@ -6299,7 +6301,8 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
       device: devicePrefix,
     } = menuItemToProcess.options,
     functionsList = enumerationsList[dataTypeFunction].list,
-    currentFunction = functionsList[currentFunctionId];
+    currentFunction = functionsList[currentFunctionId],
+    isSkipAttributesWithNullValue = configOptions.getOption(cfgSkipAttributesWithNullValue, user);
   if (currentFunction && currentFunction.hasOwnProperty('deviceAttributes')) {
     const primaryObject = getObjectEnriched(primaryStateId),
       primaryState = getState(primaryStateId),
@@ -6359,21 +6362,26 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
           const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`;
           logs(`deviceAttributeId = ${JSON.stringify(deviceAttributeId)}`);
           if (existsObject(deviceAttributeId)) {
-            const currObject =
-              deviceAttributeId === primaryStateId ? primaryObject : getObjectEnriched(deviceAttributeId);
-            deviceAttributesArray.push({
-              label: translationsGetObjectName(
-                user,
-                deviceAttributeId === primaryStateId ? translationsPrimaryStateId : currObject,
-                currentFunctionId,
-              ),
-              ...enumerationsStateValueDetails(
-                user,
-                currObject,
-                currentFunctionId,
-                deviceAttributeId === primaryStateId ? primaryState : null,
-              ),
-            });
+            const isPrimaryState = deviceAttributeId === primaryStateId,
+              currObject = isPrimaryState ? primaryObject : getObjectEnriched(deviceAttributeId),
+              currentState =
+                isPrimaryState || !existsState(deviceAttributeId) ? undefined : getState(deviceAttributeId),
+              isCurrentStateNotEmpty = currentState && currentState.val !== null && currentState.val !== undefined;
+            if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
+              deviceAttributesArray.push({
+                label: translationsGetObjectName(
+                  user,
+                  deviceAttributeId === primaryStateId ? translationsPrimaryStateId : currObject,
+                  currentFunctionId,
+                ),
+                ...enumerationsStateValueDetails(
+                  user,
+                  currObject,
+                  currentFunctionId,
+                  deviceAttributeId === primaryStateId ? primaryState : currentState,
+                ),
+              });
+            }
           }
           break;
         }
