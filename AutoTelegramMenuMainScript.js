@@ -11223,16 +11223,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdAcknowledgeAllAlerts:
       case cmdAcknowledgeAndUnsubscribeAlert: {
         const alertMessages = alertGetMessages(user),
-          alertMessagesNonAcknowledged = alertMessages.filter((alertMessage) => !alertMessage.ack),
-          alertMessagesMaxIndex = alertMessagesNonAcknowledged.length - 1;
-        if (alertMessagesMaxIndex >= 0) {
-          const alertMessagesMinIndex =
-            currentCommand === cmdAcknowledgeAllAlerts || alertMessagesMaxIndex === 0 ? 0 : alertMessagesMaxIndex - 1;
-          for (let i = alertMessagesMaxIndex; i >= alertMessagesMinIndex; i--) {
-            const alertMessage = alertMessagesNonAcknowledged[i];
+          alertMessagesNonAcknowledged = alertMessages.filter((alertMessage) => !alertMessage.ack).reverse(),
+          alertAcknowledge = (alertMessage) => {
             alertMessage.ack = true;
             if (currentCommand === cmdAcknowledgeAndUnsubscribeAlert) alertsManage(user, alertMessage.id);
-          }
+            return currentCommand === cmdAcknowledgeAllAlerts;
+          };
+        alertMessagesNonAcknowledged.every(alertAcknowledge);
+        if (alertMessagesNonAcknowledged.length) {
           alertsStoreMessagesToCache(user, alertMessages);
           menuMenuItemsAndRowsClearCached(user);
           menuMenuDrawOnPosition(user, currentMenuPosition);
