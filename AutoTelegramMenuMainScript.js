@@ -6893,26 +6893,6 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) 
  */
 function alertGetMessages(user, nonAcknowledged = false) {
   const alertMessages = cachedValueExists(user, cachedAlertMessages) ? cachedValueGet(user, cachedAlertMessages) : [];
-  /**  temporary code **/
-  alertMessages.forEach((alertMessage) => {
-    if (!alertMessage.hasOwnProperty('ack') && typeOf(alertMessage.date, 'string')) {
-      alertMessage.ack = false;
-      const [alertDate, alertTime] = alertMessage.date.split(' '),
-        alertYear = 2022,
-        [alertDay, alertMonth] = alertDate.split('.'),
-        [alertHour, alertMinutes, alertSeconds] = alertTime.split(':'),
-        alertD = new Date(
-          alertYear,
-          +alertMonth - 1,
-          +alertDay,
-          +alertHour,
-          +alertMinutes,
-          alertSeconds === undefined ? 0 : +alertSeconds,
-        );
-      alertMessage.date = alertD.valueOf();
-    }
-  });
-  /**  temporary code **/
   return nonAcknowledged ? alertMessages.filter((alertMessage) => !alertMessage.ack) : alertMessages;
 }
 
@@ -7181,7 +7161,9 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
         alertMessage.ack = true;
         alertsStoreMessagesToCache(user, alertMessages);
         menuMenuItemsAndRowsClearCached(user);
-        setTimeout(() => {menuMenuDrawOnPosition(user)}, 10);
+        setTimeout(() => {
+          menuMenuDrawOnPosition(user);
+        }, 10);
       }
       return [];
     };
@@ -11236,11 +11218,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           alertMessagesNonAcknowledged = alertMessages.filter((alertMessage) => !alertMessage.ack),
           alertMessagesMaxIndex = alertMessagesNonAcknowledged.length - 1;
         if (alertMessagesMaxIndex >= 0) {
-          const alertMessagesMinIndex = currentCommand === cmdAcknowledgeAllAlerts  || alertMessagesMaxIndex === 0
-            ?
-              0
-            :
-              alertMessagesMaxIndex - 1;
+          const alertMessagesMinIndex =
+            currentCommand === cmdAcknowledgeAllAlerts || alertMessagesMaxIndex === 0 ? 0 : alertMessagesMaxIndex - 1;
           for (let i = alertMessagesMaxIndex; i >= alertMessagesMinIndex; i--) {
             const alertMessage = alertMessagesNonAcknowledged[i];
             alertMessage.ack = true;
@@ -12638,12 +12617,11 @@ function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject,
   const isMenuOn = cachedValueExists(user, cachedMenuOn) && cachedValueGet(user, cachedMenuOn);
   // logs(`isMenuOn = ${JSON.stringify(isMenuOn)}, toDisplayMenu = ${JSON.stringify(createNewMessage)}`);
   if (isMenuOn || createNewMessage) {
-    const
-      timeStamp = '<i>' + formatDate(new Date(), configOptions.getOption(cfgDateTimeTemplate, user)) + '</i> ',
+    const timeStamp = '<i>' + formatDate(new Date(), configOptions.getOption(cfgDateTimeTemplate, user)) + '</i> ',
       lastMessageText = cachedValueExists(user, cachedLastMessage) ? cachedValueGet(user, cachedLastMessage) : '',
-      currentMessageText =JSON.stringify(preparedMessageObject);
+      currentMessageText = JSON.stringify(preparedMessageObject);
     // logs(`\n\nlastMessage = ${lastMessageText}, \ncurrMessage = ${currentMessageText}`, _l);
-    if (lastMessageText !=currentMessageText|| createNewMessage || clearBefore) {
+    if (lastMessageText != currentMessageText || createNewMessage || clearBefore) {
       cachedValueSet(user, cachedLastMessage, currentMessageText);
       const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
         user,
