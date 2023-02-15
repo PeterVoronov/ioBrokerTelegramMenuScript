@@ -12629,7 +12629,7 @@ function telegramMessageFormatAndPushToMessageQueue(user, preparedMessageObject,
       lastMessageText = cachedValueExists(user, cachedLastMessage) ? cachedValueGet(user, cachedLastMessage) : '',
       currentMessageText = JSON.stringify(preparedMessageObject);
     // logs(`\n\nlastMessage = ${lastMessageText}, \ncurrMessage = ${currentMessageText}`, _l);
-    if (lastMessageText != currentMessageText || createNewMessage || clearBefore) {
+    if (lastMessageText !== currentMessageText || createNewMessage || clearBefore) {
       cachedValueSet(user, cachedLastMessage, currentMessageText);
       const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
         user,
