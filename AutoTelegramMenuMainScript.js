@@ -9976,7 +9976,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
         // logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
         if (!(messageOptions && messageOptions.hasOwnProperty('noDraw') && messageOptions.noDraw)) {
-          telegramMessagePush(
+          telegramMessageObjectPush(
             user,
             {message: messageObject.message, buttons: messageObject.buttons, alert: messageObject.alert},
             messageOptions,
@@ -10861,7 +10861,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     if (menuMessageObject.message) {
       menuMessageObject.message += botMessageStamp;
       cachedValueSet(user, cachedLastMessage, '');
-      telegramMessagePush(user, menuMessageObject, {
+      telegramMessageObjectPush(user, menuMessageObject, {
         clearBefore: user.userId !== user.chatId || currentCommand !== cmdGetInput,
         clearUserMessage: user.userId === user.chatId,
         createNewMessage: false,
@@ -11149,7 +11149,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         if (menuMessageObject.message) {
           menuMessageObject.message += botMessageStamp;
           cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
-          telegramMessagePush(user, menuMessageObject, {
+          telegramMessageObjectPush(user, menuMessageObject, {
             clearBefore: false,
             clearUserMessage: false,
             createNewMessage: false,
@@ -11424,7 +11424,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               case doUploadDirectly: {
                 cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
                 cachedValueDelete(user, cachedTranslationsToUpload);
-                telegramMessagePush(
+                telegramMessageObjectPush(
                   user,
                   {message: translationsItemTextGet(user, 'UploadTranslationFile')},
                   {
@@ -12490,10 +12490,7 @@ function telegramFileSend(user, fileFullPath, callback) {
       }
       menuMenuItemsAndRowsClearCached(user);
       const clearCurrent = telegramMessageClearCurrent(user, false, true);
-      telegramMessagePushToMessageQueue(
-        user,
-        clearCurrent ? [clearCurrent, documentTelegramObject] : documentTelegramObject,
-      );
+      telegramObjectPushToQueue(user, clearCurrent ? [clearCurrent, documentTelegramObject] : documentTelegramObject);
       if (callback) callback({success: true});
     }
   });
@@ -12522,7 +12519,7 @@ function telegramImageSend(user, imageFullPath, callback) {
       }
       menuMenuItemsAndRowsClearCached(user);
       const clearCurrent = telegramMessageClearCurrent(user, false, true);
-      telegramMessagePushToMessageQueue(user, clearCurrent ? [clearCurrent, imageTelegramObject] : imageTelegramObject);
+      telegramObjectPushToQueue(user, clearCurrent ? [clearCurrent, imageTelegramObject] : imageTelegramObject);
       if (callback) callback({success: true});
     }
   });
@@ -12566,7 +12563,7 @@ function telegramActionOnImageSendCommand(data, callback) {
  * @param {object} messageObject - The prepared for "draw" the Telegram message object.
  * @param {object} messageOptions - The message options.
  */
-function telegramMessagePush(user, messageObject, messageOptions) {
+function telegramMessageObjectPush(user, messageObject, messageOptions) {
   const {clearBefore, clearUserMessage, createNewMessage, isSilent} = messageOptions;
   const isMenuOn = cachedValueExists(user, cachedMenuOn) && cachedValueGet(user, cachedMenuOn);
   if (isMenuOn || createNewMessage) {
@@ -12629,7 +12626,7 @@ function telegramMessagePush(user, messageObject, messageOptions) {
         if (clearUser) telegramObjects.push(clearUser);
       }
       // logs(`telegramObjects = ${JSON.stringify(telegramObjects, null, 2)}`, _l)
-      telegramMessagePushToMessageQueue(user, telegramObjects);
+      telegramObjectPushToQueue(user, telegramObjects);
       if (createNewMessage || clearBefore) {
         cachedValueSet(user, cachedMenuOn, true);
       }
@@ -12644,7 +12641,7 @@ function telegramMessagePush(user, messageObject, messageOptions) {
  * @param {object} user - The user object.
  * @param {object|object[]} telegramObject - The Telegram message object (or an array of "linked" objects) to push to the queue.
  */
-function telegramMessagePushToMessageQueue(user, telegramObject) {
+function telegramObjectPushToQueue(user, telegramObject) {
   let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
   logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue)}`);
   if (!userMessagesQueue) {
@@ -12659,7 +12656,7 @@ function telegramMessagePushToMessageQueue(user, telegramObject) {
   logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue, null, 2)}`);
   cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
   if (isReady) {
-    telegramMessageQueueProcess(user);
+    telegramQueueProcess(user);
   }
 }
 
@@ -12668,7 +12665,7 @@ function telegramMessagePushToMessageQueue(user, telegramObject) {
  * @param {object} user - The user object.
  * @param {number=} messageId - The Telegram message unique Id.
  */
-function telegramMessageQueueProcess(user, messageId) {
+function telegramQueueProcess(user, messageId) {
   /**
    * The function to process the result of sending the message to the Telegram adapter, and take and process a "linked" one, if it exists(for example delete and new one).
    * @param {number} result - The result of sending the message by Telegram adapter.
@@ -12730,7 +12727,7 @@ function telegramMessageQueueProcess(user, messageId) {
           console.warn(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
             console.warn(`Retrying message send.`);
-            telegramMessageQueueProcess(user);
+            telegramQueueProcess(user);
           }, telegramDelayToSendReTry);
         } else if (
           telegramError &&
@@ -12957,7 +12954,7 @@ function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegram
     }
     if (!createTelegramObjectOnly) {
       cachedValueSet(user, cachedLastMessage, '');
-      telegramMessagePushToMessageQueue(user, telegramObject);
+      telegramObjectPushToQueue(user, telegramObject);
     }
     return telegramObject;
   }
@@ -13288,7 +13285,7 @@ function telegramActionOnSendToUserRaw(obj) {
         logs(`user = ${JSON.stringify(user)}`);
       }
       cachedValueSet(user, cachedMenuOn, true);
-      telegramMessageQueueProcess(user, messageId);
+      telegramQueueProcess(user, messageId);
     } else if (isDocument) {
       if (!user.userId) {
         user = {...cachedValueGet(user, cachedUser), ...user};
@@ -13321,7 +13318,7 @@ function telegramActionOnConnected(connected) {
     on({id: telegramRequestRawId, change: 'ne'}, telegramActionOnUserRequestRaw);
     setTimeout(() => {
       while (telegramQueuesIsWaitingConnection.length) {
-        telegramMessageQueueProcess(telegramQueuesIsWaitingConnection.shift());
+        telegramQueueProcess(telegramQueuesIsWaitingConnection.shift());
       }
     }, telegramDelayToSendReTry);
   }
