@@ -9608,8 +9608,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
    */
   if (!menuItemToProcess) {
     if (targetMenuPos) {
-      targetMenuPos = [...targetMenuPos];
       cachedValueSet(user, cachedMenuItem, targetMenuPos);
+      targetMenuPos = [...targetMenuPos];
     } else {
       targetMenuPos = cachedValueExists(user, cachedMenuItem) ? cachedValueGet(user, cachedMenuItem) : [];
     }
