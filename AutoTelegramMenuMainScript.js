@@ -11826,10 +11826,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeAlertSubscribed: {
             if (
+              commandOptions.range &&
+              commandOptions.mode &&
               alertPropagateDistributions.includes(commandOptions.range) &&
-              alertPropagateOptions.includes(commandOptions.range)
+              alertPropagateOptions.includes(commandOptions.mode)
             ) {
               const alertStateId = commandOptions.state,
+                propagateRange = commandOptions.range,
+                propagateMode = commandOptions.mode,
                 functionsList = enumerationsList[dataTypeFunction].list,
                 functionsListIds = Object.keys(functionsList).filter(
                   (itemId) => !functionsList[itemId].isExternal && functionsList[itemId].isEnabled,
@@ -11852,30 +11856,29 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 alertStateShortId = alertStateId.split('.').slice(-alertStateSectionsCount).join('.'),
                 alerts = alertsGet(),
                 alertIsOn =
-                  alerts && alerts.hasOwnProperty(alertStateId) && alerts[alertStateId].chatIds.has(user.chatId),
-                alertStateAlertDetails = alertIsOn ? alerts[alertStateId].chatIds.get(user.chatId) : undefined,
-                filterId = `state[id=*.${alertStateShortId}]`,
-                filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
-                filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
-                filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(commandOptions.range)
-                  ? filterFunction
-                  : commandOptions.range === 'alertPropagateDestination'
-                  ? filterDestination
-                  : '';
+                  alerts && alerts.hasOwnProperty(alertStateId) && alerts[alertStateId].chatIds.has(user.chatId);
               if (alertIsOn) {
+                const alertStateAlertDetails = alerts[alertStateId].chatIds.get(user.chatId),
+                  filterId = `state[id=*.${alertStateShortId}]`,
+                  filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
+                  filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
+                  filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(propagateRange)
+                    ? filterFunction
+                    : propagateRange === 'alertPropagateDestination'
+                    ? filterDestination
+                    : '';
                 $(`${filterId}${filterEnum}`).each((stateId) => {
                   if (stateId !== alertStateId) {
-                    const currentStateObject = getObject(
-                      stateId,
-                      commandOptions.range === 'alertPropagateFuncAndDest'
-                        ? alertDestination.enum
-                        : commandOptions.range === 'alertPropagateGlobal'
-                        ? '*'
-                        : undefined,
-                    );
+                    const enumMask =
+                        propagateRange === 'alertPropagateFuncAndDest'
+                          ? alertDestination.enum
+                          : propagateRange === 'alertPropagateGlobal'
+                          ? '*'
+                          : '',
+                      currentStateObject = getObject(stateId, enumMask);
                     if (currentStateObject) {
                       let toProcessState = false;
-                      switch (commandOptions.range) {
+                      switch (propagateRange) {
                         case 'alertPropagateFuncAndDest': {
                           if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
                             toProcessState = currentStateObject['enumIds'].includes(
@@ -11911,16 +11914,16 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails);
                         if (isDifferentAlertDetails) {
                           if (
-                            (currentStateAlertDetails && commandOptions.mode === 'alertPropagateOverwrite') ||
+                            (currentStateAlertDetails && propagateMode === 'alertPropagateOverwrite') ||
                             currentStateAlertDetails === undefined
                           ) {
                             // logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l)
                             alertsManage(
                               user,
-                              alertStateId,
+                              stateId,
                               alertFunctionId,
                               alertDestinationId,
-                              alertStateAlertDetails,
+                              Object.keys(alertStateAlertDetails).length ? alertStateAlertDetails : undefined,
                             );
                           }
                         }
