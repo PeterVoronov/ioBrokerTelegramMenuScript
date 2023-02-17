@@ -115,6 +115,7 @@ const cmdPrefix = 'cmd',
   dataTypeAlertSubscribed = 'alertS',
   dataTypeDeviceAttributes = 'deviceAttributes',
   dataTypeDeviceButtons = 'deviceButtons',
+  dataTypeDeviceStatesAttributes = 'stateAttributes',
   dataTypeStateValue = 'stateV',
   dataTypeMenuRoles = 'mRoles',
   dataTypeMenuRoleRules = 'mRoleR',
@@ -3336,17 +3337,19 @@ function translationsGetObjectId(object, functionId, destinationId, isCommon = f
   let translationId;
   const functionsList = enumerationsList[dataTypeFunction].list,
     destinationsList = enumerationsList[dataTypeDestination].list;
-  if (typeof functionId === 'string' && functionsList.hasOwnProperty(functionId)) {
+  if ((functionId && typeOf(functionId, 'string') && functionsList.hasOwnProperty(functionId)) || isCommon) {
     if (
       !typeOf(destinationId, 'string') ||
       (destinationId && typeOf(destinationId, 'string') && destinationsList.hasOwnProperty(destinationId))
     ) {
       if (object && ((typeof object === 'object' && object.hasOwnProperty('_id')) || typeof object === 'string')) {
         const currentFunction = functionsList[functionId],
-          currentEnum = currentFunction.enum,
-          objectId = typeof object === 'string' ? object : object._id,
-          prefixId = objectId.split('.').slice(0, -currentFunction.statesSectionsCount).join('.');
-        functionId = functionId.replace('.', '_');
+          currentEnum = currentFunction ? currentFunction.enum : '',
+          objectId = typeOf(object, 'string') ? object : object._id,
+          prefixId = currentFunction
+            ? objectId.split('.').slice(0, -currentFunction.statesSectionsCount).join('.')
+            : '';
+        if (functionId) functionId = functionId.replace('.', '_');
         translationId = `${
           isCommon ? translationsCommonFunctionsAttributesPrefix : `${idFunctions}.${currentEnum}.${functionId}`
         }.${
@@ -4400,8 +4403,9 @@ const enumerationsNamesMain = 'Main',
   enumerationsNamesEnterTo = 'EnterTo',
   enumerationsNamesExitFrom = 'ExitFrom',
   enumerationsNamesTranslationIdPrefix = 'names',
-  enumerationsDeviceBasicAttributes = '-ts:lc:-ack:-q:-from:-user',
-  enumerationsSubTypes = [dataTypeDeviceAttributes, dataTypeDeviceButtons],
+  enumerationDeviceStateAttributes = ['ts', 'lc', 'ack', 'q', 'from', 'user'],
+  enumerationsDeviceStatesTypes = [dataTypeDeviceAttributes, dataTypeDeviceButtons],
+  enumerationDeviceSubTypes = [...enumerationsDeviceStatesTypes, dataTypeDeviceStatesAttributes],
   enumerationsAccessLevelToShow = 'showAccessLevel',
   enumerationsAccessLevelToPress = 'pressAccessLevel',
   enumerationsDeviceButtonsAccessLevelAttrs = [enumerationsAccessLevelToShow, enumerationsAccessLevelToPress],
@@ -4422,7 +4426,7 @@ const enumerationsNamesMain = 'Main',
       name: enumerationsNamesMain,
       names: [enumerationsNamesBasic, enumerationsNamesMany],
       group: '',
-      deviceAttributes: `state:${enumerationsDeviceBasicAttributes}`,
+      deviceAttributes: {},
       deviceButtons: {},
       simplifyMenuWithOneDevice: false,
       showDestNameOnSimplify: true,
@@ -4520,11 +4524,12 @@ const enumerationsNamesMain = 'Main',
  * @param {object} a - The enumerationItem object.
  * @param {object} b - The enumerationItem object.
  * @param {string} enumerationType - The string defines the enumerationItem type.
+ * @param {object=} enumerationList - The list of the enumerationItems.
  * @returns {number} The result of compare [-1, 0, 1] used for the `Array.sort()`.
  */
-function enumerationsCompareOrderOfItems(a, b, enumerationType) {
-  if (enumerationsList.hasOwnProperty(enumerationType)) {
-    const itemsList = enumerationsList[enumerationType].list;
+function enumerationsCompareOrderOfItems(a, b, enumerationType, enumerationList) {
+  if (enumerationList || enumerationsList.hasOwnProperty(enumerationType)) {
+    const itemsList = enumerationList ? enumerationList : enumerationsList[enumerationType].list;
     if (itemsList.hasOwnProperty(a) && itemsList.hasOwnProperty(b)) {
       return itemsList[a].order - itemsList[b].order;
     } else if (itemsList.hasOwnProperty(a)) {
@@ -4671,30 +4676,6 @@ function enumerationsInit(enumerationType, withExtensions = false) {
           // logs(`\ncurrentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`);
           countItems++;
         }
-        if (
-          enumerationType === dataTypeFunction &&
-          currentEnumerationList[currentItem].hasOwnProperty('deviceAttributes') &&
-          typeOf(currentEnumerationList[currentItem].deviceAttributes, 'string')
-        ) {
-          const currentDeviceAttributes = currentEnumerationList[currentItem].deviceAttributes,
-            deviceAttributesList = {};
-          currentDeviceAttributes.split(':').forEach((deviceAttr, stateIndex) => {
-            const isEnabled = deviceAttr[0] !== '-';
-            if (!isEnabled) deviceAttr = deviceAttr.slice(1);
-            deviceAttributesList[deviceAttr] = {
-              isEnabled: isEnabled,
-              convertValueCode: '',
-              nameTranslationId: translationsGetObjectId(
-                deviceAttr.split('.').join('_'),
-                currentItem,
-                undefined,
-                enumerationsDeviceBasicAttributes.includes(deviceAttr),
-              ),
-              order: stateIndex,
-            };
-          });
-          currentEnumerationList[currentItem].deviceAttributes = deviceAttributesList;
-        }
       }
     }
   });
@@ -4787,15 +4768,15 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
     subMenu = [];
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     {dataType: dataTypeItem, item: currentItem, dataTypeExtraId} = menuItemToProcess.options,
-    currentEnumeration = enumerationsGetList(dataTypeItem, dataTypeExtraId),
-    currentMenuItem = currentEnumeration[currentItem],
+    currentEnumerationsList = enumerationsGetList(dataTypeItem, dataTypeExtraId),
+    currentMenuItem = currentEnumerationsList[currentItem],
     currentMenuItemGroup = currentMenuItem ? currentMenuItem.group : '',
     existingGroups = new Array();
-  Object.keys(currentEnumeration)
-    .sort((a, b) => currentEnumeration[a].order - currentEnumeration[b].order)
+  Object.keys(currentEnumerationsList)
+    .sort((a, b) => currentEnumerationsList[a].order - currentEnumerationsList[b].order)
     .forEach((item) => {
-      if (currentEnumeration[item].hasOwnProperty('group') && currentEnumeration[item].group) {
-        const currentGroup = currentEnumeration[item].group;
+      if (currentEnumerationsList[item].hasOwnProperty('group') && currentEnumerationsList[item].group) {
+        const currentGroup = currentEnumerationsList[item].group;
         if (!existingGroups.includes(currentGroup)) {
           existingGroups.push(currentGroup);
           subMenuIndex = subMenu.push({
@@ -4840,16 +4821,20 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId} = menuItemToProcess.options,
-    currentEnumerationList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
-  const currentEnumerationItem = currentEnumerationList[currentItem],
+    {
+      dataType: enumerationType,
+      item: currentItem,
+      dataTypeExtraId: enumerationTypeExtraId,
+      list: currentEnumerationsList,
+    } = menuItemToProcess.options;
+  const currentEnumerationItem = currentEnumerationsList[currentItem],
     currentEnumerationItemEnum = currentEnumerationItem.enum,
     currentIcon = currentEnumerationItem.isEnabled
       ? currentEnumerationItem.hasOwnProperty('icon')
         ? currentEnumerationItem.icon
         : ''
       : iconItemDisabled,
-    lastItemIndex = Object.keys(currentEnumerationList).length - 1;
+    lastItemIndex = Object.keys(currentEnumerationsList).length - 1;
   if (isCurrentAccessLevelAllowModify) {
     if (enumerationType !== dataTypePrimaryEnums) {
       subMenuIndex = subMenu.push({
@@ -4867,16 +4852,21 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         submenu: [],
       });
     }
-    [subMenu, subMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(
-      user,
-      subMenu,
-      currentIndex,
-      subMenuIndex,
-      currentEnumerationItem.order,
-      lastItemIndex,
-      {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId},
-      'topRows',
-    );
+    if (
+      !(enumerationType === dataTypeDeviceStatesAttributes && !currentEnumerationItem.isEnabled) &&
+      enumerationType !== dataTypePrimaryEnums
+    ) {
+      [subMenu, subMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(
+        user,
+        subMenu,
+        currentIndex,
+        subMenuIndex,
+        currentEnumerationItem.order,
+        lastItemIndex,
+        {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId},
+        'topRows',
+      );
+    }
   }
   // logs(` = ${JSON.stringify(currentEnumerationItem)}`, _l);
   let enumerationItemAttrs = Object.keys(currentEnumerationItem);
@@ -4897,10 +4887,18 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       }
       break;
 
-    case dataTypeDeviceButtons:
+    case dataTypeDeviceButtons: {
       if (!enumerationItemAttrs.includes('group'))
         enumerationItemAttrs.splice(enumerationItemAttrs.indexOf('order'), 0, 'group');
+    }
+    // eslint-disable-next-line no-fallthrough
+    case dataTypeDeviceAttributes: {
+      if (!currentEnumerationItem.hasOwnProperty('stateAttributes') || !currentEnumerationItem.stateAttributes) {
+        currentEnumerationItem.stateAttributes = [];
+        enumerationItemAttrs.push('stateAttributes');
+      }
       break;
+    }
 
     default:
       break;
@@ -4974,6 +4972,21 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             });
             break;
         }
+        break;
+      }
+
+      case 'stateAttributes': {
+        subMenuIndex = subMenu.push({
+          index: `${currentIndex}.${devicesMenuIndex}`,
+          name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
+          accessLevel: currentAccessLevel,
+          options: {
+            dataType: dataTypeDeviceStatesAttributes,
+            dataTypeExtraId: {dataType: enumerationType, function: enumerationTypeExtraId, item: currentItem},
+          },
+          icon: '',
+          submenu: enumerationsMenuGenerateListOfEnumerationItems,
+        });
         break;
       }
 
@@ -5093,13 +5106,13 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             },
             currentHolder = currentEnumerationItem[enumerationItemAttr];
           let subSubMenuIndex = 0;
-          Object.keys(currentEnumerationList)
+          Object.keys(currentEnumerationsList)
             .filter(
-              (itemId) => !itemId.includes('.') && itemId !== currentItem && currentEnumerationList[itemId].isEnabled,
+              (itemId) => !itemId.includes('.') && itemId !== currentItem && currentEnumerationsList[itemId].isEnabled,
             )
             .forEach((itemId) => {
               const isCurrentHolder = itemId === currentHolder,
-                currentItemName = enumerationsItemName(user, enumerationType, itemId, currentEnumerationList[itemId]);
+                currentItemName = enumerationsItemName(user, enumerationType, itemId, currentEnumerationsList[itemId]);
               subSubMenuIndex = subMenuItem.submenu.push({
                 index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                 name: currentItemName,
@@ -5226,8 +5239,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               ? enumerationType === dataTypeDeviceButtons
                 ? [currentItem, translationsPrimaryStateId]
                 : [currentItem]
-              : enumerationsDeviceBasicAttributes.includes(currentItem)
-              ? []
               : [currentItem];
         if (enumerationType === dataTypeDeviceButtons) {
           enumerationsDeviceButtonsAccessLevelAttrs.forEach((accessLevelsAttr) => {
@@ -5366,6 +5377,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       (enumerationType === dataTypePrimaryEnums &&
         enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, currentItem) === 0) ||
       (enumerationType !== dataTypePrimaryEnums &&
+        enumerationType !== dataTypeDeviceStatesAttributes &&
         ((configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
           enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) ||
           enumerationsIsItemCanBeDeleted(enumerationType, currentItem, false)))
@@ -5443,9 +5455,9 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       dataType: enumerationType,
       item: currentItem,
       dataTypeExtraId: enumerationTypeExtraId,
+      list: currentEnumerationsList,
     } = menuItemToProcess.options,
-    currentEnumeration = enumerationsGetList(enumerationType, enumerationTypeExtraId),
-    currentEnumerationItem = currentEnumeration[currentItem];
+    currentEnumerationItem = currentEnumerationsList[currentItem];
   const currentItemDetailsList = [];
   enumerationItemDefaultDetails.forEach((item) => {
     if (currentEnumerationItem.hasOwnProperty(item) || item === 'itemId') {
@@ -5469,35 +5481,40 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
   });
   if (currentEnumerationItem.order > 0) {
     const previousOrder = currentEnumerationItem.order - 1,
-      previousItem = Object.keys(currentEnumeration).find((item) => currentEnumeration[item].order === previousOrder);
+      previousItem = Object.keys(currentEnumerationsList).find(
+        (item) => currentEnumerationsList[item].order === previousOrder,
+      );
     currentItemDetailsList.push({
       label: translationsItemTextGet(user, 'ListPrevious'),
       valueString: previousItem
-        ? enumerationsItemName(user, enumerationType, previousItem, currentEnumeration[previousItem])
+        ? enumerationsItemName(user, enumerationType, previousItem, currentEnumerationsList[previousItem])
         : '',
     });
   }
-  if (currentEnumerationItem.order < Object.keys(currentEnumeration).length - 1) {
+  if (currentEnumerationItem.order < Object.keys(currentEnumerationsList).length - 1) {
     const nextOrder = currentEnumerationItem.order + 1,
-      nextItem = Object.keys(currentEnumeration).find((item) => currentEnumeration[item].order === nextOrder);
+      nextItem = Object.keys(currentEnumerationsList).find((item) => currentEnumerationsList[item].order === nextOrder);
     currentItemDetailsList.push({
       label: translationsItemTextGet(user, 'ListNext'),
-      valueString: nextItem ? enumerationsItemName(user, enumerationType, nextItem, currentEnumeration[nextItem]) : '',
+      valueString: nextItem
+        ? enumerationsItemName(user, enumerationType, nextItem, currentEnumerationsList[nextItem])
+        : '',
     });
   }
-  currentItemDetailsList.push({
-    label: translationsItemMenuGet(user, 'holder'),
-    valueString:
-      currentEnumerationItem.holder && currentEnumeration.hasOwnProperty(currentEnumerationItem.holder)
-        ? enumerationsItemName(
-            user,
-            enumerationType,
-            currentEnumerationItem.holder,
-            currentEnumeration[currentEnumerationItem.holder],
-          )
-        : '',
-  });
-
+  if (enumerationType === dataTypeFunction || enumerationType === dataTypeDestination) {
+    currentItemDetailsList.push({
+      label: translationsItemMenuGet(user, 'holder'),
+      valueString:
+        currentEnumerationItem.holder && currentEnumerationsList.hasOwnProperty(currentEnumerationItem.holder)
+          ? enumerationsItemName(
+              user,
+              enumerationType,
+              currentEnumerationItem.holder,
+              currentEnumerationsList[currentEnumerationItem.holder],
+            )
+          : '',
+    });
+  }
   if (enumerationType === dataTypePrimaryEnums) {
     const dataTypeActiveSubItemsCount = enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, currentItem);
     currentItemDetailsList.push({
@@ -5597,21 +5614,19 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
     enumerationsLoad(enumerationPrimaryType);
     enumerationsInit(enumerationPrimaryType);
   }
-  if (enumerationsSubTypes.includes(enumerationType)) {
-    if (
-      Object.keys(enumerationsList[enumerationPrimaryType].list[enumerationTypeExtraId][enumerationType]).length === 0
-    ) {
-      enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType, false);
+  const currentEnumerationsList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
+  if (enumerationsDeviceStatesTypes.includes(enumerationType)) {
+    if (Object.keys(enumerationsGetList).length === 0) {
+      enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType);
     }
   }
-  const currentEnumeration = enumerationsGetList(enumerationType, enumerationTypeExtraId);
   let subMenu = [],
     subMenuIndex = 0;
-  Object.keys(currentEnumeration)
-    .sort((a, b) => currentEnumeration[a].order - currentEnumeration[b].order)
+  Object.keys(currentEnumerationsList)
+    .sort((a, b) => currentEnumerationsList[a].order - currentEnumerationsList[b].order)
     .forEach((currentItem) => {
       // logs(`currentItem = ${JSON.stringify(currentItem)}`, _l);
-      const currentEnumerationItem = currentEnumeration[currentItem],
+      const currentEnumerationItem = currentEnumerationsList[currentItem],
         currentIcon = currentEnumerationItem.isEnabled
           ? currentEnumerationItem.hasOwnProperty('icon')
             ? currentEnumerationItem.icon
@@ -5631,6 +5646,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
           dataType: enumerationType,
           item: currentItem,
           dataTypeExtraId: enumerationTypeExtraId,
+          list: currentEnumerationsList,
         },
         submenu: enumerationsMenuGenerateEnumerationItem,
       };
@@ -6303,9 +6319,8 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
     functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[currentFunctionId],
     isSkipAttributesWithNullValue = configOptions.getOption(cfgSkipAttributesWithNullValue, user);
-  if (currentFunction && currentFunction.hasOwnProperty('deviceAttributes')) {
+  if (currentFunction && currentFunction.hasOwnProperty('deviceAttributes') && existsObject(primaryStateId)) {
     const primaryObject = getObjectEnriched(primaryStateId),
-      primaryState = getState(primaryStateId),
       deviceAttributesList = currentFunction.deviceAttributes,
       deviceAttributesArray = [],
       deviceAttributes = Object.keys(deviceAttributesList)
@@ -6329,83 +6344,96 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
         deviceAttributes.push(deviceButtonId);
       }
     });
-    // currentFunction.deviceAttributes.split(':').forEach((deviceAttribute) => {
     deviceAttributes.forEach((deviceAttribute) => {
-      let timeStamp;
-      logs(`deviceAttribute = ${JSON.stringify(deviceAttribute)}`);
-      switch (deviceAttribute) {
-        case 'ts': {
-          timeStamp = new Date(Number(primaryState.ts));
-          // break omitted
-        }
-        case 'lc': {
-          timeStamp = timeStamp ? timeStamp : new Date(Number(primaryState.lc));
+      // logs(`deviceAttribute = ${JSON.stringify(deviceAttribute)}`, _l);
+      const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`,
+        isPrimaryState = deviceAttributeId === primaryStateId;
+      if (isPrimaryState || existsObject(deviceAttributeId)) {
+        const currentStateObject = isPrimaryState ? primaryObject : getObjectEnriched(deviceAttributeId),
+          currentState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
+          isCurrentStateNotEmpty = currentState && currentState.val !== null && currentState.val !== undefined;
+        if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
           deviceAttributesArray.push({
-            label: translationsGetObjectName(user, deviceAttribute, currentFunctionId, undefined, true),
-            // @ts-ignore
-            valueString: formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user)),
-            lengthModifier: 0,
+            label: translationsGetObjectName(
+              user,
+              isPrimaryState ? translationsPrimaryStateId : currentStateObject,
+              currentFunctionId,
+            ),
+            ...enumerationsStateValueDetails(user, currentStateObject, currentFunctionId, currentState),
           });
-          break;
-        }
-        case 'ack': {
-          deviceAttributesArray.push({
-            label: translationsGetObjectName(user, deviceAttribute, currentFunctionId, undefined, true),
-            valueString: primaryState.ack
-              ? configOptions.getOption(cfgDefaultIconOn, user)
-              : configOptions.getOption(cfgDefaultIconOff, user),
-            lengthModifier: 1,
-          });
-          break;
-        }
-        default: {
-          const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`;
-          logs(`deviceAttributeId = ${JSON.stringify(deviceAttributeId)}`);
-          if (existsObject(deviceAttributeId)) {
-            const isPrimaryState = deviceAttributeId === primaryStateId,
-              currObject = isPrimaryState ? primaryObject : getObjectEnriched(deviceAttributeId),
-              currentState =
-                isPrimaryState || !existsState(deviceAttributeId) ? undefined : getState(deviceAttributeId),
-              isCurrentStateNotEmpty = currentState && currentState.val !== null && currentState.val !== undefined;
-            if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
-              deviceAttributesArray.push({
-                label: translationsGetObjectName(
-                  user,
-                  deviceAttributeId === primaryStateId ? translationsPrimaryStateId : currObject,
-                  currentFunctionId,
-                ),
-                ...enumerationsStateValueDetails(
-                  user,
-                  currObject,
-                  currentFunctionId,
-                  deviceAttributeId === primaryStateId ? primaryState : currentState,
-                ),
+          if (currentState) {
+            const currentDeviceStateDetails = deviceAttributesList.hasOwnProperty(deviceAttribute)
+              ? deviceAttributesList[deviceAttribute]
+              : deviceButtonsList.hasOwnProperty(deviceAttribute)
+              ? deviceButtonsList[deviceAttribute]
+              : undefined;
+            if (currentDeviceStateDetails && currentDeviceStateDetails.hasOwnProperty('stateAttributes')) {
+              currentDeviceStateDetails.stateAttributes.forEach((stateAttributeId) => {
+                const stateAttributeLine = {
+                  label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
+                  valueString: '',
+                  lengthModifier: 0,
+                };
+                switch (stateAttributeId) {
+                  case 'ts':
+                  case 'lc': {
+                    const timeStamp = currentState[stateAttributeId]
+                      ? new Date(Number(currentState[stateAttributeId]))
+                      : undefined;
+                    stateAttributeLine.valueString = timeStamp
+                      ? formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user))
+                      : '';
+                    break;
+                  }
+                  case 'ack': {
+                    stateAttributeLine.valueString = currentState.ack
+                      ? configOptions.getOption(cfgDefaultIconOn, user)
+                      : configOptions.getOption(cfgDefaultIconOff, user);
+                    stateAttributeLine.lengthModifier = 1;
+                    break;
+                  }
+                  default: {
+                    stateAttributeLine.valueString = currentState[stateAttributeId];
+                    break;
+                  }
+                }
+                deviceAttributesArray.push(stateAttributeLine);
               });
             }
           }
-          break;
         }
       }
     });
     text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}</code>`;
   }
+  // logs(`text = ${text}`, _l)
   return text;
 }
 
 /**
  * This function gets a menu list based on the enumerationType and enumerationTypeExtraId parameters.
  * @param {string} enumerationType - The primary enumerationType.
- * @param {string} enumerationTypeExtraId - The extra (primary) enumerationType or item of it.
+ * @param {string|object} enumerationTypeExtraId - The extra (primary) enumerationType or item of it.
  * @returns {object} The appropriate enumerations object.
  */
 function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
-  // logs(`dataType = ${dataType}, dataTypeExtraId = ${dataTypeExtraId}`);
   const enumerationPrimaryType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId);
-  return enumerationTypeExtraId
-    ? enumerationType === dataTypePrimaryEnums
-      ? enumerationsList[enumerationPrimaryType].enums
-      : enumerationsList[enumerationPrimaryType].list[enumerationTypeExtraId][enumerationType]
-    : enumerationsList[enumerationType].list;
+  let currentList = undefined;
+  if (enumerationTypeExtraId) {
+    if (enumerationType === dataTypePrimaryEnums) {
+      currentList = enumerationsList[enumerationPrimaryType].enums;
+    } else if (typeOf(enumerationTypeExtraId, 'string')) {
+      currentList = enumerationsList[enumerationPrimaryType].list[enumerationTypeExtraId][enumerationType];
+    } else if (typeOf(enumerationTypeExtraId, 'object')) {
+      const currentDeviceAttribute = enumerationsGetDeviceState(enumerationType, enumerationTypeExtraId);
+      if (currentDeviceAttribute) {
+        currentList = enumerationsGenerateDeviceStateAttributesList(currentDeviceAttribute);
+      }
+    }
+  } else {
+    currentList = enumerationsList[enumerationType].list;
+  }
+  return currentList;
 }
 
 /**
@@ -6416,31 +6444,88 @@ function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
  */
 function enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId) {
   return enumerationTypeExtraId
-    ? enumerationsSubTypes.includes(enumerationType)
+    ? enumerationDeviceSubTypes.includes(enumerationType)
       ? dataTypeFunction
       : enumerationType === dataTypePrimaryEnums
       ? enumerationTypeExtraId
       : enumerationType
     : enumerationType;
 }
+
 /**
- * This function go thru the all ioBroker states, which are linked with
- * appropriate `functionId` enum, and gathers all fills their unique id's
- * in appropriate list(`Object`) of `Attributes` or `Devices` for this `functionId`.
+ * This function extract the Device state, when enumerationTYpe is `dataTypeDeviceStatesAttributes`.
+ * @param {string} enumerationType - The primary enumerationType.
+ * @param {string|object} enumerationTypeExtraId - The extra (primary) enumerationType or item of it.
+ * @returns {object}
+ */
+function enumerationsGetDeviceState(enumerationType, enumerationTypeExtraId) {
+  let currentDeviceState = undefined;
+  if (typeOf(enumerationTypeExtraId, 'object')) {
+    if (
+      enumerationTypeExtraId.hasOwnProperty('dataType') &&
+      enumerationTypeExtraId.hasOwnProperty('function') &&
+      enumerationTypeExtraId.hasOwnProperty('item')
+    ) {
+      if (
+        enumerationsDeviceStatesTypes.includes(enumerationTypeExtraId.dataType) &&
+        enumerationType === dataTypeDeviceStatesAttributes &&
+        enumerationTypeExtraId.item
+      ) {
+        const currentFunction = enumerationsList[dataTypeFunction].list[enumerationTypeExtraId.function],
+          currentDeviceStates = currentFunction ? currentFunction[enumerationTypeExtraId.dataType] : undefined;
+        currentDeviceState = currentDeviceStates ? currentDeviceStates[enumerationTypeExtraId.item] : undefined;
+      }
+    }
+  }
+  return currentDeviceState;
+}
+
+/**
+ * This function converts state(Button or Attribute of Device) attributes array ino "standard" list of object.
+ * @param {object} currentDeviceState - The state for which list of attributes to be created.
+ * @returns {object} The List of attributes for state.
+ */
+function enumerationsGenerateDeviceStateAttributesList(currentDeviceState) {
+  const currentStateAttributesList = {};
+  if (currentDeviceState) {
+    const currentStateAttributes = currentDeviceState.stateAttributes ? currentDeviceState.stateAttributes : [];
+    currentStateAttributes.forEach((currentStateAttribute, currentStateAttributeIndex) => {
+      currentStateAttributesList[currentStateAttribute] = {
+        isEnabled: true,
+        nameTranslationId: translationsGetObjectId(currentStateAttribute, '', undefined, true),
+        order: currentStateAttributeIndex,
+      };
+    });
+    let currentStateAttributeIndex = currentStateAttributes.length;
+    enumerationDeviceStateAttributes.forEach((currentStateAttribute) => {
+      if (!currentStateAttributes.includes(currentStateAttribute)) {
+        currentStateAttributesList[currentStateAttribute] = {
+          isEnabled: false,
+          nameTranslationId: translationsGetObjectId(currentStateAttribute, '', undefined, true),
+          order: currentStateAttributeIndex,
+        };
+        currentStateAttributeIndex++;
+      }
+    });
+  }
+  return currentStateAttributesList;
+}
+
+/**
+ * This function go thru the all ioBroker states, which are linked with appropriate `functionId` enum, and gathers all
+ * states and fills their unique id's in appropriate list(`Object`) of `Attributes` or `Devices` for this `functionId`.
  * @param {object} user - The user object.
  * @param {string} functionId - The enum Id (enumerationItem.Id).
  * @param {string} typeOfDeviceStates - The one of the possible values:
  * - `dataTypeDeviceAttributes` - the states with RO access to the value,
  * - `dataTypeDeviceButtons` - the states with RW access to the value,
- * @param {boolean} isOnlyEnabled - The selector to filter only Enabled Attributes or Buttons.
  * @returns {boolean} True if new states are found.
  */
-function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceStates, isOnlyEnabled) {
+function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceStates) {
   if (
     enumerationsList[dataTypeFunction].list.hasOwnProperty(functionId) &&
-    enumerationsSubTypes.includes(typeOfDeviceStates)
+    enumerationsDeviceStatesTypes.includes(typeOfDeviceStates)
   ) {
-    isOnlyEnabled = typeOf(isOnlyEnabled, 'boolean') ? isOnlyEnabled : false;
     const currentFunction = enumerationsList[dataTypeFunction].list[functionId],
       currentDeviceStatesList =
         typeOfDeviceStates === dataTypeDeviceAttributes
@@ -6451,23 +6536,6 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
       destinationsListKeys = Object.keys(destinationsList)
         .filter((destId) => destinationsList[destId].isEnabled && destinationsList[destId].isAvailable)
         .sort((a, b) => destinationsList[a].order - destinationsList[b].order);
-    if (typeOfDeviceStates === dataTypeDeviceAttributes) {
-      enumerationsDeviceBasicAttributes.split(':').forEach((deviceAttr) => {
-        deviceAttr = deviceAttr.indexOf('-') === 0 ? deviceAttr.slice(1) : deviceAttr;
-        if (!Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
-          currentDeviceStatesList[deviceAttr] = {
-            isEnabled: false,
-            nameTranslationId: translationsGetObjectId(
-              deviceAttr.split('.').join('_'),
-              functionId,
-              undefined,
-              enumerationsDeviceBasicAttributes.includes(deviceAttr),
-            ),
-            order: Object.keys(currentDeviceStatesList).length,
-          };
-        }
-      });
-    }
     $(`state[id=*${currentFunction.state}](${currentFunction.enum}=${functionId})`).each((mainId) => {
       if (existsObject(mainId)) {
         const mainObject = getObjectEnriched(mainId, '*'),
@@ -6499,11 +6567,11 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
                             deviceAttr.split('.').join('_'),
                             functionId,
                             undefined,
-                            enumerationsDeviceBasicAttributes.includes(deviceAttr),
                           );
                           currentDeviceStatesList[deviceAttr] = {
-                            isEnabled: isOnlyEnabled,
+                            isEnabled: false,
                             nameTranslationId: currentDeviceAttrTranslationId,
+                            stateAttributes: [],
                             order: Object.keys(currentDeviceStatesList).length,
                           };
                           if (typeOfDeviceStates === dataTypeDeviceAttributes) {
@@ -7853,10 +7921,7 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
   let subMenu = [],
     subMenuIndex = 0;
   currentDeviceStates.forEach((shortStateId, stateIndex) => {
-    if (
-      !enumerationsDeviceBasicAttributes.includes(shortStateId) &&
-      currentDeviceStates.indexOf(shortStateId) === stateIndex
-    ) {
+    if (currentDeviceStates.indexOf(shortStateId) === stateIndex) {
       const currentStateId = [devicePrefix, shortStateId].join('.');
       if (
         currentDeviceAttributes.includes(shortStateId) ||
@@ -8160,12 +8225,6 @@ function backupRestore(fileName, restoreItem) {
                             enumerationItemsBackup[dataType].hasOwnProperty('list') &&
                             enumerationItemsBackup[dataType].list
                           ) {
-                            // logs(`enumerationItems[${dataType}] = ${JSON.stringify(
-                            //   {
-                            //     enums: enumerationItemsBackup[dataType].enums,
-                            //     list: enumerationItemsBackup[dataType].list
-                            //   }
-                            // )}`, _l)
                             enumerationsList[dataType].enums = enumerationItemsBackup[dataType].enums;
                             enumerationsList[dataType].list = enumerationItemsBackup[dataType].list;
                             enumerationsInit(dataType);
@@ -10578,10 +10637,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             case dataTypePrimaryEnums:
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
-              const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
+              const currentEnumerationsList = enumerationsGetList(
+                commandOptions.dataType,
+                commandOptions.dataTypeExtraId,
+              );
               switch (commandOptions.attribute) {
                 case 'state': {
-                  const currentDeviceAttributes = currentList[commandOptions.item].deviceAttributes;
+                  const currentDeviceAttributes = currentEnumerationsList[commandOptions.item].deviceAttributes;
                   if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(commandOptions.attribute)) {
                     currentDeviceAttributes[userInputToProcess] = objectDeepClone(
                       currentDeviceAttributes[commandOptions.attribute],
@@ -10590,7 +10652,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       userInputToProcess.split('.').join('_'),
                       commandOptions.item,
                       undefined,
-                      enumerationsDeviceBasicAttributes.includes(userInputToProcess),
                     );
                     delete currentDeviceAttributes[commandOptions.attribute];
                   }
@@ -10606,7 +10667,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     user,
                     commandOptions.dataType,
                     commandOptions.item,
-                    currentList[commandOptions.item],
+                    currentEnumerationsList[commandOptions.item],
                     userInputToProcess,
                     commandOptions.index !== enumerationsNamesMain ? commandOptions.index : '',
                   );
@@ -10621,7 +10682,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       userInputToProcess,
                     )
                   ) {
-                    currentList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
+                    currentEnumerationsList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
                   } else {
                     console.warn(
                       `Unacceptable value '${userInputToProcess}' code conversion of attribute ${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
@@ -10633,17 +10694,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 default: {
                   const oldIcon =
                     commandOptions.dataType === dataTypePrimaryEnums && commandOptions.attribute === 'icon'
-                      ? currentList[commandOptions.item][commandOptions.attribute]
+                      ? currentEnumerationsList[commandOptions.item][commandOptions.attribute]
                       : '';
-                  currentList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
+                  currentEnumerationsList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
                   if (commandOptions.dataType === dataTypePrimaryEnums && commandOptions.attribute === 'icon') {
                     const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
                     Object.keys(workList).forEach((currentListItem) => {
                       if (
                         workList[currentListItem].enum === commandOptions.dataType &&
-                        currentList[currentListItem].icon === oldIcon
+                        currentEnumerationsList[currentListItem].icon === oldIcon
                       ) {
-                        currentList[currentListItem].icon = userInputToProcess;
+                        currentEnumerationsList[currentListItem].icon = userInputToProcess;
                       }
                     });
                     enumerationsInit(commandOptions.dataTypeExtraId);
@@ -10656,17 +10717,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             }
 
             case dataTypeGroups: {
-              const currentList = enumerationsGetList(
+              const currentEnumerationsList = enumerationsGetList(
                 commandOptions.groupDataType,
                 commandOptions.groupDataTypeExtraId,
               );
               if (
                 commandOptions.item &&
-                currentList &&
-                currentList.hasOwnProperty(commandOptions.item) &&
-                currentList[commandOptions.item]
+                currentEnumerationsList &&
+                currentEnumerationsList.hasOwnProperty(commandOptions.item) &&
+                currentEnumerationsList[commandOptions.item]
               ) {
-                currentList[commandOptions.item].group = userInputToProcess;
+                currentEnumerationsList[commandOptions.item].group = userInputToProcess;
               }
               // logs(`currentParam, currentValue = ${[commandOptions.dataType, currentItem, currentParam, currentValue,]}`, _l)
               enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
@@ -10947,7 +11008,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypePrimaryEnums:
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
+            const currentEnumerationsList = enumerationsGetList(
+              commandOptions.dataType,
+              commandOptions.dataTypeExtraId,
+            );
             switch (commandOptions.attribute) {
               case 'setId':
               case 'fixId': {
@@ -10987,7 +11051,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 )} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemMenuGet(
                   user,
                   commandOptions.attribute,
-                )}" = ${currentList[commandOptions.item][commandOptions.attribute]}:`;
+                )}" = ${currentEnumerationsList[commandOptions.item][commandOptions.attribute]}:`;
                 break;
               }
             }
@@ -11229,12 +11293,16 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeFunction:
           case dataTypeReport:
           case dataTypeDeviceAttributes:
-          case dataTypeDeviceButtons: {
-            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId),
-              currentDataItem = currentList[commandOptions.item];
+          case dataTypeDeviceButtons:
+          case dataTypeDeviceStatesAttributes: {
+            const currentEnumerationsList = enumerationsGetList(
+                commandOptions.dataType,
+                commandOptions.dataTypeExtraId,
+              ),
+              currentDataItem = currentEnumerationsList[commandOptions.item];
             if (commandOptions.attribute !== undefined) {
               if (
-                enumerationsSubTypes.includes(commandOptions.dataType) &&
+                enumerationsDeviceStatesTypes.includes(commandOptions.dataType) &&
                 enumerationsDeviceButtonsAccessLevelAttrs.includes(commandOptions.attribute)
               ) {
                 currentDataItem[commandOptions.attribute] = commandOptions.value;
@@ -11259,10 +11327,23 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 if (
                   commandOptions.dataType === dataTypeFunction &&
                   commandOptions.attribute === 'isEnabled' &&
-                  currentList[commandOptions.item][commandOptions.attribute]
+                  currentEnumerationsList[commandOptions.item][commandOptions.attribute]
                 ) {
-                  enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceAttributes, false);
-                  enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons, true);
+                  enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceAttributes);
+                  enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons);
+                } else if (
+                  commandOptions.dataType === dataTypeDeviceStatesAttributes &&
+                  commandOptions.attribute === 'isEnabled'
+                ) {
+                  const currentDeviceAttribute = enumerationsGetDeviceState(
+                      commandOptions.dataType,
+                      commandOptions.dataTypeExtraId,
+                    ),
+                    currentSort = (a, b) =>
+                      enumerationsCompareOrderOfItems(a, b, dataTypeDeviceStatesAttributes, currentEnumerationsList);
+                  currentDeviceAttribute.stateAttributes = Object.keys(currentEnumerationsList)
+                    .filter((currentAttribute) => currentEnumerationsList[currentAttribute].isEnabled)
+                    .sort(currentSort);
                 }
               }
               enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
@@ -11286,18 +11367,18 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeGroups: {
-            const currentEnumeration = enumerationsGetList(
+            const currentEnumerationsList = enumerationsGetList(
               commandOptions.groupDataType,
               commandOptions.groupDataTypeExtraId,
             );
             if (
               commandOptions.item &&
-              currentEnumeration &&
-              currentEnumeration.hasOwnProperty(commandOptions.item) &&
-              currentEnumeration[commandOptions.item]
+              currentEnumerationsList &&
+              currentEnumerationsList.hasOwnProperty(commandOptions.item) &&
+              currentEnumerationsList[commandOptions.item]
             ) {
-              currentEnumeration[commandOptions.item].group =
-                currentEnumeration[commandOptions.item].group === commandOptions.group ? '' : commandOptions.group;
+              currentEnumerationsList[commandOptions.item].group =
+                currentEnumerationsList[commandOptions.item].group === commandOptions.group ? '' : commandOptions.group;
             }
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             break;
@@ -11512,9 +11593,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           // break omitted
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
-            delete currentList[commandOptions.item];
-            enumerationsReorderItems(currentList);
+            const currentEnumerationsList = enumerationsGetList(
+              commandOptions.dataType,
+              commandOptions.dataTypeExtraId,
+            );
+            delete currentEnumerationsList[commandOptions.item];
+            enumerationsReorderItems(currentEnumerationsList);
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             currentMenuPosition.splice(-2, 2);
             logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
@@ -11793,14 +11877,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            if (
-              enumerationsRefreshFunctionDeviceStates(
-                user,
-                commandOptions.dataTypeExtraId,
-                commandOptions.dataType,
-                false,
-              )
-            )
+            if (enumerationsRefreshFunctionDeviceStates(user, commandOptions.dataTypeExtraId, commandOptions.dataType))
               menuMenuItemsAndRowsClearCached(user);
             break;
           }
@@ -12252,13 +12329,16 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId);
-            if (currentList) {
+            const currentEnumerationsList = enumerationsGetList(
+              commandOptions.dataType,
+              commandOptions.dataTypeExtraId,
+            );
+            if (currentEnumerationsList) {
               if (
-                currentList[commandOptions.item] &&
-                typeOf(currentList[commandOptions.item][commandOptions.attribute], 'string')
+                currentEnumerationsList[commandOptions.item] &&
+                typeOf(currentEnumerationsList[commandOptions.item][commandOptions.attribute], 'string')
               ) {
-                currentList[commandOptions.item][commandOptions.attribute] = '';
+                currentEnumerationsList[commandOptions.item][commandOptions.attribute] = '';
               }
             }
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
@@ -12280,18 +12360,34 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeFunction:
           case dataTypeReport:
           case dataTypeDeviceAttributes:
-          case dataTypeDeviceButtons: {
-            const currentList = enumerationsGetList(commandOptions.dataType, commandOptions.dataTypeExtraId),
-              currentOrder = currentList[commandOptions.item].order,
+          case dataTypeDeviceButtons:
+          case dataTypeDeviceStatesAttributes: {
+            const currentEnumerationsList = enumerationsGetList(
+                commandOptions.dataType,
+                commandOptions.dataTypeExtraId,
+              ),
+              currentOrder = currentEnumerationsList[commandOptions.item].order,
               newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1);
             logs(`currentOrder = ${currentOrder} newOrder = ${newOrder}`);
-            const newItem = Object.keys(currentList).find((cItem) => {
-              return currentList[cItem].order === newOrder;
+            const newItem = Object.keys(currentEnumerationsList).find((cItem) => {
+              return currentEnumerationsList[cItem].order === newOrder;
             });
             if (newItem != undefined) {
-              currentList[newItem].order = currentOrder;
-              currentList[commandOptions.item].order = newOrder;
+              currentEnumerationsList[newItem].order = currentOrder;
+              currentEnumerationsList[commandOptions.item].order = newOrder;
               currentMenuPosition.splice(-1, 1, newOrder);
+            }
+            if (commandOptions.dataType === dataTypeDeviceStatesAttributes) {
+              const currentDeviceAttribute = enumerationsGetDeviceState(
+                  commandOptions.dataType,
+                  commandOptions.dataTypeExtraId,
+                ),
+                currentSort = (a, b) =>
+                  enumerationsCompareOrderOfItems(a, b, dataTypeDeviceStatesAttributes, currentEnumerationsList);
+              currentDeviceAttribute.stateAttributes = Object.keys(currentEnumerationsList)
+                .filter((currentAttribute) => currentEnumerationsList[currentAttribute].isEnabled)
+                .sort(currentSort);
+              menuMenuItemsAndRowsClearCached(user);
             }
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             break;
