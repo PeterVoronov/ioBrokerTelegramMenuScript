@@ -119,6 +119,7 @@
       "menuSimpleReports": "Звіти",
       "menuSimplifyMenuWithOneDevice": "Спрощувати меню з одним пристроєм",
       "menuState": "Основний стан",
+      "menuStateAttributes": "core.menuStateAttributes",
       "menuStatesInFolders": "Дворівневі пристрої",
       "menuSubscribedAlerts": "Налаштування сповіщень",
       "menuSystemLevelOptions": "Системні налаштування",

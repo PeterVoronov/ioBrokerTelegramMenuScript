@@ -119,6 +119,7 @@
       "menuSimpleReports": "Berichte",
       "menuSimplifyMenuWithOneDevice": "Einfacher Menümodus mit einem Gerät",
       "menuState": "Primär zustand",
+      "menuStateAttributes": "core.menuStateAttributes",
       "menuStatesInFolders": "Zustände in Ordnern",
       "menuSubscribedAlerts": "Abonnierte Alarme",
       "menuSystemLevelOptions": "Optionen auf Systemebene",

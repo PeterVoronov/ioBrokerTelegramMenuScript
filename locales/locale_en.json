@@ -119,6 +119,7 @@
       "menuSimpleReports": "Reports",
       "menuSimplifyMenuWithOneDevice": "Simple menu mode with one device",
       "menuState": "Primary state",
+      "menuStateAttributes": "core.menuStateAttributes",
       "menuStatesInFolders": "States in folders",
       "menuSubscribedAlerts": "Subscribed alerts",
       "menuSystemLevelOptions": "System level options",
