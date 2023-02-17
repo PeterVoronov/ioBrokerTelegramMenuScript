@@ -19,7 +19,9 @@
         "Parens",
         "stroustrup",
         "userdata",
-        "Разотметить"
+        "Разотметить",
+        "Unmark",
+        "Funcs"
     ],
     "ignoreWords": [],
     "import": []
