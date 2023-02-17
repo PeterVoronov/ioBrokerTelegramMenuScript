@@ -5733,7 +5733,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
               name: `${stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumId}`))}[${enumId}]`,
               command: cmdItemPress,
               options: {
-                dataType: enumerationType,
+                dataType: dataTypePrimaryEnums,
                 dataTypeExtraId: enumerationTypeExtraId,
                 mode: cmdItemAdd,
                 item: enumId,
