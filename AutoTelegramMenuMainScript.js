@@ -11664,7 +11664,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeTranslation: {
             let currentTranslationId;
-            if (commandOptions.translationType && commandOptions.item && commandOptions.index) {
+            if (
+              commandOptions.translationType &&
+              commandOptions.item !== undefined &&
+              commandOptions.index !== undefined
+            ) {
               currentTranslationId = commandOptions.translationType;
               let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
               if (
@@ -11877,8 +11881,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
-            if (enumerationsRefreshFunctionDeviceStates(user, commandOptions.dataTypeExtraId, commandOptions.dataType))
+            if (
+              enumerationsRefreshFunctionDeviceStates(user, commandOptions.dataTypeExtraId, commandOptions.dataType)
+            ) {
               menuMenuItemsAndRowsClearCached(user);
+            } else {
+              telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgSuccess'));
+            }
             break;
           }
 
