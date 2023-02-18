@@ -3821,14 +3821,16 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
             currentCommandOptions,
           ),
         );
-        subSubMenuIndex = subMenuItem.submenu.push({
-          index: `${currentIndex}.${translationKeyIndex}.${subSubMenuIndex}`,
-          name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
-          icon: iconItemCommon,
-          command: cmdUseCommonTranslation,
-          options: currentCommandOptions,
-          submenu: [],
-        });
+        if (translationPrefix !== translationsCommonFunctionsAttributesPrefix) {
+          subSubMenuIndex = subMenuItem.submenu.push({
+            index: `${currentIndex}.${translationKeyIndex}.${subSubMenuIndex}`,
+            name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
+            icon: iconItemCommon,
+            command: cmdUseCommonTranslation,
+            options: currentCommandOptions,
+            submenu: [],
+          });
+        }
         subMenuItem.submenu.push(
           menuMenuItemGenerateDeleteItem(
             user,
@@ -5775,12 +5777,13 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
  * @returns {boolean} 'True' if history is enabled for state.
  */
 function enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) {
+  const stateObjectCommon = stateObject ? stateObject.common : undefined;
   return (
-    stateObject.common &&
-    stateObject.common.hasOwnProperty('custom') &&
-    stateObject.common.custom &&
-    stateObject.common.custom.hasOwnProperty(historyAdapterId) &&
-    stateObject.common.custom[historyAdapterId]
+    stateObjectCommon &&
+    stateObjectCommon.hasOwnProperty('custom') &&
+    stateObjectCommon.custom &&
+    stateObjectCommon.custom.hasOwnProperty(historyAdapterId) &&
+    stateObjectCommon.custom[historyAdapterId]
   );
 }
 
@@ -5800,12 +5803,10 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     } = menuItemToProcess.options,
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[currentDestinationId],
-    currentDestinationEnum = currentDestination.enum,
-    fullDestinationId = `${prefixEnums}.${currentDestinationEnum}.${currentDestinationId}`,
+    fullDestinationId = [prefixEnums, currentDestination.enum, currentDestinationId].join('.'),
     functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[currentFunctionId],
-    currentFunctionEnum = currentFunction.enum,
-    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${currentFunctionId}`,
+    fullFunctionId = [prefixEnums, currentFunction.enum, currentFunctionId].join('.'),
     deviceAttributesList = currentFunction.deviceAttributes,
     currentDeviceAttributes = deviceAttributesList
       ? Object.keys(deviceAttributesList)
@@ -5831,17 +5832,15 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
   // logs('menuItemToProcess = ' + JSON.stringify(menuItemToProcess), _l);
-  logs('currentMenuFuncId = ' + JSON.stringify(currentFunctionId));
-  logs('currentMenuStateId = ' + JSON.stringify(primaryStateId));
   // logs('mainStateShortId = ' + JSON.stringify(mainStateShortId));
   if (isGraphsEnabled) {
     currentDeviceAttributes.forEach((deviceAttributeId) => {
       const stateIdFull = `${devicePrefix}.${deviceAttributeId}`;
       if (existsObject(stateIdFull)) {
-        const stateObject = getObjectEnriched(stateIdFull, '*');
-        logs('itemObject.common = ' + JSON.stringify(stateObject.common));
-        if (stateObject && stateObject.hasOwnProperty('common') && stateObject.common) {
-          const currentStateType = stateObject.common['type'];
+        const stateObject = getObjectEnriched(stateIdFull, '*'),
+          stateObjectCommon = stateObject.common;
+        if (stateObject && stateObjectCommon) {
+          const currentStateType = stateObjectCommon['type'];
           if (enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) && currentStateType === 'number') {
             statesForGraphs.set(stateIdFull, translationsGetObjectName(user, stateObject, currentFunctionId));
           }
@@ -5858,20 +5857,15 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
         isCurrentAccessLevelAllowModify &&
         MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0 &&
         menuItemIsAvailable(currentFunction, primaryStateId);
-    // logs(`deviceButtonId = ${deviceButtonId}, isButtonAllowedToShow = ${isButtonAllowedToShow}, isButtonAllowedToPress = ${isButtonAllowedToPress}, stateIdFull ${stateIdFull}`);
-    /* to process only right devices */
     if (isButtonAllowedToShow && existsObject(stateIdFull)) {
-      const stateObject = getObjectEnriched(stateIdFull, '*');
-      // logs('itemObject.common = ' + JSON.stringify(stateObject.common));
-      if (stateObject && stateObject.hasOwnProperty('common') && stateObject.common) {
-        const stateObjectEnums = stateObject.hasOwnProperty('enumIds') ? stateObject['enumIds'] : undefined,
-          isStateObjectRight =
-            stateObjectEnums &&
-            stateObjectEnums.includes(fullFunctionId) &&
-            stateObjectEnums.includes(fullDestinationId),
-          isCurrentStateWritable = stateObject.common.hasOwnProperty('write') ? stateObject.common.write : false,
-          currentStateType = stateObject.common['type'];
-        if (isStateObjectRight && isCurrentStateWritable) {
+      const stateObject = getObjectEnriched(stateIdFull, '*'),
+        stateObjectCommon = stateObject.common;
+      if (stateObject && stateObject.hasOwnProperty('common') && stateObjectCommon) {
+        const stateObjectEnums = stateObject.hasOwnProperty('enumIds') ? stateObject.enumIds : [],
+          isRightState = stateObjectEnums.includes(fullFunctionId) && stateObjectEnums.includes(fullDestinationId),
+          isCurrentStateWritable = stateObjectCommon.hasOwnProperty('write') ? stateObjectCommon.write : false,
+          currentStateType = stateObjectCommon['type'];
+        if (isRightState && isCurrentStateWritable) {
           const stateName = translationsGetObjectName(user, stateObject, currentFunctionId);
           if (stateName) {
             let subSubMenuIndex = 0,
@@ -5887,7 +5881,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
               submenu: new Array(),
             };
-            logs('stateObject = ' + JSON.stringify(stateObject, null, 2));
             const currentOptions = {
               function: currentFunctionId,
               state: stateIdFull,
@@ -5907,18 +5900,13 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   : defaultIconOff;
               subMenuItem.command = cmdSetState;
               subMenuItem.options = currentOptions;
-            } else if (stateObject.common.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
-              states = enumerationsExtractPossibleValueStates(stateObject.common['states']);
-              logs('states = ' + JSON.stringify(states));
+            } else if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
+              states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
+              // logs('states = ' + JSON.stringify(states));
               if (states !== undefined && Object.keys(states).length > 0) {
                 subMenuItem.icon = '';
-                for (const [possibleValue, possibleName] of Object.entries(states)) {
+                for (const [possibleValue, _possibleName] of Object.entries(states)) {
                   if (isButtonAllowedToPress) {
-                    logs(
-                      `possibleValue = ${JSON.stringify(possibleValue)}, possibleName = ${JSON.stringify(
-                        possibleName,
-                      )}`,
-                    );
                     const subSubMenuItem = {
                       index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                       name: `${
@@ -5940,31 +5928,27 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                     })`;
                   }
                 }
-                logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2));
+                // logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2));
               }
             } else if (currentStateType === 'number') {
-              const step = Number(stateObject.common.hasOwnProperty('step') ? stateObject.common['step'] : 1);
-              stateValue = Number(stateValue);
-              for (let steps = stateValue - 2 * step; steps <= stateValue + 2 * step; steps += step) {
-                if (
-                  (!stateObject.common.hasOwnProperty('min') || steps >= Number(stateObject.common['min'])) &&
-                  (!stateObject.common.hasOwnProperty('max') || steps <= Number(stateObject.common['max']))
-                ) {
-                  states.push(steps);
+              const step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : 1,
+                valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
+                valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined;
+              for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
+                if ((valueMin === undefined || value >= valueMin) && (valueMax === undefined || value <= valueMax)) {
+                  states.push(value);
                 }
               }
               subMenuItem.icon = '';
               subMenuItem.name += ` (${stateValue ? stateValue : iconItemNotFound}${
-                stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : ''
+                stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
               })`;
-              logs('states.length = ' + JSON.stringify(states.length));
               if (isButtonAllowedToPress) {
                 states.forEach((possibleValue) => {
-                  logs('possibleValue = ' + JSON.stringify(possibleValue));
                   const subSubMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${possibleValue}${
-                      stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : ''
+                      stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
                     }`,
                     command: cmdSetState,
                     options: {...currentOptions, value: possibleValue},
@@ -5977,7 +5961,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 subSubMenuIndex = subMenuItem.submenu.push({
                   index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                   name: `${translationsItemMenuGet(user, 'SetValue')} (${stateValue ? stateValue : ''}${
-                    stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : ''
+                    stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
                   })`,
                   icon: iconItemEdit,
                   command: cmdGetInput,
@@ -6312,15 +6296,19 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
   let text = '';
   const {
       function: currentFunctionId,
-      destination: _currentDestinationId,
+      destination: currentDestinationId,
       state: primaryStateId,
       device: devicePrefix,
     } = menuItemToProcess.options,
     functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[currentFunctionId],
+    currentFunctionFullId = [prefixEnums, currentFunction.enum, currentFunctionId].join('.'),
+    destinationList = enumerationsList[dataTypeDestination].list,
+    currentDestination = destinationList[currentDestinationId],
+    currentDestinationFullId = [prefixEnums, currentDestination.enum, currentDestinationId].join('.'),
     isSkipAttributesWithNullValue = configOptions.getOption(cfgSkipAttributesWithNullValue, user);
   if (currentFunction && currentFunction.hasOwnProperty('deviceAttributes') && existsObject(primaryStateId)) {
-    const primaryObject = getObjectEnriched(primaryStateId),
+    const primaryObject = getObjectEnriched(primaryStateId, '*'),
       deviceAttributesList = currentFunction.deviceAttributes,
       deviceAttributesArray = [],
       deviceAttributes = Object.keys(deviceAttributesList)
@@ -6349,56 +6337,59 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
       const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`,
         isPrimaryState = deviceAttributeId === primaryStateId;
       if (isPrimaryState || existsObject(deviceAttributeId)) {
-        const currentStateObject = isPrimaryState ? primaryObject : getObjectEnriched(deviceAttributeId),
-          currentState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
-          isCurrentStateNotEmpty = currentState && currentState.val !== null && currentState.val !== undefined;
-        if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
-          deviceAttributesArray.push({
-            label: translationsGetObjectName(
-              user,
-              isPrimaryState ? translationsPrimaryStateId : currentStateObject,
-              currentFunctionId,
-            ),
-            ...enumerationsStateValueDetails(user, currentStateObject, currentFunctionId, currentState),
-          });
-          if (currentState) {
-            const currentDeviceStateDetails = deviceAttributesList.hasOwnProperty(deviceAttribute)
-              ? deviceAttributesList[deviceAttribute]
-              : deviceButtonsList.hasOwnProperty(deviceAttribute)
-              ? deviceButtonsList[deviceAttribute]
-              : undefined;
-            if (currentDeviceStateDetails && currentDeviceStateDetails.hasOwnProperty('stateAttributes')) {
-              currentDeviceStateDetails.stateAttributes.forEach((stateAttributeId) => {
-                const stateAttributeLine = {
-                  label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
-                  valueString: '',
-                  lengthModifier: 0,
-                };
-                switch (stateAttributeId) {
-                  case 'ts':
-                  case 'lc': {
-                    const timeStamp = currentState[stateAttributeId]
-                      ? new Date(Number(currentState[stateAttributeId]))
-                      : undefined;
-                    stateAttributeLine.valueString = timeStamp
-                      ? formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user))
-                      : '';
-                    break;
+        const stateObject = isPrimaryState ? primaryObject : getObjectEnriched(deviceAttributeId, '*'),
+          stateObjectEnums = stateObject.hasOwnProperty('enumIds') && stateObject.enumIds ? stateObject.enumIds : [];
+        if (stateObjectEnums.includes(currentFunctionFullId) && stateObjectEnums.includes(currentDestinationFullId)) {
+          const attributeState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
+            isCurrentStateNotEmpty = attributeState && attributeState.val !== null && attributeState.val !== undefined;
+          if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
+            deviceAttributesArray.push({
+              label: translationsGetObjectName(
+                user,
+                isPrimaryState ? translationsPrimaryStateId : stateObject,
+                currentFunctionId,
+              ),
+              ...enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
+            });
+            if (attributeState) {
+              const currentDeviceStateDetails = deviceAttributesList.hasOwnProperty(deviceAttribute)
+                ? deviceAttributesList[deviceAttribute]
+                : deviceButtonsList.hasOwnProperty(deviceAttribute)
+                ? deviceButtonsList[deviceAttribute]
+                : undefined;
+              if (currentDeviceStateDetails && currentDeviceStateDetails.hasOwnProperty('stateAttributes')) {
+                currentDeviceStateDetails.stateAttributes.forEach((stateAttributeId) => {
+                  const stateAttributeLine = {
+                    label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
+                    valueString: '',
+                    lengthModifier: 0,
+                  };
+                  switch (stateAttributeId) {
+                    case 'ts':
+                    case 'lc': {
+                      const timeStamp = attributeState[stateAttributeId]
+                        ? new Date(Number(attributeState[stateAttributeId]))
+                        : undefined;
+                      stateAttributeLine.valueString = timeStamp
+                        ? formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user))
+                        : '';
+                      break;
+                    }
+                    case 'ack': {
+                      stateAttributeLine.valueString = attributeState.ack
+                        ? configOptions.getOption(cfgDefaultIconOn, user)
+                        : configOptions.getOption(cfgDefaultIconOff, user);
+                      stateAttributeLine.lengthModifier = 1;
+                      break;
+                    }
+                    default: {
+                      stateAttributeLine.valueString = attributeState[stateAttributeId];
+                      break;
+                    }
                   }
-                  case 'ack': {
-                    stateAttributeLine.valueString = currentState.ack
-                      ? configOptions.getOption(cfgDefaultIconOn, user)
-                      : configOptions.getOption(cfgDefaultIconOff, user);
-                    stateAttributeLine.lengthModifier = 1;
-                    break;
-                  }
-                  default: {
-                    stateAttributeLine.valueString = currentState[stateAttributeId];
-                    break;
-                  }
-                }
-                deviceAttributesArray.push(stateAttributeLine);
-              });
+                  deviceAttributesArray.push(stateAttributeLine);
+                });
+              }
             }
           }
         }
@@ -11175,6 +11166,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             if (existsObject(commandOptions.state)) {
               const currentStateId = commandOptions.state,
                 stateObject = getObjectEnriched(currentStateId),
+                stateObjectCommon = stateObject.common,
                 currentName = translationsGetObjectName(user, stateObject, commandOptions.function),
                 currentValue = existsState(currentStateId) ? getState(currentStateId).val : null;
               menuMessageObject.message = `${translationsItemTextGet(
@@ -11182,17 +11174,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 'SetNewAttributeValue',
               )} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${
                 currentValue ? currentValue : iconItemNotFound
-              }${stateObject.common.hasOwnProperty('unit') ? ` ${stateObject.common['unit']}` : ''})`;
-              if (stateObject.common.type === 'number') {
+              }${stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''})`;
+              if (stateObjectCommon.type === 'number') {
                 menuMessageObject.message += `, ${translationsItemTextGet(user, 'Number')}`; //
-                if (stateObject.common.hasOwnProperty('min') || stateObject.common.hasOwnProperty('max')) {
+                if (stateObjectCommon.hasOwnProperty('min') || stateObjectCommon.hasOwnProperty('max')) {
                   menuMessageObject.message += '[';
-                  if (stateObject.common.hasOwnProperty('min')) {
-                    menuMessageObject.message += `${translationsItemTextGet(user, 'Min')} = ${stateObject.common.min}`;
+                  if (stateObjectCommon.hasOwnProperty('min')) {
+                    menuMessageObject.message += `${translationsItemTextGet(user, 'Min')} = ${stateObjectCommon.min}`;
                   }
                   menuMessageObject.message += ' - ';
-                  if (stateObject.common.hasOwnProperty('max')) {
-                    menuMessageObject.message += `${translationsItemTextGet(user, 'Max')} = ${stateObject.common.max}`;
+                  if (stateObjectCommon.hasOwnProperty('max')) {
+                    menuMessageObject.message += `${translationsItemTextGet(user, 'Max')} = ${stateObjectCommon.max}`;
                   }
                   menuMessageObject.message += ']';
                 }
