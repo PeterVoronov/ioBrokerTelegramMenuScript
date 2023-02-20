@@ -175,6 +175,7 @@ const cmdPrefix = 'cmd',
   iconItemAlertOn = '🔔',
   iconItemAlertOff = '🔕',
   iconItemAlerts = '📣',
+  iconItemTrigger = '🕹️',
   iconItemTranslation = '📖',
   iconItemCommon = '🌐',
   iconItemButton = '🔘',
@@ -6007,7 +6008,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       options: {
         function: currentFunctionId,
         destination: currentDestinationId,
-        state: primaryStateId,
         device: devicePrefix,
       },
       accessLevel: currentAccessLevel,
@@ -6016,6 +6016,22 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       group: 'alerts',
       submenu: alertsMenuGenerateExtraSubscription,
     });
+    if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) === 0) {
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: `${translationsItemMenuGet(user, 'TriggersManage')}`,
+        options: {
+          function: currentFunctionId,
+          destination: currentDestinationId,
+          device: devicePrefix,
+        },
+        accessLevel: currentAccessLevel,
+        icon: iconItemTrigger,
+        function: enumerationsMenuItemDetailsDevice,
+        group: 'triggers',
+        submenu: triggersMenuGenerate,
+      });
+    }
   }
   if (statesForGraphs.size) {
     const subMenuItem = {
@@ -6500,6 +6516,77 @@ function enumerationsGenerateDeviceStateAttributesList(currentDeviceState) {
     });
   }
   return currentStateAttributesList;
+}
+
+function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, processStateFn) {
+  const {
+      attributes: attributesFilter,
+      buttons: buttonsFilter,
+      details: withDetails,
+      function: currentFunctionId,
+      destination: currentDestinationId,
+      device: devicePrefix,
+    } = options,
+    destinationsList = enumerationsList[dataTypeDestination].list,
+    currentDestination = destinationsList[currentDestinationId],
+    currentDestinationEnum = currentDestination.enum,
+    fullDestinationId = `${prefixEnums}.${currentDestinationEnum}.${currentDestinationId}`,
+    functionsList = enumerationsList[dataTypeFunction].list,
+    currentFunction = functionsList[currentFunctionId],
+    currentFunctionEnum = currentFunction.enum,
+    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${currentFunctionId}`;
+  let currentDeviceStates = new Array(),
+    currentDeviceStatesList = {};
+  if (attributesFilter === 'all') {
+    const deviceAttributesList = currentFunction.deviceAttributes;
+    if (deviceAttributesList) {
+      currentDeviceStates = Object.keys(deviceAttributesList)
+        .filter((deviceAttr) => deviceAttributesList[deviceAttr].isEnabled)
+        .sort((a, b) => deviceAttributesList[a].order - deviceAttributesList[b].order);
+    }
+    if (withDetails) {
+      currentDeviceStates.forEach(
+        (deviceAttribute) => (currentDeviceStatesList[deviceAttribute] = deviceAttributesList[deviceAttribute]),
+      );
+    }
+  }
+  if (buttonsFilter) {
+    const deviceButtonsList = currentFunction.deviceButtons;
+    if (deviceButtonsList) {
+      const currentDeviceButtons = Object.keys(deviceButtonsList)
+        .filter((deviceButton) => {
+          return (
+            deviceButtonsList[deviceButton].isEnabled &&
+            !currentDeviceStates.includes(deviceButton) &&
+            ((buttonsFilter === 'show' &&
+              MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
+                0) ||
+              (buttonsFilter === 'press' &&
+                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].pressAccessLevel) <=
+                  0) ||
+              buttonsFilter === 'all')
+          );
+        })
+        .sort((a, b) => deviceButtonsList[a].order - deviceButtonsList[b].order);
+      if (withDetails) {
+        currentDeviceButtons.forEach(
+          (deviceButton) => (currentDeviceStatesList[deviceButton] = deviceButtonsList[deviceButton]),
+        );
+      }
+      currentDeviceStates = currentDeviceStates.concat(currentDeviceButtons);
+    }
+  }
+  currentDeviceStates.forEach((deviceStateId) => {
+    const deviceStateIdFull = [devicePrefix, deviceStateId].join('.'),
+      deviceStateObject = getObjectEnriched(deviceStateIdFull, '*');
+    if (deviceStateObject && deviceStateObject.hasOwnProperty('enumIds')) {
+      const deviceStateObjectEnums = deviceStateObject.enumIds;
+      if (deviceStateObjectEnums.includes(fullFunctionId) && deviceStateObjectEnums.includes(fullDestinationId)) {
+        const deviceStateDetails = withDetails ? currentDeviceStatesList[deviceStateId] : {};
+        processStateFn(user, deviceStateId, deviceStateIdFull, deviceStateObject, deviceStateDetails, options);
+      }
+    }
+  });
 }
 
 /**
@@ -7953,6 +8040,44 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
 }
 
 //*** Alerts - end ***//
+
+//*** Triggers - begin ***//
+
+/**
+ * This function generates a submenu with all possible attributes, on which the trigger can be made in the appropriate
+ * menuItem of submenu.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function triggersMenuGenerate(user, menuItemToProcess) {
+  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options,
+    {function: currentFunctionId, destination: currentDestinationId} = options,
+    currentAccessLevel = menuItemToProcess.accessLevel;
+  let subMenu = [],
+    subMenuIndex = 0;
+  const generateTriggersMenu = (user, _stateId, stateIdFull, stateObject, _stateDetails, _options) => {
+    const stateIndex = `${currentIndex}.${subMenuIndex}`,
+      stateName = `${translationsGetObjectName(user, stateObject, currentFunctionId)}`,
+      subMenuItem = alertsMenuItemGenerateSubscribedOn(
+        stateIndex,
+        stateName,
+        {function: currentFunctionId, destination: currentDestinationId, state: stateIdFull},
+        stateObject,
+        true,
+      );
+    if (subMenuItem) {
+      // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 1)}`, _l)
+      subMenuIndex = subMenu.push(subMenuItem);
+    }
+  };
+  const optionsToProcess = {...options, attributes: 'all', buttons: 'show'};
+  enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsToProcess, generateTriggersMenu);
+  return subMenu;
+}
+
+//*** Triggers - end ***//
 
 //*** Backup - begin ***//
 
