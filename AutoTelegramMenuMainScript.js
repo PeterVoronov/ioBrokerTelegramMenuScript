@@ -7180,7 +7180,7 @@ function alertsActionOnSubscribedState(object) {
                       );
                     }
                   }
-                } else {
+                } else if (isLess || isAbove) {
                   alertsMessagePush(user, objectId, alertMessageText, objectId === currentState);
                 }
               });
@@ -7689,7 +7689,7 @@ function alertsMenuGenerateManageNumeric(user, menuItemToProcess) {
             state: currentStateId,
             index: subMenuIndex,
             item: alertThresholdId,
-            value: `${currentThresholdNumber}${currentStateUnits}`,
+            value: currentThresholdNumber,
           },
         ),
       );
