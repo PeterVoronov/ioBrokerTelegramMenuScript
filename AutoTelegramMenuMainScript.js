@@ -13565,6 +13565,7 @@ function getObjectEnriched(id, enumId) {
   const currentObject = enumId ? getObject(id, enumId) : getObject(id);
   if (
     configOptions.getOption(cfgUseAliasOriginForCommonAttrs) &&
+    currentObject &&
     currentObject.hasOwnProperty('common') &&
     currentObject.common
   ) {
