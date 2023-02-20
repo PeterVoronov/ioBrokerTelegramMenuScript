@@ -13562,44 +13562,47 @@ function stringCapitalize(string) {
  * @returns {object} The result object.
  */
 function getObjectEnriched(id, enumId) {
-  const currentObject = enumId ? getObject(id, enumId) : getObject(id);
-  if (
-    configOptions.getOption(cfgUseAliasOriginForCommonAttrs) &&
-    currentObject &&
-    currentObject.hasOwnProperty('common') &&
-    currentObject.common
-  ) {
-    const currentObjectCommon = currentObject.common;
-    if (currentObjectCommon.hasOwnProperty('alias')) {
-      const currentObjectAlias = currentObjectCommon.alias;
-      let originObjectId = '';
-      if (currentObjectAlias.hasOwnProperty('id') && typeOf(currentObjectAlias.id, 'string')) {
-        originObjectId = currentObjectAlias.id;
-      } else if (currentObjectAlias.id.hasOwnProperty('write')) {
-        originObjectId = currentObjectAlias.write;
-      } else if (currentObjectAlias.id.hasOwnProperty('read')) {
-        originObjectId = currentObjectAlias.read;
-      }
-      if (originObjectId) {
-        if (currentObjectAlias.hasOwnProperty('read') || currentObjectAlias.hasOwnProperty('write')) {
-          if (!currentObjectCommon.hasOwnProperty('read')) currentObjectCommon.read = true;
-          currentObjectCommon.write =
-            currentObjectAlias.hasOwnProperty('write') || currentObjectAlias.id.hasOwnProperty('write');
-        } else {
-          const originObject = getObject(originObjectId);
-          if (originObject && originObject.hasOwnProperty('common') && originObject.common) {
-            const originObjectCommon = originObject.common;
-            attributesToCopyFromOriginToAlias.forEach((attributeId) => {
-              if (!currentObjectCommon.hasOwnProperty(attributeId) && originObjectCommon.hasOwnProperty(attributeId)) {
-                currentObjectCommon[attributeId] = originObjectCommon[attributeId];
-              }
-            });
+  if (existsObject(id)) {
+    const currentObject = enumId ? getObject(id, enumId) : getObject(id);
+    if (
+      configOptions.getOption(cfgUseAliasOriginForCommonAttrs) &&
+      currentObject.hasOwnProperty('common') &&
+      currentObject.common
+    ) {
+      const currentObjectCommon = currentObject.common;
+      if (currentObjectCommon.hasOwnProperty('alias')) {
+        const currentObjectAlias = currentObjectCommon.alias;
+        let originObjectId = '';
+        if (currentObjectAlias.hasOwnProperty('id') && typeOf(currentObjectAlias.id, 'string')) {
+          originObjectId = currentObjectAlias.id;
+        } else if (currentObjectAlias.id.hasOwnProperty('write')) {
+          originObjectId = currentObjectAlias.write;
+        } else if (currentObjectAlias.id.hasOwnProperty('read')) {
+          originObjectId = currentObjectAlias.read;
+        }
+        if (originObjectId) {
+          if (currentObjectAlias.hasOwnProperty('read') || currentObjectAlias.hasOwnProperty('write')) {
+            if (!currentObjectCommon.hasOwnProperty('read')) currentObjectCommon.read = true;
+            currentObjectCommon.write =
+              currentObjectAlias.hasOwnProperty('write') || currentObjectAlias.id.hasOwnProperty('write');
+          } else {
+            const originObject = getObject(originObjectId);
+            if (originObject && originObject.hasOwnProperty('common') && originObject.common) {
+              const originObjectCommon = originObject.common;
+              attributesToCopyFromOriginToAlias.forEach((attributeId) => {
+                if (!currentObjectCommon.hasOwnProperty(attributeId) && originObjectCommon.hasOwnProperty(attributeId)) {
+                  currentObjectCommon[attributeId] = originObjectCommon[attributeId];
+                }
+              });
+            }
           }
         }
       }
     }
+    return currentObject;
+  } else {
+    return undefined;
   }
-  return currentObject;
 }
 
 /**
