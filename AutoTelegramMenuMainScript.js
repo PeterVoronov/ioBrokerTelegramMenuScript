@@ -4054,22 +4054,22 @@ const cachedValuesStatesCommonAttributes = {
     role: 'id',
   },
   [cachedMessageId]: {name: 'Message ID of last received request', type: 'number', read: true, write: true, role: 'id'},
-  [cachedUser]: {name: 'user data as json', type: 'json', read: true, write: true, role: 'json'},
+  [cachedUser]: {name: 'user data as json', type: 'json', read: true, write: true, role: 'object'},
   [cachedMenuOn]: {name: 'Is menu shown to the user', type: 'boolean', read: true, write: true, role: 'state'},
   [cachedMenuItem]: {name: 'Last menu item shown to the user', type: 'json', read: true, write: true, role: 'json'},
   [cachedLastMessage]: {
     name: 'Last menu message sent to the user',
-    type: 'text',
+    type: 'string',
     read: true,
     write: true,
     role: 'text',
   },
   [cachedCurrentState]: {
     name: 'State currently processed in Menu',
-    type: 'json',
+    type: 'string',
     read: true,
     write: true,
-    role: 'json',
+    role: 'id',
   },
   [cachedMode]: {name: 'Current user mode', type: 'number', read: true, write: true, role: 'number'},
   enumerationItems: {name: 'List of Items for menu', type: 'json', read: true, write: true, role: 'json'},
@@ -6743,14 +6743,14 @@ cachedValuesStatesCommonAttributes[cachedAlertMessages] = {
   type: 'json',
   read: true,
   write: true,
-  role: 'text',
+  role: 'array',
 };
 cachedValuesStatesCommonAttributes[idAlerts] = {
   name: 'List of states for alert subscription',
   type: 'json',
   read: true,
   write: true,
-  role: 'text',
+  role: 'list',
 };
 
 /**
