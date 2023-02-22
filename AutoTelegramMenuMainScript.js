@@ -211,7 +211,8 @@ const cmdPrefix = 'cmd',
   iconItemLess = '⤓',
   iconItemHistory = '📃',
   iconItemReset = '↺',
-  iconItemUnavailable = '🆘';
+  iconItemUnavailable = '🆘',
+  iconItemEmpty = '❔';
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
 
 //*** ConfigOptions - begin ***//
@@ -7959,7 +7960,8 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: currentFunctionId, destination: currentDestinationId} = options,
-    currentAccessLevel = menuItemToProcess.accessLevel;
+    currentAccessLevel = menuItemToProcess.accessLevel,
+    horizontalNavigation = !cachedValueExists(user, cachedAlertThresholdSet);
   let subMenu = [],
     subMenuIndex = 0;
   const generateAlertSubscriptionMenuItem = (user, _stateId, stateIdFull, stateObject, _stateDetails, _options) => {
@@ -7968,7 +7970,12 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
       subMenuItem = alertsMenuItemGenerateSubscribedOn(
         stateIndex,
         stateName,
-        {function: currentFunctionId, destination: currentDestinationId, state: stateIdFull},
+        {
+          function: currentFunctionId,
+          destination: currentDestinationId,
+          state: stateIdFull,
+          [menuOptionHorizontalNavigation]: horizontalNavigation,
+        },
         stateObject,
         true,
       );
@@ -7999,7 +8006,8 @@ function triggersMenuGenerate(user, menuItemToProcess) {
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId} = options,
-    currentAccessLevel = menuItemToProcess.accessLevel;
+    currentAccessLevel = menuItemToProcess.accessLevel,
+    horizontalNavigation = !cachedValueExists(user, cachedTriggersDetails);
   let subMenu = [],
     subMenuIndex = 0;
   const generateTriggersMenuItem = (user, _stateId, stateIdFull, stateObject, stateDetails, _options) => {
@@ -8038,8 +8046,9 @@ function triggersMenuGenerate(user, menuItemToProcess) {
               state: stateIdFull,
               type: itemStateSubType,
               convertValueCode: stateDetails.convertValueCode,
+              [menuOptionHorizontalNavigation]: horizontalNavigation,
             },
-            submenu: triggersMenuGenerateManageItem,
+            submenu: triggersMenuGenerateManageState,
           });
         }
       }
@@ -8123,7 +8132,7 @@ function triggersGetIcon(user, menuItemToProcess) {
     alerts[menuItemToProcess.options.state].chatIds.has(triggersInAlertsId)
   )
     return iconItemTrigger;
-  return configOptions.getOption(cfgDefaultIconOff, user);
+  return iconItemEmpty;
 }
 
 /**
@@ -8132,7 +8141,7 @@ function triggersGetIcon(user, menuItemToProcess) {
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]} - The array of menuItem objects.
  */
-function triggersMenuGenerateManageItem(user, menuItemToProcess) {
+function triggersMenuGenerateManageState(user, menuItemToProcess) {
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     {
@@ -8142,124 +8151,37 @@ function triggersMenuGenerateManageItem(user, menuItemToProcess) {
       type: stateSubType,
       convertValueCode,
     } = menuItemToProcess.options,
-    currentStateObject = getObjectEnriched(stateId);
+    stateObject = getObjectEnriched(stateId);
   let subMenu = [],
     subMenuIndex = 0;
-  if (currentStateObject && currentStateObject.common) {
-    const currentStateObjectCommon = currentStateObject.common,
-      currentStateUnits = currentStateObjectCommon.unit ? ` ${currentStateObjectCommon.unit}` : '',
-      [currentTriggers, currentStateTriggers] = triggersGetStateTriggers(user, stateId, true);
-    currentTriggers.forEach((currentTrigger) => {
-      const currentOnTimeInterval = `${
-          currentTrigger.hasOwnProperty(onTimeIntervalId) ? currentTrigger[onTimeIntervalId] : 0
+  if (stateObject && stateObject.common) {
+    const stateObjectCommon = stateObject.common,
+      stateUnits = stateObjectCommon.unit ? ` ${stateObjectCommon.unit}` : '',
+      [triggers, currentStateTriggers] = triggersGetStateTriggers(user, stateId, true),
+      stateOptions = {dataType: dataTypeTrigger, state: stateId, type: stateSubType};
+    triggers.forEach((trigger) => {
+      const onTimeInterval = `${
+          trigger.hasOwnProperty(onTimeIntervalId) ? trigger[onTimeIntervalId] : 0
         } ${translationsItemTextGet(user, 'secondsShort')}`,
-        currentMessageTemplate = currentTrigger.hasOwnProperty(alertMessageTemplateId)
-          ? currentTrigger[alertMessageTemplateId]
-          : configOptions.getOption(cfgAlertMessageTemplateThreshold, user),
-        subMenuItemIndex = `${currentIndex}.${subMenuIndex}`,
-        currentTriggerId = currentTrigger.id,
-        currentTriggerValue = currentTrigger.value,
-        currentTriggerName =
+        triggerId = trigger.id,
+        triggerValue = trigger.value,
+        triggerName =
           stateSubType !== 'list'
-            ? currentTriggerValue
-            : enumerationsStateValueDetails(user, currentStateObject, functionId, {val: currentTriggerValue}, true)[
-                'valueString'
-              ],
-        currentTriggerDetails =
-          stateSubType === 'number' ? ` [${currentTrigger.onAbove ? iconItemAbove : iconItemLess}]` : '',
-        subMenuItem = {
-          index: subMenuItemIndex,
-          name: `${currentTriggerName}${currentStateUnits}${currentTriggerDetails} (${currentOnTimeInterval})`,
-          icon: iconItemEdit,
-          submenu: new Array(),
-        },
-        baseCommandOptions = {
-          dataType: dataTypeTrigger,
-          state: stateId,
-          index: subMenuIndex,
-          item: currentTriggerId,
-        };
-      let subSubMenuIndex = 0;
-      if (stateSubType === 'number') {
-        subSubMenuIndex = subMenuItem.submenu.push(
-          menuMenuItemGenerateEditItem(
-            user,
-            subMenuItemIndex,
-            subSubMenuIndex,
-            `${currentTriggerValue}${currentStateUnits}`,
-            'value',
-            {...baseCommandOptions, mode: 'edit', value: currentTriggerValue},
-          ),
-        );
-        subSubMenuIndex = subMenuItem.submenu.push({
-          index: `${subMenuItemIndex}.${subSubMenuIndex}`,
-          name: iconItemAbove,
-          icon: currentTrigger.onAbove
-            ? configOptions.getOption(cfgDefaultIconOn, user)
-            : configOptions.getOption(cfgDefaultIconOff, user),
-          group: 'borders',
-          command: cmdItemPress,
-          options: {...baseCommandOptions, mode: 'onAbove'},
-          submenu: [],
-        });
-        subSubMenuIndex = subMenuItem.submenu.push({
-          index: `${subMenuItemIndex}.${subSubMenuIndex}`,
-          name: iconItemLess,
-          icon: currentTrigger.onLess
-            ? configOptions.getOption(cfgDefaultIconOn, user)
-            : configOptions.getOption(cfgDefaultIconOff, user),
-          group: 'borders',
-          command: cmdItemPress,
-          options: {...baseCommandOptions, mode: 'onLess'},
-          submenu: [],
-        });
-      }
-      subSubMenuIndex = subMenuItem.submenu.push(
-        menuMenuItemGenerateEditItem(
-          user,
-          `${currentIndex}.${subMenuIndex}`,
-          subSubMenuIndex,
-          `${translationsItemTextGet(user, onTimeIntervalId)} {${currentOnTimeInterval}}`,
-          'thresholdOn',
-          {...baseCommandOptions, mode: onTimeIntervalId, value: currentOnTimeInterval},
-        ),
-      );
-      const editCommandOptions = {...baseCommandOptions, mode: alertMessageTemplateId, value: currentMessageTemplate};
-      subSubMenuIndex = subMenuItem.submenu.push({
-        index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-        name: `${translationsItemTextGet(user, alertMessageTemplateId)}${
-          currentTrigger.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`
-        }`,
+            ? triggerValue
+            : enumerationsStateValueDetails(user, stateObject, functionId, {val: triggerValue}, true)['valueString'],
+        triggerDetails = stateSubType === 'number' ? ` [${trigger.onAbove ? iconItemAbove : iconItemLess}]` : '';
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: `${triggerName}${stateUnits}${triggerDetails} (${onTimeInterval})`,
         icon: iconItemEdit,
-        group: alertMessageTemplateId,
-        submenu: [
-          menuMenuItemGenerateEditItem(
-            user,
-            `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-            0,
-            `${translationsItemTextGet(user, alertMessageTemplateId)}`,
-            'edit',
-            editCommandOptions,
-          ),
-          menuMenuItemGenerateDeleteItem(
-            user,
-            `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-            1,
-            editCommandOptions,
-          ),
-        ],
+        options: {...stateOptions, item: triggerId, stateUnits},
+        submenu: triggersMenuGenerateManageTrigger,
       });
-      subMenuItem.submenu.push(
-        menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, baseCommandOptions),
-      );
-      subMenuIndex = subMenu.push(subMenuItem);
     });
     if (stateSubType === 'number') {
       subMenuIndex = subMenu.push(
         menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {
-          dataType: dataTypeTrigger,
-          state: stateId,
-          index: subMenuIndex,
+          ...stateOptions,
           mode: 'add',
         }),
       );
@@ -8271,12 +8193,12 @@ function triggersMenuGenerateManageItem(user, menuItemToProcess) {
           group: 'addNew',
           submenu: new Array(),
         },
-        currentStateType = currentStateObjectCommon['type'];
+        currentStateType = stateObjectCommon['type'];
       let possibleValues = new Array();
       if (stateSubType === 'boolean') {
         possibleValues = ['true', 'false'];
       } else {
-        const possibleStateValues = enumerationsExtractPossibleValueStates(currentStateObjectCommon['states']);
+        const possibleStateValues = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
         if (possibleStateValues)
           possibleValues = Object.keys(possibleStateValues).map((possibleValue) =>
             convertValueCode
@@ -8287,27 +8209,17 @@ function triggersMenuGenerateManageItem(user, menuItemToProcess) {
           );
       }
       if (possibleValues.length) {
-        possibleValues.forEach((possibleValue, subIndex) => {
+        possibleValues.forEach((possibleValue, subSubMenuIndex) => {
           const valueName =
             stateSubType === 'boolean'
               ? possibleValue
-              : enumerationsStateValueDetails(user, currentStateObject, functionId, {val: possibleValue}, true)[
-                  'valueString'
-                ];
-          if (triggersGetIndex(currentTriggers, possibleValue) < 0) {
+              : enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue}, true)['valueString'];
+          if (triggersGetIndex(triggers, possibleValue) < 0) {
             subMenuItem.submenu.push({
-              index: `${currentIndex}.${subMenuIndex}.${subIndex}`,
+              index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
               name: valueName,
               command: cmdItemPress,
-              options: {
-                dataType: dataTypeTrigger,
-                state: stateId,
-                item: alertThresholdId,
-                mode: 'add',
-                value: possibleValue,
-                type: stateSubType,
-                sorted: possibleValues,
-              },
+              options: {...stateOptions, mode: 'add', value: possibleValue, sorted: possibleValues},
               submenu: [],
             });
           }
@@ -8315,7 +8227,7 @@ function triggersMenuGenerateManageItem(user, menuItemToProcess) {
         if (subMenuItem.submenu.length) subMenuIndex = subMenu.push(subMenuItem);
       }
     }
-    const isTriggersSetChanged = JSON.stringify(currentStateTriggers) !== JSON.stringify(currentTriggers);
+    const isTriggersSetChanged = JSON.stringify(currentStateTriggers) !== JSON.stringify(triggers);
     if (isTriggersSetChanged || (currentStateTriggers && currentStateTriggers.length)) {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
@@ -8323,7 +8235,7 @@ function triggersMenuGenerateManageItem(user, menuItemToProcess) {
         icons: triggersGetIcon,
         group: cmdItemsProcess,
         command: cmdItemsProcess,
-        options: {dataType: dataTypeTrigger, function: functionId, destination: destinationId, state: stateId},
+        options: {...stateOptions, function: functionId, destination: destinationId},
         submenu: [],
       });
     }
@@ -8340,6 +8252,147 @@ function triggersMenuGenerateManageItem(user, menuItemToProcess) {
       );
     } */
   }
+  return subMenu;
+}
+
+function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
+  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    {dataType, state: stateId, type: stateSubType, item: triggerId, stateUnits} = menuItemToProcess.options,
+    triggers = triggersGetStateTriggers(user, stateId),
+    triggerIndex = triggersGetIndex(triggers, triggerId);
+  let subMenu = [],
+    subMenuIndex = 0;
+  if (triggerIndex >= 0) {
+    const trigger = triggers[triggerIndex],
+      triggerValue = trigger.value,
+      messageTemplate = trigger.hasOwnProperty(alertMessageTemplateId)
+        ? trigger[alertMessageTemplateId]
+        : configOptions.getOption(cfgAlertMessageTemplateThreshold, user),
+      onTimeInterval = `${
+        trigger.hasOwnProperty(onTimeIntervalId) ? trigger[onTimeIntervalId] : 0
+      } ${translationsItemTextGet(user, 'secondsShort')}`,
+      targetStateId = trigger.targetState,
+      triggerOptions = {dataType, state: stateId, type: stateSubType, item: triggerId};
+    if (stateSubType === 'number') {
+      subMenuIndex = subMenu.push(
+        menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${triggerValue}${stateUnits}`, 'value', {
+          ...triggerOptions,
+          mode: 'edit',
+          value: triggerValue,
+        }),
+      );
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: iconItemAbove,
+        icon: trigger.onAbove
+          ? configOptions.getOption(cfgDefaultIconOn, user)
+          : configOptions.getOption(cfgDefaultIconOff, user),
+        group: 'borders',
+        command: cmdItemPress,
+        options: {...triggerOptions, mode: 'onAbove'},
+        submenu: [],
+      });
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: iconItemLess,
+        icon: trigger.onLess
+          ? configOptions.getOption(cfgDefaultIconOn, user)
+          : configOptions.getOption(cfgDefaultIconOff, user),
+        group: 'borders',
+        command: cmdItemPress,
+        options: {...triggerOptions, mode: 'onLess'},
+        submenu: [],
+      });
+    }
+    subMenuIndex = subMenu.push(
+      menuMenuItemGenerateEditItem(
+        user,
+        `${currentIndex}.${subMenuIndex}`,
+        subMenuIndex,
+        `${translationsItemTextGet(user, onTimeIntervalId)} {${onTimeInterval}}`,
+        'thresholdOn',
+        {...triggerOptions, mode: onTimeIntervalId, value: onTimeInterval},
+      ),
+    );
+    const messageOptions = {...triggerOptions, mode: alertMessageTemplateId, value: messageTemplate};
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}.${subMenuIndex}`,
+      name: `${translationsItemTextGet(user, alertMessageTemplateId)}${
+        trigger.hasOwnProperty(alertMessageTemplateId) ? '' : `(${translationsItemTextGet(user, 'global')}})`
+      }`,
+      icon: iconItemEdit,
+      group: alertMessageTemplateId,
+      submenu: [
+        menuMenuItemGenerateEditItem(
+          user,
+          `${currentIndex}.${subMenuIndex}`,
+          0,
+          `${translationsItemTextGet(user, alertMessageTemplateId)}`,
+          'edit',
+          messageOptions,
+        ),
+        menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, messageOptions),
+      ],
+    });
+    const shortTargetStateId = targetStateId ? targetStateId.split('.').slice(-2).join('.') : '';
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: `${translationsItemTextGet(user, 'targetState')} (${shortTargetStateId})`,
+      icon: iconItemEdit,
+      group: 'borders',
+      options: {...triggerOptions, value: targetStateId, mode: 'targetState'},
+      submenu: triggersMenuGenerateBrowseAllStates,
+    });
+    subMenu.push(menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, subMenuIndex, triggerOptions));
+  }
+  return subMenu;
+}
+
+function triggersMenuGenerateBrowseAllStates(user, menuItemToProcess) {
+  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    currentOptions = menuItemToProcess.options,
+    // triggers = triggersGetStateTriggers(user, stateId),
+    // triggerIndex = triggersGetIndex(triggers, triggerId),
+    enumerationsMenu = menuMenuItemGenerateRootMenu(user, 'enumerationsOnly'),
+    subMenu = enumerationsMenu ? enumerationsMenu.submenu : [],
+    convertDevice = (device) => {
+      device.function = triggersMenuItemDetailsTrigger;
+      device.submenu = triggersMenuGenerateSelectTargetState;
+      return device;
+    };
+  return menuMenuReIndex(subMenu, currentIndex, {...currentOptions, currentIndex, deviceFunction: convertDevice});
+}
+
+function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
+  const options = menuItemToProcess.options,
+    {function: _functionId, destination: _destinationId, extraOptions} = options;
+  return `\n${extraOptions.item}\n`;
+}
+
+function triggersMenuGenerateSelectTargetState(user, menuItemToProcess) {
+  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options,
+    {function: functionId, destination: _destinationId, extraOptions} = options,
+    currentAccessLevel = menuItemToProcess.accessLevel;
+  let subMenu = [],
+    subMenuIndex = 0;
+
+  const generateDeviceStateMenuItem = (user, _stateId, stateIdFull, stateObject, _stateDetails, _options) => {
+      if (stateObject) {
+        const stateIndex = `${currentIndex}.${subMenuIndex}`,
+          stateName = `${translationsGetObjectName(user, stateObject, functionId)}`;
+        subMenuIndex = subMenu.push({
+          index: stateIndex,
+          name: stateName,
+          icons: triggersGetIcon,
+          command: cmdItemPress,
+          options: {...extraOptions, value: stateIdFull},
+          submenu: [],
+        });
+      }
+    },
+    optionsToProcess = {...options, buttons: 'all'};
+  enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsToProcess, generateDeviceStateMenuItem);
   return subMenu;
 }
 
@@ -9176,8 +9229,17 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
             ? shortStates[0]
             : graphsDefaultTemplate
           : undefined;
+      let subMenuIndex = 0;
+      const subMenuRefresh = {
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: `${translationsItemMenuGet(user, 'Refresh')}`,
+        icon: iconItemRefresh,
+        command: cmdItemJumpTo,
+        group: 'refresh',
+        submenu: [],
+      };
+      subMenuIndex = subMenu.push(subMenuRefresh);
       if (graphsTemplate) {
-        let subMenuIndex = 0;
         const graphsIntervals = configOptions.getOption(cfgGraphsIntervals, user);
         if (graphsIntervals && typeOf(graphsIntervals, 'array') && graphsIntervals.length) {
           graphsIntervals.forEach(({id: graphsIntervalId, minutes: graphsIntervalMinutes}) => {
@@ -9408,14 +9470,14 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
   function menuMenuItemGenerateRootReports(user) {
     const historyAdapterId = configOptions.getOption(cfgHistoryAdapter, user),
       graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
-      isGraphsEnabled = historyAdapterId && existsObject(`${graphsTemplatesFolder}.${graphsDefaultTemplate}`);
-    menuItem = {
-      name: translationsItemMenuGet(user, 'SimpleReports'),
-      id: 'info',
-      group: 'info',
-      icon: 'ℹ️',
-      submenu: new Array(),
-    };
+      isGraphsEnabled = historyAdapterId && existsObject(`${graphsTemplatesFolder}.${graphsDefaultTemplate}`),
+      menuItem = {
+        name: translationsItemMenuGet(user, 'SimpleReports'),
+        id: 'info',
+        group: 'info',
+        icon: 'ℹ️',
+        submenu: new Array(),
+      };
     if (
       user === null ||
       (user &&
@@ -9428,7 +9490,14 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
       const reportsList = enumerationsList[dataTypeReport].list,
         reportsIndex = Object.keys(reportsList)
           .filter((key) => reportsList[key].isEnabled)
-          .sort((a, b) => reportsList[a].order - reportsList[b].order);
+          .sort((a, b) => reportsList[a].order - reportsList[b].order),
+        subMenuRefresh = {
+          name: `${translationsItemMenuGet(user, 'Refresh')}`,
+          icon: iconItemRefresh,
+          command: cmdItemJumpTo,
+          group: 'refresh',
+          submenu: [],
+        };
       reportsIndex.forEach((reportId) => {
         if (
           user === null ||
@@ -9440,26 +9509,23 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
             ) < 0)
         ) {
           const currentReport = reportsList[reportId];
-          const subMenuRefresh = [
-            {
-              name: `${translationsItemMenuGet(user, 'Refresh')}`,
-              icon: iconItemRefresh,
-              command: cmdItemJumpTo,
-              group: 'refresh',
-              submenu: [],
-            },
-          ];
           menuItem.submenu.push({
             name: `${translationsGetEnumName(user, dataTypeReport, reportId)}`,
             icon: currentReport.icon ? currentReport.icon : enumerationsList[dataTypeReport].icon,
             function: simpleReportGenerate,
             group: currentReport.group ? currentReport.group : menuButtonsDefaultGroup,
             id: reportId,
-            submenu:
-              isGraphsEnabled && currentReport.graphsEnabled
-                ? (user, menuItemToProcess) =>
-                    subMenuRefresh.concat(simpleReportMenuGenerateGraphs(user, menuItemToProcess))
-                : subMenuRefresh,
+            submenu: (user, menuItemToProcess) => {
+              const currentIndex = menuItemToProcess.index;
+              let subMenu = [],
+                subMenuIndex = 0;
+              if (isGraphsEnabled && currentReport.graphsEnabled) {
+                subMenu = simpleReportMenuGenerateGraphs(user, menuItemToProcess);
+              } else {
+                subMenu.push({...subMenuRefresh, index: [currentIndex, subMenuIndex].join('.')});
+              }
+              return subMenu;
+            },
           });
         }
       });
@@ -9550,32 +9616,39 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
   }
 
   // logs(`Done 0`);
-  let menuItem;
   if (topRootMenuItemId !== undefined && topRootMenuItemId !== null) {
     switch (topRootMenuItemId) {
       case 'setup':
-        menuItem = menuMenuItemGenerateRootMenuSetup(user);
+        rootMenu.submenu.push(menuMenuItemGenerateRootMenuSetup(user));
         break;
 
       case 'info':
-        menuItem = menuMenuItemGenerateRootReports(user);
+        rootMenu.submenu.push(menuMenuItemGenerateRootReports(user));
+        break;
+
+      case 'enumerationsOnly':
+        currentListIds.forEach((itemId) => {
+          const menuItem = menuMenuItemGenerateRootEnumeration(
+            user,
+            currentDataType,
+            currentList,
+            itemId,
+            currentNameId,
+          );
+          if (menuItem) {
+            rootMenu.submenu.push(menuItem);
+          }
+        });
         break;
 
       default:
         if (currentListIds.includes(topRootMenuItemId)) {
-          menuItem = menuMenuItemGenerateRootEnumeration(
-            user,
-            currentDataType,
-            currentList,
-            topRootMenuItemId,
-            currentNameId,
+          rootMenu.submenu.push(
+            menuMenuItemGenerateRootEnumeration(user, currentDataType, currentList, topRootMenuItemId, currentNameId),
           );
         }
         break;
     }
-  }
-  if (menuItem) {
-    rootMenu.submenu.push(menuItem);
   } else {
     currentListIds.forEach((itemId) => {
       const menuItem = menuMenuItemGenerateRootEnumeration(user, currentDataType, currentList, itemId, currentNameId);
@@ -9600,7 +9673,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
         });
     }
     // logs(`Done 1`);
-    menuItem = menuMenuItemGenerateRootReports(user);
+    let menuItem = menuMenuItemGenerateRootReports(user);
     if (menuItem && menuItem.submenu.length) {
       rootMenu.submenu.push(menuItem);
     }
@@ -9788,15 +9861,17 @@ function menuMenuPartGenerateMoveItemUpAndDown(
  * @returns {object[]} Newly generated submenu.
  */
 function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.holderId
+  const currentIndex = menuItemToProcess.index /* holderId
       ? `${menuItemToProcess.holderId}.${menuItemToProcess.id}`
-      : menuItemToProcess.id,
+      : menuItemToProcess.id */,
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     primaryInputType = isFunctionsFirst ? dataTypeFunction : dataTypeDestination,
     primaryMenuItemsList = enumerationsList[primaryInputType].list,
     primaryLevelMenuItemId = menuItemToProcess.holderId
       ? `${menuItemToProcess.holderId}.${menuItemToProcess.id}`
-      : menuItemToProcess.id;
+      : menuItemToProcess.id,
+    itemOptions = menuItemToProcess.options ? menuItemToProcess.options : {},
+    {extraOptions} = itemOptions;
   let subMenu = [];
   // logs('primaryLevelMenuItemId = ' + JSON.stringify(primaryLevelMenuItemId), _l);
   if (primaryMenuItemsList.hasOwnProperty(primaryLevelMenuItemId)) {
@@ -9822,7 +9897,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       typeOf(menuItemToProcess.subordinates, 'array') &&
       menuItemToProcess.subordinates.length
     ) {
-      subMenu = menuMenuReIndex(menuItemToProcess.subordinates, currentIndex);
+      subMenu = menuMenuReIndex(menuItemToProcess.subordinates, currentIndex, extraOptions);
     }
     /**
      * this way to find an objects only by function and then filter by destination,
@@ -9906,8 +9981,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
             deviceList[currentLevelMenuItemId].forEach((deviceStateId, _deviceIndex) => {
               const devicePrefix = deviceStateId.split('.').slice(0, -statesSectionsCount).join('.'),
                 deviceId = devicePrefix.split('.').pop();
-              logs(`stateId = ${JSON.stringify(deviceStateId)}`);
-              const deviceMenuItem = {
+              let deviceMenuItem = {
                 index: `${currentIndex}.${currentLevelMenuItemId}.${deviceId}`,
                 name: `${translationsGetObjectName(user, devicePrefix, functionId, destinationId)}`,
                 type: menuItemToProcess.type,
@@ -9924,8 +9998,12 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
                 icon: currentIcon,
                 submenu: enumerationsMenuGenerateDevice,
               };
-              // logs('deviceMenuItem = ' + JSON.stringify(deviceMenuItem, null, 2), _l);
-              currentMenuItem.submenu.push(deviceMenuItem);
+              if (extraOptions && extraOptions.deviceFunction) {
+                deviceMenuItem.options = {...deviceMenuItem.options, extraOptions};
+                const deviceFunction = extraOptions.deviceFunction;
+                deviceMenuItem = deviceFunction(deviceMenuItem);
+              }
+              if (deviceMenuItem) currentMenuItem.submenu.push(deviceMenuItem);
             });
           if (
             ((isFunctionsFirst && primaryMenuItem.simplifyMenuWithOneDevice) ||
@@ -10047,6 +10125,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
   /**
    * Default situation for call to draw menu, outside the function (i.e. no iterative call)
    */
+  let topItemIndex = undefined;
   if (!menuItemToProcess) {
     if (targetMenuPos) {
       cachedValueSet(user, cachedMenuItem, targetMenuPos);
@@ -10054,11 +10133,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     } else {
       targetMenuPos = cachedValueExists(user, cachedMenuItem) ? cachedValueGet(user, cachedMenuItem) : [];
     }
+    topItemIndex = targetMenuPos && targetMenuPos.length ? targetMenuPos[0] : undefined;
     menuItemToProcess = user.rootMenu
       ? user.rootMenu
-      : menuMenuReIndex(
-          menuMenuItemGenerateRootMenu(user, targetMenuPos && targetMenuPos.length ? targetMenuPos[0] : undefined),
-        );
+      : menuMenuReIndex(menuMenuItemGenerateRootMenu(user, topItemIndex));
     const defaultOptions = {
       clearBefore: false,
       clearUserMessage: false,
@@ -10144,7 +10222,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
               (item.hasOwnProperty('id') && item.id === currentSubMenuPos) ||
               item.index.split('.').pop() === currentSubMenuPos,
           );
-          // logs(`currentMenuItem.submenu = ${JSON.stringify(menuItemToProcess.submenu)}, currentSubMenuPos = ${JSON.stringify(currentSubMenuPos)}`, _l);
         } else {
           currentSubMenuPos = Number(currentSubMenuPos);
         }
@@ -10167,7 +10244,15 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           menuMenuItemGetIcon(user, menuItemToProcess) +
           menuItemToProcess.name;
         const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
-        // logs(`subMenuItem = ${JSON.stringify(subMenuItem, null, 2)}`, _l);
+        messageObject.index = subMenuItem.index;
+        if (messageObject.index === topItemIndex) {
+          messageObject.shortIndex = topItemIndex;
+        } else if (messageObject.shortIndex !== undefined) {
+          messageObject.shortIndex = [messageObject.shortIndex, currentSubMenuPos].join('.');
+        } else {
+          messageObject.shortIndex = currentSubMenuPos;
+        }
+        // logs(`messageObject = ${JSON.stringify(messageObject, null, 2)}`, _l);
         messageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
         messageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
         messageObject.options =
@@ -10247,9 +10332,9 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           messageObject.message += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
         }
         messageObject.buttons = [];
-        const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '',
-          maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
+        let currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+          currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '';
+        const maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
         let buttonsCount = menuItemToProcess.submenu.length;
         let buttonsOffset = 0;
         if (buttonsCount > maxButtonsCount) {
@@ -10264,7 +10349,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             }
           }
         }
-        if (currentIndex) messageObject.backIndex = currentBackIndex;
+        if (currentIndex && currentIndex.length > 44) {
+          currentIndex = currentIndex.replace(messageObject.index, messageObject.shortIndex);
+          currentBackIndex = currentIndex.split('.').slice(0, -1).join('.');
+        }
         // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
         const _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
           callbackDataToCache = new Map();
@@ -10276,8 +10364,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         ) {
           const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
           // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`, _l);
-          // logs(`getIndex(subMenuItem.name) = ${currentIndex}`);
-          const currentSubIndex = currentSubMenuItem.index;
+          const currentSubIndex =
+            currentSubMenuItem.index.length > 50
+              ? currentSubMenuItem.index.replace(messageObject.index, messageObject.shortIndex)
+              : currentSubMenuItem.index;
           let callbackData = menuItemButtonPrefix + currentSubIndex;
           if (
             currentSubMenuItem.hasOwnProperty('command') &&
@@ -10371,13 +10461,13 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}`,
           },
         ];
-        if (messageObject.backIndex !== undefined) {
+        if (currentBackIndex !== undefined) {
           if (configOptions.getOption(cfgShowHomeButton, user)) {
             lastRow.unshift({text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome});
           }
           lastRow.unshift({
             text: translationsItemCoreGet(user, cmdBack),
-            callback_data: cmdBack + messageObject.backIndex,
+            callback_data: cmdBack + currentBackIndex,
           });
         }
         messageObject.buttons.push(lastRow);
@@ -10713,48 +10803,68 @@ function menuButtonsArraySplitIntoButtonsPerRowsArray(user, buttonsArray) {
  * current index of the item in the array.
  * @param {object|object[]} inputMenu - The menu object or array of menu objects, which to be indexed.
  * @param {string=} indexPrefix - The index prefix for the current menu level.
+ * @param {object=} extraOptions - The extra options object.
  * @returns {object|object[]} Newly created menu item or submenu array.
  */
-function menuMenuReIndex(inputMenu, indexPrefix) {
+function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
   let newMenuRow;
   if (typeOf(inputMenu, 'array')) {
     newMenuRow = [];
-    inputMenu.forEach((currentMenuItem, currentMenuItemIndex) => {
-      const newMenuRowItem = {},
-        indexSuffix =
-          currentMenuItem.hasOwnProperty('id') && currentMenuItem.id && !currentMenuItem.id.includes('.')
-            ? currentMenuItem.id
-            : currentMenuItemIndex;
-      newMenuRowItem.index = indexPrefix && indexPrefix.length > 0 ? [indexPrefix, indexSuffix].join('.') : indexSuffix;
-      Object.keys(currentMenuItem).forEach((attributeId) => {
-        switch (attributeId) {
-          case 'index': {
-            break;
-          }
-          case 'subordinates': {
-            newMenuRowItem[attributeId] = [...currentMenuItem[attributeId]];
-            break;
-          }
-          case 'submenu': {
-            if (typeOf(currentMenuItem.submenu, 'array') && currentMenuItem.submenu.length) {
-              newMenuRowItem.submenu = menuMenuReIndex(currentMenuItem.submenu, newMenuRowItem.index);
-            } else {
-              newMenuRowItem.submenu = currentMenuItem.submenu;
+    inputMenu
+      .filter((menuItem) => menuItem)
+      .forEach((menuItem, menuItemIndex) => {
+        const newMenuRowItem = {},
+          indexSuffix =
+            menuItem.hasOwnProperty('id') && menuItem.id && !menuItem.id.includes('.') ? menuItem.id : menuItemIndex;
+        newMenuRowItem.index =
+          indexPrefix && indexPrefix.length > 0 ? [indexPrefix, indexSuffix].join('.') : indexSuffix;
+        Object.keys(menuItem).forEach((attributeId) => {
+          switch (attributeId) {
+            case 'index': {
+              break;
             }
-            break;
+            case 'subordinates': {
+              newMenuRowItem[attributeId] = [...menuItem[attributeId]];
+              break;
+            }
+            case 'submenu': {
+              if (typeOf(menuItem.submenu, 'array') && menuItem.submenu.length) {
+                newMenuRowItem.submenu = menuMenuReIndex(menuItem.submenu, newMenuRowItem.index, extraOptions);
+              } else {
+                newMenuRowItem.submenu = menuItem.submenu;
+              }
+              break;
+            }
+            case 'options': {
+              if (extraOptions) {
+                if (menuItem.options) {
+                  newMenuRowItem.options = {...menuItem.options, extraOptions};
+                } else {
+                  newMenuRowItem.options = {extraOptions};
+                }
+                break;
+              }
+            }
+            // eslint-disable-next-line no-fallthrough
+            default:
+              newMenuRowItem[attributeId] = menuItem[attributeId];
+              break;
           }
-          default:
-            newMenuRowItem[attributeId] = currentMenuItem[attributeId];
-            break;
-        }
+        });
+        newMenuRow.push(newMenuRowItem);
       });
-      newMenuRow.push(newMenuRowItem);
-    });
   } else if (typeof inputMenu === 'object' && inputMenu.hasOwnProperty('submenu')) {
     newMenuRow = objectDeepClone({...inputMenu, submenu: undefined});
+    if (extraOptions) {
+      if (newMenuRow.options) {
+        newMenuRow.options = {...newMenuRow.options, extraOptions};
+      } else {
+        newMenuRow.options = {extraOptions};
+      }
+    }
     newMenuRow.index = newMenuRow.index !== undefined ? newMenuRow.index : '';
     newMenuRow.submenu = typeOf(inputMenu.submenu, 'array')
-      ? menuMenuReIndex(inputMenu.submenu, newMenuRow.index)
+      ? menuMenuReIndex(inputMenu.submenu, newMenuRow.index, extraOptions)
       : inputMenu.submenu;
   }
   return newMenuRow;
@@ -11885,21 +11995,40 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeTrigger: {
-            if (commandOptions.state && commandOptions.item) {
+            // logs(`options = ${JSON.stringify(commandOptions)}`, _l)
+            if (commandOptions.state) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state),
                 backStepsForCacheDelete = -1;
               switch (commandOptions.mode) {
                 case 'onAbove':
                 case 'onLess': {
-                  const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                  if (currentTriggerIndex >= 0) {
-                    backStepsForCacheDelete--;
-                    const currentTrigger = triggers[currentTriggerIndex],
-                      triggerId = [currentTrigger.value, currentTrigger.onAbove ? 'onLess' : 'onAbove'].join('.');
-                    if (triggersGetIndex(triggers, triggerId) < 0) {
-                      currentTrigger.id = triggerId;
-                      currentTrigger.onAbove = !currentTrigger.onAbove;
-                      currentTrigger.onLess = !currentTrigger.onLess;
+                  if (commandOptions.item) {
+                    const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                    if (currentTriggerIndex >= 0) {
+                      backStepsForCacheDelete--;
+                      const currentTrigger = triggers[currentTriggerIndex],
+                        triggerId = [currentTrigger.value, currentTrigger.onAbove ? 'onLess' : 'onAbove'].join('.');
+                      if (triggersGetIndex(triggers, triggerId) < 0) {
+                        currentTrigger.id = triggerId;
+                        currentTrigger.onAbove = !currentTrigger.onAbove;
+                        currentTrigger.onLess = !currentTrigger.onLess;
+                      } else {
+                        triggers = undefined;
+                      }
+                    } else {
+                      triggers = undefined;
+                    }
+                  }
+                  break;
+                }
+                case 'targetState': {
+                  if (commandOptions.item) {
+                    const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                    if (currentTriggerIndex >= 0) {
+                      backStepsForCacheDelete--;
+                      const currentTrigger = triggers[currentTriggerIndex];
+                      currentTrigger.targetState = commandOptions.value;
+                      currentMenuPosition = commandOptions.currentIndex.split('.').slice(0, -1);
                     } else {
                       triggers = undefined;
                     }
@@ -11908,7 +12037,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   }
                   break;
                 }
-
                 case 'add': {
                   triggers.push({
                     id: commandOptions.value,
