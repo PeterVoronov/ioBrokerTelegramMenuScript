@@ -548,9 +548,9 @@ class ConfigOptions {
       if (existsState(stateId))
         deleteState(stateId, (error, result) => {
           if (error) {
-            console.warn(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
+            warns(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
           } else {
-            console.log(`configOptions key state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
+            logs(`configOptions key state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
           }
         });
     }
@@ -572,7 +572,7 @@ class ConfigOptions {
           try {
             result = JSON.parse(value);
           } catch (err) {
-            console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
+            errs(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
           }
         } else {
           result = value.split(',');
@@ -585,7 +585,7 @@ class ConfigOptions {
         try {
           value = JSON.parse(value, JSONReviverWithMap);
         } catch (err) {
-          console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
+          errs(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
         }
         valueToParseType = typeof value;
       }
@@ -597,7 +597,7 @@ class ConfigOptions {
         try {
           value = JSON.parse(value);
         } catch (err) {
-          console.error(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
+          errs(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
         }
         valueToParseType = typeof value;
       }
@@ -634,7 +634,6 @@ class ConfigOptions {
           break;
       }
     }
-    // console.log(`cfgItem = ${cfgItem}, result = ${JSON.stringify(result)}, typeOf(result) = ${typeOf(result)}`)
     return result;
   }
 
@@ -645,11 +644,9 @@ class ConfigOptions {
    */
   loadOption(cfgItem, user) {
     const stateId = this.#getStateId(cfgItem, user);
-    // console.log(`cfgItem = ${cfgItem}, user = ${user ? user.userId : ''}, id = ${id}`)
     if (existsState(stateId)) {
       const actualValue = this.parseOption(cfgItem, getState(stateId).val);
       if (actualValue !== undefined) this.setOption(cfgItem, user, actualValue);
-      // console.warn(`Option ${this.#isUserConfigOption(cfgItem, user) ? user.userId : optionTypeGlobal} '${cfgItem}'  is configured to ' + ${JSON.stringify(this.getOption(cfgItem, user))} from ${id}`);
     } else if (!this.#isUserConfigOption(cfgItem, user)) {
       this.saveOption(cfgItem, user);
     }
@@ -668,12 +665,12 @@ class ConfigOptions {
       $(`state[id=${this.prefix}.*]`).each((stateId) => {
         const itemKey = '' + stateId.split('.').pop();
         if (!this.globalConfig.hasOwnProperty(itemKey)) {
-          console.log(`Found obsolete configOptions key = ${JSON.stringify(itemKey)}`);
+          logs(`Found obsolete configOptions key = ${JSON.stringify(itemKey)}`);
           deleteState(stateId, (error, result) => {
             if (error) {
-              console.warn(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
+              warns(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
             } else {
-              console.log(`configOptions key state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
+              logs(`configOptions key state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
             }
           });
         }
@@ -688,10 +685,8 @@ class ConfigOptions {
     on({id: new RegExp(`${this.prefix}.*`), change: 'ne', ack: false}, (obj) => {
       if (obj && obj.id) {
         const cfgItemPath = obj.id.replace(`${this.prefix}.`, '').split('.');
-        logs(`cfgItemPath = ${cfgItemPath}`);
         if (cfgItemPath.length === 2) {
           const [cfgItemPrefix, cfgItem] = cfgItemPath;
-          logs(`Start processing configOptions[${cfgItem}, ${cfgItemPrefix}] with possible value = ${obj.state.val}}`);
           if (
             this.existsOption(cfgItem) &&
             (cfgItemPrefix === configOptionScopeGlobal ||
@@ -705,7 +700,6 @@ class ConfigOptions {
                 cfgItemPrefix === configOptionScopeGlobal ? null : {userId: Number(cfgItemPrefix)},
                 actualValue,
               );
-              logs(`configOptions[${cfgItem}, ${cfgItemPrefix}] is set to ${JSON.stringify(actualValue)}`);
             }
             if (this.externalSubscriptions.has(cfgItem)) {
               const functionToProcess = this.externalSubscriptions.get(cfgItem);
@@ -734,7 +728,6 @@ class ConfigOptions {
       stateType = typeof currentValue;
     if (currentValue !== undefined && currentValue !== null) {
       const id = this.#getStateId(cfgItem, user);
-      // console.log(`cfgItem = ${cfgItem}, user = ${user ? user.userId : ''}, id = ${id}`)
       if (stateType === 'object') {
         currentValue = JSON.stringify(currentValue, JSONReplacerWithMap);
         // @ts-ignore
@@ -742,19 +735,16 @@ class ConfigOptions {
       }
       if (existsState(id) && getObject(id).common.type === stateType) {
         setState(id, currentValue, true);
-        // console.log('state ' + JSON.stringify(id) + ' saved for option ' + JSON.stringify(cfgItem) + ' = ' + JSON.stringify(currentValue));
       } else {
         if (existsState(id))
           deleteState(id, (error, _result) => {
             if (error) {
-              console.warn(`Error during deletion of state '${cfgItem}' : ${JSON.stringify(error)}`);
+              warns(`Error during deletion of state '${cfgItem}' : ${JSON.stringify(error)}`);
             } else {
-              // console.log(`configOptions key state '${cfgItem}' is deleted with result : ${JSON.stringify(result)}`);
               createState(id, currentValue, {name: cfgItem, type: stateType, read: true, write: true});
             }
           });
         createState(id, currentValue, {name: cfgItem, type: stateType, read: true, write: true});
-        // console.log(`State ${id} is created for option ${cfgItem} = ${JSON.stringify(currentValue)}`);
       }
     }
   }
@@ -787,7 +777,6 @@ class ConfigOptions {
           backupData.globalConfig[cfgItem] !== undefined &&
           backupData.globalConfig[cfgItem] !== null
         ) {
-          // logs(`setOption(${cfgItem}) = ${JSON.stringify(backupData.globalConfig[cfgItem])}`, _l)
           if (this.globalConfig[cfgItem] !== backupData.globalConfig[cfgItem])
             this.setOption(cfgItem, null, backupData.globalConfig[cfgItem]);
         }
@@ -828,7 +817,6 @@ class ConfigOptions {
               userConfigData[cfgItem] !== undefined &&
               userConfigData[cfgItem] !== null
             ) {
-              // logs(`setOption(${cfgItem}, ${JSON.stringify({userId})}) = ${JSON.stringify(userConfigData[cfgItem])}`, _l)
               if (this.globalConfig[cfgItem] !== userConfigData[cfgItem])
                 this.setOption(cfgItem, {userId}, userConfigData[cfgItem]);
             }
@@ -846,7 +834,6 @@ class ConfigOptions {
    * @returns {object[]}
    */
   menuGenerateForArray(user, menuItemToProcess) {
-    // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, _l);
     const {item: cfgItem, scope: optionScope} = menuItemToProcess.options,
       currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
@@ -902,7 +889,6 @@ class ConfigOptions {
         }),
       );
     }
-    // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
     return subMenu;
   }
 
@@ -913,7 +899,6 @@ class ConfigOptions {
    * @returns {object[]} An array of objects (menu items).
    */
   menuGenerate(user, menuItemToProcess) {
-    logs(`user = ${user}, menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon,
       currentAccessLevel = menuItemToProcess.accessLevel,
@@ -1244,7 +1229,6 @@ class ConfigOptions {
    */
   setScheduler() {
     if (this.menuSchedule) {
-      logs('delete current schedule = ' + JSON.stringify(''));
       clearSchedule(this.menuSchedule);
       this.menuSchedule = undefined;
     }
@@ -1257,7 +1241,10 @@ class ConfigOptions {
           ? '/' + Math.trunc(this.globalConfig.cfgMenuRefreshInterval / 60)
           : '') +
         ' * * * *';
-      logs('scheduleString = ' + JSON.stringify(scheduleString));
+      logs(`scheduleString = ${scheduleString}`);
+      this.menuSchedule = schedule(scheduleString, () => {
+        this.functionScheduleMenuUpdate;
+      });
     }
   }
 }
@@ -1660,7 +1647,6 @@ class MenuRoles {
               ? `^${regexpSuffix}$`
               : '^$',
           );
-          // logs(`mask = ${currentRule.mask}, accessLevel = ${currentRule.accessLevel}. regexp = ${JSON.stringify(currentRule.regexpDirect)}`)
         });
         this.compiledData[itemId] = compiledData;
       }
@@ -1887,9 +1873,6 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   #menuRuleSetAccessLevel(user, menuItemToProcess) {
-    logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
-    // logs(`existsCachedState(user, cachedCurrentNewRule) = ${existsCachedState(user, cachedCurrentNewRule)}`);
-    // logs(`getCachedState(user, cachedCurrentNewRule) = ${JSON.stringify(getCachedState(user, cachedCurrentNewRule))}`);
     const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       {dataType, roleId, ruleIndex} = menuItemToProcess.options,
       isForNewRule = Number(ruleIndex) == -1,
@@ -1907,7 +1890,6 @@ class MenuRoles {
         : currentRoleRules[ruleIndex];
     let subMenu = [],
       subMenuIndex = 0;
-    logs(`currentRule = ${JSON.stringify(currentRule)}`);
     MenuRoles.accessLevels
       .filter((accessLevel) => !MenuRoles.accessLevelsHidden.includes(accessLevel))
       .forEach((accessLevel, levelIndex) => {
@@ -2095,7 +2077,6 @@ class MenuRoles {
         options: {jumpToArray},
         submenu: [],
       });
-      // logs(`resultItem = ${JSON.stringify(resultItem)}`)
       return resultItem;
     }
 
@@ -2121,7 +2102,6 @@ class MenuRoles {
         return this.#menuRuleSetAccessLevel(user, menuItemToProcess);
       },
     });
-    logs(`subMenu 2 = ${JSON.stringify(subMenu, null, 2)}`);
     return subMenu;
   }
 
@@ -2132,7 +2112,6 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   #menuGenerateRoleRules(user, menuItemToProcess) {
-    logs(`#ruleRolesMenuGenerate:\n user = ${user}, menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
       {roleId} = menuItemToProcess.options,
@@ -2237,16 +2216,13 @@ class MenuRoles {
    * @returns {string} A formatted string.
    */
   #menuItemDetailsRole(user, menuItemToProcess) {
-    // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const {roleId} = menuItemToProcess.options,
       currentRoles = objectDeepClone(this.data);
-    // logs(`existsCachedState(user, cachedCurrentRoleRules) = ${existsCachedState(user, cachedCurrentRoleRules)}`);
     if (cachedValueExists(user, cachedRolesRoleUnderEdit)) {
       const newRole = cachedValueGet(user, cachedRolesRoleUnderEdit);
       if (!currentRoles.hasOwnProperty(newRole.roleId)) {
         currentRoles[newRole.roleId] = newRole.rules;
       }
-      // logs(`currentRoles = ${JSON.stringify(currentRoles)}`);
     }
     const currentRoleRules = currentRoles[roleId],
       currentRoleDetailsList = [
@@ -2275,7 +2251,6 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   menuGenerate(user, menuItemToProcess) {
-    logs(`menuGenerate:\n user = ${user}, menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon,
       currentAccessLevel = menuItemToProcess.accessLevel;
@@ -2284,13 +2259,11 @@ class MenuRoles {
     cachedAddToDelCachedOnBack(user, currentIndex, cachedRolesRoleUnderEdit);
     cachedAddToDelCachedOnBack(user, currentIndex, cachedRolesNewRule);
     const currentRoles = objectDeepClone(this.getRoles());
-    // logs(`existsCachedState(user, cachedMenuRolesCurrentNewRole) = ${existsCachedState(user, cachedMenuRolesCurrentNewRole)}`);
     if (cachedValueExists(user, cachedRolesRoleUnderEdit)) {
       const newRole = cachedValueGet(user, cachedRolesRoleUnderEdit);
       if (!currentRoles.hasOwnProperty(newRole.roleId)) {
         currentRoles[newRole.roleId] = newRole.rules;
       }
-      // logs(`currentRoles = ${JSON.stringify(currentRoles)}`);
     }
     Object.keys(currentRoles).forEach((roleId) => {
       subMenuIndex = subMenu.push({
@@ -2339,7 +2312,6 @@ class MenuRoles {
                 submenu: [],
               });
             } else {
-              logs(`newRoleId = ${newRoleId}`);
               const rootMenu = menuMenuItemGenerateRootMenu(null);
               subMenu.push({
                 index: `${currentIndex}.${subMenuIndex}`,
@@ -2511,7 +2483,6 @@ class MenuUsers extends MenuRoles {
     if (itemId) {
       itemId = this.existsId(itemId);
       if (itemId && this.data[itemId]['roles'].length) {
-        // logs(`getRoles ${userId} roles = ${JSON.stringify(this.data[userId]['roles'])}, ${typeof(this.getRelatedDataFunction)}`)
         if (typeof this.getRelatedDataFunction === 'function') {
           this.data[itemId]['roles'].forEach((roleId) => {
             const role = this.getRelatedDataFunction ? this.getRelatedDataFunction(roleId, compiled) : undefined;
@@ -2522,7 +2493,6 @@ class MenuUsers extends MenuRoles {
     } else {
       roles = {...(this.getRelatedDataFunction ? this.getRelatedDataFunction(undefined, compiled) : {})};
     }
-    // logs(`getRoles ${userId} ${JSON.stringify(roles)}`)
     return this.sortRoles(roles);
   }
 
@@ -2565,7 +2535,6 @@ class MenuUsers extends MenuRoles {
     itemId = this.existsId(itemId);
     if (itemId) {
       rules = Object.values(this.getRoles(itemId, compiled));
-      // logs(`getRules userId = ${userId} compiled = ${compiled} rules = ${JSON.stringify(rules)}`);
       if (rules.length) {
         if (rules.length === 1) {
           rules = rules[0];
@@ -2616,7 +2585,6 @@ class MenuUsers extends MenuRoles {
    * @returns {object[]}  Newly generated submenu.
    */
   menuGenerate(user, menuItemToProcess) {
-    logs(`user = ${user}, menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
     const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon;
     let subMenu = [],
@@ -2627,7 +2595,6 @@ class MenuUsers extends MenuRoles {
         currentFullName = `${currentUser.firstName ? currentUser.firstName : ''}${
           currentUser.lastName ? ` ${currentUser.lastName}` : ''
         }`;
-      logs(`currentUser = ${JSON.stringify(currentUser)}`);
       let currentUserDetailsList = [];
       this.itemDetailsList.forEach((item) => {
         if (currentUser.hasOwnProperty(item)) {
@@ -2746,7 +2713,7 @@ function translationsValidateLanguageId(languageId) {
       langId = canonicalLang[0];
     }
   } catch (error) {
-    console.warn(`Error of language id  '${languageId}' check '${error}'`);
+    warns(`Error of language id  '${languageId}' check '${error}'`);
   }
   return langId;
 }
@@ -2767,9 +2734,6 @@ function translationsSave(user) {
   translationIds.forEach((languageId) => {
     const translationId = `${prefixTranslationStates}.${languageId}`,
       translationString = JSON.stringify(objectKeysSort(translationsList[languageId]));
-    logs(
-      `translationId = ${translationId} namesTranslation = ${JSON.stringify(translationsList[languageId], null, 2)}`,
-    );
     if (existsState(translationId)) {
       setState(translationId, translationString, true);
     } else {
@@ -2787,14 +2751,12 @@ function translationsSave(user) {
     $(`state[id=${prefixTranslationStates}.*]`).each((stateId) => {
       const languageId = '' + stateId.split('.').pop();
       if (!translationsList.hasOwnProperty(languageId)) {
-        console.log(`Found obsolete translation language = ${JSON.stringify(languageId)}`);
+        logs(`Found obsolete translation language = ${JSON.stringify(languageId)}`);
         deleteState(stateId, (error, result) => {
           if (error) {
-            console.warn(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
+            warns(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
           } else {
-            console.log(
-              `Obsolete translation language state '${stateId}' is deleted with result : ${JSON.stringify(result)}`,
-            );
+            logs(`Obsolete translation language state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
           }
         });
       }
@@ -2810,17 +2772,14 @@ function translationsLoad() {
   $(`state[id=${prefixTranslationStates}.*]`).each((translationId) => {
     const languageId = translationId.replace(`${prefixTranslationStates}.`, ''),
       canonicalLang = translationsValidateLanguageId(languageId);
-    // logs(`languageId = ${languageId}, langId = ${langId}`);
     if (canonicalLang) {
       try {
-        // logs(`langId = ${langId}, translationId = ${translationId}`);
         translationsList[canonicalLang] = JSON.parse(getState(translationId).val);
       } catch (error) {
-        console.warn(`Can't process a translation for language ${languageId}!`);
+        warns(`Can't process a translation for language ${languageId}!`);
       }
-      // logs(`translationsList[${langId}] = ${JSON.stringify(translationsList[langId])}`);
     } else {
-      console.warn(`Unknown language id '${languageId}', can't process it!`);
+      warns(`Unknown language id '${languageId}', can't process it!`);
     }
   });
 }
@@ -2850,7 +2809,7 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
           }
         })
         .catch((error) => {
-          console.warn(`Can't download locale '${languageId}' from the repo! Error is '${error}'.`);
+          warns(`Can't download locale '${languageId}' from the repo! Error is '${error}'.`);
         })
         .then(() => {
           if (languageIds.length) {
@@ -2880,7 +2839,6 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
             .replace(prefixExtensionId, '')
             .toLowerCase()}/locales/`
         : scriptCoreLocalesRemoteFolder;
-    console.log(remoteFolder);
     github
       .get(remoteFolder)
       .then((response) => {
@@ -2888,7 +2846,6 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
           let localesLinks = {},
             parsedLocale;
           while ((parsedLocale = translationsLocalesExtractRegExp.exec(response.data))) {
-            console.log(`parsed = ${parsedLocale}`);
             if (parsedLocale && parsedLocale.length && parsedLocale[1] && parsedLocale[2]) {
               localesLinks[parsedLocale[2]] = parsedLocale[1].replace('/blob/', '/raw/');
             }
@@ -2916,7 +2873,7 @@ async function translationsInitialLoadLocalesFromRepository() {
   return new Promise((resolve, reject) => {
     translationsLoadLocalesFromRepository(doAll, translationsCoreId, (locales, error) => {
       if (error) {
-        console.warn(`Can't make an initial load of locales from repo! Error is '${error}'.`);
+        warns(`Can't make an initial load of locales from repo! Error is '${error}'.`);
         reject(error);
       } else {
         Object.keys(locales).forEach((languageId) => {
@@ -2989,7 +2946,6 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
    * @returns {object} The updated translation part.
    */
   function translationsProcessUpdate(translationCurrentPart, translationInputPart, translationUpdateMode) {
-    console.log(`translationUpdateMode = ${translationUpdateMode}`);
     switch (translationUpdateMode) {
       case 'replace': {
         translationCurrentPart = translationInputPart;
@@ -3127,12 +3083,10 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
  * @returns {object} The current translation object.
  */
 function translationsGetCurrentForUser(user) {
-  // logs(`translationsList = ${JSON.stringify(translationsList)}`);
   let languageId = configOptions.getOption(cfgMenuLanguage, user),
     currentTranslation;
-  // logs(`languageId = ${languageId}`);
   if (!translationsList[languageId]) {
-    console.warn(`Language ${languageId}, configured for current user is not exists!`);
+    warns(`Language ${languageId}, configured for current user is not exists!`);
     languageId = configOptions.getOption(cfgMenuLanguage);
   }
   if (translationsList[languageId]) {
@@ -3177,16 +3131,13 @@ function translationsPointOnItemOwner(user, translationId, pointOnItemItself = f
  * @returns {string} The translation value for the provided Id.
  */
 function translationsItemGet(user, translationId) {
-  // logs(`translationId = ${translationId}`, _l)
   const currentTranslation = translationsPointOnItemOwner(user, translationId),
     translationIdArray = translationId ? translationId.split('.') : [],
     idPrefix = translationIdArray.length ? translationIdArray[0] : '',
     shortId = translationIdArray.pop();
-  // logs(`\n\n translationId = ${translationId}, shortId = ${JSON.stringify(shortId)}, currentTranslation = ${JSON.stringify(currentTranslation)}`)
-  // logs(`currentTranslation[${shortId}] = ${currentTranslation[shortId]}`);
   if (translationId && shortId && currentTranslation) {
     if (!currentTranslation.hasOwnProperty(shortId)) {
-      console.warn(
+      warns(
         `translationId '${translationId}' is not found. getFromTranslation is called from ${
           arguments.callee && arguments.callee.caller ? arguments.callee.caller.name : ''
         }`,
@@ -3336,7 +3287,6 @@ function translationsItemDelete(user, translationId) {
  * @returns {string|undefined} The translation Id string.
  */
 function translationsGetObjectId(object, functionId, destinationId, isCommon = false) {
-  logs(`object = ${JSON.stringify(object)}`);
   let translationId;
   const functionsList = enumerationsList[dataTypeFunction].list,
     destinationsList = enumerationsList[dataTypeDestination].list;
@@ -3377,10 +3327,8 @@ function translationsGetObjectId(object, functionId, destinationId, isCommon = f
  * @returns {string} The result name of object.
  */
 function translationsGetObjectName(user, object, functionId, destinationId, isCommon = false) {
-  logs(`object = ${JSON.stringify(object)}`);
   let result = '';
   const translationId = translationsGetObjectId(object, functionId, destinationId, isCommon);
-  // logs(`object = ${object}, translationId = ${translationId}`, _l);
   if (translationId) {
     const objectName = translationsItemGet(user, translationId);
     if (objectName !== translationId || (typeof object === 'string' && !existsObject(object))) {
@@ -3391,7 +3339,6 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
     if (typeof object === 'string' && existsObject(object)) {
       object = getObject(object);
     }
-    logs(`object 2 = ${JSON.stringify(object)}`);
     if (object && object.hasOwnProperty('common') && object.common.hasOwnProperty('name')) {
       const objectCommonName = object.common.name;
       if (typeof objectCommonName === 'string') {
@@ -3435,7 +3382,6 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
         currentEnumerationList = enumerationsList[enumerationType].list,
         currentEnum = currentEnumerationList[enumId],
         enumPrefix = `${currentEnumerations.id}.${currentEnum.enum}.${enumId.replace('.', '_')}`;
-      // logs(`currentEnum.isExternal = ${currentEnum.isExternal}, ${currentEnum.nameTranslationId}, currentEnum.translationsKeys ${currentEnum.translationsKeys}`, _l)
       if (
         currentEnum.isExternal &&
         currentEnum.nameTranslationId &&
@@ -3542,8 +3488,6 @@ function translationsCheckAndCacheUploadedFile(
           inputTranslation = typeOf(inputTranslation, 'string') ? JSON.parse(inputTranslation) : inputTranslation;
           const currentLanguage = translationsValidateLanguageId(inputTranslation.language);
           translationFileName = translationFileName ? translationFileName : `locale_${currentLanguage}.json`;
-          // logs(`inputTranslation = ${JSON.stringify(inputTranslation, null, 2)}`, _l);
-          // logs(`${(inputTranslation.type === translationType)}, ${(inputTranslation.version === translationVersion)}, ${(currentLanguage)}, ${inputTranslation.translation}`, _l)
           if (
             inputTranslation.type === translationsType &&
             inputTranslation.version === translationsVersion &&
@@ -3552,26 +3496,23 @@ function translationsCheckAndCacheUploadedFile(
           ) {
             cachedValueSet(user, cachedTranslationsToUpload, inputTranslation);
             translationFileIsOk = true;
-            console.warn(
+            warns(
               `Translation '${translationFileName}' for language '${inputTranslation.language}' is uploaded and can be processed!`,
             );
           } else {
-            console.warn(
-              `Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`,
-            );
+            warns(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
           }
         } catch (err) {
-          console.warn(`JSON parse error: ${JSON.stringify(err)} for translation '${translationFileName}'!`);
+          warns(`JSON parse error: ${JSON.stringify(err)} for translation '${translationFileName}'!`);
         }
       } else {
-        console.warn(`Translation '${translationFileName}' is uploaded, but has wrong size and can't be processed!`);
+        warns(`Translation '${translationFileName}' is uploaded, but has wrong size and can't be processed!`);
       }
       nodeFS.rm(translationFileFullPath, {force: true}, (err) => {
-        if (err)
-          console.warn(`Can't delete translation file '${translationFileFullPath}'! Error: '${JSON.stringify(err)}'.`);
+        if (err) warns(`Can't delete translation file '${translationFileFullPath}'! Error: '${JSON.stringify(err)}'.`);
       });
     } catch (err) {
-      console.warn(`Can't read translation file '${translationFileFullPath}'!`);
+      warns(`Can't read translation file '${translationFileFullPath}'!`);
     }
   }
   return translationFileIsOk;
@@ -3705,7 +3646,6 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
     .filter((key) => key.indexOf(translationType) === 0)
     .sort()
     .forEach((translationKey) => {
-      logs(`Translation key is ${translationKey}`);
       if (!translationKey.includes('.') && translationKey.indexOf(translationType) === 0) {
         let subSubMenuIndex = 0,
           subMenuItem = {
@@ -3782,8 +3722,6 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
         : [],
     currentDeviceListKeys =
       currentDataType === dataTypeDeviceAttributes ? deviceAttributesListKeys : deviceButtonsListKeys;
-
-  // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}, currentTranslationPrefix = ${translationPrefix}`, _l);
   let subMenu = [];
   Object.keys(currentTranslation)
     .filter((translationKey) => typeof currentTranslation[translationKey] === 'string')
@@ -3798,7 +3736,6 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
         !currentFunctionId || currentDeviceListKeys.find((attrId) => translationKey.indexOf(attrId) === 0),
     )
     .forEach((translationKey, translationKeyIndex) => {
-      // logs(`key = ${translationKey}, translationType = ${translationType}`, _l);
       const currentTranslationId = `${translationType}.${translationKey}`;
       let currentValue = currentTranslation[translationKey];
       if (currentValue === currentTranslationId) {
@@ -3868,7 +3805,6 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
     translationType = `${idFunctions}.${currentFunctionEnum}.${currentFunction.replace('.', '_')}`,
     currentTranslation = translationsPointOnItemOwner(user, `${translationType}.destinations`, true),
     destinationItems = enumerationsList[dataTypeDestination].list;
-  // logs(`translationType = ${translationType}, currentTranslation = ${JSON.stringify(currentTranslation)}`, _l);
   let subMenu = [];
   Object.keys(currentTranslation)
     .filter(
@@ -3885,7 +3821,6 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
         },
         currentDevices = currentTranslation[translationKey];
       Object.keys(currentDevices).forEach((translationDeviceKey, translationDeviceKeyIndex) => {
-        // logs(`key = ${translationDeviceKey}, translationType = ${translationType}`, _l);
         const currentTranslationId = `${translationType}.destinations.${translationKey}.${translationDeviceKey}`;
         let currentValue = currentDevices[translationDeviceKey],
           subSubMenuIndex = 0;
@@ -3948,7 +3883,6 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
     currentTranslationKeys = enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId)
       ? enumerationsList[dataTypeFunction].list[extensionId].translationsKeys
       : [];
-  // logs(`currentTranslation = ${JSON.stringify(currentTranslation)}, currentTranslationKeys = ${JSON.stringify(currentTranslationKeys)}`, _l);
   let subMenu = [];
   if (currentTranslationKeys)
     currentTranslationKeys.forEach((translationKey, translationKeyIndex) => {
@@ -3978,7 +3912,6 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
       }
       subMenu.push(subMenuItem);
     });
-  // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
   return subMenu;
 }
 
@@ -4092,7 +4025,6 @@ const cachedValuesMap = new Map();
  */
 function cachedGetValueId(user, valueId) {
   if (typeof user === 'string' && user === cachedCommonId) user = {chatId: user};
-  // logs(`user = ${JSON.stringify(user)}`);
   return user && user.chatId ? `${prefixCacheStates}.${user.chatId}.${valueId}` : '';
 }
 
@@ -4104,8 +4036,6 @@ function cachedGetValueId(user, valueId) {
  */
 function cachedValueExists(user, valueId) {
   const id = cachedGetValueId(user, valueId);
-  // logs(`statesCache.hasOwnProperty(${id}) = ${id && cachedStates.hasOwnProperty(id)}`);
-  logs(`statesCache.has(${id}) = ${id && cachedValuesMap.has(id)}`);
   if (id) {
     if (valueId.indexOf(prefixExternalStates) === 0) valueId = prefixExternalStates;
     // return (cachedStates.hasOwnProperty(id) || (cachedStatesCommonAttr.hasOwnProperty(state) && existsState(id)));
@@ -4123,12 +4053,9 @@ function cachedValueExists(user, valueId) {
  * @returns {any|[any, number]}
  */
 function cachedValueGet(user, valueId, getLastChange = false) {
-  logs('user = ' + JSON.stringify(user));
-  logs('state = ' + JSON.stringify(valueId));
   const id = cachedGetValueId(user, valueId);
   let result, stateLastChange;
   if (id) {
-    logs(`statesCache.has(${id}) = ${cachedValuesMap.has(id)}`);
     if (valueId.indexOf(prefixExternalStates) === 0) valueId = prefixExternalStates;
     if ((!cachedValuesMap.has(id) || getLastChange) && cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
       if (existsState(id)) {
@@ -4140,16 +4067,14 @@ function cachedValueGet(user, valueId, getLastChange = false) {
             try {
               cachedVal = JSON.parse(cachedVal, JSONReviverWithMap);
             } catch (err) {
-              logs(`Parse error - ${JSON.stringify(err)}`);
+              warns(`Parse error - ${JSON.stringify(err)}`);
             }
           }
           cachedValuesMap.set(id, cachedVal);
-          logs(`Non cached = ${JSON.stringify(cachedVal)} type of ${typeOf(cachedVal)}`);
         }
       }
     }
     if (cachedValuesMap.has(id)) {
-      logs(`Cached = ${JSON.stringify(cachedValuesMap.get(id))} type of ${typeOf(cachedValuesMap.get(id))}`);
       result = objectDeepClone(cachedValuesMap.get(id));
     }
   }
@@ -4182,19 +4107,14 @@ function cachedGetValueAndCheckItIfOld(user, valueId, cachedValueMaxAge) {
  * @param {any} value - The value to set.
  */
 function cachedValueSet(user, valueId, value) {
-  logs('user = ' + JSON.stringify(user));
-  logs('state = ' + JSON.stringify(valueId));
-  logs('value = ' + JSON.stringify(value));
   const id = cachedGetValueId(user, valueId);
   if (id) {
     const currentValue = cachedValuesMap.has(id) ? cachedValuesMap.get(id) : null;
-    logs(`currentValue = ${currentValue}`);
     if (
       currentValue === null ||
       JSON.stringify(currentValue, JSONReplacerWithMap) !== JSON.stringify(value, JSONReplacerWithMap)
     ) {
       cachedValuesMap.set(id, value);
-      logs(`statesCache.get(${id}) = ${JSON.stringify(cachedValuesMap.get(id))}`);
       const common = {};
       if (valueId.indexOf(prefixExternalStates) === 0) {
         common.name = `${cachedValuesStatesCommonAttributes[prefixExternalStates].name} ${valueId}`;
@@ -4211,7 +4131,6 @@ function cachedValueSet(user, valueId, value) {
         if (existsState(id)) {
           setState(id, value, true);
         } else {
-          logs(`id = ${id}, value = ${value},  attr = ${cachedValuesStatesCommonAttributes[valueId]}`);
           createState(id, value, {...cachedValuesStatesCommonAttributes[valueId], ...common});
         }
       }
@@ -4226,8 +4145,6 @@ function cachedValueSet(user, valueId, value) {
  * @param {string} valueId - The Id of cached value.
  */
 function cachedValueDelete(user, valueId) {
-  logs('user = ' + JSON.stringify(user));
-  logs('state = ' + JSON.stringify(valueId));
   const id = cachedGetValueId(user, valueId);
   if (id) {
     if (existsState(id)) {
@@ -4248,10 +4165,7 @@ function cachedValueDelete(user, valueId) {
  */
 function cachedActionOnGetCachedState(data, callback) {
   const {user, valueId} = data;
-  logs(`user= ${user}`);
-  logs(`valueId= ${JSON.stringify(valueId)}`);
   const value = cachedValueGet(user, `${prefixExternalStates}${valueId}`);
-  logs(`value= ${JSON.stringify(value)}`);
   if (value === undefined) {
     callback(null);
   } else {
@@ -4268,9 +4182,6 @@ function cachedActionOnGetCachedState(data, callback) {
  */
 function cachedActionOnSetCachedState(data, callback) {
   const {user, valueId, value} = data;
-  logs(`user= ${user}`);
-  logs(`valueId= ${JSON.stringify(valueId)}`);
-  logs(`value= ${JSON.stringify(value)}`);
   cachedValueSet(user, `${prefixExternalStates}${valueId}`, value);
   callback(true);
 }
@@ -4369,16 +4280,14 @@ function sentImagesDelete(user) {
    */
   function sentImagesDeleteCallBack(result, user, telegramObject, sentImages) {
     if (!result) {
-      console.warn(
+      warns(
         `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
           user,
         )})!\nResult = ${JSON.stringify(result)}.`,
       );
     }
-    // logs(`sentImages = ${sentImages}`);
     if (sentImages.length) {
       telegramObject = telegramMessageClearCurrent(user, false, true, sentImages.shift());
-      // logs(`telegramObject = ${JSON.stringify(telegramObject)}`);
       if (telegramObject)
         sendTo(telegramAdapter, telegramObject, (result) => {
           sentImagesDeleteCallBack(result, user, telegramObject, sentImages);
@@ -4388,9 +4297,7 @@ function sentImagesDelete(user) {
 
   let sentImages = sentImagesGet(user);
   if (sentImages.length) {
-    // logs(`sentImages = ${sentImages}`);
     const telegramObject = telegramMessageClearCurrent(user, false, true, sentImages.shift());
-    // logs(`telegramObject = ${JSON.stringify(telegramObject)}`);
     if (telegramObject) {
       sendTo(telegramAdapter, telegramObject, (result) => {
         sentImagesDeleteCallBack(result, user, telegramObject, sentImages);
@@ -4556,7 +4463,6 @@ function enumerationsCompareOrderOfItems(a, b, enumerationType, enumerationList)
  * @param {string} enumerationType - The string defines the enumerationItem type.
  */
 function enumerationsLoad(enumerationType) {
-  logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`);
   enumerationsList[enumerationType].list = {};
   if (existsState(enumerationsList[enumerationType].state)) {
     const parsedObject = JSON.parse(getState(enumerationsList[enumerationType].state).val);
@@ -4567,7 +4473,6 @@ function enumerationsLoad(enumerationType) {
       enumerationsList[enumerationType].enums = parsedObject.enums;
     }
   }
-  // logs(`  enumerationItems[${enumerationType}].list = ${JSON.stringify(enumerationsList[enumerationType].list, null, 2)}`, _l);
 }
 
 /**
@@ -4576,16 +4481,13 @@ function enumerationsLoad(enumerationType) {
  * @param {string} enumerationType - The string defines the enumerationItem type.
  */
 function enumerationsSave(enumerationType) {
-  // logs(`  enumerationItems[${enumerationType}] = ${JSON.stringify(enumerationsList[enumerationType])}`, _l);
   const listToSave = JSON.stringify({
     enums: enumerationsList[enumerationType].enums,
     list: enumerationsList[enumerationType].list,
   });
   if (existsState(enumerationsList[enumerationType].state)) {
-    logs(`  save ${enumerationsList[enumerationType].state}`);
     setState(enumerationsList[enumerationType].state, listToSave, true);
   } else {
-    logs(`  create ${enumerationsList[enumerationType].state}`);
     // @ts-ignore
     createState(
       enumerationsList[enumerationType].state,
@@ -4604,7 +4506,6 @@ function enumerationsSave(enumerationType) {
  * @returns {number} - The number of items in the current `list`.
  */
 function enumerationsReorderItems(currentEnumerations) {
-  logs(`  enumerationItems= ${JSON.stringify(currentEnumerations)}`);
   let countItems = 0;
   Object.keys(currentEnumerations)
     .sort((a, b) => currentEnumerations[a].order - currentEnumerations[b].order)
@@ -4624,11 +4525,9 @@ function enumerationsReorderItems(currentEnumerations) {
  * @param {boolean=} withExtensions - The selector to init Extensions.
  */
 function enumerationsInit(enumerationType, withExtensions = false) {
-  logs(`  enumerationItems= ${JSON.stringify(enumerationsList[enumerationType])}`);
   let currentEnumerationList = enumerationsList[enumerationType].list;
   let countItems = enumerationsReorderItems(currentEnumerationList);
   Object.keys(currentEnumerationList).forEach((currentItem) => {
-    // logs(`currentItem = ${currentItem}, currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType ${currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType}`, _l)
     currentEnumerationList[currentItem] = objectAssignToTemplateLevelOne(
       enumerationsDefaultObjects[currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType],
       currentEnumerationList[currentItem],
@@ -4639,7 +4538,6 @@ function enumerationsInit(enumerationType, withExtensions = false) {
   if (enumerationType === dataTypeFunction && withExtensions) extensionsInit();
   Object.keys(enumerationsList[enumerationType].enums).forEach((enumType) => {
     for (const currentEnum of getEnums(enumType)) {
-      // logs(`enumerationType = ${enumerationType}, enumType = ${enumType},  currentEnum = ${JSON.stringify(currentEnum, null, 2)}}`, _l);
       const currentItem = currentEnum.id.replace(`${prefixEnums}.${enumType}.`, '');
       const currentItemSections = currentItem.split('.'),
         currentItemSectionsCount = currentItemSections.length,
@@ -4649,7 +4547,6 @@ function enumerationsInit(enumerationType, withExtensions = false) {
           currentItemSectionsCount === 1 ||
           (currentItemSectionsCount === 2 && getEnums(compositeHolderEnum).length > 0);
       if (isCurrentItemAcceptable) {
-        // logs(`currentItem = ${currentItem}, \n has = ${currentEnumerationList.hasOwnProperty(currentItem)}, currentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`, _l);
         if (currentEnumerationList.hasOwnProperty(currentItem) && currentEnumerationList[currentItem] !== undefined) {
           currentEnumerationList[currentItem].isAvailable = true;
           if (holderItemId) currentEnumerationList[currentItem].holder = holderItemId;
@@ -4681,13 +4578,11 @@ function enumerationsInit(enumerationType, withExtensions = false) {
             enum: enumType,
             icon: enumerationsList[enumerationType].enums[enumType].icon,
           };
-          // logs(`\ncurrentEnumeration[${currentItem}] = ${JSON.stringify(currentEnumerationList[currentItem])}`);
           countItems++;
         }
       }
     }
   });
-  // logs(`  enumerationItems[${enumerationType}].list = ${JSON.stringify(enumerationsList[enumerationType].list, null, 2)}`, _l);
 }
 
 /**
@@ -4771,7 +4666,6 @@ function enumerationsRereadItemName(user, enumerationType, enumerationItemId) {
  * @returns {object[]}  Newly generated submenu.
  */
 function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   let subMenuIndex = 0,
     subMenu = [];
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
@@ -4823,7 +4717,6 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   let subMenuIndex = 0,
     subMenu = [];
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
@@ -4876,7 +4769,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       );
     }
   }
-  // logs(` = ${JSON.stringify(currentEnumerationItem)}`, _l);
   let enumerationItemAttrs = Object.keys(currentEnumerationItem);
   switch (enumerationType) {
     case dataTypeFunction:
@@ -4911,7 +4803,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
     default:
       break;
   }
-  // logs(` = ${JSON.stringify(enumerationItemAttrs)}`, _l);
   let devicesMenuItem, devicesMenuIndex;
   for (let enumerationItemAttr of enumerationItemAttrs) {
     switch (enumerationItemAttr) {
@@ -5081,7 +4972,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       }
 
       case 'translationsKeys': {
-        // logs(`currentItem = ${currentItem}, isCurrentAccessLevelAllowModify = ${isCurrentAccessLevelAllowModify} `, _l);
         if (isCurrentAccessLevelAllowModify) {
           subMenuIndex = subMenu.push({
             index: `${currentIndex}.${subMenuIndex}`,
@@ -5320,7 +5210,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           const currentTranslationShortId = currentId.split('.').join('_'),
             currentTranslationId = `${translationType}.${currentTranslationShortId}`;
           let currentValue = currentTranslation[currentTranslationShortId];
-          // logs(`translationType = ${translationType}, currentTranslationId = ${currentTranslationId}, currentTranslationShortId = ${currentTranslationShortId}, currentValue = ${currentValue}`);
           if (currentValue === null || currentValue === undefined || currentId === currentTranslationId) {
             currentValue = `${currentTranslationId} ${iconItemNotFound}`;
           } else if (currentValue.indexOf(translationsCommonFunctionsAttributesPrefix) === 0) {
@@ -5398,7 +5287,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         }),
       );
   }
-  // logs(`subMenu = ${JSON.stringify(subMenu)}`, _l);
   return subMenu;
 }
 
@@ -5571,7 +5459,6 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
     enumerationItemId,
     enumerationsNamesMain,
   );
-  // logs(`enumerationType = ${enumerationType}, enumerationItemId = ${enumerationItemId}, currentItemTranslationId = ${currentItemTranslationId}, enumerationItem = ${JSON.stringify(enumerationItem)}`, _l)
   if (enumerationItem === undefined) {
     const enumerationList = enumerationsGetList(enumerationType);
     enumerationItem = enumerationList ? enumerationList[enumerationItemId] : enumerationItem;
@@ -5581,7 +5468,6 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
     enumerationItem.name !== undefined &&
     translationsItemGet(user, currentItemTranslationId) === currentItemTranslationId
   ) {
-    // logs(`currentItemTranslationId ${currentItemTranslationId}`);
     enumerationsRereadItemName(user, enumerationType, enumerationItemId);
   }
   let result =
@@ -5617,7 +5503,6 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
  * @returns {object[]} - The array of menuItem objects.
  */
 function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     {dataType: enumerationType, dataTypeExtraId: enumerationTypeExtraId} = menuItemToProcess.options,
@@ -5637,14 +5522,12 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
   Object.keys(currentEnumerationsList)
     .sort((a, b) => currentEnumerationsList[a].order - currentEnumerationsList[b].order)
     .forEach((currentItem) => {
-      // logs(`currentItem = ${JSON.stringify(currentItem)}`, _l);
       const currentEnumerationItem = currentEnumerationsList[currentItem],
         currentIcon = currentEnumerationItem.isEnabled
           ? currentEnumerationItem.hasOwnProperty('icon')
             ? currentEnumerationItem.icon
             : ''
           : iconItemDisabled;
-      // logs(`currentItem = ${JSON.stringify(currentItem)}, currentEnumerationItem = ${JSON.stringify(currentEnumerationItem)}`, _l);
       const currentMenuItem = {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${enumerationsItemName(user, enumerationType, currentItem, currentEnumerationItem)}${
@@ -5848,8 +5731,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     statesForGraphs = new Map();
   let subMenuIndex = 0,
     subMenu = [];
-  // logs('menuItemToProcess = ' + JSON.stringify(menuItemToProcess), _l);
-  // logs('mainStateShortId = ' + JSON.stringify(mainStateShortId));
   if (isGraphsEnabled) {
     currentDeviceAttributes.forEach((deviceAttributeId) => {
       const stateIdFull = `${devicePrefix}.${deviceAttributeId}`;
@@ -5918,7 +5799,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               subMenuItem.options = currentOptions;
             } else if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
               states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
-              // logs('states = ' + JSON.stringify(states));
               if (states !== undefined && Object.keys(states).length > 0) {
                 subMenuItem.icon = '';
                 for (const [possibleValue, _possibleName] of Object.entries(states)) {
@@ -5942,7 +5822,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                     })`;
                   }
                 }
-                // logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2));
               }
             } else if (currentStateType === 'number') {
               const step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : 1,
@@ -5982,9 +5861,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 submenu: [],
               });
             }
-            // logs('subMenuItem = ' + JSON.stringify(subMenuItem, null, 2), _l);
             if (subMenuItem.icon !== undefined || subMenuItem.icons) {
-              // logs('subMenuItem.icon = ' + JSON.stringify(subMenuItem.icon), _l);
               if (deviceButtonId !== primaryStateShortId) {
                 subMenuIndex = subMenu.push(subMenuItem);
               } else {
@@ -6062,7 +5939,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       const graphsIntervals = configOptions.getOption(cfgGraphsIntervals, user);
       if (graphsIntervals && typeOf(graphsIntervals, 'array') && graphsIntervals.length) {
         graphsIntervals.forEach(({id: graphsIntervalId, minutes: graphsIntervalMinutes}) => {
-          // logs(`generateTextTranslationId('TimeRange', graphsTimeRangeId) = ${generateTextTranslationId('TimeRange', graphsTimeRangeId)}`);
           subSubSubMenuIndex = subSubMenuItem.submenu.push({
             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}.${subSubSubMenuIndex}`,
             name: `${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}`,
@@ -6102,7 +5978,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     }
     subMenuIndex = subMenu.push(subMenuItem);
   }
-  // logs('subMenu New = ' + JSON.stringify(subMenu, null, 1), _l);
   return subMenu;
 }
 
@@ -6112,7 +5987,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
  * @returns
  */
 function enumerationsExtractPossibleValueStates(inputStates) {
-  logs('inputStates = ' + JSON.stringify(inputStates));
   let states = {};
   if (typeof inputStates === 'string') {
     const statesArray =
@@ -6121,12 +5995,10 @@ function enumerationsExtractPossibleValueStates(inputStates) {
         : inputStates.indexOf(',') > 0
         ? inputStates.split(',')
         : [];
-    logs('statesArray = ' + JSON.stringify(statesArray));
     for (let iState of statesArray.values()) {
       const [possibleValue, possibleName] = iState.split(':');
       states[possibleValue.trim()] = possibleName.trim();
     }
-    logs('states = ' + JSON.stringify(states));
     return states;
   } else if (Array.isArray(inputStates)) {
     return undefined;
@@ -6143,7 +6015,6 @@ function enumerationsExtractPossibleValueStates(inputStates) {
  * @returns {any} The result of conversion.
  */
 function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueCode) {
-  // logs(`value = ${value}, convertValueCode = ${convertValueCode}`)
   if (convertValueCode && inputValue !== undefined && inputValue !== null) {
     const printDate = 'printDate(value)';
     if (typeOf(convertValueCode, 'string') && convertValueCode.length > 0) {
@@ -6151,7 +6022,7 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
         try {
           inputValue = formatDate(new Date(inputValue), configOptions.getOption(cfgDateTimeTemplate, user));
         } catch (error) {
-          console.warn(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
+          warns(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
         }
       } else {
         const sandbox = {value: inputValue, result: undefined};
@@ -6164,7 +6035,7 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
           }
           inputValue = sandbox.result;
         } catch (error) {
-          console.warn(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
+          warns(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
         }
       }
     }
@@ -6262,8 +6133,6 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         : enumerationsEvaluateValueConversionCode(user, currentStateVal, convertValueCode),
       currentStateValueType = currentStateValue == undefined ? currentObjectType : typeof currentStateValue,
       currentStateValueId = `${stateTranslationIdSuffix}_${currentStateValue}`;
-    logs('currObject = ' + JSON.stringify(currObject));
-    // logs(`${currentFunction.enum}.${functionId}, currState = ${JSON.stringify(currStateVal)}, currStateValType = ${currStateValType}`);
     if (currentStateValueType === 'boolean') {
       const currentIconOn =
           currentAttributeId === currentFunction.state
@@ -6275,7 +6144,6 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
             : configOptions.getOption(cfgDefaultIconOff, user);
       if (currentStateValue !== undefined) {
         valueString = translationsGetObjectName(user, currentStateValueId, functionId);
-        // logs(`valueString = ${valueString}, currStateValueId = ${currStateValueId}`)
         if (valueString === 'Undefined' || valueString.includes(currentStateValueId)) {
           valueString = currentStateValue ? currentIconOn : currentIconOff;
           lengthModifier = valueString.length === 1 ? 1 : 0;
@@ -6317,8 +6185,6 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
  * @returns {string} A formatted string.
  */
 function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess, null, 2)}`);
-  logs(`user = ${JSON.stringify(user)}`);
   let text = '';
   const {
       function: currentFunctionId,
@@ -6359,7 +6225,6 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
       }
     });
     deviceAttributes.forEach((deviceAttribute) => {
-      // logs(`deviceAttribute = ${JSON.stringify(deviceAttribute)}`, _l);
       const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`,
         isPrimaryState = deviceAttributeId === primaryStateId;
       if (isPrimaryState || existsObject(deviceAttributeId)) {
@@ -6423,7 +6288,6 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
     });
     text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}</code>`;
   }
-  // logs(`text = ${text}`, _l)
   return text;
 }
 
@@ -6632,7 +6496,6 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
         if (mainObject.hasOwnProperty('enumIds')) {
           for (const destId of destinationsListKeys) {
             const fullDestId = `${prefixEnums}.${destinationsList[destId].enum}.${destId}`;
-            // logs(`idPrefix = ${idPrefix}, fullDestId = ${fullDestId}`, _l);
             if (mainObject['enumIds'] && mainObject['enumIds'].includes(fullDestId)) {
               $(`state[id=${idPrefix}.*](${currentFunction.enum}=${functionId})`).each((stateId) => {
                 if (existsObject(stateId)) {
@@ -6649,7 +6512,6 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
                         (typeOfDeviceStates === dataTypeDeviceButtons && currentObjectCommon.write)
                       ) {
                         const deviceAttr = stateId.replace(`${idPrefix}.`, '');
-                        // logs(`deviceAttr = ${deviceAttr}`, _l);
                         if (!Object.keys(currentDeviceStatesList).includes(deviceAttr)) {
                           const currentDeviceAttrTranslationId = translationsGetObjectId(
                             deviceAttr.split('.').join('_'),
@@ -6746,8 +6608,6 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
  */
 function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
   const {id, nameTranslationId, icon, extensionRootMenuId, scriptName, translationsKeys} = extensionDetails;
-  // logs(`id= ${id}, full info = ${JSON.stringify(extensionDetails, null, 2)}`, _l);
-  logs(`scriptName= ${JSON.stringify(scriptName)}`);
   const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
   const functionsList = enumerationsList[dataTypeFunction].list;
   if (functionsList.hasOwnProperty(extensionId) && functionsList[extensionId] !== undefined) {
@@ -6862,7 +6722,7 @@ function alertsGet() {
         alertsRules = JSON.parse(alertsState.val, JSONReviverWithMap);
       } catch (err) {
         // cachedStates[id] = cachedVal;
-        console.warn(`Alert parse error - ${JSON.stringify(err)}`);
+        warns(`Alert parse error - ${JSON.stringify(err)}`);
         alertsRules = {};
       }
     }
@@ -6881,9 +6741,6 @@ function alertsStore(alerts) {
     if (existsState(alertsStateFullId)) {
       setState(alertsStateFullId, stringValue, true);
     } else {
-      logs(
-        `id = ${alertsStateFullId}, value = ${stringValue},  attr = ${cachedValuesStatesCommonAttributes[idAlerts]}`,
-      );
       createState(alertsStateFullId, stringValue, cachedValuesStatesCommonAttributes[idAlerts]);
     }
   }
@@ -6895,7 +6752,6 @@ function alertsStore(alerts) {
  * @param {any=} currentValue  - Current state `value`. If not defined - will be read from `state`.
  */
 function alertsStoreStateValue(alertStateId, currentValue) {
-  // logs(`alertStateId = ${alertStateId}, currentValue = ${currentValue}`, _l)
   if (currentValue === undefined) {
     if (existsState(alertStateId)) {
       currentValue = getState(alertStateId).val;
@@ -6947,7 +6803,6 @@ function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresho
     alerts[alertId] = {function: alertFunc, destination: alertDest, chatIds: chatsMap};
     on({id: alertId, change: 'ne'}, alertsActionOnSubscribedState);
   }
-  logs(`alerts = ${JSON.stringify(alerts)}`);
   cachedValueDelete(user, cachedAlertThresholdSet);
   cachedValueDelete(user, cachedAlertsListPrepared);
   alertsStore(alerts);
@@ -6979,23 +6834,19 @@ function alertsGetIcon(user, menuItemToProcess) {
  */
 function alertsInit(checkStates = false) {
   const alerts = alertsGet();
-  // console.log(`alerts = ${JSON.stringify(alerts)}`);
   const statesToSubscribe = Object.keys(alerts),
     currentSubscriptions = getSubscriptions(),
     currentlySubscribedStates = Object.keys(currentSubscriptions)
       .filter((stateId) => currentSubscriptions[stateId].filter((handler) => handler.name === scriptName).length)
       .filter((stateId) => !stateId.includes(telegramAdapter))
       .filter((stateId) => !stateId.includes(prefixPrimary));
-  // logs(`currentlySubscribedStates, length = ${currentlySubscribedStates.length}, list = ${JSON.stringify(currentlySubscribedStates)}`, _l);
   statesToSubscribe.forEach((stateId) => {
     if (!currentlySubscribedStates.includes(stateId)) {
-      // logs(`subscribe on ${stateId}`, _l);
       if (existsState(stateId)) on({id: stateId, change: 'ne'}, alertsActionOnSubscribedState);
     }
   });
   currentlySubscribedStates.forEach((stateId) => {
     if (!statesToSubscribe.includes(stateId)) {
-      // logs(`unsubscribe on ${stateId}`, _l);
       unsubscribe(stateId);
     }
   });
@@ -7024,9 +6875,6 @@ function alertsInit(checkStates = false) {
  * @param {boolean=} isAcknowledged - The alert message acknowledge status.
  */
 function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) {
-  logs(`user = ${JSON.stringify(user)}`);
-  logs(`id = ${JSON.stringify(alertId)}`);
-  logs(`alertMessage = ${JSON.stringify(alertMessage)}`);
   const alertMessages = alertsHistoryClearOld(user);
   alertMessages.push({
     ack: isAcknowledged ? true : false,
@@ -7124,7 +6972,6 @@ function alertsActionOnSubscribedState(object) {
     activeChatGroups = telegramGetGroupChats(true),
     objectId = object.id;
   if (alerts !== undefined && alerts.hasOwnProperty(objectId)) {
-    // logs(`alerts[${obj.id}] = ${JSON.stringify(alerts[obj.id])}`);
     const alertObject = getObjectEnriched(objectId, '*'),
       alertDestinationId = alerts[objectId].destination,
       alertFunctionId = alerts[objectId].function,
@@ -7147,7 +6994,6 @@ function alertsActionOnSubscribedState(object) {
           chatId > 0 ? telegramGenerateUserObjectFromId(chatId) : telegramGenerateUserObjectFromId(undefined, chatId);
         if (chatId > 0 || activeChatGroups.includes(chatId)) {
           let currentState = cachedValueGet(user, cachedCurrentState);
-          logs(`make an menu alert for = ${JSON.stringify(user)} on state ${JSON.stringify(objectId)}`);
           const currentStateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
             oldStateValue = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
             alertStateValue = enumerationsStateValueDetails(user, alertObject, alertFunctionId, object.state)[
@@ -7177,7 +7023,6 @@ function alertsActionOnSubscribedState(object) {
               alertStateName,
               alertStateValue,
             };
-          logs(`alertDestId = ${alertDestinationId}, alertDestName = ${JSON.stringify(alertDestinationName)}`);
           if (
             alertStateType === 'boolean' ||
             (alertObject.common.hasOwnProperty('states') && ['string', 'number'].includes(alertStateType))
@@ -7283,7 +7128,7 @@ function alertsActionOnSubscribedState(object) {
               });
           }
         } else {
-          logs(`Current chatId = ${chatId} is belong to non active chat`);
+          warns(`Current chatId = ${chatId} is belong to non active chat`);
         }
       });
     }
@@ -7546,7 +7391,6 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
       }
     }
   }
-  logs(`newMenu = ${JSON.stringify(subMenu, null, 2)}`);
   return subMenu;
 }
 
@@ -8613,7 +8457,6 @@ let _backupScheduleReference;
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     _currentId = menuItemToProcess.id,
     currentAccessLevel = menuItemToProcess.accessLevel,
@@ -8678,7 +8521,6 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupMenuGenerateRestore(user, menuItemToProcess) {
-  // logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`, _l);
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     {fileName} = menuItemToProcess.options;
   let subMenu = [],
@@ -8709,10 +8551,10 @@ function backupFileDelete(backupFileName) {
   return new Promise((resolve, reject) => {
     delFile('', fileToDelete, (error) => {
       if (error) {
-        console.warn(`Can't delete backup file ${fileToDelete}! Error is '${error}'.`);
+        warns(`Can't delete backup file ${fileToDelete}! Error is '${error}'.`);
         reject(error);
       } else {
-        console.warn(`Backup file ${fileToDelete} was successfully deleted.`);
+        warns(`Backup file ${fileToDelete} was successfully deleted.`);
         resolve(true);
       }
     });
@@ -8729,10 +8571,10 @@ async function backupFileWrite(backupFileName, backupDataJSON, backupMode) {
   return new Promise((resolve, reject) => {
     writeFile('', backupFileName, backupDataJSON, (error) => {
       if (error) {
-        console.warn(`Can't create backup file ${backupFileName}! Error is '${error}'.`);
+        warns(`Can't create backup file ${backupFileName}! Error is '${error}'.`);
         reject(error);
       } else {
-        console.warn(`Backup file ${backupFileName} is created successfully.`);
+        warns(`Backup file ${backupFileName} is created successfully.`);
         resolve(backupMode);
       }
     });
@@ -8748,10 +8590,10 @@ async function backupFileRead(backupFileName) {
   return new Promise((resolve, reject) => {
     readFile('', backupFileName, (error, data) => {
       if (error) {
-        console.warn(`Cant' read backup file ${backupFileName}! Error is '${error}'.`);
+        warns(`Cant' read backup file ${backupFileName}! Error is '${error}'.`);
         reject(error);
       } else {
-        // console.warn(`Backup file ${backupFileName} is created successfully.`);
+        // warns(`Backup file ${backupFileName} is created successfully.`);
         resolve(data ? `${data}` : '');
       }
     });
@@ -8777,7 +8619,6 @@ function backupCreate(backupMode) {
   backupData[backupItemMenuListItems] = enumerationItemsBackup;
   backupData[backupItemAlerts] = alertsGet();
   const backupDataJSON = JSON.stringify(backupData, JSONReplacerWithMap, 2);
-  // logs(`${backupDataJSON}`, 1);
   const // @ts-ignore
     dateNow = formatDate(new Date(), 'YYYY-MM-DD-hh-mm-ss'),
     backupFileName = nodePath.join(backupFolder, `${backupPrefix}-${dateNow}-${backupMode}.json`);
@@ -8790,7 +8631,6 @@ function backupCreate(backupMode) {
       })
       .catch(reject);
   });
-  // logs(`Files: ${JSON.stringify(backupGetFolderList(), null, 1)}`, _l);
 }
 
 /**
@@ -8825,7 +8665,6 @@ function backupRestore(fileName, restoreItem) {
                 itemsToRestore.forEach((itemToRestore) => {
                   switch (itemToRestore) {
                     case backupItemConfigOptions:
-                      // logs(`1 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
                       if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
                         configOptions.restoreDataFromBackup(restoreData[backupItemConfigOptions]);
                         rolesInMenu.refresh();
@@ -8834,7 +8673,6 @@ function backupRestore(fileName, restoreItem) {
                       break;
 
                     case backupItemMenuListItems:
-                      // logs(`2 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
                       if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
                         const enumerationItemsBackup = restoreData[itemToRestore];
                         Object.keys(enumerationsList).forEach((dataType) => {
@@ -8856,7 +8694,6 @@ function backupRestore(fileName, restoreItem) {
                       break;
 
                     case backupItemAlerts:
-                      // logs(`3 itemToRestore = ${JSON.stringify(restoreData[itemToRestore])}`, _l);
                       if (restoreData.hasOwnProperty(itemToRestore) && typeOf(restoreData[itemToRestore], 'object')) {
                         alertsStore(restoreData[itemToRestore]);
                         alertsInit();
@@ -8869,11 +8706,11 @@ function backupRestore(fileName, restoreItem) {
                 });
                 resolve(true);
               } else {
-                console.warn(`Inconsistent data from file ${backupFileName}!\nData in file is '${backupData}'`);
+                warns(`Inconsistent data from file ${backupFileName}!\nData in file is '${backupData}'`);
                 reject(false);
               }
             } catch (error) {
-              console.warn(
+              warns(
                 `Can't parse data from file ${backupFileName}! Error is '${JSON.stringify(
                   error,
                 )}'.\nData in file is '${backupData}'`,
@@ -8963,7 +8800,6 @@ const cachedSimpleReportIdToCreate = 'simpleReportIdToCreate',
  * @returns {object[]} - The array of menuItem objects.
  */
 function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   let newMenu = [];
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     {enumType: enumId, item: reportId} = menuItemToProcess.options;
@@ -8971,7 +8807,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
     const reportObjectId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[reportId].enum}.${reportId}`,
       reportObject = getObject(reportObjectId);
     let memberId = 0;
-    logs(`reportObject = ${JSON.stringify(reportObject, null, 2)}`);
     /** show list of states, already assigned to report */
     if (reportObject.common.hasOwnProperty('members')) {
       reportObject.common.members.forEach((member) => {
@@ -9000,7 +8835,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
       options: {item: reportId},
       /** submenu function for collecting query params (dests, states, roles) */
       submenu: (user, menuItemToProcess) => {
-        logs(`(${user}, menuItemToProcess)`);
         const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
           {item: reportId} = menuItemToProcess.options;
         let subMenuIndex = 0,
@@ -9020,7 +8854,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           icon: enumerationsList[dataTypeReport].icon,
           /** submenu function for dests selection */
           submenu: (user, menuItemToProcess) => {
-            logs(`(${user}, menuItemToProcess)`);
             const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '';
             let subMenu = [],
               subMenuIndex = 0;
@@ -9066,7 +8899,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             options: {item: reportId},
             /** submenu function for selecting states from a query result and assigning them to report */
             submenu: (user, menuItemToProcess) => {
-              logs(`(${user}, menuItemToProcess)`);
               const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
                 {item: reportId} = menuItemToProcess.options;
               let {queryDests, queryState, queryRole, queryStates, queryPossibleStates} = cachedValueGet(
@@ -9082,11 +8914,9 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
               if (!destsList.length) {
                 destsList = Object.keys(enumerationsList[dataTypeDestination].list);
               }
-              logs(`destsList = ${JSON.stringify(destsList)}, queryState = ${queryState}, queryRole = ${queryRole}`);
               const query = `state${queryState ? `[id=*.${queryState}]` : '[id=*]'}${
                 queryRole ? `[role=${queryRole}]` : ''
               }`;
-              logs(`query = ${query}`);
               destsList.forEach((destinationId) => {
                 const currentDestination = enumerationsList[dataTypeDestination].list[destinationId];
                 $(`${query}${destinationId ? `(${currentDestination.enum}=${destinationId})` : ''}`).each(
@@ -9158,8 +8988,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                 options: {dataType: dataTypeReportMember, item: reportId, mode: doAll},
                 submenu: [],
               });
-              logs(`statesArray = ${JSON.stringify(queryPossibleStates)}`);
-              logs(`submenu = ${JSON.stringify(subMenu, null, 2)}`);
               cachedValueSet(user, cachedSimpleReportNewQuery, {
                 queryDests,
                 queryState,
@@ -9171,7 +8999,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             },
           });
         }
-        logs(`submenu = ${JSON.stringify(subMenu, null, 2)}`);
         return subMenu;
       },
     });
@@ -9221,7 +9048,6 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
  */
 function simpleReportPrepareStructure(reportStatesList) {
   const funcsList = enumerationsList[dataTypeFunction].list;
-  logs(`reportStatesList = ${JSON.stringify(reportStatesList)}`);
   let reportStatesStructure = {},
     objectToFunctionList = {};
   reportStatesList.forEach((stateId) => {
@@ -9261,7 +9087,6 @@ function simpleReportPrepareStructure(reportStatesList) {
               });
             }
             let currentStateId = stateId;
-            logs(`objectToFunctionList = ${JSON.stringify(objectToFunctionList)}`);
             while (currentStateId.includes('.')) {
               if (objectToFunctionList.hasOwnProperty(currentStateId)) {
                 stateFuncs = [objectToFunctionList[currentStateId]];
@@ -9286,7 +9111,6 @@ function simpleReportPrepareStructure(reportStatesList) {
       }
     }
   });
-  logs(`reportStatesStructure = ${JSON.stringify(reportStatesStructure, null, 2)}`);
   return reportStatesStructure;
 }
 
@@ -9299,11 +9123,8 @@ function simpleReportPrepareStructure(reportStatesList) {
  * @returns {string}
  */
 function simpleReportGenerate(user, menuItemToProcess) {
-  logs(`menuItemToProcess = ${JSON.stringify(menuItemToProcess)}`);
   let reportText = '';
   const reportsList = enumerationsList[dataTypeReport];
-  logs(`Object.keys(reportItem.list) = ${JSON.stringify(Object.keys(reportsList.list))}`);
-  logs(`reportItem = ${JSON.stringify(reportsList, null, 2)}`);
   if (
     menuItemToProcess &&
     menuItemToProcess.hasOwnProperty('id') &&
@@ -9311,8 +9132,6 @@ function simpleReportGenerate(user, menuItemToProcess) {
   ) {
     const reportId = menuItemToProcess.id,
       reportObject = getObject(`${prefixEnums}.${reportsList.list[reportId].enum}.${reportId}`);
-    logs(`reportId = ${reportId}`);
-    logs(`reportObject = ${JSON.stringify(reportObject)}`);
     if (
       reportObject &&
       reportObject.hasOwnProperty('common') &&
@@ -9323,9 +9142,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
       const reportStatesList = reportObject.common['members'].sort(),
         _funcsList = enumerationsList[dataTypeFunction].list,
         isAlwaysExpanded = reportsList.list[reportId].alwaysExpanded;
-      logs(`reportStatesList = ${JSON.stringify(reportStatesList)}`);
       let reportStatesStructure = simpleReportPrepareStructure(reportStatesList);
-      logs(`reportStatesStructure = ${JSON.stringify(reportStatesStructure, null, 2)}`);
       const reportLines = new Array();
       const currentSort = (a, b) => enumerationsCompareOrderOfItems(a, b, dataTypeFunction);
       Object.keys(reportStatesStructure)
@@ -9369,11 +9186,9 @@ function simpleReportGenerate(user, menuItemToProcess) {
             });
           });
         });
-      logs(`reportLines = ${JSON.stringify(reportLines)}`);
       reportText = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, reportLines)}</code>`;
     }
   }
-  logs(`reportText = ${JSON.stringify(reportText)}`);
   return reportText;
 }
 
@@ -9429,7 +9244,6 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
         const graphsIntervals = configOptions.getOption(cfgGraphsIntervals, user);
         if (graphsIntervals && typeOf(graphsIntervals, 'array') && graphsIntervals.length) {
           graphsIntervals.forEach(({id: graphsIntervalId, minutes: graphsIntervalMinutes}) => {
-            // logs(`generateTextTranslationId('TimeRange', graphsTimeRangeId) = ${generateTextTranslationId('TimeRange', graphsTimeRangeId)}`);
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}`,
@@ -9615,7 +9429,6 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
           submenu: enumerationsMenuGenerateListOfEnumerationItems,
         })),
       );
-      logs(`subMenu`);
       subMenu.forEach((subMenuItem) => {
         const subMenuItemAccessLevel =
           user && user.userId
@@ -9800,8 +9613,6 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
     }
     return result;
   }
-
-  // logs(`Done 0`);
   if (topRootMenuItemId !== undefined && topRootMenuItemId !== null) {
     switch (topRootMenuItemId) {
       case 'setup':
@@ -9858,7 +9669,6 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
           }
         });
     }
-    // logs(`Done 1`);
     let menuItem = menuMenuItemGenerateRootReports(user);
     if (menuItem && menuItem.submenu.length) {
       rootMenu.submenu.push(menuItem);
@@ -9868,7 +9678,6 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
       rootMenu.submenu.push(menuItem);
     }
   }
-  // logs(`Done`);
   return rootMenu;
 }
 
@@ -9882,7 +9691,6 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
 function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
-  // logs(`command = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, _l)
   return {
     index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemDelete)}`,
@@ -10059,7 +9867,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     itemOptions = menuItemToProcess.options ? menuItemToProcess.options : {},
     {extraOptions} = itemOptions;
   let subMenu = [];
-  // logs('primaryLevelMenuItemId = ' + JSON.stringify(primaryLevelMenuItemId), _l);
   if (primaryMenuItemsList.hasOwnProperty(primaryLevelMenuItemId)) {
     const primaryEnumerationId = isFunctionsFirst ? 'function' : 'destination',
       secondaryEnumerationId = isFunctionsFirst ? 'destination' : 'function',
@@ -10077,7 +9884,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       deviceList = {};
     let currentIcons = isFunctionsFirst ? {on: primaryMenuItem.iconOn, off: primaryMenuItem.iconOff} : {},
       currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
-    // logs(`currentLevelMenuItemsList = ${JSON.stringify(currentLevelMenuItemsList)}`);
     if (
       menuItemToProcess.hasOwnProperty('subordinates') &&
       typeOf(menuItemToProcess.subordinates, 'array') &&
@@ -10115,7 +9921,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
         }
       }
     });
-    // logs(`deviceList = ${JSON.stringify(deviceList, null, 2)}`, _l)
     Object.keys(deviceList)
       .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)
       .forEach((currentLevelMenuItemId) => {
@@ -10129,14 +9934,12 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     Object.keys(deviceList)
       .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)
       .forEach((currentLevelMenuItemId) => {
-        // logs(`currentLevelMenuItemId = ${JSON.stringify(currentLevelMenuItemId)}, deviceList[currentLevelMenuItemId] = ${deviceList[currentLevelMenuItemId]}`);
         // if (deviceList.hasOwnProperty(currentLevelMenuItemId)) {
         const menuItemId = `${primaryLevelMenuItemId}${rolesIdAndMaskDelimiter}${currentLevelMenuItemId}`,
           currentAccessLevel =
             user && user.userId ? usersInMenu.getMenuItemAccess(user.userId, menuItemId, inverseMasks) : undefined,
           functionId = isFunctionsFirst ? primaryLevelMenuItemId : currentLevelMenuItemId,
           destinationId = isFunctionsFirst ? currentLevelMenuItemId : primaryLevelMenuItemId;
-        // logs(`primaryLevelMenuItemId = ${primaryLevelMenuItemId}, currentLevelMenuItemId = ${currentLevelMenuItemId}, currentAccessLevel = ${currentAccessLevel}`, _l);
         if (currentAccessLevel && !MenuRoles.accessLevelsPreventToShow.includes(currentAccessLevel)) {
           const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId];
           if (!isFunctionsFirst) {
@@ -10162,7 +9965,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
           const statesSectionsCount = isFunctionsFirst
             ? primaryMenuItem.statesSectionsCount
             : currentLevelMenuItem.statesSectionsCount;
-          // logs('deviceList[currentLevelMenuItemId] = ' + JSON.stringify(deviceList[currentLevelMenuItemId]));
           if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelForbidden) < 0)
             deviceList[currentLevelMenuItemId].forEach((deviceStateId, _deviceIndex) => {
               const devicePrefix = deviceStateId.split('.').slice(0, -statesSectionsCount).join('.'),
@@ -10241,7 +10043,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
         // }
       });
   }
-  // logs(`subMenu Pre = ${JSON.stringify(subMenu, null, 1)}`, _l);
   if (subMenu.length) {
     for (const subMenuIndex of subMenu.keys()) {
       const currentSubMenuItem = subMenu[subMenuIndex],
@@ -10252,7 +10053,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     }
     subMenu = subMenu.filter((item) => item);
   }
-  // logs(`subMenu New = ${JSON.stringify(subMenu, null, 1)}`, _l);
   return subMenu;
 }
 
@@ -10266,7 +10066,6 @@ function menuMenuItemDetailsPrintFixedLengthLines(user, linesArray) {
   const maxLineLen = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user);
   let printedText = '';
   linesArray.forEach((lineObject) => {
-    logs(`reportLineObject = ${JSON.stringify(lineObject)}`);
     let lineLabel = lineObject['label'];
     const lineValue = lineObject.hasOwnProperty('valueString') ? `${lineObject['valueString']}` : '',
       lineValueLength =
@@ -10340,13 +10139,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         ? cachedValueGet(user, cachedMenuItemsAndRows)
         : [null, null, 0],
       savedPos = savedMenu && savedMenu.index ? savedMenu.index.split('.') : null;
-    // logs(`currentMenuPos: ${JSON.stringify(targetMenuPos)}, savedPos: ${JSON.stringify(savedPos)}, savedMenu: ${JSON.stringify(savedMenu)}`);
     if (savedPos && targetMenuPos && targetMenuPos.join('.').indexOf(savedPos.join('.')) === 0) {
       targetMenuPos = targetMenuPos.slice(savedPos.length);
       menuItemToProcess = savedMenu;
       messageObject = {...savedRows};
       currentIndent = savedTab;
-      // logs(`New subMenuPos: ${JSON.stringify(targetMenuPos)}, preparedMessageObject: ${JSON.stringify(preparedMessageObject)}`);
     } else {
       messageObject = {
         message: '',
@@ -10367,17 +10164,14 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         },
         {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
         (newMenuItem) => {
-          // logs(`extensionMenuId = ${extensionMenuId}, \n subMenu = ${JSON.stringify(subMenu)}, \n translations = ${JSON.stringify(translationsGetForExtension(user, menuItemToProcess.extensionId))}`, _l);
           if (
             !(typeof newMenuItem === 'object' && newMenuItem.hasOwnProperty('error')) &&
             newMenuItem.hasOwnProperty('name')
           ) {
-            // logs(`subMenu = ${JSON.stringify(newMenuItem, null, 2)}`);
             menuItemToProcess = menuMenuReIndex(newMenuItem);
-            // logs(`subMenuRow = ${JSON.stringify(menuItemToProcess, null, 2)}`, _l);
           } else {
             if (typeof newMenuItem === 'object' && newMenuItem.hasOwnProperty('error')) {
-              console.warn(
+              warns(
                 `Can't update subMenu from extensionMenuId ${extensionMenuId}! No result. Error is ${newMenuItem.error}`,
               );
             }
@@ -10418,9 +10212,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         menuItemToProcess.submenu.length > 0 &&
         currentSubMenuPos < menuItemToProcess.submenu.length
       ) {
-        logs(
-          `currentSubMenuPos = ${currentSubMenuPos}, currentMenuItem = ${JSON.stringify(menuItemToProcess, null, 2)}`,
-        );
         messageObject.message +=
           (hierarchicalCaption
             ? '\n\r' + (messageObject.message ? currentIndent + iconItemToSubItem : '')
@@ -10438,7 +10229,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         } else {
           messageObject.shortIndex = currentSubMenuPos;
         }
-        // logs(`messageObject = ${JSON.stringify(messageObject, null, 2)}`, _l);
         messageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
         messageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
         messageObject.options =
@@ -10539,7 +10329,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           currentIndex = currentIndex.replace(messageObject.index, messageObject.shortIndex);
           currentBackIndex = currentIndex.split('.').slice(0, -1).join('.');
         }
-        // logs(`buttonsOffset = ${buttonsOffset}, buttonsCount = ${buttonsCount}, maxButtonsCount = ${maxButtonsCount}`);
         const _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
           callbackDataToCache = new Map();
         // currentMenuItem.submenu.forEach(currentSubMenuItem => {
@@ -10549,7 +10338,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           buttonsIndex++
         ) {
           const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
-          // logs(`currentSubMenuItem[${buttonsIndex + buttonsOffset}] = ${JSON.stringify(currentSubMenuItem, null, 2)}`, _l);
           const currentSubIndex =
             currentSubMenuItem.index.length > 50
               ? currentSubMenuItem.index.replace(messageObject.index, messageObject.shortIndex)
@@ -10660,12 +10448,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         const alertMessages = alertGetMessages(user, true),
           alertMessagesCount = alertMessages.length,
           alertMessage = alertMessages.pop();
-        logs('alertMessages = ' + JSON.stringify(alertMessages));
         if (alertMessage) {
           // @ts-ignore
           const alertDate = formatDate(new Date(alertMessage.date), configOptions.getOption(cfgDateTimeTemplate, user));
           messageObject.alert = `<b><u>${alertDate}:</u> ${alertMessage.message}</b>\r\n\r\n`;
-          // logs('alertMessage = ' + JSON.stringify(alertMessages[alertMessages.length - 1].message));
           const alerts = alertsGet(),
             lastAlertId = alertMessage.id,
             alertRow = [
@@ -10691,7 +10477,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           }
         }
         cachedValueSet(user, cachedCommandsOptionsList, callbackDataToCache);
-        // logs(`preparedMessageObject 3 = ${JSON.stringify(preparedMessageObject/* , null, 2 */)}`);
         if (!(messageOptions && messageOptions.hasOwnProperty('noDraw') && messageOptions.noDraw)) {
           telegramMessageObjectPush(
             user,
@@ -10747,7 +10532,6 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId) {
  * @returns {string} The icon of the menu item.
  */
 function menuMenuItemGetIcon(user, menuItemToProcess) {
-  // logs(`\nsubMenuRowItem = ${JSON.stringify(menuItemToProcess)}`, _l);
   let icon = '';
   if (menuItemToProcess !== undefined) {
     if (menuItemToProcess.hasOwnProperty('options')) {
@@ -10794,8 +10578,6 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
  * @return {string[]} - The "coordinates" Array in format [1, 2, 3, 4].
  */
 function menuMenuItemExtractPosition(menuItemPositionString) {
-  logs('typeof cmd = ' + typeof menuItemPositionString);
-  logs('cmd = ' + JSON.stringify(menuItemPositionString));
   if (typeof menuItemPositionString === 'string') {
     if (menuItemPositionString.length === 0) {
       return [];
@@ -10824,14 +10606,12 @@ function menuMenuClose(user) {
 function menuMenuUpdateBySchedule() {
   const usersIds = usersInMenu.getUsers();
   for (const userId of usersIds) {
-    logs('user = ' + JSON.stringify(userId));
     const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
-      logs('for user = ' + JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
       if (!cachedValueGet(user, cachedIsWaitForInput) && itemPos !== undefined) {
         logs('make an menu update for = ' + JSON.stringify(user));
-        // doMenuItem(user);
+        menuMenuDraw(user);
       }
     } else {
       logs('for user = ' + JSON.stringify(userId) + ' menu is closed');
@@ -10864,7 +10644,7 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
         const atTimeArray = atTime.split(':');
         scheduledRefresh.atTime = atTime;
         scheduledRefresh.reference = schedule({hour: atTimeArray.shift(), minute: atTimeArray.pop()}, () => {
-          console.log(
+          logs(
             `Refresh is scheduled on ${atTime} for ${
               currentUser === menuRefreshTimeAllUsers ? 'all users' : ` userId = ${currentUser}`
             }.`,
@@ -10887,19 +10667,15 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
 function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
   let userIds =
     idOfUser !== menuRefreshTimeAllUsers && usersInMenu.validId(idOfUser) ? [idOfUser] : usersInMenu.getUsers();
-  // logs('userIds = ' + JSON.stringify(userIds), _l);
   if (idOfUser === menuRefreshTimeAllUsers) {
     userIds = userIds.concat(telegramGetGroupChats(true));
-    // logs(`users = ${JSON.stringify(userIds)}`, _l);
   }
   userIds.forEach((userId) => {
-    // logs('userId = ' + JSON.stringify(userId), _l);
     if (
       idOfUser == userId ||
       (idOfUser === menuRefreshTimeAllUsers && (!menuRefreshScheduled.has(userId) || forceNow || noDraw))
     ) {
       const user = telegramGenerateUserObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
-      // logs('user = ' + JSON.stringify(user), _l);
       const [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
           cachedBotSendMessageId,
@@ -10913,26 +10689,24 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
         isCachedMenuOn = cachedValueGet(user, cachedMenuOn);
       if (isCachedMenuOn === true && ((!isBotMessageOld48OrNotExists && isBotMessageOld24OrNotExists) || noDraw)) {
         const itemPos = cachedValueGet(user, cachedMenuItem);
-        console.warn('for user = ' + JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
+        warns('for user = ' + JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
         if (!cachedValueGet(user, cachedIsWaitForInput) && itemPos !== undefined) {
           if (noDraw) {
-            console.warn(
-              `Make an menu object prepared for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`,
-            );
+            warns(`Make an menu object prepared for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`);
           } else {
-            console.warn(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`);
+            warns(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`);
           }
           menuMenuDraw(user, itemPos, {clearBefore: true, clearUserMessage: false, isSilent: true, noDraw});
         }
       } else if (!isBotMessageOld24OrNotExists) {
-        console.warn(
+        warns(
           `For user/chat group = ${JSON.stringify({
             ...user,
             rootMenu: null,
           })} menu is updated(by new message) less the 24 hours ago. Menu refresh is not required.`,
         );
       } else {
-        console.warn(
+        warns(
           `For user/chat group = ${JSON.stringify({
             ...user,
             rootMenu: null,
@@ -11161,14 +10935,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
    * @param {boolean=} isFromGetInput - The selector to identify a way of input value come.
    */
   function setStateValue(user, stateId, stateValue, isFromGetInput = false) {
-    // logs(`setState with state: '${currentType}' and value ${currentItem}`, _l);
     const currentObject = getObjectEnriched(stateId);
-    logs('currObject = ' + JSON.stringify(currentObject));
     if (currentObject.common['write']) {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
-        console.error(`Error! No response from setState() for ${stateId}`);
+        errs(`Error! No response from setState() for ${stateId}`);
         menuMenuDraw(user);
       }, 4000);
       cachedValueSet(user, cachedCurrentState, stateId);
@@ -11183,12 +10955,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           setState(stateId, !currentStateValue, setStateCallback);
         } else if (currentObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
           const currentStatePossibleValues = enumerationsExtractPossibleValueStates(currentObjectCommon['states']);
-          logs('possibleValue = ' + JSON.stringify(stateValue));
-          logs('Object.keys(states). = ' + JSON.stringify(Object.keys(currentStatePossibleValues)));
           if (Object.keys(currentStatePossibleValues).includes(stateValue)) {
             setState(stateId, currentStateType === 'number' ? Number(stateValue) : stateValue, setStateCallback);
           } else {
-            console.error(
+            warns(
               `Value '${stateValue}' not in the acceptable list ${JSON.stringify(
                 Object.keys(currentStatePossibleValues),
               )}`,
@@ -11201,7 +10971,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           if (checkNumberStateValue(stateId, possibleNumber, currentObjectCommon)) {
             setState(stateId, possibleNumber, setStateCallback);
           } else {
-            console.error(
+            warns(
               `Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currentObject.common)}`,
             );
             telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
@@ -11209,14 +10979,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
         } else {
           clearTimeout(timer);
-          console.error(`Unsupported object type: '${currentStateType}'`);
+          warns(`Unsupported object type: '${currentStateType}'`);
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgUnsupportedObjectType'));
         }
       } else {
         clearTimeout(timer);
-        console.error(
-          `Unacceptable value '${stateValue}' for state conditions ${JSON.stringify(currentObject.common)}`,
-        );
+        warns(`Unacceptable value '${stateValue}' for state conditions ${JSON.stringify(currentObject.common)}`);
         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
       }
     }
@@ -11227,12 +10995,15 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     menuMessageObject = {};
   let currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
-  // logs(`userInput = ${userInput}, userInputToProcess: ${userInputToProcess}, command = ${currentCommand}, commandOptions = ${JSON.stringify(commandOptions)}, currentMenuItem = ${currentMenuPosition}`, _l);
+  logs(
+    `userInput.start:\n- isWaitForInput = ${isWaitForInput},\n- userInputToProcess = ${userInputToProcess},\n- currentCommand= ${currentCommand},\n- commandOptions = ${JSON.stringify(
+      commandOptions,
+    )}`,
+  );
   if (isWaitForInput) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (currentCommand) {
         case cmdItemUpload: {
-          // logs(`commandOptions.dataType = ${commandOptions.dataType}, currentItem = ${currentItem}, currentParam = ${currentParam}, userInputToProcess = ${userInputToProcess}`, _l);
           switch (commandOptions.dataType) {
             case dataTypeTranslation: {
               const isTranslationFileOk = translationsCheckAndCacheUploadedFile(
@@ -11248,7 +11019,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     ? commandOptions.translationPart
                     : Number(commandOptions.translationPart),
                 );
-                // logs(`currentMenuItem = ${currentMenuItem}`);
               } else {
                 telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
               }
@@ -11355,7 +11125,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   ) {
                     currentEnumerationsList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
                   } else {
-                    console.warn(
+                    warns(
                       `Unacceptable value '${userInputToProcess}' code conversion of attribute ${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
                     );
                     telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
@@ -11400,7 +11170,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ) {
                 currentEnumerationsList[commandOptions.item].group = userInputToProcess;
               }
-              // logs(`currentParam, currentValue = ${[commandOptions.dataType, currentItem, currentParam, currentValue,]}`, _l)
               enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
               break;
             }
@@ -11528,13 +11297,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
               }
               if (Number.isNaN(userInputToProcess) && commandOptions.item !== alertMessageTemplateId) {
-                console.warn(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
                 telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
               } else if (
                 commandOptions.item === alertThresholdId &&
                 !checkNumberStateValue(commandOptions.state, Number(userInputToProcess))
               ) {
-                console.warn(`Unacceptable value '${userInputToProcess}' for state conditions`);
+                warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
                 telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
               } else {
                 const alertDetailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
@@ -11595,13 +11364,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 case onTimeIntervalId: {
                   if (commandOptions.state) {
                     if (Number.isNaN(userInputToProcess)) {
-                      console.warn(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                      warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
                       telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                     } else if (
                       ['add', 'edit'].includes(commandOptions.mode) &&
                       !checkNumberStateValue(commandOptions.state, Number(userInputToProcess))
                     ) {
-                      console.warn(`Unacceptable value '${userInputToProcess}' for state conditions`);
+                      warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
                       telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                     } else {
                       const triggerValue = Number(userInputToProcess);
@@ -11613,7 +11382,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           const triggerOnAbove = triggersGetIndex(triggers, triggerId) < 0;
                           if (!triggerOnAbove) triggerId = [triggerValue, 'onLess'].join('.');
                           if (!triggerOnAbove && triggersGetIndex(triggers, triggerId) >= 0) {
-                            console.warn(`Unacceptable value '${userInputToProcess}' - already exists`);
+                            warns(`Unacceptable value '${userInputToProcess}' - already exists`);
                             telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                           } else {
                             triggers.push({
@@ -11705,12 +11474,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               break;
             }
           }
-          logs('New values is set');
           menuMenuItemsAndRowsClearCached(user);
           break;
         }
       }
     }
+    logs(`isWaitForInput.end: menuMessageObject.message = ${menuMessageObject.message}`);
     if (menuMessageObject.message) {
       menuMessageObject.message += botMessageStamp;
       cachedValueSet(user, cachedLastMessage, '');
@@ -11731,15 +11500,15 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
     }
   } else if (currentCommand.indexOf(cmdClose) === 0) {
+    logs(`menuClose: currentCommand = ${currentCommand}`);
     menuMenuClose(user);
   } else if (currentCommand.indexOf(cmdBack) === 0) {
+    logs(`menuBack: currentCommand = ${currentCommand}`);
     currentMenuPosition = currentCommand.replace(cmdBack, '');
-    logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
     if (cachedValueExists(user, cachedDelCachedOnBack)) {
       const cachedToDelete = cachedValueGet(user, cachedDelCachedOnBack);
       if (cachedToDelete && cachedToDelete.hasOwnProperty(currentMenuPosition)) {
         if (Array.isArray(cachedToDelete[currentMenuPosition])) {
-          logs(`cachedToDelete[currentMenuItem] = ${JSON.stringify(cachedToDelete[currentMenuPosition])}`);
           cachedToDelete[currentMenuPosition].forEach((cachedId) => cachedValueDelete(user, cachedId));
         }
         delete cachedToDelete[currentMenuPosition];
@@ -11749,15 +11518,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     currentMenuPosition = menuMenuItemExtractPosition(currentMenuPosition);
     menuMenuDraw(user, currentMenuPosition);
   } else if (configOptions.getOption(cfgMessagesForMenuCall, user).includes(currentCommand)) {
-    // setCachedValue(user, cachedMenuOn, false);
+    logs(`menuCall: currentCommand = ${currentCommand}`);
     /** if it private chat - delete user input, if configured **/
     menuMenuDraw(user, undefined, {
       clearBefore: true,
       clearUserMessage: configOptions.getOption(cfgClearMenuCall, user) && user.userId === user.chatId,
     });
   } else if (currentCommand.indexOf(menuItemButtonPrefix) === 0) {
+    logs(`menuItem.go: currentCommand = ${currentCommand}`);
     menuMenuDraw(user, menuMenuItemExtractPosition(currentCommand.replace(menuItemButtonPrefix, '')));
   } else {
+    logs(`otherCommands.start: currentCommand = ${currentCommand}`);
     switch (currentCommand) {
       case cmdGetInput: {
         switch (commandOptions.dataType) {
@@ -11917,11 +11688,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 commandOptions.scope === configOptionScopeGlobal ? null : user,
               ),
               configItemMask = configOptions.getMaskDescription(commandOptions.item);
-            logs(
-              `configItem (${typeof configItem}${Array.isArray(configItem) ? ', Array' : ''}) = ${JSON.stringify(
-                configItem,
-              )})`,
-            );
             if (
               typeOf(configItem) === 'array' &&
               // @ts-ignore
@@ -12013,6 +11779,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             break;
           }
         }
+        logs(`otherCommands.cmdGetInput.end: menuMessageObject.message = ${menuMessageObject.message}`);
         if (menuMessageObject.message) {
           menuMessageObject.message += botMessageStamp;
           cachedValueSet(user, cachedIsWaitForInput, userInputToProcess);
@@ -12032,7 +11799,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           const cachedToDelete = cachedValueGet(user, cachedDelCachedOnBack);
           Object.keys(cachedToDelete).forEach((itemsToDelete) => {
             if (Array.isArray(cachedToDelete[itemsToDelete])) {
-              logs(`cachedToDelete[[${itemsToDelete}] = ${JSON.stringify(cachedToDelete[itemsToDelete])}`);
               cachedToDelete[itemsToDelete].forEach((cachedId) => cachedValueDelete(user, cachedId));
               delete cachedToDelete[itemsToDelete];
             }
@@ -12047,16 +11813,16 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         break;
       }
       case cmdExternalCommand: {
+        logs(`otherCommands.external:\n- currentCommand = ${JSON.stringify(commandOptions)}`);
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
-          console.error(
+          errs(
             `Error! No response from external command ${commandOptions.item} for function ${commandOptions.dataType}`,
           );
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(
           `External command ${commandOptions.item} for function ${commandOptions.function}, with params ${commandOptions.attribute}`,
-          _l,
         );
         menuMenuDraw(user);
         messageTo(
@@ -12115,7 +11881,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     if (commandOptions.value === undefined) {
                       currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
                     }
-
                     break;
                   }
 
@@ -12227,7 +11992,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeTrigger: {
-            // logs(`options = ${JSON.stringify(commandOptions)}`, _l)
             if (commandOptions.state) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state),
                 backStepsForCacheDelete = -1;
@@ -12397,7 +12161,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdItemDownload: {
         nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
           if (err) {
-            console.warn(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
+            warns(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
           } else {
             const languageId = configOptions.getOption(cfgMenuLanguage),
               tmpFileName = nodePath.join(tmpDirectory, `menuTranslation_${languageId}.json`),
@@ -12416,7 +12180,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ),
               (err) => {
                 if (err) {
-                  console.warn(`Can't create temporary file '${tmpFileName}'! Error: '${JSON.stringify(err)}'.`);
+                  warns(`Can't create temporary file '${tmpFileName}'! Error: '${JSON.stringify(err)}'.`);
                 } else {
                   telegramFileSend(user, tmpFileName);
                 }
@@ -12472,7 +12236,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             ? commandOptions.uploadMode
                             : Number(commandOptions.uploadMode),
                         );
-                        // logs(`currentMenuItem = ${currentMenuItem}`);
                         menuMenuDraw(user, currentMenuPosition);
                       } else {
                         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
@@ -12529,7 +12292,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             enumerationsReorderItems(currentEnumerationsList);
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             currentMenuPosition.splice(-2, 2);
-            logs(`currentMenuItem = ${JSON.stringify(currentMenuPosition)}`);
             break;
           }
 
@@ -12664,7 +12426,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   commandOptions.item,
                   commandOptions.scope === configOptionScopeGlobal ? null : user,
                 );
-                // logs(`currentItem = ${currentItem}, currentParam = ${currentParam}, configItemArray = ${configItemArray}, currentValue = ${currentValue}`, _l)
                 if (configItemArray && Array.isArray(configItemArray)) {
                   if (configItemArray.length > Number(commandOptions.index)) {
                     configItemArray.splice(Number(commandOptions.index), 1);
@@ -12809,7 +12570,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             }
             cachedValueSet(user, cachedRolesNewRule, currentRule);
             menuMenuItemsAndRowsClearCached(user);
-            logs(`currentMenuItem = ${currentMenuPosition}`);
             break;
           }
           default: {
@@ -12853,7 +12613,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             } else {
               telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
             }
-            // logs(`currentMenuItem = ${currentMenuItem}`);
             currentMenuPosition.splice(-2);
             break;
           }
@@ -12951,7 +12710,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             (currentStateAlertDetails && propagateMode === 'alertPropagateOverwrite') ||
                             currentStateAlertDetails === undefined
                           ) {
-                            // logs(`stateId = ${stateId}, currentItem = ${currentItem}, currentParam = ${currentParam}, ${JSON.stringify(alertStateAlertDetails)}`, _l)
                             alertsManage(
                               user,
                               stateId,
@@ -12979,7 +12737,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 enumerationsList[dataTypeReport].list[commandOptions.item].enum
               }.${commandOptions.item}`;
               let currentReportObject = getObject(currentReportId);
-              logs(`currentReportObject = ${JSON.stringify(currentReportObject, null, 2)}`);
               if (currentReportObject) {
                 if (!currentReportObject.common.hasOwnProperty('members')) {
                   currentReportObject.common.members = [];
@@ -12991,7 +12748,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 });
                 // @ts-ignore
                 await setObjectAsync(currentReportId, currentReportObject);
-                logs(`currentReportObject = ${JSON.stringify(getObject(currentReportId), null, 2)}`);
               }
             }
             currentMenuPosition.splice(-2, 2);
@@ -13090,15 +12846,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   : currentShortStateId && existsObject(`${graphsTemplatesFolder}.${currentShortStateId}`)
                   ? `${graphsTemplatesFolder}.${currentShortStateId}`
                   : `${graphsTemplatesFolder}.${graphsDefaultTemplate}`;
-            // logs(`graphTemplateId = ${graphTemplateId}, currentState = ${currentState}`);
-            // logs(`existsObject(graphTemplateId) = ${existsObject(graphTemplateId)}, existsState(currentParam) = ${existsState(currentState)}`);
             if (
               existsObject(graphTemplateId) &&
               (commandOptions.itemType === dataTypeReport || existsState(currentState))
             ) {
               let graphTemplate = getObject(graphTemplateId);
               const graphAdapter = graphsTemplatesFolder.split('.').slice(0, 2).join('.');
-              // logs(`graphTemplate = ${JSON.stringify(graphTemplate, null, 2)}`);
               if (
                 graphTemplate.native &&
                 graphTemplate.native.data &&
@@ -13122,7 +12875,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       graphLines = graphTemplate.native.data.lines,
                       templateLine = graphLines.pop();
                     templateLine.instance = historyAdapter;
-                    // logs(`templateLine ${typeOf(templateLine)} = ${JSON.stringify(templateLine, null, 2)}`);
                     let currentUnit;
                     const currentSort = (a, b) => enumerationsCompareOrderOfItems(a, b, dataTypeFunction);
                     Object.keys(reportStatesStructure)
@@ -13192,11 +12944,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 // @ts-ignore
                 setObject(newTemplateId, graphTemplate, (error, _result) => {
                   if (error) {
-                    console.warn(`Can't create temporary template object ${newTemplateId}`);
+                    warns(`Can't create temporary template object ${newTemplateId}`);
                   } else {
                     nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
                       if (err) {
-                        console.warn(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
+                        warns(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
                       } else {
                         const tmpGraphFileName = nodePath.join(tmpDirectory, 'graph.png'),
                           scaleSize = configOptions.getOption(cfgGraphsScale, user);
@@ -13213,7 +12965,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           },
                           (result) => {
                             if (result.error) {
-                              console.error(`error: JSON.stringify(result.error)`);
+                              errs(`error: JSON.stringify(result.error)`);
                             } else if (result.data) {
                               telegramImageSend(user, tmpGraphFileName);
                               deleteObject(newTemplateId);
@@ -13325,7 +13077,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ),
               currentOrder = currentEnumerationsList[commandOptions.item].order,
               newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1);
-            logs(`currentOrder = ${currentOrder} newOrder = ${newOrder}`);
             const newItem = Object.keys(currentEnumerationsList).find((cItem) => {
               return currentEnumerationsList[cItem].order === newOrder;
             });
@@ -13400,10 +13151,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           const newReportId = `${prefixEnums}.${commandOptions.enum}.${commandOptions.item}`;
           // @ts-ignore
           await setObjectAsync(newReportId, obj);
-          logs(`Object ${newReportId} is created : ${existsObject(newReportId)}`);
           menuMenuItemsAndRowsClearCached(user);
         } catch (error) {
-          console.error(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
+          errs(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
           currentMenuPosition.splice(-1);
         }
         if (Object.keys(enumerationsList[dataTypeReport].enums).length > 1) currentMenuPosition.splice(-1);
@@ -13456,7 +13206,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
         });
         menuMenuItemsAndRowsClearCached(user);
-        // logs(`currentMenuItem = ${currentMenuPosition}`, _l);
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
@@ -13533,7 +13282,7 @@ function telegramFileSend(user, fileFullPath, callback) {
   nodeFS.access(fileFullPath, nodeFS.constants.R_OK, (error) => {
     if (error) {
       const errorMessage = `Can't read file ${fileFullPath}! Error is ${JSON.stringify(error)}`;
-      console.warn(errorMessage);
+      warns(errorMessage);
       if (callback) callback({success: false, error: errorMessage});
     } else {
       const documentTelegramObject = {
@@ -13562,7 +13311,7 @@ function telegramImageSend(user, imageFullPath, callback) {
   nodeFS.access(imageFullPath, nodeFS.constants.R_OK, (error) => {
     if (error) {
       const errorMessage = `Can't read file ${imageFullPath}! Error is ${JSON.stringify(error)}`;
-      console.warn(errorMessage);
+      warns(errorMessage);
       if (callback) callback({success: false, error: errorMessage});
     } else {
       const imageTelegramObject = {
@@ -13592,7 +13341,7 @@ function telegramActionOnFileSendCommand(data, callback) {
     telegramFileSend(user, fileFullPath, callback);
   } else {
     const error = `Wrong data provided! ${JSON.stringify(data)}`;
-    console.warn(error);
+    warns(error);
     callback({success: false, error});
   }
 }
@@ -13608,7 +13357,7 @@ function telegramActionOnImageSendCommand(data, callback) {
     telegramImageSend(user, imageFullPath, callback);
   } else {
     const error = `Wrong data provided! ${JSON.stringify(data)}`;
-    console.warn(error);
+    warns(error);
     callback({success: false, error});
   }
 }
@@ -13681,13 +13430,14 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
         const clearUser = telegramMessageClearCurrent(user, clearUserMessage, true);
         if (clearUser) telegramObjects.push(clearUser);
       }
-      // logs(`telegramObjects = ${JSON.stringify(telegramObjects, null, 2)}`, _l)
       telegramObjectPushToQueue(user, telegramObjects);
       if (createNewMessage || clearBefore) {
         cachedValueSet(user, cachedMenuOn, true);
       }
     } else {
-      logs('lastMessage is equal to preparedMessageObject, sendTo Telegram skipped');
+      logs(
+        'lastMessage is equal to preparedMessageObject, sendTo Telegram skipped.\nMessage is ${currentMessagePlainText}.',
+      );
     }
   }
 }
@@ -13699,7 +13449,6 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
  */
 function telegramObjectPushToQueue(user, telegramObject) {
   let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
-  logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue)}`);
   if (!userMessagesQueue) {
     userMessagesQueue = [];
   }
@@ -13709,7 +13458,6 @@ function telegramObjectPushToQueue(user, telegramObject) {
   } else {
     userMessagesQueue.push(telegramObject);
   }
-  logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue, null, 2)}`);
   cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
   if (isReady) {
     telegramQueueProcess(user);
@@ -13749,7 +13497,6 @@ function telegramQueueProcess(user, messageId) {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false);
         }, telegramDelayToCatchLog);
       } else {
-        // logs(`telegramLastErrors = ${JSON.stringify(telegramLastErrors, JSONReplacerWithMap)}}`, _l)
         if (telegramLastErrors && telegramLastErrors.size) {
           if (user.chatId > 0 && telegramLastErrors.has(user.chatId)) {
             telegramError = telegramLastErrors.get(user.chatId);
@@ -13769,7 +13516,7 @@ function telegramQueueProcess(user, messageId) {
             }
           }
         }
-        console.warn(
+        warns(
           `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({
             ...user,
             rootMenu: null,
@@ -13780,9 +13527,9 @@ function telegramQueueProcess(user, messageId) {
           telegramError.hasOwnProperty('error') &&
           telegramError.error.level === telegramErrorLevelFatal
         ) {
-          console.warn(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
+          warns(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
-            console.warn(`Retrying message send.`);
+            warns(`Retrying message send.`);
             telegramQueueProcess(user);
           }, telegramDelayToSendReTry);
         } else if (
@@ -13856,13 +13603,11 @@ function telegramQueueProcess(user, messageId) {
         if (nodePath.dirname(telegramObject.text).includes(temporaryFolderPrefix))
           nodeFS.rm(nodePath.dirname(telegramObject.text), {recursive: true, force: true}, (err) => {
             if (err)
-              console.warn(
+              warns(
                 `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${JSON.stringify(err)}'.`,
               );
           });
       }
-      // logs(`result = ${result}, getCachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)}, telegramObject = ${JSON.stringify(telegramObject)}`);
-      // logs(`\n = ${(result === 1) && telegramObject && telegramObject[telegramCommandDeleteMessage] && telegramObject[telegramCommandDeleteMessage].isBotMessage}`)
       if (
         result === 1 &&
         telegramObject &&
@@ -13870,7 +13615,6 @@ function telegramQueueProcess(user, messageId) {
         telegramObject[telegramCommandDeleteMessage].isBotMessage &&
         cachedValueExists(user, cachedBotSendMessageId)
       ) {
-        // logs(`getCachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)} == telegramObject[telegramCommandDeleteMessage].options.message_id ${telegramObject[telegramCommandDeleteMessage].options.message_id} == ${getCachedState(user, cachedBotSendMessageId) == telegramObject[telegramCommandDeleteMessage].options.message_id}`)
         if (
           cachedValueGet(user, cachedBotSendMessageId) ==
           telegramObject[telegramCommandDeleteMessage].options.message_id
@@ -13880,14 +13624,12 @@ function telegramQueueProcess(user, messageId) {
       }
       if (telegramObjects.length) {
         telegramObject = telegramObjects.shift();
-        // logs(`\ntelegramObject = ${JSON.stringify(telegramObject)}, \ntelegramObjects = ${JSON.stringify(telegramObjects)}`);
         sendTo(telegramAdapter, telegramObject, (result) => {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
         });
       } else {
         if (userMessagesQueue) {
           userMessagesQueue.splice(0, currentLength);
-          logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue)}`);
           if (userMessagesQueue.length === 0) {
             cachedValueDelete(user, cachedTelegramMessagesQueue);
           } else {
@@ -13937,12 +13679,11 @@ function telegramQueueProcess(user, messageId) {
         ) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
           if (telegramObjects[0][telegramCommandDeleteMessage].options.message_id === undefined) {
-            console.warn(`No message for Delete! Going to skip command ${JSON.stringify(telegramObjects[0])}.`);
+            warns(`No message for Delete! Going to skip command ${JSON.stringify(telegramObjects[0])}.`);
             telegramObjects.shift();
           }
           if (telegramObjects && telegramObjects.length === 0) {
             userMessagesQueue.splice(currentPos, 1);
-            logs(`userMessagesQueue = ${JSON.stringify(userMessagesQueue)}`);
             if (userMessagesQueue.length === 0) {
               cachedValueDelete(user, cachedTelegramMessagesQueue);
             } else {
@@ -13958,10 +13699,8 @@ function telegramQueueProcess(user, messageId) {
             telegramObjects[0][telegramCommandEditMessage].options.message_id = messageId;
           }
         }
-        // logs(`messageId = ${messageId}`, _l);
         const telegramObject = telegramObjects.shift(),
           sentToTimeStamp = Date.now();
-        // logs(`\n userMessagesQueue.length = ${userMessagesQueue.length}, userMessagesQueue = ${JSON.stringify(userMessagesQueue)}\ntelegramObject = ${JSON.stringify(telegramObject)}, \ntelegramObjects = ${JSON.stringify(telegramObjects)}`, _l);
         sendTo(telegramAdapter, telegramObject, (result) => {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentPos + 1, sentToTimeStamp, true);
         });
@@ -13994,7 +13733,6 @@ function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegram
     ? undefined
     : lastBotMessageId;
   if (messageId) {
-    logs('messageId = ' + messageId);
     const telegramObject = {
       deleteMessage: {
         options: {
@@ -14038,7 +13776,7 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
       if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       sendTo(telegramAdapter, telegramObject, (result) => {
         if (!result) {
-          console.warn(
+          warns(
             `Can't send pop-up message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
               user,
             )})!\nResult = ${JSON.stringify(result)}.`,
@@ -14141,7 +13879,6 @@ function telegramActionOnLogError(logRecord) {
           const currentErrors = telegramLastErrors.get(chatId);
           currentErrors.push(errorMessage);
         }
-        // logs(`error = ${telegramErrorParsed} = ${JSON.stringify(telegramLastErrors, JSONReplacerWithMap)}`, _l)
       }
     } catch (error) {
       //
@@ -14159,9 +13896,8 @@ function telegramActionOnUserRequestRaw(obj) {
   try {
     userRequest = JSON.parse(obj.state.val);
   } catch (err) {
-    logs(`JSON parse error: ${JSON.stringify(err)}`);
+    warns(`userRequest: JSON parse error: ${JSON.stringify(err)}`);
   }
-  logs(`raw = ${JSON.stringify(userRequest, null, 2)}`);
   if (typeOf(userRequest, 'object') && userRequest.hasOwnProperty('from') && userRequest.from.hasOwnProperty('id')) {
     const userId = userRequest.from.id,
       users = usersInMenu.getUsers();
@@ -14188,11 +13924,6 @@ function telegramActionOnUserRequestRaw(obj) {
           } else if (userRequest.hasOwnProperty('data')) {
             command = userRequest.data;
           }
-          logs(
-            `user = ${JSON.stringify(userId)}, chatId = ${JSON.stringify(chatId)}, messageId = ${JSON.stringify(
-              messageId,
-            )}, command = ${JSON.stringify(command)}`,
-          );
           let user = {};
           if (command !== undefined || userRequest.hasOwnProperty('document')) {
             user = {
@@ -14208,7 +13939,7 @@ function telegramActionOnUserRequestRaw(obj) {
             if (userRequest.data) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
               if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
-                console.warn(
+                warns(
                   `Some output is in cache:\n${JSON.stringify(
                     cachedValueGet(user, cachedTelegramMessagesQueue),
                   )}.\nGoing to delete it!`,
@@ -14230,7 +13961,6 @@ function telegramActionOnUserRequestRaw(obj) {
                 commandsOptionsList = cachedValueExists(user, cachedCommandsOptionsList)
                   ? cachedValueGet(user, cachedCommandsOptionsList)
                   : undefined;
-              // logs(`isWaitForInput = ${isWaitForInput}, subMenuItemId = ${subMenuItemId}`);
               if (currentCommand === cmdItemUpload) {
                 cachedValueSet(
                   user,
@@ -14257,7 +13987,7 @@ function telegramActionOnUserRequestRaw(obj) {
         }
       }
     } else {
-      console.warn(
+      warns(
         `Access denied. User ${JSON.stringify(userRequest.from.first_name)} ${JSON.stringify(
           userRequest.from.last_name,
         )} (${JSON.stringify(userRequest.from.username)}) with id = ${userId} not in the list!`,
@@ -14276,9 +14006,8 @@ function telegramActionOnSendToUserRaw(obj) {
   try {
     botMessage = JSON.parse(obj.state.val);
   } catch (err) {
-    logs(`JSON parse error: ${JSON.stringify(err)}`);
+    warns(`sendToUser: JSON parse error: ${JSON.stringify(err)}`);
   }
-  // logs(`sent = ${JSON.stringify(sent, null, 2)}`);
   if (
     typeOf(botMessage, 'object') &&
     botMessage.hasOwnProperty('message_id') &&
@@ -14302,14 +14031,12 @@ function telegramActionOnSendToUserRaw(obj) {
     let isBotMessage = false,
       isDocument = false,
       userId = 0;
-    logs(`user = ${JSON.stringify(user)}, botSendMessageId = ${JSON.stringify(messageId)}`);
     if (
       botMessage.hasOwnProperty('reply_markup') &&
       botMessage.reply_markup.hasOwnProperty('inline_keyboard') &&
       botMessage.reply_markup.inline_keyboard !== undefined
     ) {
       const inline_keyboard = botMessage.reply_markup.inline_keyboard;
-      logs('inline_keyboard = ' + JSON.stringify(inline_keyboard, null, 2));
       isBotMessage =
         inline_keyboard.findIndex(
           (keyboard) =>
@@ -14322,13 +14049,10 @@ function telegramActionOnSendToUserRaw(obj) {
             }) >= 0,
         ) >= 0;
       if (isBotMessage && messageId) cachedValueSet(user, cachedBotSendMessageId, messageId);
-      logs(`isBotMessage = ${JSON.stringify(isBotMessage)}, botSendMessageId = ${JSON.stringify(messageId)}`);
     } else if (botMessage.hasOwnProperty('text') && botMessage.text.includes(botMessageStamp)) {
-      logs(`is Bot Message - ${botMessage.text}`);
       isBotMessage = true;
     }
     if (botMessage.hasOwnProperty('photo')) {
-      // logs(`Photo, messageId =  ${sent.message_id}`);
       sentImageStore(user, botMessage.message_id);
       isDocument = true;
     } else if (botMessage.hasOwnProperty('document')) {
@@ -14338,7 +14062,6 @@ function telegramActionOnSendToUserRaw(obj) {
       if (!user.userId && userId) {
         user.userId = Number(userId);
         user = {...cachedValueGet({userId, chatId: userId}, cachedUser), ...user};
-        logs(`user = ${JSON.stringify(user)}`);
       }
       cachedValueSet(user, cachedMenuOn, true);
       telegramQueueProcess(user, messageId);
@@ -14346,7 +14069,6 @@ function telegramActionOnSendToUserRaw(obj) {
       if (!user.userId) {
         user = {...cachedValueGet(user, cachedUser), ...user};
       }
-      // logs(`CachedState(user, cachedMenuOn) = ${getCachedState(user, cachedMenuOn)}, CachedState(user, cachedBotSendMessageId) = ${getCachedState(user, cachedBotSendMessageId)}`)
       menuMenuItemsAndRowsClearCached(user);
       cachedValueDelete(user, cachedMenuOn);
       menuMenuDraw(user);
@@ -14359,7 +14081,6 @@ function telegramActionOnSendToUserRaw(obj) {
  * @param {object} connected - The special object, if called from subscription on changes.
  */
 function telegramActionOnConnected(connected) {
-  logs('connected = ' + JSON.stringify(connected));
   if (typeOf(connected, 'object') && connected.hasOwnProperty('state') && connected.state.hasOwnProperty('val')) {
     telegramIsConnected = connected.state.val;
   } else {
@@ -14460,7 +14181,7 @@ async function autoTelegramMenuInstanceInit() {
         year: updateAt.getFullYear(),
       },
       () => {
-        console.log(`Refresh after start is scheduled on ${updateAt.toString()} fo all users!`);
+        logs(`Refresh after start is scheduled on ${updateAt.toString()} fo all users!`);
         menuMenuMessageRenew(menuRefreshTimeAllUsers, true, false);
       },
     );
@@ -14688,6 +14409,22 @@ function logs(txt, debug) {
   if (configOptions.getOption(cfgDebugMode) || debug !== undefined) {
     console.log((arguments.callee && arguments.callee.caller ? arguments.callee.caller.name : '') + ': ' + txt);
   }
+}
+
+/**
+ * This function logs the message as warning.
+ * @param {string} txt - The text to be logged.
+ */
+function warns(txt) {
+  console.warn((arguments.callee && arguments.callee.caller ? arguments.callee.caller.name : '') + ': ' + txt);
+}
+
+/**
+ * This function logs the message as errors.
+ * @param {string} txt - The text to be logged.
+ */
+function errs(txt) {
+  console.error((arguments.callee && arguments.callee.caller ? arguments.callee.caller.name : '') + ': ' + txt);
 }
 
 /**
