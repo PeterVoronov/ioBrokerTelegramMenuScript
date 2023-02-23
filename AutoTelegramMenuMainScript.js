@@ -10448,7 +10448,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         const alertMessages = alertGetMessages(user, true),
           alertMessagesCount = alertMessages.length,
           alertMessage = alertMessages.pop();
-        if (alertMessage) {
+        if (alertMessagesCount) {
           // @ts-ignore
           const alertDate = formatDate(new Date(alertMessage.date), configOptions.getOption(cfgDateTimeTemplate, user));
           messageObject.alert = `<b><u>${alertDate}:</u> ${alertMessage.message}</b>\r\n\r\n`;
@@ -10467,7 +10467,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             });
           }
           messageObject.buttons.push(alertRow);
-          if (alertMessagesCount) {
+          if (alertMessagesCount > 1) {
             messageObject.buttons.push([
               {
                 text: '(' + alertMessagesCount + ') ' + translationsItemCoreGet(user, cmdAcknowledgeAllAlerts),
