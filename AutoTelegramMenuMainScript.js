@@ -8499,6 +8499,10 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         label: ` ${translationsGetObjectName(user, stateId, functionId)}`,
         ...enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
       };
+      if (trigger.onAbove !== undefined && trigger.onLess !== undefined) {
+        sourceStateDetails.valueString = `${trigger.onAbove ? '&gt;=' : '&lt;'} ${sourceStateDetails.valueString}`;
+        sourceStateDetails.lengthModifier = sourceStateDetails.lengthModifier - 3;
+      }
       const triggerAttributesArray = [
         {
           label: translationsItemTextGet(user, 'enabled'),
@@ -11629,13 +11633,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           break;
                         }
                         case 'edit': {
-                          const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                          if (currentTriggerIndex >= 0) {
-                            const currentTrigger = triggers[currentTriggerIndex];
-                            let triggerId = [triggerValue, currentTrigger.onAbove ? 'onAbove' : 'onLess'].join('.');
+                          const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                          if (triggerIndex >= 0) {
+                            const trigger = triggers[triggerIndex];
+                            let triggerId = [triggerValue, trigger.onAbove ? 'onAbove' : 'onLess'].join('.');
                             if (triggersGetIndex(triggers, triggerId) < 0) {
-                              currentTrigger.value = triggerValue;
-                              currentTrigger.id = triggerId;
+                              trigger.value = triggerValue;
+                              trigger.id = triggerId;
+                              trigger.enabled = false;
                               triggers = triggersSort(triggers);
                               currentMenuPosition.splice(-1, 1, triggersGetIndex(triggers, triggerId));
                               backStepsForCacheDelete--;
@@ -11647,11 +11652,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         }
                         case 'targetValue': {
                           if (commandOptions.item) {
-                            const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                            if (currentTriggerIndex >= 0) {
+                            const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                            if (triggerIndex >= 0) {
                               backStepsForCacheDelete--;
-                              const currentTrigger = triggers[currentTriggerIndex];
-                              currentTrigger.targetValue = triggerValue;
+                              const trigger = triggers[triggerIndex];
+                              trigger.targetValue = triggerValue;
                             } else {
                               triggers = undefined;
                             }
@@ -11663,11 +11668,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                         case onTimeIntervalId: {
                           if (commandOptions.item) {
-                            const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                            if (currentTriggerIndex >= 0) {
+                            const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                            if (triggerIndex >= 0) {
                               backStepsForCacheDelete--;
-                              const currentTrigger = triggers[currentTriggerIndex];
-                              currentTrigger[onTimeIntervalId] = triggerValue;
+                              const trigger = triggers[triggerIndex];
+                              trigger[onTimeIntervalId] = triggerValue;
                             } else {
                               triggers = undefined;
                             }
@@ -12230,15 +12235,16 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 case 'onAbove':
                 case 'onLess': {
                   if (commandOptions.item) {
-                    const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                    if (currentTriggerIndex >= 0) {
+                    const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                    if (triggerIndex >= 0) {
                       backStepsForCacheDelete--;
-                      const currentTrigger = triggers[currentTriggerIndex],
-                        triggerId = [currentTrigger.value, currentTrigger.onAbove ? 'onLess' : 'onAbove'].join('.');
+                      const trigger = triggers[triggerIndex],
+                        triggerId = [trigger.value, trigger.onAbove ? 'onLess' : 'onAbove'].join('.');
                       if (triggersGetIndex(triggers, triggerId) < 0) {
-                        currentTrigger.id = triggerId;
-                        currentTrigger.onAbove = !currentTrigger.onAbove;
-                        currentTrigger.onLess = !currentTrigger.onLess;
+                        trigger.id = triggerId;
+                        trigger.onAbove = !trigger.onAbove;
+                        trigger.onLess = !trigger.onLess;
+                        trigger.enabled = false;
                       } else {
                         triggers = undefined;
                       }
@@ -12250,17 +12256,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
                 case 'targetState': {
                   if (commandOptions.item) {
-                    const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                    if (currentTriggerIndex >= 0) {
+                    const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                    if (triggerIndex >= 0) {
                       backStepsForCacheDelete--;
-                      const currentTrigger = triggers[currentTriggerIndex];
-                      if (currentTrigger.targetState !== commandOptions.value) {
-                        currentTrigger.enabled = false;
-                        currentTrigger.targetValue = undefined;
+                      const trigger = triggers[triggerIndex];
+                      if (trigger.targetState !== commandOptions.value) {
+                        trigger.enabled = false;
+                        trigger.targetValue = undefined;
                       }
-                      currentTrigger.targetState = commandOptions.value;
-                      currentTrigger.targetFunction = commandOptions.function;
-                      currentTrigger.targetDestination = commandOptions.destination;
+                      trigger.targetState = commandOptions.value;
+                      trigger.targetFunction = commandOptions.function;
+                      trigger.targetDestination = commandOptions.destination;
                       currentMenuPosition = commandOptions.currentIndex.split('.').slice(0, -1);
                     } else {
                       triggers = undefined;
@@ -12273,11 +12279,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                 case 'targetValue': {
                   if (commandOptions.item) {
-                    const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                    if (currentTriggerIndex >= 0) {
+                    const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                    if (triggerIndex >= 0) {
                       backStepsForCacheDelete--;
-                      const currentTrigger = triggers[currentTriggerIndex];
-                      currentTrigger.targetValue = commandOptions.value;
+                      const trigger = triggers[triggerIndex];
+                      trigger.targetValue = commandOptions.value;
                       currentMenuPosition.splice(-1, 1);
                     } else {
                       triggers = undefined;
@@ -12290,10 +12296,17 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                 case 'enabled': {
                   if (commandOptions.item) {
-                    const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                    if (currentTriggerIndex >= 0) {
-                      const currentTrigger = triggers[currentTriggerIndex];
-                      currentTrigger.enabled = !currentTrigger.enabled;
+                    const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
+                    if (triggerIndex >= 0) {
+                      backStepsForCacheDelete--;
+                      const trigger = triggers[triggerIndex];
+                      if (trigger.enabled) {
+                        trigger.enabled = false;
+                      } else if (!trigger.enabled && trigger.targetState && trigger.targetValue !== undefined) {
+                        trigger.enabled = !trigger.enabled;
+                      } else {
+                        triggers = undefined;
+                      }
                     } else {
                       triggers = undefined;
                     }
@@ -12580,10 +12593,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeTrigger: {
             if (commandOptions.state && commandOptions.item) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state);
-              const currentTriggerIndex = triggersGetIndex(triggers, commandOptions.item),
+              const triggerIndex = triggersGetIndex(triggers, commandOptions.item),
                 backStepsForCacheDelete = -2;
-              if (currentTriggerIndex >= 0) {
-                triggers.splice(currentTriggerIndex, 1);
+              if (triggerIndex >= 0) {
+                triggers.splice(triggerIndex, 1);
                 cachedValueSet(user, cachedTriggersDetails, triggers);
                 cachedAddToDelCachedOnBack(
                   user,
