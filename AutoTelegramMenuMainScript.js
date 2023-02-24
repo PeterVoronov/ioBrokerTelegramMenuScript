@@ -6792,38 +6792,47 @@ function alertsStoreStateValue(alertStateId, currentValue) {
  * the appropriate recipient will be deleted from `alert` definition.
  * If `alert` definition has no `recipients` - it will be deleted too.
  * @param {object} user - The user object.
- * @param {string} alertId - The ioBroker state full Id.
- * @param {string=} alertFunc - The id of function enum, linked with a state.
- * @param {string=} alertDest - The id of destination enum, linked with a state.
+ * @param {string} stateId - The ioBroker state full Id.
+ * @param {string=} functionId - The id of function enum, linked with a state.
+ * @param {string=} destinationId - The id of destination enum, linked with a state.
  * @param {object=} alertDetailsOrThresholds - The object, contained the Thresholds definitions.
+ * @param {boolean=} isTriggers - The selector to process a triggers.
  */
-function alertsManage(user, alertId, alertFunc, alertDest, alertDetailsOrThresholds) {
+function alertsManage(user, stateId, functionId, destinationId, alertDetailsOrThresholds, isTriggers) {
   let alerts = alertsGet();
   if (alerts === undefined) alerts = {};
   if (alertDetailsOrThresholds === undefined) alertDetailsOrThresholds = {};
-  if (alerts.hasOwnProperty(alertId)) {
+  const userId = isTriggers ? triggersInAlertsId : user.chatId;
+  if (alerts.hasOwnProperty(stateId)) {
+    const alert = alerts[stateId],
+      alertDetails = alert.chatIds.has(userId) ? alert.chatIds.get(userId) : undefined;
     if (
-      alerts[alertId].chatIds.has(user.chatId) &&
-      (JSON.stringify(alerts[alertId].chatIds.get(user.chatId)) === JSON.stringify(alertDetailsOrThresholds) ||
-        JSON.stringify(alertDetailsOrThresholds) === '{}')
+      alertDetails &&
+      (JSON.stringify(alertDetails) === JSON.stringify(alertDetailsOrThresholds) ||
+        JSON.stringify(alertDetailsOrThresholds) === '{}' ||
+        (isTriggers && alertDetailsOrThresholds.length === 0))
     ) {
-      if (alerts[alertId].chatIds.size === 1) {
-        delete alerts[alertId];
-        unsubscribe(alertId);
+      if (alert.chatIds.size === 1) {
+        delete alerts[stateId];
+        unsubscribe(stateId);
       } else {
-        alerts[alertId].chatIds.delete(user.chatId);
+        alert.chatIds.delete(userId);
       }
-    } else if (alertFunc) {
-      alerts[alertId].chatIds.set(user.chatId, alertDetailsOrThresholds);
+    } else if (functionId) {
+      alert.chatIds.set(userId, alertDetailsOrThresholds);
     }
-  } else if (alertFunc && alertDest) {
+  } else if (functionId && destinationId) {
     const chatsMap = new Map();
-    chatsMap.set(user.chatId, alertDetailsOrThresholds);
-    alerts[alertId] = {function: alertFunc, destination: alertDest, chatIds: chatsMap};
-    on({id: alertId, change: 'ne'}, alertsActionOnSubscribedState);
+    chatsMap.set(userId, alertDetailsOrThresholds);
+    alerts[stateId] = {function: functionId, destination: destinationId, chatIds: chatsMap};
+    on({id: stateId, change: 'ne'}, alertsActionOnSubscribedState);
   }
-  cachedValueDelete(user, cachedAlertThresholdSet);
-  cachedValueDelete(user, cachedAlertsListPrepared);
+  if (isTriggers) {
+    cachedValueDelete(user, cachedTriggersDetails);
+  } else {
+    cachedValueDelete(user, cachedAlertThresholdSet);
+    cachedValueDelete(user, cachedAlertsListPrepared);
+  }
   alertsStore(alerts);
 }
 
@@ -8093,8 +8102,8 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
         name: `${currentName}${isTriggersSetChanged ? ` (${iconItemEdit})` : ''}`,
         icons: triggersGetIcon,
         group: cmdItemsProcess,
-        command: cmdItemsProcess,
-        options: {...stateOptions, function: functionId, destination: destinationId},
+        command: cmdItemPress,
+        options: {...stateOptions, function: functionId, destination: destinationId, mode: 'save'},
         submenu: [],
       });
     }
@@ -8114,14 +8123,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
   return subMenu;
 }
 
-function triggersMenuItemGenerateSetValue(
-  user,
-  upperMenuItemIndex,
-  subMenuItemIndex,
-  currentObject,
-  triggers,
-  baseOptions,
-) {
+function triggersMenuItemGenerateSetValue(user, upperItemIndex, itemIndex, currentObject, triggers, baseOptions) {
   let menuItem = undefined;
   if (currentObject && currentObject.common) {
     const currentObjectCommon = currentObject.common,
@@ -8142,27 +8144,21 @@ function triggersMenuItemGenerateSetValue(
     if (type === 'number') {
       menuItem =
         itemGroup === 'addNew'
-          ? menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex, itemOptions)
-          : menuMenuItemGenerateEditItem(user, upperMenuItemIndex, subMenuItemIndex, itemName, itemGroup, {
+          ? menuMenuItemGenerateAddItem(user, upperItemIndex, itemIndex, itemOptions)
+          : menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, itemGroup, {
               ...itemOptions,
               value: currentValue,
             });
     } else {
-      menuItem = {
-        index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
-        name: itemName,
-        icon: itemIcon,
-        group: itemGroup,
-        submenu: new Array(),
-      };
-      const currentStateType = currentObjectCommon['type'];
-      let possibleValues = new Array();
+      const currentStateType = currentObjectCommon['type'],
+        values = new Map();
+      let stateValues = [];
       if (type === 'boolean') {
-        possibleValues = [true, false];
+        stateValues = [true, false];
       } else {
-        const possibleStateValues = enumerationsExtractPossibleValueStates(currentObjectCommon['states']);
-        if (possibleStateValues)
-          possibleValues = Object.keys(possibleStateValues).map((possibleValue) =>
+        const stateValuesObject = enumerationsExtractPossibleValueStates(currentObjectCommon['states']);
+        if (stateValuesObject)
+          stateValues = Object.keys(stateValuesObject).map((possibleValue) =>
             convertValueCode
               ? convertValueCode(possibleValue)
               : currentStateType === 'number'
@@ -8170,22 +8166,20 @@ function triggersMenuItemGenerateSetValue(
               : possibleValue,
           );
       }
-      if (possibleValues.length) {
-        possibleValues.forEach((possibleValue, subSubMenuIndex) => {
-          const valueName = enumerationsStateValueDetails(user, currentObject, functionId, {val: possibleValue}, true)[
-            'valueString'
-          ];
-          if (!triggers || triggersGetIndex(triggers, possibleValue) < 0) {
-            menuItem.submenu.push({
-              index: `${upperMenuItemIndex}.${subMenuItemIndex}.${subSubMenuIndex}`,
-              name: valueName,
-              command: cmdItemPress,
-              options: {...itemOptions, value: possibleValue, sorted: possibleValues},
-              submenu: [],
-            });
-          }
+      if (stateValues.length) {
+        stateValues.forEach((value) => {
+          if (!triggers || triggersGetIndex(triggers, value) < 0)
+            values.set(
+              value,
+              enumerationsStateValueDetails(user, currentObject, functionId, {val: value}, true)['valueString'],
+            );
         });
-        if (menuItem.submenu.length === 0) menuItem = undefined;
+        if (values.size)
+          menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, values, itemGroup, {
+            ...itemOptions,
+            icon: itemIcon,
+            sorted: values,
+          });
       }
     }
   }
@@ -8227,14 +8221,14 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         type: stateSubType,
         item: triggerId,
       };
-    subMenuIndex = subMenu.push({
-      index: `${currentIndex}.${subMenuIndex}`,
-      name: translationsItemTextGet(user, 'enabled'),
-      icon: triggersGetEnabledIcon(trigger),
-      command: cmdItemPress,
-      options: {...triggerOptions, mode: 'enabled', value: triggerValue},
-      submenu: [],
-    });
+    subMenuIndex = subMenu.push(
+      menuMenuItemGenerateBooleanItem(user, currentIndex, subMenuIndex, translationsItemTextGet(user, 'enabled'), '', {
+        ...triggerOptions,
+        mode: 'enabled',
+        value: trigger.enabled,
+        icons: [iconItemTrigger, iconItemDisabled],
+      }),
+    );
     if (stateSubType === 'number') {
       subMenuIndex = subMenu.push(
         menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${triggerValue}${stateUnits}`, 'value', {
@@ -8296,6 +8290,32 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${subMenuIndex}`, 1, messageOptions),
       ],
     });
+    const logText = translationsItemTextGet(user, 'log');
+    subMenuIndex = subMenu.push(
+      menuMenuItemGenerateBooleanItem(user, currentIndex, subMenuIndex, logText, 'messageTo', {
+        ...triggerOptions,
+        mode: 'log',
+        value: trigger.log,
+        icons: [configOptions.getOption(cfgDefaultIconOn, user), configOptions.getOption(cfgDefaultIconOff, user)],
+      }),
+    );
+    const activeUsersList = usersInMenu.getUsers(undefined, true),
+      activeUsers = new Map(),
+      itemName = translationsItemTextGet(user, 'user');
+    if (activeUsersList.length) {
+      activeUsersList.forEach((userId) => {
+        activeUsers.set(userId, usersInMenu.getUserName(userId));
+      });
+      subMenuIndex = subMenu.push(
+        menuMenuItemGenerateSelectItem(user, currentIndex, subMenuIndex, itemName, activeUsers, 'messageTo', {
+          ...triggerOptions,
+          icon: iconItemUser,
+          showCurrent: true,
+          mode: 'user',
+          value: trigger.user,
+        }),
+      );
+    }
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
       name: translationsItemTextGet(user, 'targetState'),
@@ -8334,8 +8354,6 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
 function triggersMenuGenerateBrowseAllStates(user, menuItemToProcess) {
   const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
     currentOptions = menuItemToProcess.options,
-    // triggers = triggersGetStateTriggers(user, stateId),
-    // triggerIndex = triggersGetIndex(triggers, triggerId),
     enumerationsMenu = menuMenuItemGenerateRootMenu(user, 'enumerationsOnly'),
     subMenu = enumerationsMenu ? enumerationsMenu.submenu : [],
     convertDevice = (device) => {
@@ -8389,6 +8407,21 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           valueString: enumerationsGetDeviceName(user, options.state, functionId, destinationId),
         },
         sourceStateDetails,
+        {
+          label: translationsItemTextGet(user, 'messageTo'),
+          valueString: '',
+        },
+        {
+          label: ` ${translationsItemTextGet(user, 'user')}`,
+          valueString: usersInMenu.getUserName(trigger.user),
+        },
+        {
+          label: ` ${translationsItemTextGet(user, 'log')}`,
+          valueString: trigger.log
+            ? configOptions.getOption(cfgDefaultIconOn, user)
+            : configOptions.getOption(cfgDefaultIconOff, user),
+          lengthModifier: 1,
+        },
       ];
       const targetStateId = trigger.targetState,
         targetFunctionId = trigger.targetFunction,
@@ -12067,9 +12100,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeTrigger: {
             if (commandOptions.state) {
-              let triggers = triggersGetStateTriggers(user, commandOptions.state),
+              const state = commandOptions.state,
+                mode = commandOptions.mode;
+              let triggers = triggersGetStateTriggers(user, state),
                 backStepsForCacheDelete = -1;
-              switch (commandOptions.mode) {
+              switch (mode) {
                 case 'onAbove':
                 case 'onLess': {
                   if (commandOptions.item) {
@@ -12092,36 +12127,25 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   }
                   break;
                 }
-                case 'targetState': {
-                  if (commandOptions.item) {
-                    const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
-                    if (triggerIndex >= 0) {
-                      backStepsForCacheDelete--;
-                      const trigger = triggers[triggerIndex];
-                      if (trigger.targetState !== commandOptions.value) {
-                        trigger.enabled = false;
-                        trigger.targetValue = undefined;
-                      }
-                      trigger.targetState = commandOptions.value;
-                      trigger.targetFunction = commandOptions.function;
-                      trigger.targetDestination = commandOptions.destination;
-                      currentMenuPosition = commandOptions.currentIndex.split('.').slice(0, -1);
-                    } else {
-                      triggers = undefined;
-                    }
-                  } else {
-                    triggers = undefined;
-                  }
-                  break;
-                }
 
-                case 'targetValue': {
+                case 'targetState':
+                case 'targetValue':
+                case 'user': {
                   if (commandOptions.item) {
                     const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
                     if (triggerIndex >= 0) {
                       backStepsForCacheDelete--;
                       const trigger = triggers[triggerIndex];
-                      trigger.targetValue = commandOptions.value;
+                      if (mode === 'targetState') {
+                        if (trigger[mode] !== commandOptions.value) {
+                          trigger.enabled = false;
+                          trigger.targetValue = undefined;
+                        }
+                        trigger.targetFunction = commandOptions.function;
+                        trigger.targetDestination = commandOptions.destination;
+                        currentMenuPosition = commandOptions.currentIndex;
+                      }
+                      trigger[mode] = commandOptions.value;
                       currentMenuPosition.splice(-1, 1);
                     } else {
                       triggers = undefined;
@@ -12132,16 +12156,20 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   break;
                 }
 
-                case 'enabled': {
+                case 'enabled':
+                case 'log': {
                   if (commandOptions.item) {
                     const triggerIndex = triggersGetIndex(triggers, commandOptions.item);
                     if (triggerIndex >= 0) {
                       backStepsForCacheDelete--;
                       const trigger = triggers[triggerIndex];
-                      if (trigger.enabled) {
-                        trigger.enabled = false;
-                      } else if (!trigger.enabled && trigger.targetState && trigger.targetValue !== undefined) {
-                        trigger.enabled = !trigger.enabled;
+                      if (trigger[mode]) {
+                        trigger[mode] = false;
+                      } else if (
+                        mode === 'log' ||
+                        (!trigger[mode] && trigger.targetState && trigger.targetValue !== undefined)
+                      ) {
+                        trigger[mode] = true;
                       } else {
                         triggers = undefined;
                       }
@@ -12168,6 +12196,15 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   });
                   triggers = triggersSort(triggers, commandOptions.sorted);
                   currentMenuPosition.splice(-1, 1);
+                  break;
+                }
+
+                case 'save': {
+                  if (commandOptions.function && commandOptions.destination) {
+                    alertsManage(user, state, commandOptions.function, commandOptions.destination, triggers, true);
+                    menuMenuItemsAndRowsClearCached(user);
+                    triggers = undefined;
+                  }
                   break;
                 }
 
