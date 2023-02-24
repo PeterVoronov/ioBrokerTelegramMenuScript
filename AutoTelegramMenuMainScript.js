@@ -2537,18 +2537,37 @@ class MenuUsers extends MenuRoles {
   }
 
   /**
+   * This method return a full user name, as concatenation of First and Last names, or Nick(userName).
+   * @param {number|string} itemId - The Id of the user to process.
+   * @returns {string} The user Name string.
+   */
+  getUserName(itemId) {
+    const user = this.getUser(itemId);
+    let userName = '';
+    if (user) {
+      if (user.firstName || user.lastName) {
+        userName = `${user.firstName ? user.firstName : ''}${user.lastName ? ` ${user.lastName}` : ''}`;
+      } else {
+        userName = user.userName;
+      }
+    }
+    return userName;
+  }
+
+  /**
    * This method returns an array of userIds for all users that associated with a roleId that matches the roleId passed in as
    * an argument.
    *
    * If no roleId is passed in, it returns an array of userIds for all existing users.
    * @param {number|string=} roleId - The role id to filter by. If not provided, all users are returned.
+   * @param {boolean=} enabledOnly - The selector to filter users.
    * @returns {object[]} An array of userIds
    */
-  getUsers(roleId) {
+  getUsers(roleId, enabledOnly = false) {
     const users = roleId
       ? Object.values(this.data).filter((user) => user.roles.includes(roleId))
       : Object.values(this.data);
-    return users.map((user) => user.userId);
+    return users.filter((user) => !enabledOnly || (enabledOnly && user.isEnabled)).map((user) => user.userId);
   }
 
   /**
@@ -9220,28 +9239,27 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
  * Generates menu item with confirmation subitem for the deletion of any menu
  * item, which will be processed by `cmdItemDeleteConfirm`.
  * @param {string} user - The user object.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param  {object} commandOptions - The options required for the `cmdItemDeleteConfirm`
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param  {object} options - The options required for the `cmdItemDeleteConfirm`
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
-function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
-  // logs(`command = ${commandPackParams(cmdItemDeleteConfirm, dataType, dataItem, dataId, ...dataValues)}`, _l)
+function menuMenuItemGenerateDeleteItem(user, upperItemIndex, itemIndex, options) {
   return {
-    index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+    index: `${upperItemIndex}.${itemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemDelete)}`,
     icon: iconItemDelete,
     group: cmdItemDelete,
     command: cmdItemDelete,
-    options: {index: subMenuItemIndex},
+    options: {index: itemIndex},
     submenu: [
       {
-        index: `${upperMenuItemIndex}.${subMenuItemIndex}.0`,
+        index: `${upperItemIndex}.${itemIndex}.0`,
         name: `${translationsItemCoreGet(user, cmdItemDeleteConfirm)}`,
         icon: iconItemDelete,
         //cfgItem, typeOfOption, subMenuIndex
         command: cmdItemDeleteConfirm,
-        options: commandOptions,
+        options: options,
         submenu: [],
       },
     ],
@@ -9251,67 +9269,60 @@ function menuMenuItemGenerateDeleteItem(user, upperMenuItemIndex, subMenuItemInd
 /**
  * Generates menu item which call the user input for the Rename.
  * @param {object} _user - The user object.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
  * @param {string} itemName - The name of the menu item.
- * @param {string} itemGroup - The name of the menu item.
- * @param {object} commandOptions - The options to be processed by `cmdGetInput`.
+ * @param {string} groupId - The name of the menu item.
+ * @param {object} options - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
-function menuMenuItemGenerateEditItem(
-  _user,
-  upperMenuItemIndex,
-  subMenuItemIndex,
-  itemName,
-  itemGroup,
-  commandOptions,
-) {
-  const result = {
-    index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+function menuMenuItemGenerateEditItem(_user, upperItemIndex, itemIndex, itemName, groupId, options) {
+  const menuItem = {
+    index: `${upperItemIndex}.${itemIndex}`,
     name: itemName,
     icon: iconItemEdit,
     command: cmdGetInput,
-    options: commandOptions,
+    options: options,
     submenu: [],
   };
-  if (itemGroup) result.group = itemGroup;
-  return result;
+  if (groupId) menuItem.group = groupId;
+  return menuItem;
 }
 
 /**
  * Generates menu item which call the user input for the Rename.
  * @param {object} user - The user object.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {object} commandOptions - The options to be processed by `cmdGetInput`.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {object} options - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
-function menuMenuItemGenerateRenameItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
+function menuMenuItemGenerateRenameItem(user, upperItemIndex, itemIndex, options) {
   return menuMenuItemGenerateEditItem(
     user,
-    upperMenuItemIndex,
-    subMenuItemIndex,
+    upperItemIndex,
+    itemIndex,
     `${translationsItemCoreGet(user, 'cmdItemRename')}`,
     '',
-    commandOptions,
+    options,
   );
 }
 
 /**
  * Generates menu item which call the user input for Add new item (i.e. set name).
  * @param {object} user - The user object.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {object} commandOptions - The options to be processed by `cmdGetInput`.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {object} options - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
-function menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
+function menuMenuItemGenerateAddItem(user, upperItemIndex, itemIndex, options) {
   return {
-    index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+    index: `${upperItemIndex}.${itemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
     icon: iconItemPlus,
     command: cmdGetInput,
-    options: commandOptions,
+    options: options,
     group: 'addNew',
     submenu: [],
   };
@@ -9320,66 +9331,128 @@ function menuMenuItemGenerateAddItem(user, upperMenuItemIndex, subMenuItemIndex,
 /**
  * Generates menu item which call the reset for current menu item.
  * @param {object} user - The user object.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {object} commandOptions - The options to be processed by `cmdItemReset`.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {object} options - The options to be processed by `cmdItemReset`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}.
  */
-function menuMenuItemGenerateResetItem(user, upperMenuItemIndex, subMenuItemIndex, commandOptions) {
+function menuMenuItemGenerateResetItem(user, upperItemIndex, itemIndex, options) {
   return {
-    index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+    index: `${upperItemIndex}.${itemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemReset)}`,
     icon: iconItemReset,
     command: cmdItemReset,
-    options: commandOptions,
+    options: options,
     group: 'reset',
     submenu: [],
   };
 }
 
 /**
- * Generates two menu items to move an item `up` and `down` in it's holder collection(array), which will be processed by `cmdItemMoveUp`/`cmdItemMoveDown`
+ * Generates menu item which call the cmdItemPress command to inverse current value.
+ * @param {object} _user - The user object.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {string} itemName - The name of the menu item.
+ * @param {string} groupId - The name of the menu item.
+ * @param {object} options - The options to be processed by `cmdGetInput`.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
+ */
+function menuMenuItemGenerateBooleanItem(_user, upperItemIndex, itemIndex, itemName, groupId, options) {
+  const menuItem = {
+    index: `${upperItemIndex}.${itemIndex}`,
+    name: itemName,
+    icon: options.icons ? options.icons[options.value ? 0 : 1] : '',
+    command: cmdItemPress,
+    options: options,
+    submenu: [],
+  };
+  if (groupId) menuItem.group = groupId;
+  return menuItem;
+}
+
+/**
+ * Generates menu item woth possible values as subItems which call the cmdItemPress command to select one.
  * @param {object} user - The user object.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {string} itemName - The name of the menu item.
+ * @param {Map} itemValues - The Map object with value:Nam pairs for the menu item.
+ * @param {string} groupId - The name of the menu item.
+ * @param {object} options - The options to be processed by `cmdGetInput`.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
+ */
+function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, itemValues, groupId, options) {
+  const menuItem = {
+    index: `${upperItemIndex}.${itemIndex}`,
+    name: itemName,
+    icon: options.icon ? options.icon : iconItemEdit,
+    options: options,
+    submenu: new Array(),
+  };
+  if (itemValues && typeOf(itemValues, 'map')) {
+    let subMenuIndex = 0;
+    const iconSelected = configOptions.getOption(cfgDefaultIconOn, user),
+      currentValue = options.value,
+      showCurrent = options.showCurrent && currentValue !== undefined;
+    itemValues.forEach((subItemName, subItemValue) => {
+      subMenuIndex = menuItem.submenu.push({
+        index: `${upperItemIndex}.${itemIndex}.${subMenuIndex}`,
+        name: subItemName,
+        icon: options.value !== undefined && currentValue === subItemValue ? iconSelected : '',
+        command: cmdItemPress,
+        options: {...options, value: subItemValue},
+      });
+      if (showCurrent && subItemValue === currentValue) menuItem.name += ` (${subItemName})`;
+    });
+  }
+  if (groupId) menuItem.group = groupId;
+  return menuItem;
+}
+
+/**
+ * Generates two menu items to move an item `up` and `down` in it's holder collection(array), which will be processed by `cmdItemMoveUp`/`cmdItemMoveDown`
+ * @param {object} _user - The user object.
  * @param {object[]} subMenu - The current level menu items array.
- * @param {string} upperMenuItemIndex - The upper level item menu index.
- * @param {number} subMenuItemIndex - The index of an item to be created.
- * @param {number} currentItemIndex - The index of an item in the appropriate collection (array).
- * @param {number} lastItemIndex - The current max index in the appropriate collection (array) which holds an item.
- * @param {object} commandOptions - The options, are required for  `cmdItemMoveUp`/`cmdItemMoveDown` to identify an item.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {number} itemIndexInArray - The index of an item in the appropriate collection (array).
+ * @param {number} lastItemInArrayIndex - The current max index in the appropriate collection (array) which holds an item.
+ * @param {object} options - The options, are required for  `cmdItemMoveUp`/`cmdItemMoveDown` to identify an item.
  * @param {string=} groupId - The group Id for menu.
  * @returns {[object[], number]} The array with an updated `subMenu` with new menu items to move an item `up` and `down`, and updated `subMenuItemIndex`.
  */
 function menuMenuPartGenerateMoveItemUpAndDown(
-  user,
+  _user,
   subMenu,
-  upperMenuItemIndex,
-  subMenuItemIndex,
-  currentItemIndex,
-  lastItemIndex,
-  commandOptions,
+  upperItemIndex,
+  itemIndex,
+  itemIndexInArray,
+  lastItemInArrayIndex,
+  options,
   groupId = 'moveItem',
 ) {
-  if (currentItemIndex > 0) {
-    subMenuItemIndex = subMenu.push({
-      index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+  if (itemIndexInArray > 0) {
+    itemIndex = subMenu.push({
+      index: `${upperItemIndex}.${itemIndex}`,
       name: `${iconItemMoveUp}`,
       command: cmdItemMoveUp,
-      options: commandOptions,
+      options: options,
       group: groupId,
       submenu: [],
     });
   }
-  if (currentItemIndex < lastItemIndex) {
-    subMenuItemIndex = subMenu.push({
-      index: `${upperMenuItemIndex}.${subMenuItemIndex}`,
+  if (itemIndexInArray < lastItemInArrayIndex) {
+    itemIndex = subMenu.push({
+      index: `${upperItemIndex}.${itemIndex}`,
       name: `${iconItemMoveDown}`,
       command: cmdItemMoveDown,
-      options: commandOptions,
+      options: options,
       group: groupId,
       submenu: [],
     });
   }
-  return [subMenu, subMenuItemIndex];
+  return [subMenu, itemIndex];
 }
 
 //*** menu items related functions - begin ***//
