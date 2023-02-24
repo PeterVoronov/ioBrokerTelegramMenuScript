@@ -7096,14 +7096,12 @@ function alertsActionOnSubscribedState(object) {
           } else if (alertStateType === 'number' && detailsOrThresholds.length) {
             const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
             detailsOrThresholds
-              .filter(threshold => threshold.enabled)
+              .filter((threshold) => threshold.enabled)
               .forEach((threshold) => {
                 const thresholdValue = threshold.value,
                   onAbove = threshold.onAbove,
                   onLess = threshold.onLess,
-                  onTimeInterval = threshold.hasOwnProperty(onTimeIntervalId)
-                    ? threshold[onTimeIntervalId]
-                    : 0,
+                  onTimeInterval = threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0,
                   idStoredTimerOn = [objectId, chatId, thresholdValue, 'timerOn'].join(itemsDelimiter),
                   idStoredTimerStatus = [objectId, chatId, thresholdValue, 'timerStatus'].join(itemsDelimiter),
                   storedTimerOn = alertsStoredVariables.has(idStoredTimerOn)
@@ -7581,19 +7579,13 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
     {function: functionId, destination: destinationId, state: stateId} = options,
     currentStateObject = getObjectEnriched(stateId),
     stateUnits =
-      currentStateObject &&
-      currentStateObject.common &&
-      currentStateObject.common.unit
+      currentStateObject && currentStateObject.common && currentStateObject.common.unit
         ? ` ${currentStateObject.common.unit}`
         : '',
-    [thresholds, currentStateThresholds] = alertsGetStateAlertDetailsOrThresholds(
-      user,
-      stateId,
-      true,
-    );
+    [thresholds, currentStateThresholds] = alertsGetStateAlertDetailsOrThresholds(user, stateId, true);
   let subMenu = [],
     subMenuIndex = 0;
-  thresholds.forEach(threshold => {
+  thresholds.forEach((threshold) => {
     const thresholdValue = threshold.value,
       onTimeInterval = `${
         threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0
@@ -7613,7 +7605,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
       dataType: dataTypeAlertSubscribed,
       state: stateId,
       type: alertThresholdId,
-      mode: 'add'
+      mode: 'add',
     }),
   );
   const isThresholdsSetChanged = JSON.stringify(currentStateThresholds) !== JSON.stringify(thresholds);
@@ -7630,19 +7622,11 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
   }
   if (!isThresholdsSetChanged && Object.keys(currentStateThresholds).length) {
     subMenu.push(
-      alertMenuItemGenerateAlertPropagation(
-        user,
-        currentIndex,
-        subMenuIndex,
-        stateId,
-        functionId,
-        destinationId,
-      ),
+      alertMenuItemGenerateAlertPropagation(user, currentIndex, subMenuIndex, stateId, functionId, destinationId),
     );
   }
   return subMenu;
 }
-
 
 /**
  * This function generates a submenu to manage thresholds, on which the
@@ -7669,24 +7653,18 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
         : configOptions.getOption(cfgAlertMessageTemplateThreshold, user),
       thresholdOptions = {dataType: dataTypeAlertSubscribed, state: stateId, type: alertThresholdId, item: thresholdId};
     subMenuIndex = subMenu.push(
-      menuMenuItemGenerateEditItem(
-        user,
-        currentIndex,
-        subMenuIndex,
-        `${thresholdValue}${stateUnits}`,
-        'value',
-          {...thresholdOptions, mode: 'edit', value: thresholdValue},
-      ),
+      menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${thresholdValue}${stateUnits}`, 'value', {
+        ...thresholdOptions,
+        mode: 'edit',
+        value: thresholdValue,
+      }),
     );
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${thresholdValue}${stateUnits} ${iconItemAbove}`,
       icon: menuIconGenerate(user, threshold.onAbove),
       group: 'borders',
-      command:
-        threshold.onAbove === threshold.onLess || !threshold.onAbove
-          ? cmdItemPress
-          : cmdNoOperation,
+      command: threshold.onAbove === threshold.onLess || !threshold.onAbove ? cmdItemPress : cmdNoOperation,
       options: {...thresholdOptions, mode: 'onAbove'},
       submenu: [],
     });
@@ -7695,10 +7673,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
       name: `${thresholdValue}${stateUnits} ${iconItemLess}`,
       icon: menuIconGenerate(user, threshold.onLess),
       group: 'borders',
-      command:
-        threshold.onAbove === threshold.onLess || !threshold.onLess
-          ? cmdItemPress
-          : cmdNoOperation,
+      command: threshold.onAbove === threshold.onLess || !threshold.onLess ? cmdItemPress : cmdNoOperation,
       options: {...thresholdOptions, mode: 'onLess'},
       submenu: [],
     });
@@ -7728,13 +7703,10 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
         menuMenuItemGenerateDeleteItem(user, messageIndex, 1, messageOptions),
       ],
     });
-    subMenu.push(
-      menuMenuItemGenerateDeleteItem(user, currentIndex, subMenuIndex, thresholdOptions),
-    );
+    subMenu.push(menuMenuItemGenerateDeleteItem(user, currentIndex, subMenuIndex, thresholdOptions));
   }
   return subMenu;
 }
-
 
 /**
  * Generates menu item which options submenu to propagate current `Alert` configuration
@@ -9302,7 +9274,7 @@ const menuItemButtonPrefix = 'menu-', // Technical parameter for the telegram me
  * @param {string[]=} iconsPair - The array of two strings. If undefined - default On Off icons selected.
  * @returns {string} The result icon.
  */
-function menuIconGenerate(user, value, iconsPair){
+function menuIconGenerate(user, value, iconsPair) {
   if (iconsPair === undefined) {
     iconsPair = [configOptions.getOption(cfgDefaultIconOn, user), configOptions.getOption(cfgDefaultIconOff, user)];
   }
@@ -11390,8 +11362,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                           detailsOrThresholds = undefined;
                         } else {
-                          const thresholdValue =  Number(userInputToProcess);
-                          if (['add', 'edit'].includes(mode) && triggersGetIndex(detailsOrThresholds, thresholdValue) >= 0) {
+                          const thresholdValue = Number(userInputToProcess);
+                          if (
+                            ['add', 'edit'].includes(mode) &&
+                            triggersGetIndex(detailsOrThresholds, thresholdValue) >= 0
+                          ) {
                             warns(`Unacceptable value '${userInputToProcess}' - already exists such key!`);
                             telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                             detailsOrThresholds = undefined;
