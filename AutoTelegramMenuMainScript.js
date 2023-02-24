@@ -11075,11 +11075,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
         } else if (currentStateType === 'number') {
           const possibleNumber = Number(stateValue);
-          if (checkNumberStateValue(stateId, possibleNumber, currentObjectCommon)) {
+          if (checkNumberStateValue(stateId, possibleNumber, currentObject)) {
             setState(stateId, possibleNumber, setStateCallback);
           } else {
             warns(
-              `Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currentObject.common)}`,
+              `Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currentObjectCommon)}`,
             );
             telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
             clearTimeout(timer);
