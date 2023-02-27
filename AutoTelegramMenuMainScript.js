@@ -7551,13 +7551,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                 };
               if (mode === 'alerts') {
                 alertMenuIndex = subMenu.push(
-                  alertsMenuItemGenerateSubscribedOn(
-                    stateIndex,
-                    stateName,
-                    stateOptions,
-                    stateObject,
-                    true,
-                  ),
+                  alertsMenuItemGenerateSubscribedOn(stateIndex, stateName, stateOptions, stateObject, true),
                 );
               } else {
                 const itemStateSubType = triggersGetStateSubType(stateIdFull, stateObject);
@@ -9994,7 +9988,7 @@ function menuMenuItemGenerateBooleanItem(_user, upperItemIndex, itemIndex, itemN
 }
 
 /**
- * Generates menu item woth possible values as subItems which call the cmdItemPress command to select one.
+ * Generates menu item with possible values as subItems which call the cmdItemPress command to select one.
  * @param {object} user - The user object.
  * @param {string} upperItemIndex - The upper level item menu index.
  * @param {number} itemIndex - The index of an item to be created.
@@ -10666,7 +10660,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}`,
           },
         ];
-        if (currentBackIndex !== undefined) {
+        if (currentBackIndex) {
           if (configOptions.getOption(cfgShowHomeButton, user)) {
             lastRow.unshift({text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome});
           }
@@ -11834,9 +11828,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdGetInput: {
         switch (commandOptions.dataType) {
           case dataTypeTranslation: {
-            let currentTranslationId, currentTranslationValue;
-            if (commandOptions.translationType && commandOptions.item && commandOptions.index) {
-              currentTranslationId = commandOptions.translationType;
+            let currentTranslationId = commandOptions.translationType,
+              currentTranslationValue;
+            if (currentTranslationId && commandOptions.item !== undefined && commandOptions.index !== undefined) {
               let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
               if (
                 destTranslation &&
