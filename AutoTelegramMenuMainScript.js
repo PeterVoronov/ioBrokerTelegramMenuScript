@@ -10534,7 +10534,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         }
         messageObject.buttons = [];
         let currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
-          currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : '';
+          currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : undefined;
         const maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
         let buttonsCount = menuItemToProcess.submenu.length;
         let buttonsOffset = 0;
@@ -10660,7 +10660,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}`,
           },
         ];
-        if (currentBackIndex) {
+        if (currentBackIndex !== undefined) {
           if (configOptions.getOption(cfgShowHomeButton, user)) {
             lastRow.unshift({text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome});
           }
