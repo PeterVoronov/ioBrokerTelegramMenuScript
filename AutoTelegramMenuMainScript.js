@@ -7009,7 +7009,7 @@ function alertsActionOnSubscribedState(object) {
     if (alertFunction) {
       const alertStateSectionsCount = alertFunction.statesSectionsCount,
         alertStateShortId = stateId.split('.').slice(-alertStateSectionsCount).join('.'),
-        isAlertStatePrimary = alertFunction && alertStateShortId === alertFunction.state,
+        isPrimaryState = alertFunction && alertStateShortId === alertFunction.state,
         alertFunctionDeviceButtonsAndAttributes = {...alertFunction.deviceAttributes, ...alertFunction.deviceButtons},
         convertValueCode = alertFunctionDeviceButtonsAndAttributes.hasOwnProperty(alertStateShortId)
           ? alertFunctionDeviceButtonsAndAttributes[alertStateShortId].convertValueCode
@@ -7028,36 +7028,36 @@ function alertsActionOnSubscribedState(object) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           const currentStateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
             oldStateValue = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
-            alertMessageValues = {};
+            messageValues = {};
           if (user !== undefined) {
-            alertMessageValues.alertFunctionName = translationsGetEnumName(
+            messageValues.alertFunctionName = translationsGetEnumName(
               user,
               dataTypeFunction,
               alertFunctionId,
               enumerationsNamesMain,
             );
-            alertMessageValues.alertDestinationName = translationsGetEnumName(
+            messageValues.alertDestinationName = translationsGetEnumName(
               user,
               dataTypeDestination,
               alertDestinationId,
               enumerationsNamesInside,
             );
-            alertMessageValues.alertDeviceName = translationsGetObjectName(
+            messageValues.alertDeviceName = translationsGetObjectName(
               user,
               stateId.split('.').slice(0, -alertStateSectionsCount).join('.'),
               alertFunctionId,
               alertDestinationId,
             );
-            alertMessageValues.alertStateName = isAlertStatePrimary
+            messageValues.alertStateName = isPrimaryState
               ? ''
               : translationsGetObjectName(user, alertObject, alertFunctionId);
-            alertMessageValues.alertStateValue = enumerationsStateValueDetails(
+            messageValues.alertStateValue = enumerationsStateValueDetails(
               user,
               alertObject,
               alertFunctionId,
               object.state,
             )['valueString'];
-            alertMessageValues.alertStateOldValue = enumerationsStateValueDetails(
+            messageValues.alertStateOldValue = enumerationsStateValueDetails(
               user,
               alertObject,
               alertFunctionId,
@@ -7084,7 +7084,7 @@ function alertsActionOnSubscribedState(object) {
                 storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)
                   ? alertsStoredVariables.get(idStoredTimerValue)
                   : [undefined, undefined],
-              alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, alertMessageValues);
+              alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, messageValues);
             if (onTimeInterval) {
               if (storedTimerOn) {
                 if (currentStateValue !== storedTimerValue) {
@@ -7141,42 +7141,42 @@ function alertsActionOnSubscribedState(object) {
                   isAbove =
                     currentStateValue >= thresholdValue &&
                     (oldStateValue < thresholdValue || (storedTimerOn && storedTimerValue < 0));
-                  alertMessageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
+                  messageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
                 } else {
-                  alertMessageValues['alertThresholdIcon'] = '=';
+                  messageValues['alertThresholdIcon'] = '=';
                   isTriggered = currentStateValue === thresholdValue;
                 }
                 let thresholdUser = user;
                 if (thresholdUser === undefined && threshold.user !== undefined) {
                   thresholdUser = telegramGenerateUserObjectFromId(threshold.user);
-                  alertMessageValues.alertFunctionName = translationsGetEnumName(
+                  messageValues.alertFunctionName = translationsGetEnumName(
                     thresholdUser,
                     dataTypeFunction,
                     alertFunctionId,
                     enumerationsNamesMain,
                   );
-                  alertMessageValues.alertDestinationName = translationsGetEnumName(
+                  messageValues.alertDestinationName = translationsGetEnumName(
                     user,
                     dataTypeDestination,
                     alertDestinationId,
                     enumerationsNamesInside,
                   );
-                  alertMessageValues.alertDeviceName = translationsGetObjectName(
+                  messageValues.alertDeviceName = translationsGetObjectName(
                     thresholdUser,
                     stateId.split('.').slice(0, -alertStateSectionsCount).join('.'),
                     alertFunctionId,
                     alertDestinationId,
                   );
-                  alertMessageValues.alertStateName = isAlertStatePrimary
+                  messageValues.alertStateName = isPrimaryState
                     ? ''
                     : translationsGetObjectName(thresholdUser, alertObject, alertFunctionId);
-                  alertMessageValues.alertStateValue = enumerationsStateValueDetails(
+                  messageValues.alertStateValue = enumerationsStateValueDetails(
                     thresholdUser,
                     alertObject,
                     alertFunctionId,
                     object.state,
                   )['valueString'];
-                  alertMessageValues.alertStateOldValue = enumerationsStateValueDetails(
+                  messageValues.alertStateOldValue = enumerationsStateValueDetails(
                     thresholdUser,
                     alertObject,
                     alertFunctionId,
@@ -7190,30 +7190,30 @@ function alertsActionOnSubscribedState(object) {
                     targetDestinationId = threshold.targetDestination;
                   if (targetFunction) {
                     const targetStateSectionsCount = targetFunction.statesSectionsCount;
-                    alertMessageValues.targetFunctionName = translationsGetEnumName(
+                    messageValues.targetFunctionName = translationsGetEnumName(
                       thresholdUser,
                       dataTypeFunction,
                       targetFunctionId,
                       enumerationsNamesMain,
                     );
-                    alertMessageValues.targetDestinationName = translationsGetEnumName(
+                    messageValues.targetDestinationName = translationsGetEnumName(
                       user,
                       dataTypeDestination,
                       targetDestinationId,
                       enumerationsNamesInside,
                     );
-                    alertMessageValues.targetDeviceName = translationsGetObjectName(
+                    messageValues.targetDeviceName = translationsGetObjectName(
                       thresholdUser,
                       targetState.split('.').slice(0, -targetStateSectionsCount).join('.'),
                       targetFunctionId,
                       targetDestinationId,
                     );
-                    alertMessageValues.targetStateName = translationsGetObjectName(
+                    messageValues.targetStateName = translationsGetObjectName(
                       thresholdUser,
                       targetState,
                       targetFunctionId,
                     );
-                    alertMessageValues.targetStateValue = enumerationsStateValueDetails(
+                    messageValues.targetStateValue = enumerationsStateValueDetails(
                       thresholdUser,
                       targetState,
                       targetFunctionId,
@@ -7221,11 +7221,11 @@ function alertsActionOnSubscribedState(object) {
                     )['valueString'];
                   }
                 }
-                alertMessageValues['alertThresholdValue'] = thresholdValue;
+                messageValues['alertThresholdValue'] = thresholdValue;
                 const alertMessageText = alertsProcessMessageTemplate(
                   thresholdUser,
                   alertMessageTemplate,
-                  alertMessageValues,
+                  messageValues,
                 );
                 const pushAlertOrTriggerState = () => {
                   if (thresholdUser)
@@ -7403,9 +7403,11 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     currentAccessLevel = menuItemToProcess.accessLevel,
     _isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    {function: currentFunctionId, destination: currentDestinationId, item: currentDeviceId} = menuItemToProcess.options,
-    levelFirstId = isFunctionsFirst ? currentFunctionId : currentDestinationId,
-    levelSecondId = isFunctionsFirst ? currentDestinationId : currentFunctionId;
+    options = menuItemToProcess.options,
+    {mode, function: functionId, destination: destinationId, item: deviceId} = options,
+    levelFirstId = isFunctionsFirst ? functionId : destinationId,
+    levelSecondId = isFunctionsFirst ? destinationId : functionId,
+    userId = mode === 'alerts' ? user.chatId : triggersInAlertsId;
   let alertsListPrepared = {},
     subMenu = [];
   if (alertsList && Object.keys(alertsList).length) {
@@ -7413,7 +7415,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
       alertsListPrepared = cachedValueGet(user, cachedAlertsListPrepared);
     } else {
       Object.keys(alertsList).forEach((alertId) => {
-        if (alertsList[alertId].chatIds.has(user.chatId) && existsObject(alertId)) {
+        if (alertsList[alertId].chatIds.has(userId) && existsObject(alertId)) {
           const alertObject = getObjectEnriched(alertId),
             alertFuncId = alertsList[alertId].function,
             alertDestId = alertsList[alertId].destination,
@@ -7457,7 +7459,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
         levelSecondType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
         levelFirstEnum = isFunctionsFirst ? 'function' : 'destination',
         levelSecondEnum = isFunctionsFirst ? 'destination' : 'function';
-      if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && currentDeviceId === undefined) {
+      if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && deviceId === undefined) {
         const levelFirstProceed = [];
         Object.keys(levelFirstList)
           .filter((levelId) => levelFirstList[levelId].isEnabled && levelFirstList[levelId].isAvailable)
@@ -7475,7 +7477,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                   index: `${currentIndex}.${levelMenuIndex}`,
                   name: `${translationsGetEnumName(user, levelFirstType, alertLevel)}`,
                   icon: levelFirstList[alertLevel].icon,
-                  options: {[levelFirstEnum]: alertLevel},
+                  options: {[levelFirstEnum]: alertLevel, mode},
                   accessLevel: currentAccessLevel,
                   submenu: alertsMenuGenerateSubscribed,
                 });
@@ -7484,7 +7486,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             }
           });
       }
-      if (levelFirstId && (!levelSecondId || isLevelSecondIdHolder) && currentDeviceId === undefined) {
+      if (levelFirstId && (!levelSecondId || isLevelSecondIdHolder) && deviceId === undefined) {
         const levelSecondList = isFunctionsFirst ? destinationsList : functionsList,
           alertsSecondLevelList = alertsListPrepared[levelFirstId],
           levelSecondProceed = [];
@@ -7507,6 +7509,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                     options: {
                       [levelFirstEnum]: levelFirstId,
                       [levelSecondEnum]: alertLevel,
+                      mode,
                     },
                     accessLevel: currentAccessLevel,
                     submenu: alertsMenuGenerateSubscribed,
@@ -7516,7 +7519,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
               }
             });
       }
-      if (levelFirstId && levelSecondId && currentDeviceId === undefined) {
+      if (levelFirstId && levelSecondId && deviceId === undefined) {
         const objectsIdList = alertsListPrepared[levelFirstId][levelSecondId];
         if (objectsIdList)
           Object.keys(objectsIdList)
@@ -7527,41 +7530,54 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                 name: `${objectsIdList[objectId]['name']}`,
                 icon: menuItemToProcess.icon,
                 accessLevel: currentAccessLevel,
-                options: {function: currentFunctionId, destination: currentDestinationId, item: objectId},
+                options: {function: functionId, destination: destinationId, item: objectId, mode},
                 submenu: alertsMenuGenerateSubscribed,
               });
             });
       } else if (levelFirstId && levelSecondId) {
         let alertMenuIndex = 0;
-        const alertsIdList = alertsListPrepared[levelFirstId][levelSecondId][currentDeviceId],
-          currentFunction = functionsList[currentFunctionId],
-          deviceAttributesList = currentFunction.deviceAttributes,
-          currentDeviceAttributes = deviceAttributesList
-            ? Object.keys(deviceAttributesList).sort(
-                (a, b) => deviceAttributesList[a].order - deviceAttributesList[b].order,
-              )
-            : [],
-          deviceButtonsList = currentFunction.deviceButtons,
-          currentDeviceButtons = deviceButtonsList
-            ? Object.keys(deviceButtonsList).sort((a, b) => deviceButtonsList[a].order - deviceButtonsList[b].order)
-            : [],
-          currentDeviceStates = [...currentDeviceAttributes, ...currentDeviceButtons],
-          deviceStatesProceed = [];
-        currentDeviceStates.forEach((deviceState) => {
-          const alertId = [currentDeviceId, deviceState].join('.');
-          if (alertsIdList.hasOwnProperty(alertId) && !deviceStatesProceed.includes(alertId)) {
-            deviceStatesProceed.push(alertId);
-            alertMenuIndex = subMenu.push(
-              alertsMenuItemGenerateSubscribedOn(
-                `${currentIndex}.${alertMenuIndex}`,
-                alertsIdList[alertId],
-                {function: currentFunctionId, destination: currentDestinationId, state: alertId},
-                undefined,
-                true,
-              ),
-            );
-          }
-        });
+        const alertsIdList = alertsListPrepared[levelFirstId][levelSecondId][deviceId],
+          optionsToProcess = {...options, device: deviceId, attributes: 'all', buttons: 'show'},
+          generateAlertOrTriggerMenuItem = (user, _stateId, stateIdFull, stateObject, stateDetails, _options) => {
+            if (alertsIdList.hasOwnProperty(stateIdFull)) {
+              const stateIndex = `${currentIndex}.${alertMenuIndex}`,
+                stateName = `${translationsGetObjectName(user, stateObject, functionId)}`,
+                horizontalNavigation = !cachedValueExists(user, cachedTriggersDetails),
+                stateOptions = {
+                  function: functionId,
+                  destination: destinationId,
+                  state: stateIdFull,
+                  [menuOptionHorizontalNavigation]: horizontalNavigation,
+                };
+              if (mode === 'alerts') {
+                alertMenuIndex = subMenu.push(
+                  alertsMenuItemGenerateSubscribedOn(
+                    stateIndex,
+                    stateName,
+                    stateOptions,
+                    stateObject,
+                    true,
+                  ),
+                );
+              } else {
+                const itemStateSubType = triggersGetStateSubType(stateIdFull, stateObject);
+                if (itemStateSubType) {
+                  alertMenuIndex = subMenu.push({
+                    index: stateIndex,
+                    name: stateName,
+                    icons: triggersGetIcon,
+                    options: {
+                      ...stateOptions,
+                      type: itemStateSubType,
+                      convertValueCode: stateDetails.convertValueCode,
+                    },
+                    submenu: triggersMenuGenerateManageState,
+                  });
+                }
+              }
+            }
+          };
+        enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsToProcess, generateAlertOrTriggerMenuItem);
       }
     }
   }
@@ -7700,7 +7716,7 @@ function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
   const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
   subMenuIndex = subMenu.push({
     index: `${currentIndex}.${subMenuIndex}`,
-    name: `${currentName}${isAlertDetailsSetChanged ? ` (${iconItemEdit})` : ''}`,
+    name: `${currentName} (${isAlertDetailsSetChanged ? iconItemEdit : iconItemDelete})`,
     icons: alertsGetIcon,
     group: cmdItemsProcess,
     command: cmdAlertSubscribe,
@@ -7762,7 +7778,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
   if (isThresholdsSetChanged || Object.keys(currentStateThresholds).length) {
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
-      name: `${currentName}${isThresholdsSetChanged ? ` (${iconItemEdit})` : ''}`,
+      name: `${currentName} (${isThresholdsSetChanged ? iconItemEdit : iconItemDelete})`,
       icons: alertsGetIcon,
       group: cmdItemsProcess,
       command: cmdAlertSubscribe,
@@ -8182,7 +8198,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
     if (isTriggersSetChanged || (currentStateTriggers && currentStateTriggers.length)) {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${currentName}${isTriggersSetChanged ? ` (${iconItemEdit})` : ''}`,
+        name: `${currentName} (${isTriggersSetChanged ? iconItemEdit : iconItemDelete})`,
         icons: triggersGetIcon,
         group: cmdItemsProcess,
         command: cmdItemPress,
@@ -9546,10 +9562,18 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
           submenu: (user, menuItemToProcess) => backupMenuGenerateBackupAndRestore(user, menuItemToProcess),
         },
         {
+          name: translationsItemMenuGet(user, 'Triggers'),
+          id: 'triggers',
+          icon: iconItemTrigger,
+          group: 'triggersAndAlerts',
+          options: {mode: 'triggers'},
+          submenu: alertsMenuGenerateSubscribed,
+        },
+        {
           name: translationsItemMenuGet(user, 'Alerts'),
           id: 'alerts',
           icon: iconItemAlerts,
-          group: 'alerts',
+          group: 'triggersAndAlerts',
           submenu: [
             {
               name: translationsItemMenuGet(user, 'AlertsHistory'),
@@ -9561,23 +9585,25 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
               name: translationsItemMenuGet(user, 'SubscribedAlerts'),
               id: 'alertsSubscribed',
               icon: iconItemAlerts,
+              options: {mode: 'alerts'},
               submenu: alertsMenuGenerateSubscribed,
-              options: {},
             },
           ],
         },
       ];
+      const enumerationsSubMenuPart = Object.keys(enumerationsList).map((dataType) => ({
+        name: translationsItemMenuGet(user, enumerationsList[dataType].id),
+        id: dataType,
+        icon: enumerationsList[dataType].icon,
+        group: idEnumerations,
+        options: {dataType},
+        submenu: enumerationsMenuGenerateListOfEnumerationItems,
+      }));
       subMenu.splice(
         1,
         0,
-        ...Object.keys(enumerationsList).map((dataType) => ({
-          name: translationsItemMenuGet(user, enumerationsList[dataType].id),
-          id: dataType,
-          icon: enumerationsList[dataType].icon,
-          group: idEnumerations,
-          options: {dataType},
-          submenu: enumerationsMenuGenerateListOfEnumerationItems,
-        })),
+        // @ts-ignore
+        ...enumerationsSubMenuPart,
       );
       subMenu.forEach((subMenuItem) => {
         const subMenuItemAccessLevel =
