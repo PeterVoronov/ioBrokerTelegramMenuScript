@@ -5695,33 +5695,12 @@ function enumerationsGetDeviceName(user, stateId, functionId, destinationId) {
  */
 function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
   const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
-    {
-      function: currentFunctionId,
-      destination: currentDestinationId,
-      state: primaryStateId,
-      device: devicePrefix,
-    } = menuItemToProcess.options,
-    destinationsList = enumerationsList[dataTypeDestination].list,
-    currentDestination = destinationsList[currentDestinationId],
-    fullDestinationId = [prefixEnums, currentDestination.enum, currentDestinationId].join('.'),
+    options = menuItemToProcess.options,
+    {function: functionId, destination: destinationId, state: primaryStateId, device: devicePrefix} = options,
     functionsList = enumerationsList[dataTypeFunction].list,
-    currentFunction = functionsList[currentFunctionId],
-    fullFunctionId = [prefixEnums, currentFunction.enum, currentFunctionId].join('.'),
-    deviceAttributesList = currentFunction.deviceAttributes,
-    currentDeviceAttributes = deviceAttributesList
-      ? Object.keys(deviceAttributesList)
-          .filter((deviceAttr) => deviceAttributesList[deviceAttr].isEnabled)
-          .sort((a, b) => deviceAttributesList[a].order - deviceAttributesList[b].order)
-      : [],
-    deviceButtonsList = currentFunction.deviceButtons,
-    currentDeviceButtons = deviceButtonsList
-      ? Object.keys(deviceButtonsList)
-          .filter((deviceButton) => deviceButtonsList[deviceButton].isEnabled)
-          .sort((a, b) => deviceButtonsList[a].order - deviceButtonsList[b].order)
-      : [],
+    currentFunction = functionsList[functionId],
     primaryStateShortId = primaryStateId.replace(`${devicePrefix}.`, ''),
     currentAccessLevel = menuItemToProcess.accessLevel,
-    isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     isCurrentAccessLevelNonSilent = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelSilent) < 0,
     historyAdapterId = configOptions.getOption(cfgHistoryAdapter, user),
     graphsTemplatesFolder = configOptions.getOption(cfgGraphsTemplates, user),
@@ -5732,38 +5711,27 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
   if (isGraphsEnabled) {
-    currentDeviceAttributes.forEach((deviceAttributeId) => {
-      const stateIdFull = `${devicePrefix}.${deviceAttributeId}`;
-      if (existsObject(stateIdFull)) {
-        const stateObject = getObjectEnriched(stateIdFull, '*'),
-          stateObjectCommon = stateObject.common;
-        if (stateObject && stateObjectCommon) {
+    const optionsForAttributes = {...options, attributes: 'all', buttons: 'showOnly', details: false},
+      deviceAttributesCheckOnGraphs = (user, _stateId, stateIdFull, stateObject, _stateDetails, _options) => {
+        const stateObjectCommon = stateObject.common;
+        if (stateObjectCommon) {
           const currentStateType = stateObjectCommon['type'];
           if (enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) && currentStateType === 'number') {
-            statesForGraphs.set(stateIdFull, translationsGetObjectName(user, stateObject, currentFunctionId));
+            statesForGraphs.set(stateIdFull, translationsGetObjectName(user, stateObject, functionId));
           }
         }
-      }
-    });
+      };
+    enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsForAttributes, deviceAttributesCheckOnGraphs);
   }
-  currentDeviceButtons.forEach((deviceButtonId) => {
-    const stateIdFull = `${devicePrefix}.${deviceButtonId}`,
-      currentButton = deviceButtonsList[deviceButtonId],
-      convertValueCode = currentButton.convertValueCode,
-      isButtonAllowedToPress =
-        isCurrentAccessLevelAllowModify &&
-        MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0 &&
-        menuItemIsAvailable(currentFunction, primaryStateId);
-    if (isButtonAllowedToPress && existsObject(stateIdFull)) {
-      const stateObject = getObjectEnriched(stateIdFull, '*'),
-        stateObjectCommon = stateObject.common;
-      if (stateObject && stateObject.hasOwnProperty('common') && stateObjectCommon) {
-        const stateObjectEnums = stateObject.hasOwnProperty('enumIds') ? stateObject.enumIds : [],
-          isRightState = stateObjectEnums.includes(fullFunctionId) && stateObjectEnums.includes(fullDestinationId),
-          isCurrentStateWritable = stateObjectCommon.hasOwnProperty('write') ? stateObjectCommon.write : false,
+  const optionsForButtons = {...options, attributes: 'no', buttons: 'press', details: true},
+    deviceButtonsProcess = (user, deviceButtonId, stateIdFull, stateObject, currentButton, _options) => {
+      const stateObjectCommon = stateObject.common,
+        convertValueCode = currentButton.convertValueCode;
+      if (stateObject && stateObjectCommon) {
+        const isCurrentStateWritable = stateObjectCommon.hasOwnProperty('write') ? stateObjectCommon.write : false,
           currentStateType = stateObjectCommon['type'];
-        if (isRightState && isCurrentStateWritable) {
-          const stateName = translationsGetObjectName(user, stateObject, currentFunctionId);
+        if (isCurrentStateWritable) {
+          const stateName = translationsGetObjectName(user, stateObject, functionId);
           if (stateName) {
             let subSubMenuIndex = 0,
               currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
@@ -5779,7 +5747,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               submenu: new Array(),
             };
             const currentOptions = {
-              function: currentFunctionId,
+              function: functionId,
               state: stateIdFull,
               valueType: currentStateType,
               device: devicePrefix,
@@ -5804,9 +5772,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   const subSubMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${
-                      enumerationsStateValueDetails(user, stateObject, currentFunctionId, {val: possibleValue})[
-                        'valueString'
-                      ]
+                      enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue})['valueString']
                     }`,
                     command: cmdSetState,
                     options: {...currentOptions, value: possibleValue},
@@ -5817,7 +5783,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
                   if (stateValue == possibleValue) {
                     subMenuItem.name += ` (${
-                      enumerationsStateValueDetails(user, stateObject, currentFunctionId, currentState)['valueString']
+                      enumerationsStateValueDetails(user, stateObject, functionId, currentState)['valueString']
                     })`;
                   }
                 }
@@ -5870,20 +5836,21 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             if (
               isGraphsEnabled &&
               enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) &&
-              currentStateType === 'number'
+              currentStateType === 'number' &&
+              !statesForGraphs.has(stateIdFull)
             ) {
               statesForGraphs.set(stateIdFull, stateName);
             }
           }
         }
       }
-    }
-  });
+    };
+  enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsForButtons, deviceButtonsProcess);
   if (isCurrentAccessLevelNonSilent) {
     const alertSubscribeItem = alertsMenuItemGenerateSubscribedOn(
       `${currentIndex}.${subMenuIndex}`,
       `${translationsItemCoreGet(user, cmdAlertSubscribe)}`,
-      {function: currentFunctionId, destination: currentDestinationId, state: primaryStateId},
+      {function: functionId, destination: destinationId, state: primaryStateId},
     );
     if (alertSubscribeItem) {
       subMenuIndex = subMenu.push(alertSubscribeItem);
@@ -5892,8 +5859,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${translationsItemMenuGet(user, 'AlertsSubscriptionExtended')}`,
       options: {
-        function: currentFunctionId,
-        destination: currentDestinationId,
+        function: functionId,
+        destination: destinationId,
         device: devicePrefix,
       },
       accessLevel: currentAccessLevel,
@@ -5907,8 +5874,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${translationsItemMenuGet(user, 'TriggersManage')}`,
         options: {
-          function: currentFunctionId,
-          destination: currentDestinationId,
+          function: functionId,
+          destination: destinationId,
           device: devicePrefix,
         },
         accessLevel: currentAccessLevel,
@@ -5946,8 +5913,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             command: cmdItemsProcess,
             options: {
               dataType: dataTypeGraph,
-              function: currentFunctionId,
-              destination: currentDestinationId,
+              function: functionId,
+              destination: destinationId,
               state: stateId,
               name: stateName,
               graphsInterval: graphsIntervalMinutes,
@@ -6183,110 +6150,75 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
  * @returns {string} A formatted string.
  */
 function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
-  let text = '';
-  const {
-      function: currentFunctionId,
-      destination: currentDestinationId,
-      state: primaryStateId,
-      device: devicePrefix,
-    } = menuItemToProcess.options,
-    functionsList = enumerationsList[dataTypeFunction].list,
-    currentFunction = functionsList[currentFunctionId],
-    currentFunctionFullId = [prefixEnums, currentFunction.enum, currentFunctionId].join('.'),
-    destinationList = enumerationsList[dataTypeDestination].list,
-    currentDestination = destinationList[currentDestinationId],
-    currentDestinationFullId = [prefixEnums, currentDestination.enum, currentDestinationId].join('.'),
-    isSkipAttributesWithNullValue = configOptions.getOption(cfgSkipAttributesWithNullValue, user);
-  if (currentFunction && currentFunction.hasOwnProperty('deviceAttributes') && existsObject(primaryStateId)) {
-    const primaryObject = getObjectEnriched(primaryStateId, '*'),
-      deviceAttributesList = currentFunction.deviceAttributes,
-      deviceAttributesArray = [],
-      deviceAttributes = Object.keys(deviceAttributesList)
-        .filter((deviceAttr) => deviceAttributesList[deviceAttr].isEnabled)
-        .sort((a, b) => deviceAttributesList[a].order - deviceAttributesList[b].order),
-      currentAccessLevel = menuItemToProcess.accessLevel,
-      isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-      deviceButtonsList = currentFunction.deviceButtons,
-      currentDeviceButtons = deviceButtonsList
-        ? Object.keys(deviceButtonsList)
-            .filter((deviceButton) => deviceButtonsList[deviceButton].isEnabled)
-            .sort((a, b) => deviceButtonsList[a].order - deviceButtonsList[b].order)
-        : [];
-    currentDeviceButtons.forEach((deviceButtonId) => {
-      const currentButton = deviceButtonsList[deviceButtonId],
-        isButtonAllowedToShow = MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.showAccessLevel) <= 0,
-        isButtonAllowedToPress =
-          isCurrentAccessLevelAllowModify &&
-          MenuRoles.compareAccessLevels(currentAccessLevel, currentButton.pressAccessLevel) <= 0;
-      if (isButtonAllowedToShow && !isButtonAllowedToPress) {
-        deviceAttributes.push(deviceButtonId);
-      }
-    });
-    deviceAttributes.forEach((deviceAttribute) => {
-      const deviceAttributeId = `${devicePrefix}.${deviceAttribute}`,
-        isPrimaryState = deviceAttributeId === primaryStateId;
-      if (isPrimaryState || existsObject(deviceAttributeId)) {
-        const stateObject = isPrimaryState ? primaryObject : getObjectEnriched(deviceAttributeId, '*'),
-          stateObjectEnums = stateObject.hasOwnProperty('enumIds') && stateObject.enumIds ? stateObject.enumIds : [];
-        if (stateObjectEnums.includes(currentFunctionFullId) && stateObjectEnums.includes(currentDestinationFullId)) {
-          const attributeState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
-            isCurrentStateNotEmpty = attributeState && isDefined(attributeState.val);
-          if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
-            deviceAttributesArray.push({
-              label: translationsGetObjectName(
-                user,
-                isPrimaryState ? translationsPrimaryStateId : stateObject,
-                currentFunctionId,
-              ),
-              ...enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
-            });
-            if (attributeState) {
-              const currentDeviceStateDetails = deviceAttributesList.hasOwnProperty(deviceAttribute)
-                ? deviceAttributesList[deviceAttribute]
-                : deviceButtonsList.hasOwnProperty(deviceAttribute)
-                ? deviceButtonsList[deviceAttribute]
-                : undefined;
-              if (currentDeviceStateDetails && currentDeviceStateDetails.hasOwnProperty('stateAttributes')) {
-                currentDeviceStateDetails.stateAttributes.forEach((stateAttributeId) => {
-                  const stateAttributeLine = {
-                    label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
-                    valueString: '',
-                    lengthModifier: 0,
-                  };
-                  switch (stateAttributeId) {
-                    case 'ts':
-                    case 'lc': {
-                      const timeStamp = attributeState[stateAttributeId]
-                        ? new Date(Number(attributeState[stateAttributeId]))
-                        : undefined;
-                      stateAttributeLine.valueString = timeStamp
-                        ? formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user))
-                        : '';
-                      break;
-                    }
-                    case 'ack': {
-                      stateAttributeLine.valueString = attributeState.ack
-                        ? configOptions.getOption(cfgDefaultIconOn, user)
-                        : configOptions.getOption(cfgDefaultIconOff, user);
-                      stateAttributeLine.lengthModifier = 1;
-                      break;
-                    }
-                    default: {
-                      stateAttributeLine.valueString = attributeState[stateAttributeId];
-                      break;
-                    }
+  const currentAccessLevel = menuItemToProcess.accessLevel,
+    options = menuItemToProcess.options,
+    {function: currentFunctionId, state: primaryStateId} = options,
+    isSkipAttributesWithNullValue = configOptions.getOption(cfgSkipAttributesWithNullValue, user),
+    optionsForAttributes = {
+      ...options,
+      attributes: 'all',
+      buttons: 'showOnly',
+      details: true,
+    },
+    deviceAttributesArray = [],
+    deviceAttributesToDraw = (user, _deviceAttribute, deviceAttributeId, stateObject, stateDetails, _options) => {
+      const isPrimaryState = deviceAttributeId === primaryStateId;
+      if (stateObject) {
+        const attributeState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
+          isCurrentStateNotEmpty = attributeState && isDefined(attributeState.val);
+        if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
+          deviceAttributesArray.push({
+            label: translationsGetObjectName(
+              user,
+              isPrimaryState ? translationsPrimaryStateId : stateObject,
+              currentFunctionId,
+            ),
+            ...enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
+          });
+          if (attributeState) {
+            if (stateDetails && stateDetails.hasOwnProperty('stateAttributes')) {
+              stateDetails.stateAttributes.forEach((stateAttributeId) => {
+                const stateAttributeLine = {
+                  label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
+                  valueString: '',
+                  lengthModifier: 0,
+                };
+                switch (stateAttributeId) {
+                  case 'ts':
+                  case 'lc': {
+                    const timeStamp = attributeState[stateAttributeId]
+                      ? new Date(Number(attributeState[stateAttributeId]))
+                      : undefined;
+                    stateAttributeLine.valueString = timeStamp
+                      ? formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user))
+                      : '';
+                    break;
                   }
-                  deviceAttributesArray.push(stateAttributeLine);
-                });
-              }
+                  case 'ack': {
+                    stateAttributeLine.valueString = attributeState.ack
+                      ? configOptions.getOption(cfgDefaultIconOn, user)
+                      : configOptions.getOption(cfgDefaultIconOff, user);
+                    stateAttributeLine.lengthModifier = 1;
+                    break;
+                  }
+                  default: {
+                    stateAttributeLine.valueString = attributeState[stateAttributeId];
+                    break;
+                  }
+                }
+                deviceAttributesArray.push(stateAttributeLine);
+              });
             }
           }
         }
       }
-    });
-    text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}</code>`;
+    };
+  enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsForAttributes, deviceAttributesToDraw);
+  if (deviceAttributesArray.length) {
+    return `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}</code>`;
+  } else {
+    return '';
   }
-  return text;
 }
 
 /**
@@ -6390,23 +6322,47 @@ function enumerationsGenerateDeviceStateAttributesList(currentDeviceState) {
   return currentStateAttributesList;
 }
 
+/**
+ * @callback ProcessStateCallback
+ * @param {object} user - The user object.
+ * @param {string} deviceStateId - The part of state ID (without Device ID).
+ * @param {string} deviceStateIdFull - The full State ID.
+ * @param {object} deviceStateObject - The appropriate ioBroker object.
+ * @param {object=} attributeOrButtonObject - The details about Attribute or Button.
+ * @param {object} options - The input options.
+ * @returns {void}
+ */
+
+/**
+ * This function is used to execute `processStateFn` on each state of Device, depending on a filter conditions.
+ * @param {object} user - The user object
+ * @param {string} currentAccessLevel - The level of access to the Device of current User.
+ * @param {object} options - The options to identify Devise, filters etc.
+ *    - attributes: attributes filter, can be 'all' or any other value,
+ *    - buttons: buttons filter, can be 'all', 'press', 'show' and 'showOnly',
+ *    - details: boolean selector, to provide state details to `processStateFn`,
+ *    - function: Function ID string,
+ *    - destination: Destination ID string,
+ *    - device: Device ID string
+ * @param {ProcessStateCallback} processStateFn - The callback function, with fixed parameters.
+ */
 function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, processStateFn) {
   const {
       attributes: attributesFilter,
       buttons: buttonsFilter,
       details: withDetails,
-      function: currentFunctionId,
-      destination: currentDestinationId,
+      function: functionId,
+      destination: destinationId,
       device: devicePrefix,
     } = options,
     destinationsList = enumerationsList[dataTypeDestination].list,
-    currentDestination = destinationsList[currentDestinationId],
+    currentDestination = destinationsList[destinationId],
     currentDestinationEnum = currentDestination.enum,
-    fullDestinationId = `${prefixEnums}.${currentDestinationEnum}.${currentDestinationId}`,
+    fullDestinationId = `${prefixEnums}.${currentDestinationEnum}.${destinationId}`,
     functionsList = enumerationsList[dataTypeFunction].list,
-    currentFunction = functionsList[currentFunctionId],
+    currentFunction = functionsList[functionId],
     currentFunctionEnum = currentFunction.enum,
-    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${currentFunctionId}`;
+    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${functionId}`;
   let currentDeviceStates = new Array(),
     currentDeviceStatesList = {};
   if (attributesFilter === 'all') {
@@ -6433,6 +6389,11 @@ function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, 
             ((buttonsFilter === 'show' &&
               MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
                 0) ||
+              (buttonsFilter === 'showOnly' &&
+                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
+                  0 &&
+                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].pressAccessLevel) >
+                  0) ||
               (buttonsFilter === 'press' &&
                 MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].pressAccessLevel) <=
                   0) ||
@@ -7490,7 +7451,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
       } else if (levelFirstId && levelSecondId) {
         let alertMenuIndex = 0;
         const alertsIdList = alertsListPrepared[levelFirstId][levelSecondId][deviceId],
-          optionsToProcess = {...options, device: deviceId, attributes: 'all', buttons: 'show'},
+          optionsToProcess = {...options, device: deviceId, attributes: 'all', buttons: 'show', details: true},
           generateAlertOrTriggerMenuItem = (user, _stateId, stateIdFull, stateObject, stateDetails, _options) => {
             if (alertsIdList.hasOwnProperty(stateIdFull)) {
               const stateIndex = `${currentIndex}.${alertMenuIndex}`,
@@ -7992,7 +7953,7 @@ function triggersMenuGenerate(user, menuItemToProcess) {
         }
       }
     },
-    optionsToProcess = {...options, attributes: 'all', buttons: 'show'};
+    optionsToProcess = {...options, attributes: 'all', buttons: 'show', details: true};
   enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsToProcess, generateTriggersMenuItem);
   return subMenu;
 }
