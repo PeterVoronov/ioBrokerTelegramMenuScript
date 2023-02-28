@@ -6710,7 +6710,7 @@ const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
     'alertPropagateGlobal',
   ],
   alertPropagateOptions = ['alertPropagateOverwrite', 'alertPropagateSkip'],
-  alertsStoredVariables = new Map();
+  thresholdsVariables = new Map();
 
 let alertsRules = {};
 
@@ -7026,8 +7026,8 @@ function alertsActionOnSubscribedState(object) {
             : undefined;
         if (chatId >= 0 || activeChatGroups.includes(chatId)) {
           let currentState = cachedValueGet(user, cachedCurrentState);
-          const currentStateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
-            oldStateValue = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
+          const stateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
+            stateValueOld = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
             messageValues = {};
           if (user !== undefined) {
             messageValues.alertFunctionName = translationsGetEnumName(
@@ -7077,30 +7077,30 @@ function alertsActionOnSubscribedState(object) {
                 : 0,
               idStoredTimerOn = [stateId, chatId, 'timerOn'].join(itemsDelimiter),
               idStoredTimerValue = [stateId, chatId, 'timerValue'].join(itemsDelimiter),
-              storedTimerOn = alertsStoredVariables.has(idStoredTimerOn)
-                ? alertsStoredVariables.get(idStoredTimerOn)
+              storedTimerOn = thresholdsVariables.has(idStoredTimerOn)
+                ? thresholdsVariables.get(idStoredTimerOn)
                 : undefined,
               [storedTimerValue, storedTimerOldValue] =
-                storedTimerOn && alertsStoredVariables.has(idStoredTimerValue)
-                  ? alertsStoredVariables.get(idStoredTimerValue)
+                storedTimerOn && thresholdsVariables.has(idStoredTimerValue)
+                  ? thresholdsVariables.get(idStoredTimerValue)
                   : [undefined, undefined],
               alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, messageValues);
             if (onTimeInterval) {
               if (storedTimerOn) {
-                if (currentStateValue !== storedTimerValue) {
+                if (stateValue !== storedTimerValue) {
                   clearTimeout(storedTimerOn);
-                  alertsStoredVariables.delete(idStoredTimerOn);
-                  alertsStoredVariables.delete(idStoredTimerValue);
+                  thresholdsVariables.delete(idStoredTimerOn);
+                  thresholdsVariables.delete(idStoredTimerValue);
                 }
               }
-              if (storedTimerOn === undefined || currentStateValue !== storedTimerOldValue) {
-                alertsStoredVariables.set(idStoredTimerValue, [currentStateValue, oldStateValue]);
-                alertsStoredVariables.set(
+              if (storedTimerOn === undefined || stateValue !== storedTimerOldValue) {
+                thresholdsVariables.set(idStoredTimerValue, [stateValue, stateValueOld]);
+                thresholdsVariables.set(
                   idStoredTimerOn,
                   setTimeout(() => {
                     alertsMessagePush(user, stateId, alertMessageText, stateId === currentState);
-                    alertsStoredVariables.delete(idStoredTimerOn);
-                    alertsStoredVariables.delete(idStoredTimerValue);
+                    thresholdsVariables.delete(idStoredTimerOn);
+                    thresholdsVariables.delete(idStoredTimerValue);
                   }, onTimeInterval * 1000),
                 );
               }
@@ -7111,40 +7111,31 @@ function alertsActionOnSubscribedState(object) {
             const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
             detailsOrThresholds.forEach((threshold) => {
               if (threshold.enabled) {
-                const thresholdValue = threshold.value,
-                  thresholdId = threshold.id,
-                  thresholdType = threshold.type,
-                  onAbove = threshold.onAbove,
-                  onLess = threshold.onLess,
+                const {value: thresholdValue, id, type, onAbove, onLess, targetState, targetValue} = threshold,
+                  isNumeric = type === 'number',
                   onTimeInterval = threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0,
-                  idStoredTimerOn = [stateId, chatId, thresholdId, 'timerOn'].join(itemsDelimiter),
-                  idStoredTimerStatus = [stateId, chatId, thresholdId, 'timerStatus'].join(itemsDelimiter),
-                  storedTimerOn = alertsStoredVariables.has(idStoredTimerOn)
-                    ? alertsStoredVariables.get(idStoredTimerOn)
-                    : undefined,
-                  storedTimerValue =
-                    storedTimerOn && alertsStoredVariables.has(idStoredTimerStatus)
-                      ? alertsStoredVariables.get(idStoredTimerStatus)
-                      : thresholdType === 'number'
-                      ? 0
-                      : undefined,
+                  idStoredTimer = ['timer', stateId, chatId, id].join(itemsDelimiter),
+                  idStoredData = ['data', stateId, chatId, isNumeric ? id : ''].join(itemsDelimiter),
+                  timerOn = thresholdsVariables.has(idStoredTimer) ? thresholdsVariables.get(idStoredTimer) : undefined,
                   alertMessageTemplate = threshold.hasOwnProperty(alertMessageTemplateId)
                     ? threshold[alertMessageTemplateId]
-                    : alertDefaultTemplate,
-                  targetState = threshold.targetState,
-                  targetValue = threshold.targetValue;
-                let isLess, isAbove, isTriggered;
-                if (thresholdType === 'number') {
+                    : alertDefaultTemplate;
+                let isLess, isAbove, isTriggered, storedValue, storedValueOld;
+                if (isNumeric) {
+                  storedValue =
+                    timerOn && thresholdsVariables.has(idStoredData) ? thresholdsVariables.get(idStoredData) : 0;
                   isLess =
-                    currentStateValue < thresholdValue &&
-                    (oldStateValue >= thresholdValue || (storedTimerOn && storedTimerValue > 0));
+                    stateValue < thresholdValue && (stateValueOld >= thresholdValue || (timerOn && storedValue > 0));
                   isAbove =
-                    currentStateValue >= thresholdValue &&
-                    (oldStateValue < thresholdValue || (storedTimerOn && storedTimerValue < 0));
+                    stateValue >= thresholdValue && (stateValueOld < thresholdValue || (timerOn && storedValue < 0));
                   messageValues['alertThresholdIcon'] = isLess ? iconItemLess : iconItemAbove;
                 } else {
+                  if (thresholdsVariables.has(idStoredData)) {
+                    [storedValue, storedValueOld] = thresholdsVariables.get(idStoredData);
+                  }
                   messageValues['alertThresholdIcon'] = '=';
-                  isTriggered = currentStateValue === thresholdValue;
+                  isTriggered =
+                    stateValue === thresholdValue && !(stateValueOld === storedValue && stateValue === storedValueOld);
                 }
                 let thresholdUser = user;
                 if (thresholdUser === undefined && threshold.user !== undefined) {
@@ -7228,6 +7219,8 @@ function alertsActionOnSubscribedState(object) {
                   messageValues,
                 );
                 const pushAlertOrTriggerState = () => {
+                  if (thresholdsVariables.has(idStoredTimer)) thresholdsVariables.delete(idStoredTimer);
+                  if (thresholdsVariables.has(idStoredData)) thresholdsVariables.delete(idStoredData);
                   if (thresholdUser)
                     alertsMessagePush(thresholdUser, stateId, alertMessageText, stateId === currentState);
                   if (chatId === triggersInAlertsId) {
@@ -7252,46 +7245,26 @@ function alertsActionOnSubscribedState(object) {
                   }
                 };
                 if (onTimeInterval) {
-                  if (storedTimerOn) {
-                    if (thresholdType === 'number') {
-                      const currentStatus =
-                        storedTimerValue + (storedTimerValue > 0 ? (isLess ? -1 : 0) : isAbove ? 1 : 0);
-                      if (currentStatus === 0 && storedTimerValue !== 0) {
-                        clearTimeout(storedTimerOn);
-                        alertsStoredVariables.delete(idStoredTimerOn);
-                        alertsStoredVariables.delete(idStoredTimerStatus);
-                      }
+                  if (timerOn) {
+                    let toClear = false;
+                    if (isNumeric) {
+                      const currentStatus = storedValue + (storedValue > 0 ? (isLess ? -1 : 0) : isAbove ? 1 : 0);
+                      toClear = currentStatus === 0 && storedValue !== 0;
                     } else {
-                      if (storedTimerValue !== currentStateValue) {
-                        logs(
-                          `Clear timer for trigger ${JSON.stringify(
-                            threshold,
-                          )}, storedTimerValue = ${storedTimerValue}, currentStateValue = ${currentStateValue}`,
-                          _l,
-                        );
-                        clearTimeout(storedTimerOn);
-                        alertsStoredVariables.delete(idStoredTimerOn);
-                        alertsStoredVariables.delete(idStoredTimerStatus);
-                      }
+                      toClear = stateValue !== storedValue;
+                    }
+                    if (toClear) {
+                      clearTimeout(timerOn);
+                      thresholdsVariables.delete(idStoredTimer);
+                      thresholdsVariables.delete(idStoredData);
                     }
                   } else {
-                    let currentStatus = 0;
-                    if (thresholdType === 'number') {
-                      currentStatus = isLess && onLess ? -1 : isAbove && onAbove ? 1 : 0;
-                    }
+                    const currentStatus = isNumeric ? (isLess && onLess ? -1 : isAbove && onAbove ? 1 : 0) : 0;
                     if (currentStatus !== 0 || isTriggered) {
-                      const alertMessageDelayed = () => {
-                        alertsStoredVariables.delete(idStoredTimerOn);
-                        alertsStoredVariables.delete(idStoredTimerStatus);
-                        pushAlertOrTriggerState();
-                      };
-                      alertsStoredVariables.set(
-                        idStoredTimerStatus,
-                        thresholdType === 'number' ? currentStatus : thresholdValue,
-                      );
-                      alertsStoredVariables.set(
-                        idStoredTimerOn,
-                        setTimeout(alertMessageDelayed, onTimeInterval * 1000),
+                      thresholdsVariables.set(idStoredData, isNumeric ? currentStatus : [stateValue, stateValueOld]);
+                      thresholdsVariables.set(
+                        idStoredTimer,
+                        setTimeout(pushAlertOrTriggerState, onTimeInterval * 1000),
                       );
                     }
                   }
