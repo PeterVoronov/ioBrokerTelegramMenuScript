@@ -5680,6 +5680,14 @@ function enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) {
   );
 }
 
+/**
+ * This function trying to find and return the Device name for Translations of ioBroker definition.
+ * @param {object} user - The user object.
+ * @param {string} stateId - The ioBroker state full ID.
+ * @param {string} functionId - The Function ID.
+ * @param {string} destinationId - The Destination ID.
+ * @returns {string} The name of Device.
+ */
 function enumerationsGetDeviceName(user, stateId, functionId, destinationId) {
   const functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[functionId],
@@ -7468,7 +7476,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                   alertsMenuItemGenerateSubscribedOn(stateIndex, stateName, stateOptions, stateObject, true),
                 );
               } else {
-                const itemStateSubType = triggersGetStateSubType(stateIdFull, stateObject);
+                const itemStateSubType = triggersGetStateCommonType(stateIdFull, stateObject);
                 if (itemStateSubType) {
                   alertMenuIndex = subMenu.push({
                     index: stateIndex,
@@ -7888,8 +7896,14 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
 const triggersInAlertsId = 0,
   cachedTriggersDetails = 'triggersDetails';
 
-function triggersGetStateSubType(stateId, stateObject) {
-  let result = undefined;
+/**
+ * This function returns a state type, described in 'common' section of State object.
+ * @param {string} stateId - The ID of ioBroker State.
+ * @param {object=} stateObject - The State object, if provided.
+ * @returns {string} The string, describes the State type.
+ */
+function triggersGetStateCommonType(stateId, stateObject) {
+  let result = '';
   if (stateObject && stateObject.common) {
     const stateObjectCommon = stateObject.common,
       stateType = stateObjectCommon['type'];
@@ -7932,7 +7946,7 @@ function triggersMenuGenerate(user, menuItemToProcess) {
     subMenuIndex = 0;
   const generateTriggersMenuItem = (user, _stateId, stateIdFull, stateObject, stateDetails, _options) => {
       if (stateObject && stateObject.common) {
-        const itemStateSubType = triggersGetStateSubType(stateIdFull, stateObject);
+        const itemStateSubType = triggersGetStateCommonType(stateIdFull, stateObject);
         if (itemStateSubType) {
           const stateIndex = `${currentIndex}.${subMenuIndex}`,
             stateName = `${translationsGetObjectName(user, stateObject, functionId)}`;
@@ -7981,14 +7995,26 @@ function triggersGetStateTriggers(user, stateId, returnBoth = false) {
   return returnBoth ? [currentTriggers, currentStateTriggers] : currentTriggers;
 }
 
+/**
+ * This function returned the index of Threshold or Trigger definition in Alert or Triggers definition for State.
+ * @param {object[]} triggers - The array of Thresholds or Triggers definitions.
+ * @param {any} triggerId - The Threshold or Trigger ID, depending on the Type of it.
+ * @returns {number} The index of appropriate Threshold or Trigger. -1 if not found.
+ */
 function triggersGetIndex(triggers, triggerId) {
   if (triggers && typeOf(triggers, 'array')) {
     return triggers.findIndex((trigger) => trigger.id === triggerId);
   }
-  return false;
+  return -1;
 }
 
-function triggersSort(triggers, sorted) {
+/**
+ * This function returns sorted array of Thresholds or Triggers definitions. Sorting rules depend on a type of its.
+ * @param {object[]} triggers - The array of Thresholds or Triggers definitions.
+ * @param {any[]=} preSorted - The pre-sorted array as pattern for sorting.
+ * @returns {object[]} The result sorted array of Thresholds or Triggers definitions.
+ */
+function triggersSort(triggers, preSorted) {
   if (triggers && typeOf(triggers, 'array')) {
     triggers = triggers.sort((triggerA, triggerB) => {
       if (triggerA.type === 'number') {
@@ -8001,8 +8027,8 @@ function triggersSort(triggers, sorted) {
       } else if (triggerA.type === 'boolean') {
         return triggerA.value ? -1 : 1;
       } else {
-        if (sorted) {
-          return sorted.indexOf(triggerA.value) - sorted.indexOf(triggerB.value);
+        if (preSorted) {
+          return preSorted.indexOf(triggerA.value) - preSorted.indexOf(triggerB.value);
         } else {
           if (typeOf(triggerA.value, 'number')) {
             return triggerA.value - triggerB.value;
@@ -8086,7 +8112,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
         submenu: triggersMenuGenerateManageTrigger,
       });
     });
-    const possibleValueItem = triggersMenuItemGenerateSetValue(
+    const possibleValueItem = triggersMenuItemGenerateSetPrimaryValue(
       user,
       currentIndex,
       subMenuIndex,
@@ -8130,7 +8156,25 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
   return subMenu;
 }
 
-function triggersMenuItemGenerateSetValue(user, upperItemIndex, itemIndex, currentObject, triggers, baseOptions) {
+/**
+ * This function is used to generate Menu Item to define(or edit) the Trigger primary value(i.e. Threshold).
+ * It can consists different sub items, depend on type of Trigger(i.e. source State).
+ * @param {object} user - The user object.
+ * @param {string} upperItemIndex - The upper Menu Item index(so, the place to insert to).
+ * @param {number} itemIndex - The current Menu Item index.
+ * @param {object} currentObject - The current Trigger State ioBroker object.
+ * @param {object[]|undefined} triggers - The array of all Triggers for appropriate State.
+ * @param {object} baseOptions - The base options for all newly created Menu Items.
+ * @returns {object} The Menu Item as object.
+ */
+function triggersMenuItemGenerateSetPrimaryValue(
+  user,
+  upperItemIndex,
+  itemIndex,
+  currentObject,
+  triggers,
+  baseOptions,
+) {
   let menuItem = undefined;
   if (currentObject && currentObject.common) {
     const currentObjectCommon = currentObject.common,
@@ -8194,6 +8238,12 @@ function triggersMenuItemGenerateSetValue(user, upperItemIndex, itemIndex, curre
   return menuItem;
 }
 
+/**
+ * This function generates the sub Menu to provide possibility to edit all Trigger attributes.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
 function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
   const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {
@@ -8329,12 +8379,12 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
       icon: iconItemEdit,
       group: 'target',
       options: {...triggerOptions, value: targetStateId, item: 'targetState'},
-      submenu: triggersMenuGenerateBrowseAllStates,
+      submenu: triggersMenuGenerateSelectTargetDevice,
     });
     if (targetStateId) {
       const targetObject = existsObject(targetStateId) ? getObject(targetStateId) : undefined,
-        targetSubType = triggersGetStateSubType(targetStateId, targetObject),
-        targetValueItem = triggersMenuItemGenerateSetValue(
+        targetSubType = triggersGetStateCommonType(targetStateId, targetObject),
+        targetValueItem = triggersMenuItemGenerateSetPrimaryValue(
           user,
           currentIndex,
           subMenuIndex,
@@ -8359,19 +8409,12 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
   return subMenu;
 }
 
-function triggersMenuGenerateBrowseAllStates(user, menuItemToProcess) {
-  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
-    currentOptions = menuItemToProcess.options,
-    enumerationsMenu = menuMenuItemGenerateRootMenu(user, 'enumerationsOnly'),
-    subMenu = enumerationsMenu ? enumerationsMenu.submenu : [],
-    convertDevice = (device) => {
-      device.function = triggersMenuItemDetailsTrigger;
-      device.submenu = triggersMenuGenerateSelectTargetState;
-      return device;
-    };
-  return menuMenuReIndex(subMenu, currentIndex, {...currentOptions, currentIndex, deviceFunction: convertDevice});
-}
-
+/**
+ * This function generates the text description of the  current Trigger.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will be described.
+ * @returns {string} - The description of the Trigger.
+ */
 function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
   const options =
       menuItemToProcess.options && menuItemToProcess.options.extraOptions
@@ -8459,6 +8502,31 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
   return text;
 }
 
+/**
+ * This function generates the sub Menu to go thru all Menu to select any State of any Device.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function triggersMenuGenerateSelectTargetDevice(user, menuItemToProcess) {
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
+    currentOptions = menuItemToProcess.options,
+    enumerationsMenu = menuMenuItemGenerateRootMenu(user, 'enumerationsOnly'),
+    subMenu = enumerationsMenu ? enumerationsMenu.submenu : [],
+    convertDevice = (device) => {
+      device.function = triggersMenuItemDetailsTrigger;
+      device.submenu = triggersMenuGenerateSelectTargetState;
+      return device;
+    };
+  return menuMenuReIndex(subMenu, currentIndex, {...currentOptions, currentIndex, deviceFunction: convertDevice});
+}
+
+/**
+ * This function generates the sub Menu for any Device from Menu, to select their States as target for Trigger.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
 function triggersMenuGenerateSelectTargetState(user, menuItemToProcess) {
   const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
@@ -14543,6 +14611,13 @@ function getObjectEnriched(id, enumId) {
   }
 }
 
+/**
+ * This functions checks, if the provided value acceptable by ioBroker State.
+ * @param {string} stateId - The ID of appropriate ioBroker State.
+ * @param {number} value - The value, to be checked.
+ * @param {object=} stateObject - The appropriate object of the State.
+ * @returns {boolean} The result of checks. If acceptable - it's true.
+ */
 function checkNumberStateValue(stateId, value, stateObject) {
   const currentObject = stateObject ? stateObject : getObjectEnriched(stateId);
   if (isDefined(value) && currentObject && currentObject.common) {
