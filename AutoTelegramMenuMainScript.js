@@ -5291,7 +5291,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
 }
 
 /**
- * This function return a count of  enabled enumerations items for appropriate
+ * This function return a count of enabled enumerations items for appropriate
  * primary enum(like `functions', `rooms`, etc)
  * @param {string} enumerationType  - The string defines the enumerationItem type.
  * @param {string=} primaryEnumId - The appropriate primary enum Id.
@@ -5880,7 +5880,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
     if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) === 0) {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${translationsItemMenuGet(user, 'TriggersManage')}`,
+        name: `${translationsItemMenuGet(user, 'triggers')}`,
         options: {
           function: functionId,
           destination: destinationId,
@@ -6785,8 +6785,7 @@ function alertsManage(user, stateId, functionId, destinationId, alertDetailsOrTh
 }
 
 /**
- * This function returns an icon, which show  if the any alerts is enabled for an
- * appropriate `state` and `recipient`.
+ * This function returns an icon, which show  if the any alerts is enabled for an appropriate `state` and `recipient`.
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, for which the icon wil be identified.
  * @returns {string} The one of icon : `iconItemAlertOff` or `iconItemAlertOn`.
@@ -7058,7 +7057,7 @@ function alertsActionOnSubscribedState(object) {
           } else if ((chatId === triggersInAlertsId || alertStateType === 'number') && detailsOrThresholds.length) {
             const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
             detailsOrThresholds.forEach((threshold) => {
-              if (threshold.enabled) {
+              if (threshold.isEnabled) {
                 const {value: thresholdValue, id, type, onAbove, onLess, targetState, targetValue} = threshold,
                   isNumeric = type === 'number',
                   onTimeInterval = threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0,
@@ -8044,11 +8043,11 @@ function triggersSort(triggers, preSorted) {
 
 /**
  * This function returns an icon, which show  if the any trigger is enabled for an appropriate `state`.
- * @param {object} user - The user object.
+ * @param {object} _user - The user object.
  * @param {object} menuItemToProcess - The menu item, for which the icon wil be identified.
  * @returns {string} The one of icon : `iconItemAlertOff` or `iconItemAlertOn`.
  */
-function triggersGetIcon(user, menuItemToProcess) {
+function triggersGetIcon(_user, menuItemToProcess) {
   const alerts = alertsGet();
   if (
     alerts &&
@@ -8067,7 +8066,7 @@ function triggersGetIcon(user, menuItemToProcess) {
  * @returns {string} The one of icon : `iconItemAlertOff` or `iconItemAlertOn`.
  */
 function triggersGetEnabledIcon(trigger) {
-  return trigger ? (trigger.enabled ? iconItemTrigger : iconItemDisabled) : iconItemEmpty;
+  return trigger ? (trigger.isEnabled ? iconItemTrigger : iconItemDisabled) : iconItemEmpty;
 }
 
 /**
@@ -8280,13 +8279,16 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         mode: 'edit',
         id: triggerId,
       };
+    const triggerIcons = [iconItemTrigger, iconItemDisabled];
     subMenuIndex = subMenu.push(
-      menuMenuItemGenerateBooleanItem(user, currentIndex, subMenuIndex, translationsItemTextGet(user, 'enabled'), '', {
-        ...triggerOptions,
-        item: 'enabled',
-        value: trigger.enabled,
-        icons: [iconItemTrigger, iconItemDisabled],
-      }),
+      menuMenuItemGenerateBooleanItem(
+        user,
+        currentIndex,
+        subMenuIndex,
+        translationsItemTextGet(user, 'isEnabled'),
+        '',
+        {...triggerOptions, item: 'isEnabled', value: trigger.isEnabled, icons: triggerIcons},
+      ),
     );
     if (stateSubType === 'number') {
       subMenuIndex = subMenu.push(
@@ -8437,7 +8439,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
       }
       const triggerAttributesArray = [
         {
-          label: translationsItemTextGet(user, 'enabled'),
+          label: translationsItemTextGet(user, 'isEnabled'),
           valueString: triggersGetEnabledIcon(trigger),
           lengthModifier: 1,
         },
@@ -11522,7 +11524,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         threshold = undefined;
                       } else {
                         detailsOrThresholds.push({
-                          enabled: true,
+                          isEnabled: true,
                           id: thresholdValue,
                           type: 'number',
                           value: thresholdValue,
@@ -11637,7 +11639,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       } else {
                         triggers.push({
                           id: triggerId,
-                          enabled: false,
+                          isEnabled: false,
                           type: 'number',
                           value: triggerValue,
                           [onTimeIntervalId]: 0,
@@ -11684,7 +11686,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                     if (triggersGetIndex(triggers, triggerId) < 0) {
                                       trigger.value = triggerValue;
                                       trigger.id = triggerId;
-                                      trigger.enabled = false;
+                                      trigger.isEnabled = false;
                                       triggers = triggersSort(triggers);
                                       currentMenuPosition.splice(-1, 1, triggersGetIndex(triggers, triggerId));
                                     } else {
@@ -12277,7 +12279,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 case 'add': {
                   triggers.push({
                     id: commandOptions.value,
-                    enabled: false,
+                    isEnabled: false,
                     type: commandOptions.type,
                     [onTimeIntervalId]: 0,
                     value: commandOptions.value,
@@ -12315,7 +12317,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             trigger.id = triggerId;
                             trigger.onAbove = !trigger.onAbove;
                             trigger.onLess = !trigger.onLess;
-                            trigger.enabled = false;
+                            trigger.isEnabled = false;
                           } else {
                             triggers = undefined;
                           }
@@ -12327,7 +12329,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         case 'user': {
                           if (item === 'targetState') {
                             if (trigger[item] !== commandOptions.value) {
-                              trigger.enabled = false;
+                              trigger.isEnabled = false;
                               trigger.targetValue = undefined;
                             }
                             trigger.targetFunction = commandOptions.function;
@@ -12339,7 +12341,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           break;
                         }
 
-                        case 'enabled':
+                        case 'isEnabled':
                         case 'log': {
                           if (trigger[item]) {
                             trigger[item] = false;
