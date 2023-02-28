@@ -398,18 +398,10 @@ class ConfigOptions {
     if (this.#isUserConfigOption(cfgItem, user)) {
       if (this.perUserConfig.has(user.userId)) {
         const perUserConfig = this.perUserConfig.get(user.userId);
-        return (
-          perUserConfig.hasOwnProperty(cfgItem) &&
-          perUserConfig[cfgItem] !== undefined &&
-          perUserConfig[cfgItem] !== null
-        );
+        return perUserConfig.hasOwnProperty(cfgItem) && isDefined(perUserConfig[cfgItem]);
       }
     } else {
-      return (
-        this.globalConfig.hasOwnProperty(cfgItem) &&
-        this.globalConfig[cfgItem] !== undefined &&
-        this.globalConfig[cfgItem] !== null
-      );
+      return this.globalConfig.hasOwnProperty(cfgItem) && isDefined(this.globalConfig[cfgItem]);
     }
     return false;
   }
@@ -646,7 +638,7 @@ class ConfigOptions {
     const stateId = this.#getStateId(cfgItem, user);
     if (existsState(stateId)) {
       const actualValue = this.parseOption(cfgItem, getState(stateId).val);
-      if (actualValue !== undefined) this.setOption(cfgItem, user, actualValue);
+      if (isDefined(actualValue)) this.setOption(cfgItem, user, actualValue);
     } else if (!this.#isUserConfigOption(cfgItem, user)) {
       this.saveOption(cfgItem, user);
     }
@@ -694,7 +686,7 @@ class ConfigOptions {
               !isNaN(cfgItemPrefix))
           ) {
             const actualValue = this.parseOption(cfgItem, obj.state.val);
-            if (actualValue !== undefined) {
+            if (isDefined(actualValue)) {
               this.setOption(
                 cfgItem,
                 cfgItemPrefix === configOptionScopeGlobal ? null : {userId: Number(cfgItemPrefix)},
@@ -726,7 +718,7 @@ class ConfigOptions {
   saveOption(cfgItem, user) {
     let currentValue = this.getOption(cfgItem, user),
       stateType = typeof currentValue;
-    if (currentValue !== undefined && currentValue !== null) {
+    if (isDefined(currentValue)) {
       const id = this.#getStateId(cfgItem, user);
       if (stateType === 'object') {
         currentValue = JSON.stringify(currentValue, JSONReplacerWithMap);
@@ -772,11 +764,7 @@ class ConfigOptions {
       typeOf(backupData.globalConfig, 'object')
     ) {
       Object.keys(this.globalConfig).forEach((cfgItem) => {
-        if (
-          backupData.globalConfig.hasOwnProperty(cfgItem) &&
-          backupData.globalConfig[cfgItem] !== undefined &&
-          backupData.globalConfig[cfgItem] !== null
-        ) {
+        if (backupData.globalConfig.hasOwnProperty(cfgItem) && isDefined(backupData.globalConfig[cfgItem])) {
           if (this.globalConfig[cfgItem] !== backupData.globalConfig[cfgItem])
             this.setOption(cfgItem, null, backupData.globalConfig[cfgItem]);
         }
@@ -792,12 +780,7 @@ class ConfigOptions {
               : undefined;
           Object.keys(userConfig).forEach((cfgItem) => {
             if (
-              !(
-                userConfigBackup &&
-                userConfigBackup.hasOwnProperty(cfgItem) &&
-                userConfigBackup[cfgItem] !== undefined &&
-                userConfigBackup[cfgItem] !== null
-              )
+              !(userConfigBackup && userConfigBackup.hasOwnProperty(cfgItem) && isDefined(userConfigBackup[cfgItem]))
             ) {
               this.deleteUserOption(cfgItem, {userId});
             }
@@ -814,8 +797,7 @@ class ConfigOptions {
             if (
               !configGlobalOptions.includes(cfgItem) &&
               userConfigData.hasOwnProperty(cfgItem) &&
-              userConfigData[cfgItem] !== undefined &&
-              userConfigData[cfgItem] !== null
+              isDefined(userConfigData[cfgItem])
             ) {
               if (this.globalConfig[cfgItem] !== userConfigData[cfgItem])
                 this.setOption(cfgItem, {userId}, userConfigData[cfgItem]);
@@ -835,7 +817,7 @@ class ConfigOptions {
    */
   menuGenerateForArray(user, menuItemToProcess) {
     const {item: cfgItem, scope: optionScope} = menuItemToProcess.options,
-      currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+      currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
       isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
@@ -899,7 +881,7 @@ class ConfigOptions {
    * @returns {object[]} An array of objects (menu items).
    */
   menuGenerate(user, menuItemToProcess) {
-    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon,
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
@@ -967,7 +949,7 @@ class ConfigOptions {
                 subMenuItem.submenu = (user, menuItemToProcess) => {
                   let subMenu = new Array(),
                     subMenuIndex = 0;
-                  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+                  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
                     {scope: optionScope, value: currentLanguage} = menuItemToProcess.options;
                   Object.keys(translationsList)
                     .sort()
@@ -1016,7 +998,7 @@ class ConfigOptions {
                       submenu: (user, menuItemToProcess) => {
                         let subMenu = [],
                           subMenuIndex = 0;
-                        const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+                        const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
                           {item: cfgItem, scope: optionScope} = menuItemToProcess.options;
                         if (cachedValueExists(user, cachedConfigNewLanguageId)) {
                           const newLanguageId = translationsValidateLanguageId(
@@ -1074,7 +1056,7 @@ class ConfigOptions {
                   (subMenuItem.submenu = (user, menuItemToProcess) => {
                     let subMenu = new Array(),
                       subMenuIndex = 0;
-                    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+                    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
                       currentAccessLevel = menuItemToProcess.accessLevel,
                       isCurrentAccessLevelAllowModify =
                         MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
@@ -1331,7 +1313,8 @@ class MenuRoles {
    * @param {number|string=} itemId - rule item Id.
    */
   initRules(itemId) {
-    if (itemId !== undefined) {
+    if (isDefined(itemId)) {
+      // @ts-ignore
       itemId = this.existsId(itemId);
       if (typeOf(this.data[itemId], 'array')) this.data[itemId] = MenuRoles.sortRules(this.data[itemId]);
       this.compileRules(itemId);
@@ -1383,9 +1366,7 @@ class MenuRoles {
    * @returns {string} The return a string contained itemId or empty string if doesn't exists.
    */
   existsId(itemId) {
-    return this.data.hasOwnProperty(itemId) && this.data[itemId] !== undefined && this.data[itemId] !== null
-      ? `${itemId}`
-      : '';
+    return this.data.hasOwnProperty(itemId) && isDefined(this.data[itemId]) ? `${itemId}` : '';
   }
 
   /**
@@ -1718,7 +1699,7 @@ class MenuRoles {
         result.accessLevel = rolesAccessLevelPossible;
       }
     }
-    result = returnRule ? result : result !== undefined ? result.accessLevel : rolesAccessLevelForbidden;
+    result = returnRule ? result : isDefined(result) ? result.accessLevel : rolesAccessLevelForbidden;
     return result;
   }
 
@@ -1873,7 +1854,7 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   #menuRuleSetAccessLevel(user, menuItemToProcess) {
-    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       {dataType, roleId, ruleIndex} = menuItemToProcess.options,
       isForNewRule = Number(ruleIndex) == -1,
       currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit)
@@ -1949,7 +1930,7 @@ class MenuRoles {
      * @returns {object[]} Newly generated submenu.
      */
     function selectMask(user, menuItemToProcess) {
-      const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+      const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
         {upperItemId, itemId: currentItemId} = menuItemToProcess.options,
         currentMasks = [
           `${upperItemId}${rolesIdAndMaskDelimiter}${currentItemId}`,
@@ -2083,7 +2064,7 @@ class MenuRoles {
     if (!cachedValueExists(user, cachedRolesNewRule)) {
       cachedValueSet(user, cachedRolesNewRule, {...rolesInitialRule});
     }
-    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       {roleId} = menuItemToProcess.options,
       rootMenu = menuMenuItemGenerateRootMenu(null),
       savedRule = cachedValueGet(user, cachedRolesNewRule);
@@ -2112,7 +2093,7 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   #menuGenerateRoleRules(user, menuItemToProcess) {
-    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
       {roleId} = menuItemToProcess.options,
       isNewRole = !this.existsId(roleId);
@@ -2251,7 +2232,7 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   menuGenerate(user, menuItemToProcess) {
-    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon,
       currentAccessLevel = menuItemToProcess.accessLevel;
     let subMenu = [],
@@ -2296,7 +2277,7 @@ class MenuRoles {
           }
         },
         submenu: (user, menuItemToProcess) => {
-          const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '';
+          const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '';
           let subMenu = [],
             subMenuIndex = 0;
           const newRoleId = cachedValueGet(user, cachedRolesNewRoleId);
@@ -2604,7 +2585,7 @@ class MenuUsers extends MenuRoles {
    * @returns {object[]}  Newly generated submenu.
    */
   menuGenerate(user, menuItemToProcess) {
-    const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon;
     let subMenu = [],
       subMenuIndex = 0;
@@ -2666,7 +2647,7 @@ class MenuUsers extends MenuRoles {
         }]`,
         options: {userId},
         submenu: (_user, menuItemToProcess) => {
-          const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+          const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
             {userId} = menuItemToProcess.options;
           let subMenu = [],
             subMenuIndex = 0;
@@ -3409,8 +3390,7 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
       ) {
         result = `${enumPrefix}.${translationsSubPrefix}.${currentEnum.nameTranslationId}`;
       } else {
-        if (enumNameDeclinationKey === undefined || enumNameDeclinationKey === null)
-          enumNameDeclinationKey = enumerationsNamesMain;
+        if (!isDefined(enumNameDeclinationKey)) enumNameDeclinationKey = enumerationsNamesMain;
         result = `${enumPrefix}.${enumerationsNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
       }
     }
@@ -3494,15 +3474,16 @@ function translationsCheckAndCacheUploadedFile(
   let translationFileIsOk = false;
   if (translationFileFullPath.includes(nodePath.join('document', translationFileName)) || translationObject) {
     try {
-      if (translationObject === undefined) nodeFS.accessSync(translationFileFullPath, nodeFS.constants.R_OK);
-      const fileStats = translationObject === undefined ? nodeFS.statSync(translationFileFullPath) : {};
+      if (!isDefined(translationObject)) nodeFS.accessSync(translationFileFullPath, nodeFS.constants.R_OK);
+      const fileStats = !isDefined(translationObject) ? nodeFS.statSync(translationFileFullPath) : {};
       if (
         translationObject ||
         (translationFileSize && Number(translationFileSize) === 0) ||
         (translationFileSize && Number(translationFileSize) && fileStats.size === Number(translationFileSize))
       ) {
-        let inputTranslation =
-          translationObject === undefined ? nodeFS.readFileSync(translationFileFullPath) : translationObject;
+        let inputTranslation = !isDefined(translationObject)
+          ? nodeFS.readFileSync(translationFileFullPath)
+          : translationObject;
         try {
           inputTranslation = typeOf(inputTranslation, 'string') ? JSON.parse(inputTranslation) : inputTranslation;
           const currentLanguage = translationsValidateLanguageId(inputTranslation.language);
@@ -3544,7 +3525,7 @@ function translationsCheckAndCacheUploadedFile(
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
   let subMenuIndex = 0,
@@ -3654,7 +3635,7 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     translationType = menuItemToProcess.id,
@@ -3714,7 +3695,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {
@@ -3817,7 +3798,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {function: currentFunction, functionEnum: currentFunctionEnum} = menuItemToProcess.options,
@@ -3893,7 +3874,7 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     extensionId = menuItemToProcess.id,
@@ -3914,7 +3895,7 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
       if (isCurrentAccessLevelAllowModify) {
         (subMenuItem.options = {dataType: dataTypeTranslation, translationId: `${translationType}.${translationKey}`}),
           (subMenuItem.submenu = (user, menuItemToProcess) => {
-            const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '';
+            const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '';
             let subMenu = new Array(),
               subMenuIndex = 0;
             subMenuIndex = subMenu.push(
@@ -4079,7 +4060,7 @@ function cachedValueGet(user, valueId, getLastChange = false) {
     if ((!cachedValuesMap.has(id) || getLastChange) && cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
       if (existsState(id)) {
         const currentState = getState(id);
-        if (currentState !== undefined) {
+        if (isDefined(currentState)) {
           let cachedVal = currentState.val;
           stateLastChange = currentState.lc;
           if (cachedValuesStatesCommonAttributes[valueId].type === 'json' && cachedVal.length > 0) {
@@ -4115,7 +4096,7 @@ function cachedGetValueAndCheckItIfOld(user, valueId, cachedValueMaxAge) {
   if (cachedValueMaxAge.minutes) checkDate.setMinutes(checkDate.getMinutes() - Number(cachedValueMaxAge.minutes));
   if (cachedValueMaxAge.hours) checkDate.setHours(checkDate.getHours() - Number(cachedValueMaxAge.hours));
   const isStateOldOrNotExists =
-    cachedValue === undefined || cachedValueLC === undefined || cachedValueLC <= checkDate.valueOf();
+    !isDefined(cachedValue) || !isDefined(cachedValueLC) || cachedValueLC <= checkDate.valueOf();
   return [cachedValue, isStateOldOrNotExists];
 }
 
@@ -4128,9 +4109,9 @@ function cachedGetValueAndCheckItIfOld(user, valueId, cachedValueMaxAge) {
 function cachedValueSet(user, valueId, value) {
   const id = cachedGetValueId(user, valueId);
   if (id) {
-    const currentValue = cachedValuesMap.has(id) ? cachedValuesMap.get(id) : null;
+    const currentValue = cachedValuesMap.has(id) ? cachedValuesMap.get(id) : undefined;
     if (
-      currentValue === null ||
+      !isDefined(currentValue) ||
       JSON.stringify(currentValue, JSONReplacerWithMap) !== JSON.stringify(value, JSONReplacerWithMap)
     ) {
       cachedValuesMap.set(id, value);
@@ -4185,7 +4166,7 @@ function cachedValueDelete(user, valueId) {
 function cachedActionOnGetCachedState(data, callback) {
   const {user, valueId} = data;
   const value = cachedValueGet(user, `${prefixExternalStates}${valueId}`);
-  if (value === undefined) {
+  if (!isDefined(value)) {
     callback(null);
   } else {
     callback(value);
@@ -4566,7 +4547,7 @@ function enumerationsInit(enumerationType, withExtensions = false) {
           currentItemSectionsCount === 1 ||
           (currentItemSectionsCount === 2 && getEnums(compositeHolderEnum).length > 0);
       if (isCurrentItemAcceptable) {
-        if (currentEnumerationList.hasOwnProperty(currentItem) && currentEnumerationList[currentItem] !== undefined) {
+        if (currentEnumerationList.hasOwnProperty(currentItem) && isDefined(currentEnumerationList[currentItem])) {
           currentEnumerationList[currentItem].isAvailable = true;
           if (holderItemId) currentEnumerationList[currentItem].holder = holderItemId;
         } else {
@@ -4659,7 +4640,7 @@ function enumerationsRereadItemName(user, enumerationType, enumerationItemId) {
   const currentEnumeration = enumerationsList[enumerationType].list,
     fullItemId = `${prefixEnums}.${currentEnumeration[enumerationItemId].enum}.${enumerationItemId}`,
     currentEnum = getEnums(currentEnumeration[enumerationItemId].enum).find((current) => current.id === fullItemId);
-  if (currentEnum !== undefined && currentEnum.hasOwnProperty('name') && currentEnum.name !== undefined) {
+  if (isDefined(currentEnum) && currentEnum.hasOwnProperty('name') && isDefined(currentEnum.name)) {
     enumerationsUpdateItemName(
       user,
       enumerationType,
@@ -4687,7 +4668,7 @@ function enumerationsRereadItemName(user, enumerationType, enumerationItemId) {
 function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {dataType: dataTypeItem, item: currentItem, dataTypeExtraId} = menuItemToProcess.options,
     currentEnumerationsList = enumerationsGetList(dataTypeItem, dataTypeExtraId),
     currentMenuItem = currentEnumerationsList[currentItem],
@@ -4738,7 +4719,7 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
 function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {
@@ -4975,7 +4956,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         const groupItem = {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'group')}: [${
-            currentEnumerationItem[enumerationItemAttr] == undefined ? '' : currentEnumerationItem[enumerationItemAttr]
+            !isDefined(currentEnumerationItem[enumerationItemAttr]) ? '' : currentEnumerationItem[enumerationItemAttr]
           }]`,
           icon: iconItemEdit,
         };
@@ -5229,7 +5210,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           const currentTranslationShortId = currentId.split('.').join('_'),
             currentTranslationId = `${translationType}.${currentTranslationShortId}`;
           let currentValue = currentTranslation[currentTranslationShortId];
-          if (currentValue === null || currentValue === undefined || currentId === currentTranslationId) {
+          if (!isDefined(currentValue) || currentId === currentTranslationId) {
             currentValue = `${currentTranslationId} ${iconItemNotFound}`;
           } else if (currentValue.indexOf(translationsCommonFunctionsAttributesPrefix) === 0) {
             currentValue = `${translationsItemGet(
@@ -5320,7 +5301,7 @@ function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
   const extraMenuList = enumerationsList[enumerationType].list;
   return Object.keys(extraMenuList).filter(
     (itemId) =>
-      extraMenuList[itemId].isEnabled && (primaryEnumId === undefined || extraMenuList[itemId].enum === primaryEnumId),
+      extraMenuList[itemId].isEnabled && (!isDefined(primaryEnumId) || extraMenuList[itemId].enum === primaryEnumId),
   ).length;
 }
 
@@ -5478,13 +5459,13 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
     enumerationItemId,
     enumerationsNamesMain,
   );
-  if (enumerationItem === undefined) {
+  if (!isDefined(enumerationItem)) {
     const enumerationList = enumerationsGetList(enumerationType);
     enumerationItem = enumerationList ? enumerationList[enumerationItemId] : enumerationItem;
   }
   if (
     enumerationItem &&
-    enumerationItem.name !== undefined &&
+    isDefined(enumerationItem.name) &&
     translationsItemGet(user, currentItemTranslationId) === currentItemTranslationId
   ) {
     enumerationsRereadItemName(user, enumerationType, enumerationItemId);
@@ -5522,7 +5503,7 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
  * @returns {object[]} - The array of menuItem objects.
  */
 function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     {dataType: enumerationType, dataTypeExtraId: enumerationTypeExtraId} = menuItemToProcess.options,
     enumerationPrimaryType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId);
@@ -5713,7 +5694,7 @@ function enumerationsGetDeviceName(user, stateId, functionId, destinationId) {
  * @returns {object[]} Newly generated submenu.
  */
 function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {
       function: currentFunctionId,
       destination: currentDestinationId,
@@ -5786,10 +5767,10 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
           if (stateName) {
             let subSubMenuIndex = 0,
               currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
-              stateValue =
-                currentState !== undefined
-                  ? enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
-                  : undefined,
+              stateValue = isDefined(currentState)
+                ? // @ts-ignore
+                  enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
+                : undefined,
               states = [];
             const subMenuItem = {
               index: `${currentIndex}.${subMenuIndex}`,
@@ -5804,21 +5785,20 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               device: devicePrefix,
             };
             if (currentStateType === 'boolean') {
-              subMenuItem.icon =
-                stateValue === undefined || stateValue === null
-                  ? iconItemNotFound
-                  : deviceButtonId === primaryStateId
-                  ? stateValue
-                    ? currentFunction.iconOn
-                    : currentFunction.iconOff
-                  : stateValue
-                  ? defaultIconOn
-                  : defaultIconOff;
+              subMenuItem.icon = !isDefined(stateValue)
+                ? iconItemNotFound
+                : deviceButtonId === primaryStateId
+                ? stateValue
+                  ? currentFunction.iconOn
+                  : currentFunction.iconOff
+                : stateValue
+                ? defaultIconOn
+                : defaultIconOff;
               subMenuItem.command = cmdSetState;
               subMenuItem.options = currentOptions;
             } else if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
               states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
-              if (states !== undefined && Object.keys(states).length > 0) {
+              if (isDefined(states) && Object.keys(states).length > 0) {
                 subMenuItem.icon = '';
                 for (const [possibleValue, _possibleName] of Object.entries(states)) {
                   const subSubMenuItem = {
@@ -5847,7 +5827,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
                 valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined;
               for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
-                if ((valueMin === undefined || value >= valueMin) && (valueMax === undefined || value <= valueMax)) {
+                if ((!isDefined(valueMin) || value >= valueMin) && (!isDefined(valueMax) || value <= valueMax)) {
                   states.push(value);
                 }
               }
@@ -5880,7 +5860,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 submenu: [],
               });
             }
-            if (subMenuItem.icon !== undefined || subMenuItem.icons) {
+            if (isDefined(subMenuItem.icon) || subMenuItem.icons) {
               if (deviceButtonId !== primaryStateShortId) {
                 subMenuIndex = subMenu.push(subMenuItem);
               } else {
@@ -6034,7 +6014,7 @@ function enumerationsExtractPossibleValueStates(inputStates) {
  * @returns {any} The result of conversion.
  */
 function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueCode) {
-  if (convertValueCode && inputValue !== undefined && inputValue !== null) {
+  if (convertValueCode && isDefined(inputValue)) {
     const printDate = 'printDate(value)';
     if (typeOf(convertValueCode, 'string') && convertValueCode.length > 0) {
       if (convertValueCode === printDate || convertValueCode === `${printDate};`) {
@@ -6092,8 +6072,7 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
         if (
           stateToTestValueObject &&
           stateToTestValueObject.hasOwnProperty('val') &&
-          stateToTestValueObject.val !== undefined &&
-          stateToTestValueObject.val !== null
+          isDefined(stateToTestValueObject.val)
         ) {
           stateToTestValue = stateToTestValueObject.val;
           isStateToTestOnFound = true;
@@ -6150,7 +6129,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
       currentStateValue = skipCodeConversion
         ? currentStateVal
         : enumerationsEvaluateValueConversionCode(user, currentStateVal, convertValueCode),
-      currentStateValueType = currentStateValue == undefined ? currentObjectType : typeof currentStateValue,
+      currentStateValueType = !isDefined(currentStateValue) ? currentObjectType : typeof currentStateValue,
       currentStateValueId = `${stateTranslationIdSuffix}_${currentStateValue}`;
     if (currentStateValueType === 'boolean') {
       const currentIconOn =
@@ -6161,7 +6140,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
           currentAttributeId === currentFunction.state
             ? currentFunction.iconOff
             : configOptions.getOption(cfgDefaultIconOff, user);
-      if (currentStateValue !== undefined) {
+      if (isDefined(currentStateValue)) {
         valueString = translationsGetObjectName(user, currentStateValueId, functionId);
         if (valueString === 'Undefined' || valueString.includes(currentStateValueId)) {
           valueString = currentStateValue ? currentIconOn : currentIconOff;
@@ -6173,25 +6152,25 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
       }
     } else if (currObject.common.hasOwnProperty('states') && ['string', 'number'].includes(currObject.common['type'])) {
       const states = enumerationsExtractPossibleValueStates(currObject.common['states']);
-      if (currentStateValue !== undefined) {
+      if (isDefined(currentStateValue)) {
         if (states.hasOwnProperty(currentStateValue)) {
           valueString = translationsGetObjectName(user, currentStateValueId, functionId);
           if (valueString === 'Undefined' || valueString.includes(currentStateValueId))
             valueString = states[currentStateValue];
-          if (valueString === undefined) valueString = currentStateValue;
+          if (!isDefined(valueString)) valueString = currentStateValue;
         } else {
           valueString = `${currentStateValue}`;
         }
       }
     } else if (currentStateValueType === 'number') {
       valueString =
-        (currentStateValue === undefined
+        (!isDefined(currentStateValue)
           ? ''
           : `${Number.isInteger(currentStateValue) ? currentStateValue : currentStateValue.toFixed(2)}`) +
         (currObjectUnit ? ' ' + currObjectUnit : '');
     } else if (currentStateValueType === 'string') {
       valueString =
-        (currentStateValue === undefined ? '' : currentStateValue) + (currObjectUnit ? ' ' + currObjectUnit : '');
+        (!isDefined(currentStateValue) ? '' : currentStateValue) + (currObjectUnit ? ' ' + currObjectUnit : '');
     }
   }
   return {valueString, lengthModifier};
@@ -6251,7 +6230,7 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
           stateObjectEnums = stateObject.hasOwnProperty('enumIds') && stateObject.enumIds ? stateObject.enumIds : [];
         if (stateObjectEnums.includes(currentFunctionFullId) && stateObjectEnums.includes(currentDestinationFullId)) {
           const attributeState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
-            isCurrentStateNotEmpty = attributeState && attributeState.val !== null && attributeState.val !== undefined;
+            isCurrentStateNotEmpty = attributeState && isDefined(attributeState.val);
           if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
             deviceAttributesArray.push({
               label: translationsGetObjectName(
@@ -6629,7 +6608,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
   const {id, nameTranslationId, icon, extensionRootMenuId, scriptName, translationsKeys} = extensionDetails;
   const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
   const functionsList = enumerationsList[dataTypeFunction].list;
-  if (functionsList.hasOwnProperty(extensionId) && functionsList[extensionId] !== undefined) {
+  if (functionsList.hasOwnProperty(extensionId) && isDefined(functionsList[extensionId])) {
     functionsList[extensionId].isAvailable = true;
     functionsList[extensionId].scriptName = scriptName;
     functionsList[extensionId].state = extensionRootMenuId;
@@ -6736,7 +6715,7 @@ cachedValuesStatesCommonAttributes[idAlerts] = {
 function alertsGet() {
   if (!(typeOf(alertsRules, 'object') && Object.keys(alertsRules).length > 0) && existsState(alertsStateFullId)) {
     const alertsState = getState(alertsStateFullId);
-    if (alertsState !== undefined && typeOf(alertsState.val, 'string')) {
+    if (isDefined(alertsState) && typeOf(alertsState.val, 'string')) {
       try {
         alertsRules = JSON.parse(alertsState.val, JSONReviverWithMap);
       } catch (err) {
@@ -6771,13 +6750,13 @@ function alertsStore(alerts) {
  * @param {any=} currentValue  - Current state `value`. If not defined - will be read from `state`.
  */
 function alertsStoreStateValue(alertStateId, currentValue) {
-  if (currentValue === undefined) {
+  if (!isDefined(currentValue)) {
     if (existsState(alertStateId)) {
       currentValue = getState(alertStateId).val;
     }
   }
   const alerts = alertsGet();
-  if (currentValue !== undefined && alerts.hasOwnProperty(alertStateId)) {
+  if (isDefined(currentValue) && alerts.hasOwnProperty(alertStateId)) {
     alerts[alertStateId].value = currentValue;
     alertsStore(alerts);
   }
@@ -6800,8 +6779,8 @@ function alertsStoreStateValue(alertStateId, currentValue) {
  */
 function alertsManage(user, stateId, functionId, destinationId, alertDetailsOrThresholds, isTriggers) {
   let alerts = alertsGet();
-  if (alerts === undefined) alerts = {};
-  if (alertDetailsOrThresholds === undefined) alertDetailsOrThresholds = {};
+  if (!isDefined(alerts)) alerts = {};
+  if (!isDefined(alertDetailsOrThresholds)) alertDetailsOrThresholds = {};
   const userId = isTriggers ? triggersInAlertsId : user.chatId;
   if (alerts.hasOwnProperty(stateId)) {
     const alert = alerts[stateId],
@@ -6886,7 +6865,7 @@ function alertsInit(checkStates = false) {
       if (alerts[stateId].hasOwnProperty('value') && existsState(stateId)) {
         const currentValue = getState(stateId).val,
           oldValue = alerts[stateId].value;
-        if (currentValue !== undefined && currentValue !== oldValue) {
+        if (isDefined(currentValue) && currentValue !== oldValue) {
           alertsActionOnSubscribedState({id: stateId, state: {val: currentValue}, oldState: {val: oldValue}});
         }
       }
@@ -6999,7 +6978,7 @@ function alertsActionOnSubscribedState(object) {
   const alerts = alertsGet(),
     activeChatGroups = telegramGetGroupChats(true),
     stateId = object.id;
-  if (alerts !== undefined && alerts.hasOwnProperty(stateId)) {
+  if (isDefined(alerts) && alerts.hasOwnProperty(stateId)) {
     const alertObject = getObjectEnriched(stateId, '*'),
       alertDestinationId = alerts[stateId].destination,
       alertFunctionId = alerts[stateId].function,
@@ -7029,7 +7008,7 @@ function alertsActionOnSubscribedState(object) {
           const stateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
             stateValueOld = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
             messageValues = {};
-          if (user !== undefined) {
+          if (isDefined(user)) {
             messageValues.alertFunctionName = translationsGetEnumName(
               user,
               dataTypeFunction,
@@ -7093,7 +7072,7 @@ function alertsActionOnSubscribedState(object) {
                   thresholdsVariables.delete(idStoredTimerValue);
                 }
               }
-              if (storedTimerOn === undefined || stateValue !== storedTimerOldValue) {
+              if (!isDefined(storedTimerOn) || stateValue !== storedTimerOldValue) {
                 thresholdsVariables.set(idStoredTimerValue, [stateValue, stateValueOld]);
                 thresholdsVariables.set(
                   idStoredTimerOn,
@@ -7138,7 +7117,7 @@ function alertsActionOnSubscribedState(object) {
                     stateValue === thresholdValue && !(stateValueOld === storedValue && stateValue === storedValueOld);
                 }
                 let thresholdUser = user;
-                if (thresholdUser === undefined && threshold.user !== undefined) {
+                if (!isDefined(thresholdUser) && isDefined(threshold.user)) {
                   thresholdUser = telegramGenerateUserObjectFromId(threshold.user);
                   messageValues.alertFunctionName = translationsGetEnumName(
                     thresholdUser,
@@ -7308,7 +7287,7 @@ function alertsOnAlertToTelegram(data, callback) {
 function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
   const alertMessages = alertGetMessages(user),
     alertMessagesMaxIndex = alertMessages.length - 1,
-    currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     alertMessageAcknowledge = (user, menuItemToProcess) => {
       const {item: alertIndex} = menuItemToProcess.options,
         alertMessages = alertGetMessages(user),
@@ -7352,12 +7331,13 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
  */
 function alertsHistoryClearOld(user, alertsMessages) {
   const oldestDate = new Date(),
-    noInput = alertsMessages === undefined;
+    noInput = !isDefined(alertsMessages);
   alertsMessages = noInput ? alertGetMessages(user) : alertsMessages;
   oldestDate.setHours(oldestDate.getHours() - configOptions.getOption(cfgAlertMessagesHistoryDepth, user));
   const oldestDateNumber = oldestDate.valueOf();
   alertsMessages =
-    alertsMessages !== undefined ? alertsMessages.filter((alertsMessage) => alertsMessage.date > oldestDateNumber) : [];
+    // @ts-ignore
+    isDefined(alertsMessages) ? alertsMessages.filter((alertsMessage) => alertsMessage.date > oldestDateNumber) : [];
   if (noInput) alertsStoreMessagesToCache(user, alertsMessages);
   return alertsMessages;
 }
@@ -7372,7 +7352,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
   const alertsList = alertsGet(),
     destinationsList = enumerationsList[dataTypeDestination].list,
     functionsList = enumerationsList[dataTypeFunction].list,
-    currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+    currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     currentAccessLevel = menuItemToProcess.accessLevel,
     _isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
@@ -7432,7 +7412,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
         levelSecondType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
         levelFirstEnum = isFunctionsFirst ? 'function' : 'destination',
         levelSecondEnum = isFunctionsFirst ? 'destination' : 'function';
-      if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && deviceId === undefined) {
+      if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && !isDefined(deviceId)) {
         const levelFirstProceed = [];
         Object.keys(levelFirstList)
           .filter((levelId) => levelFirstList[levelId].isEnabled && levelFirstList[levelId].isAvailable)
@@ -7459,7 +7439,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             }
           });
       }
-      if (levelFirstId && (!levelSecondId || isLevelSecondIdHolder) && deviceId === undefined) {
+      if (levelFirstId && (!levelSecondId || isLevelSecondIdHolder) && !isDefined(deviceId)) {
         const levelSecondList = isFunctionsFirst ? destinationsList : functionsList,
           alertsSecondLevelList = alertsListPrepared[levelFirstId],
           levelSecondProceed = [];
@@ -7492,7 +7472,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
               }
             });
       }
-      if (levelFirstId && levelSecondId && deviceId === undefined) {
+      if (levelFirstId && levelSecondId && !isDefined(deviceId)) {
         const objectsIdList = alertsListPrepared[levelFirstId][levelSecondId];
         if (objectsIdList)
           Object.keys(objectsIdList)
@@ -7592,7 +7572,7 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth = fals
 function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemOptions, itemStateObject, isExtraMenu = false) {
   let menuItem;
   const itemState = itemOptions.state;
-  if (itemStateObject === undefined || itemStateObject === null) itemStateObject = getObjectEnriched(itemState);
+  if (!isDefined(itemStateObject)) itemStateObject = getObjectEnriched(itemState);
   if (itemStateObject && itemStateObject.hasOwnProperty('common') && itemStateObject.common) {
     const itemStateType = itemStateObject.common['type'];
     menuItem = {
@@ -7607,8 +7587,8 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemOptions, it
     if (configOptions.getOption(cfgThresholdsForNumericString)) {
       if (itemStateType === 'string' && !itemStateObject.common.hasOwnProperty('states')) {
         const currentState = getState(itemState),
-          currentStateValue = currentState !== undefined ? currentState.val : undefined,
-          currentStateNumeric = currentState !== undefined ? Number(currentStateValue) : NaN;
+          currentStateValue = isDefined(currentState) ? currentState.val : undefined,
+          currentStateNumeric = isDefined(currentState) ? Number(currentStateValue) : NaN;
         isNumericString =
           !isNaN(currentStateNumeric) &&
           `${currentStateNumeric}` === currentStateValue.slice(0, `${currentStateNumeric}`.length);
@@ -7642,7 +7622,7 @@ function alertsMenuItemGenerateSubscribedOn(itemIndex, itemName, itemOptions, it
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     {function: functionId, destination: destinationId, state: stateId} = menuItemToProcess.options,
     alerts = alertsGet(),
@@ -7706,7 +7686,7 @@ function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId} = options,
@@ -7769,7 +7749,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {state: stateId, id, units: stateUnits} = menuItemToProcess.options,
     thresholds = alertsGetStateAlertDetailsOrThresholds(user, stateId),
     thresholdIndex = triggersGetIndex(thresholds, id);
@@ -7909,7 +7889,7 @@ function alertMenuItemGenerateAlertPropagation(
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: currentFunctionId, destination: currentDestinationId} = options,
     currentAccessLevel = menuItemToProcess.accessLevel,
@@ -7956,8 +7936,8 @@ function triggersGetStateSubType(stateId, stateObject) {
     if (configOptions.getOption(cfgThresholdsForNumericString)) {
       if (stateType === 'string' && !stateObjectCommon.hasOwnProperty('states')) {
         const currentState = getState(stateId),
-          currentStateValue = currentState !== undefined ? currentState.val : undefined,
-          currentStateNumeric = currentState !== undefined ? Number(currentStateValue) : NaN;
+          currentStateValue = isDefined(currentState) ? currentState.val : undefined,
+          currentStateNumeric = isDefined(currentState) ? Number(currentStateValue) : NaN;
         isNumericString =
           !isNaN(currentStateNumeric) &&
           `${currentStateNumeric}` === currentStateValue.slice(0, `${currentStateNumeric}`.length);
@@ -7982,7 +7962,7 @@ function triggersGetStateSubType(stateId, stateObject) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerate(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId} = options,
     currentAccessLevel = menuItemToProcess.accessLevel,
@@ -8110,7 +8090,7 @@ function triggersGetEnabledIcon(trigger) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageState(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId, type: stateSubType} = options,
@@ -8254,7 +8234,7 @@ function triggersMenuItemGenerateSetValue(user, upperItemIndex, itemIndex, curre
 }
 
 function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {
       dataType,
       function: functionId,
@@ -8419,7 +8399,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
 }
 
 function triggersMenuGenerateBrowseAllStates(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     currentOptions = menuItemToProcess.options,
     enumerationsMenu = menuMenuItemGenerateRootMenu(user, 'enumerationsOnly'),
     subMenu = enumerationsMenu ? enumerationsMenu.submenu : [],
@@ -8438,7 +8418,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         : menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId, id} = options;
   let text = '';
-  if (options && stateId && id !== undefined) {
+  if (options && stateId && isDefined(id)) {
     const triggers = triggersGetStateTriggers(user, stateId),
       triggerIndex = triggersGetIndex(triggers, id),
       trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
@@ -8447,7 +8427,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         label: ` ${translationsGetObjectName(user, stateId, functionId)}`,
         ...enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
       };
-      if (trigger.onAbove !== undefined && trigger.onLess !== undefined) {
+      if (isDefined(trigger.onAbove) && isDefined(trigger.onLess)) {
         sourceStateDetails.valueString = `${trigger.onAbove ? '&gt;=' : '&lt;'} ${sourceStateDetails.valueString}`;
         sourceStateDetails.lengthModifier = sourceStateDetails.lengthModifier - 3;
       }
@@ -8519,7 +8499,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
 }
 
 function triggersMenuGenerateSelectTargetState(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, extraOptions} = options,
     currentAccessLevel = menuItemToProcess.accessLevel;
@@ -8576,7 +8556,7 @@ let _backupScheduleReference;
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     _currentId = menuItemToProcess.id,
     currentAccessLevel = menuItemToProcess.accessLevel,
     backupFiles = backupGetFolderList();
@@ -8640,7 +8620,7 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupMenuGenerateRestore(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {fileName} = menuItemToProcess.options;
   let subMenu = [],
     subMenuIndex = 0;
@@ -8920,7 +8900,7 @@ const cachedSimpleReportIdToCreate = 'simpleReportIdToCreate',
  */
 function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
   let newMenu = [];
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     {enumType: enumId, item: reportId} = menuItemToProcess.options;
   if (reportId) {
     const reportObjectId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[reportId].enum}.${reportId}`,
@@ -8954,7 +8934,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
       options: {item: reportId},
       /** submenu function for collecting query params (dests, states, roles) */
       submenu: (user, menuItemToProcess) => {
-        const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+        const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
           {item: reportId} = menuItemToProcess.options;
         let subMenuIndex = 0,
           subMenu = [];
@@ -8973,7 +8953,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           icon: enumerationsList[dataTypeReport].icon,
           /** submenu function for dests selection */
           submenu: (user, menuItemToProcess) => {
-            const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '';
+            const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '';
             let subMenu = [],
               subMenuIndex = 0;
             Object.keys(enumerationsList[dataTypeDestination].list)
@@ -9018,7 +8998,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             options: {item: reportId},
             /** submenu function for selecting states from a query result and assigning them to report */
             submenu: (user, menuItemToProcess) => {
-              const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+              const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
                 {item: reportId} = menuItemToProcess.options;
               let {queryDests, queryState, queryRole, queryStates, queryPossibleStates} = cachedValueGet(
                   user,
@@ -9319,7 +9299,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
  * @returns {object[]} Newly generated submenu.
  */
 function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
-  const currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     reportId = menuItemToProcess.id,
     reportsList = enumerationsList[dataTypeReport].list,
     reportItem = reportsList[reportId],
@@ -9411,9 +9391,10 @@ const menuItemButtonPrefix = 'menu-', // Technical parameter for the telegram me
  * @returns {string} The result icon.
  */
 function menuIconGenerate(user, value, iconsPair) {
-  if (iconsPair === undefined) {
+  if (!isDefined(iconsPair)) {
     iconsPair = [configOptions.getOption(cfgDefaultIconOn, user), configOptions.getOption(cfgDefaultIconOff, user)];
   }
+  // @ts-ignore
   return iconsPair[value ? 0 : 1];
 }
 
@@ -9756,7 +9737,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
     }
     return result;
   }
-  if (topRootMenuItemId !== undefined && topRootMenuItemId !== null) {
+  if (isDefined(topRootMenuItemId)) {
     switch (topRootMenuItemId) {
       case 'setup':
         rootMenu.submenu.push(menuMenuItemGenerateRootMenuSetup(user));
@@ -9782,8 +9763,10 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
         break;
 
       default:
+        // @ts-ignore
         if (currentListIds.includes(topRootMenuItemId)) {
           rootMenu.submenu.push(
+            // @ts-ignore
             menuMenuItemGenerateRootEnumeration(user, currentDataType, currentList, topRootMenuItemId, currentNameId),
           );
         }
@@ -9983,12 +9966,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     let subMenuIndex = 0;
     const iconSelected = configOptions.getOption(cfgDefaultIconOn, user),
       currentValue = options.value,
-      showCurrent = options.showCurrent && currentValue !== undefined;
+      showCurrent = options.showCurrent && isDefined(currentValue);
     itemValues.forEach((subItemName, subItemValue) => {
       subMenuIndex = menuItem.submenu.push({
         index: `${upperItemIndex}.${itemIndex}.${subMenuIndex}`,
         name: subItemName,
-        icon: options.value !== undefined && currentValue === subItemValue ? iconSelected : '',
+        icon: isDefined(options.value) && currentValue === subItemValue ? iconSelected : '',
         command: cmdItemPress,
         options: {...options, value: subItemValue},
       });
@@ -10388,7 +10371,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     default: {
       const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
       if (hierarchicalCaption) {
-        if (currentIndent === undefined) currentIndent = '';
+        if (!isDefined(currentIndent)) currentIndent = '';
+        // @ts-ignore
         currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
       }
       let currentSubMenuPos;
@@ -10405,7 +10389,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         }
       }
       if (
-        currentSubMenuPos !== undefined &&
+        isDefined(currentSubMenuPos) &&
         currentSubMenuPos >= 0 &&
         menuItemToProcess.submenu.length > 0 &&
         currentSubMenuPos < menuItemToProcess.submenu.length
@@ -10422,7 +10406,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         messageObject.index = subMenuItem.index;
         if (messageObject.index === topItemIndex) {
           messageObject.shortIndex = topItemIndex;
-        } else if (messageObject.shortIndex !== undefined) {
+        } else if (isDefined(messageObject.shortIndex)) {
           messageObject.shortIndex = [messageObject.shortIndex, currentSubMenuPos].join('.');
         } else {
           messageObject.shortIndex = currentSubMenuPos;
@@ -10430,9 +10414,9 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         messageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
         messageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
         messageObject.options =
-          subMenuItem.hasOwnProperty('options') && subMenuItem.options !== undefined ? subMenuItem.options : {};
-        if (messageObject.navigationLeft !== undefined) messageObject.navigationLeft = undefined;
-        if (messageObject.navigationRight !== undefined) messageObject.navigationRight = undefined;
+          subMenuItem.hasOwnProperty('options') && isDefined(subMenuItem.options) ? subMenuItem.options : {};
+        if (isDefined(messageObject.navigationLeft)) messageObject.navigationLeft = undefined;
+        if (isDefined(messageObject.navigationRight)) messageObject.navigationRight = undefined;
         const currentSubMenuMaxIndex = menuItemToProcess.submenu.length - 1,
           currentOptions = messageObject.options,
           horizontalNavigation =
@@ -10449,7 +10433,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           if (currentSubMenuPos > 0) {
             for (let itemPos = currentSubMenuPos - 1; itemPos >= 0; itemPos--) {
               if (
-                menuItemToProcess.submenu[itemPos].command === undefined ||
+                !isDefined(menuItemToProcess.submenu[itemPos].command) ||
                 !menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix)
               ) {
                 messageObject.navigationLeft = itemPos;
@@ -10460,7 +10444,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           if (currentSubMenuPos < currentSubMenuMaxIndex) {
             for (let itemPos = currentSubMenuPos + 1; itemPos <= currentSubMenuMaxIndex; itemPos++) {
               if (
-                menuItemToProcess.submenu[itemPos].command === undefined ||
+                !isDefined(menuItemToProcess.submenu[itemPos].command) ||
                 !menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix)
               ) {
                 messageObject.navigationRight = itemPos;
@@ -10502,11 +10486,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           if (typeof functionResult === 'string') {
             messageObject.message += functionResult.length > 0 ? '\r\n' + functionResult : '';
           }
-        } else if (menuItemToProcess.hasOwnProperty('text') && menuItemToProcess.text !== undefined) {
+        } else if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
           messageObject.message += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
         }
         messageObject.buttons = [];
-        let currentIndex = menuItemToProcess.index !== undefined ? menuItemToProcess.index : '',
+        let currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
           currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : undefined;
         const maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
         let buttonsCount = menuItemToProcess.submenu.length;
@@ -10602,7 +10586,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             ),
           });
         }
-        if (messageObject.navigationLeft !== undefined) {
+        if (isDefined(messageObject.navigationLeft)) {
           messageObject.buttons.push({
             text: `${iconItemMoveLeft}`,
             group: menuOptionHorizontalNavigation,
@@ -10614,7 +10598,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             ),
           });
         }
-        if (messageObject.navigationRight !== undefined) {
+        if (isDefined(messageObject.navigationRight)) {
           messageObject.buttons.push({
             text: `${iconItemMoveRight}`,
             group: menuOptionHorizontalNavigation,
@@ -10633,7 +10617,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             callback_data: `${cmdClose}${user.userId ? `${itemsDelimiter}${user.userId}` : ''}`,
           },
         ];
-        if (currentBackIndex !== undefined) {
+        if (isDefined(currentBackIndex)) {
           if (configOptions.getOption(cfgShowHomeButton, user)) {
             lastRow.unshift({text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome});
           }
@@ -10731,7 +10715,7 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId) {
  */
 function menuMenuItemGetIcon(user, menuItemToProcess) {
   let icon = '';
-  if (menuItemToProcess !== undefined) {
+  if (isDefined(menuItemToProcess)) {
     if (menuItemToProcess.hasOwnProperty('options')) {
       const {function: currentFunctionId, state: currentStateId, device: devicePrefix} = menuItemToProcess.options,
         currentFunction =
@@ -10753,19 +10737,18 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
                 ? currentFunctionDeviceButtonsAndAttributes[currentAttributeId].convertValueCode
                 : '',
               currentValue = existsState(currentStateId) ? getState(currentStateId).val : undefined;
-            icon =
-              currentValue === undefined || currentValue === null
-                ? iconItemNotFound
-                : enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode)
-                ? menuItemToProcess.icons.on
-                : menuItemToProcess.icons.off;
+            icon = !isDefined(currentValue)
+              ? iconItemNotFound
+              : enumerationsEvaluateValueConversionCode(user, currentValue, convertValueCode)
+              ? menuItemToProcess.icons.on
+              : menuItemToProcess.icons.off;
           }
         } else if (typeOf(menuItemToProcess.icons, 'function')) {
           icon = menuItemToProcess.icons(user, menuItemToProcess);
         }
       }
     }
-    if ((icon === undefined || icon === '') && menuItemToProcess.icon) icon = menuItemToProcess.icon;
+    if ((!isDefined(icon) || icon === '') && menuItemToProcess.icon) icon = menuItemToProcess.icon;
   }
   return icon;
 }
@@ -10807,7 +10790,7 @@ function menuMenuUpdateBySchedule() {
     const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
-      if (!cachedValueGet(user, cachedIsWaitForInput) && itemPos !== undefined) {
+      if (!cachedValueGet(user, cachedIsWaitForInput) && isDefined(itemPos)) {
         logs('make an menu update for = ' + JSON.stringify(user));
         menuMenuDraw(user);
       }
@@ -10888,7 +10871,7 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
       if (isCachedMenuOn === true && ((!isBotMessageOld48OrNotExists && isBotMessageOld24OrNotExists) || noDraw)) {
         const itemPos = cachedValueGet(user, cachedMenuItem);
         warns('for user = ' + JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
-        if (!cachedValueGet(user, cachedIsWaitForInput) && itemPos !== undefined) {
+        if (!cachedValueGet(user, cachedIsWaitForInput) && isDefined(itemPos)) {
           if (noDraw) {
             warns(`Make an menu object prepared for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`);
           } else {
@@ -11020,7 +11003,7 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
         newMenuRow.options = {extraOptions};
       }
     }
-    newMenuRow.index = newMenuRow.index !== undefined ? newMenuRow.index : '';
+    newMenuRow.index = isDefined(newMenuRow.index) ? newMenuRow.index : '';
     newMenuRow.submenu = typeOf(inputMenu.submenu, 'array')
       ? menuMenuReIndex(inputMenu.submenu, newMenuRow.index, extraOptions)
       : inputMenu.submenu;
@@ -11038,7 +11021,7 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
  * @returns {string}
  */
 function commandsParamsPack(...inputParams) {
-  return inputParams.filter((inputParam) => inputParam !== undefined && inputParam !== null).join(itemsDelimiter);
+  return inputParams.filter((inputParam) => isDefined(inputParam)).join(itemsDelimiter);
 }
 
 /**
@@ -11145,11 +11128,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       const currentObjectCommon = currentObject.common,
         currentStateType = currentObjectCommon['type'],
         setStateCallback = (error) =>
-          stateOrCommandProcessed(user, {success: error === undefined, error}, isFromGetInput);
-      if (currentStateType === 'boolean' || stateValue !== undefined) {
+          stateOrCommandProcessed(user, {success: !isDefined(error), error}, isFromGetInput);
+      if (currentStateType === 'boolean' || isDefined(stateValue)) {
         if (currentStateType === 'boolean') {
           const currentState = getState(stateId),
-            currentStateValue = currentState.val === undefined || currentState.val === null ? false : currentState.val;
+            currentStateValue = !isDefined(currentState.val) ? false : currentState.val;
           setState(stateId, !currentStateValue, setStateCallback);
         } else if (currentObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
           const currentStatePossibleValues = enumerationsExtractPossibleValueStates(currentObjectCommon['states']);
@@ -11428,7 +11411,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2])
                             ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]]
                             : undefined;
-                      newValue = parsedValue !== undefined ? {id: userInputToProcess, minutes: parsedValue} : null;
+                      newValue = isDefined(parsedValue) ? {id: userInputToProcess, minutes: parsedValue} : null;
                       menuMessageObject.message = `${translationsItemTextGet(
                         user,
                         'WrongValue',
@@ -11442,7 +11425,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''
                       }:`;
                     }
-                    if (newValue !== null) {
+                    if (isDefined(newValue)) {
                       configItem.push(newValue);
                       if (menuMessageObject.message) menuMessageObject.message = '';
                     }
@@ -11450,7 +11433,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   configOptions.setOption(commandOptions.item, user, configItem);
                 } else {
                   const parsedValue = configOptions.parseOption(commandOptions.item, userInputToProcess);
-                  if (parsedValue === undefined) {
+                  if (!isDefined(parsedValue)) {
                     const configItem = configOptions.getOption(
                         commandOptions.item,
                         commandOptions.scope === configOptionScopeGlobal ? null : user,
@@ -11526,8 +11509,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                   case 'edit': {
                     const thresholdId = commandOptions.id,
-                      thresholdIndex =
-                        thresholdId !== undefined ? triggersGetIndex(detailsOrThresholds, thresholdId) : -1;
+                      thresholdIndex = isDefined(thresholdId) ? triggersGetIndex(detailsOrThresholds, thresholdId) : -1;
                     if (thresholdIndex >= 0) {
                       threshold = detailsOrThresholds[thresholdIndex];
                       backStepsForCacheDelete--;
@@ -11642,7 +11624,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     break;
                   }
                   case 'edit': {
-                    if (commandOptions.id !== undefined) {
+                    if (isDefined(commandOptions.id)) {
                       const id = commandOptions.id,
                         triggerIndex = triggersGetIndex(triggers, commandOptions.id);
                       if (triggerIndex >= 0) {
@@ -11803,7 +11785,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeTranslation: {
             let currentTranslationId = commandOptions.translationType,
               currentTranslationValue;
-            if (currentTranslationId && commandOptions.item !== undefined && commandOptions.index !== undefined) {
+            if (currentTranslationId && isDefined(commandOptions.item) && isDefined(commandOptions.index)) {
               let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
               if (
                 destTranslation &&
@@ -12137,7 +12119,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 commandOptions.dataTypeExtraId,
               ),
               currentDataItem = currentEnumerationsList[commandOptions.item];
-            if (commandOptions.attribute !== undefined) {
+            if (isDefined(commandOptions.attribute)) {
               if (
                 enumerationsDeviceStatesTypes.includes(commandOptions.dataType) &&
                 enumerationsDeviceButtonsAccessLevelAttrs.includes(commandOptions.attribute)
@@ -12146,7 +12128,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               } else {
                 switch (typeOf(currentDataItem[commandOptions.attribute])) {
                   case 'boolean': {
-                    if (commandOptions.value === undefined) {
+                    if (!isDefined(commandOptions.value)) {
                       currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
                     }
                     break;
@@ -12290,7 +12272,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
 
                 case 'edit': {
-                  if (commandOptions.id !== undefined && commandOptions.item !== undefined) {
+                  if (isDefined(commandOptions.id) && isDefined(commandOptions.item)) {
                     const item = commandOptions.item,
                       triggerIndex = triggersGetIndex(triggers, commandOptions.id);
                     if (triggerIndex >= 0) {
@@ -12334,7 +12316,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             trigger[item] = false;
                           } else if (
                             item === 'log' ||
-                            (!trigger[item] && trigger.targetState && trigger.targetValue !== undefined)
+                            (!trigger[item] && trigger.targetState && isDefined(trigger.targetValue))
                           ) {
                             trigger[item] = true;
                           } else {
@@ -12575,7 +12557,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeAlertSubscribed: {
-            if (commandOptions.state && commandOptions.id !== undefined) {
+            if (commandOptions.state && isDefined(commandOptions.id)) {
               const detailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
                 thresholdIndex = triggersGetIndex(detailsOrThresholds, commandOptions.id);
               if (thresholdIndex >= 0) {
@@ -12592,7 +12574,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeTrigger: {
-            if (commandOptions.state && commandOptions.id !== undefined) {
+            if (commandOptions.state && isDefined(commandOptions.id)) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state);
               const triggerIndex = triggersGetIndex(triggers, commandOptions.id),
                 backStepsForCacheDelete = -3;
@@ -12613,11 +12595,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeTranslation: {
             let currentTranslationId;
-            if (
-              commandOptions.translationType &&
-              commandOptions.item !== undefined &&
-              commandOptions.index !== undefined
-            ) {
+            if (commandOptions.translationType && isDefined(commandOptions.item) && isDefined(commandOptions.index)) {
               currentTranslationId = commandOptions.translationType;
               let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
               if (
@@ -12947,7 +12925,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         if (isDifferentAlertDetails) {
                           if (
                             (currentStateAlertDetails && propagateMode === 'alertPropagateOverwrite') ||
-                            currentStateAlertDetails === undefined
+                            !isDefined(currentStateAlertDetails)
                           ) {
                             alertsManage(
                               user,
@@ -13127,7 +13105,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               reportStatesStructure[currentDestId][currentFuncId][currentDeviceObject];
                             currentStateObjects.forEach((currentStateObject) => {
                               const currentLine = objectDeepClone(templateLine);
-                              if (currentUnit === undefined)
+                              if (!isDefined(currentUnit))
                                 currentUnit =
                                   currentStateObject.common && currentStateObject.common.unit
                                     ? currentStateObject.common.unit
@@ -13300,7 +13278,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 item = commandOptions.item;
               let threshold = detailsOrThresholds,
                 backStepsForCacheDelete = -2;
-              if (commandOptions.id !== undefined) {
+              if (isDefined(commandOptions.id)) {
                 const thresholdIndex = triggersGetIndex(detailsOrThresholds, commandOptions.id);
                 if (thresholdIndex >= 0) {
                   threshold = detailsOrThresholds[thresholdIndex];
@@ -13333,7 +13311,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeTrigger: {
-            if (commandOptions.state && commandOptions.id !== undefined) {
+            if (commandOptions.state && isDefined(commandOptions.id)) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state);
               const triggerIndex = triggersGetIndex(triggers, commandOptions.id),
                 item = commandOptions.item,
@@ -13389,7 +13367,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             const newItem = Object.keys(currentEnumerationsList).find((cItem) => {
               return currentEnumerationsList[cItem].order === newOrder;
             });
-            if (newItem != undefined) {
+            if (isDefined(newItem)) {
+              // @ts-ignore
               currentEnumerationsList[newItem].order = currentOrder;
               currentEnumerationsList[commandOptions.item].order = newOrder;
               currentMenuPosition.splice(-1, 1, newOrder);
@@ -13510,7 +13489,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
               currentMenuPosition.push(currentPos);
             }
-          } else if (jumpToItem !== undefined) {
+          } else if (isDefined(jumpToItem)) {
             currentMenuPosition.push(jumpToItem);
           }
         });
@@ -13703,7 +13682,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
         telegramObject.chatId = user.chatId;
       }
       if ((createNewMessage && !isMenuOn) || clearBefore || isBotMessageOldOrNotExists) {
-        if (messageObject.buttons !== undefined) {
+        if (isDefined(messageObject.buttons)) {
           telegramObject.reply_markup = {
             inline_keyboard: messageObject.buttons,
           };
@@ -13717,7 +13696,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
             parse_mode: 'HTML',
           },
         };
-        if (messageObject.buttons !== undefined) {
+        if (isDefined(messageObject.buttons)) {
           telegramObject[telegramCommandEditMessage].options.reply_markup = {
             inline_keyboard: messageObject.buttons,
           };
@@ -13727,7 +13706,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
       if (
         clearBefore ||
         ((!telegramObject.hasOwnProperty(telegramCommandEditMessage) ||
-          telegramObject[telegramCommandEditMessage] === undefined) &&
+          !isDefined(telegramObject[telegramCommandEditMessage])) &&
           !isBotMessageOldOrNotExists)
       ) {
         const clearCurrent = telegramMessageClearCurrent(user, false, true);
@@ -13952,7 +13931,7 @@ function telegramQueueProcess(user, messageId) {
   if (telegramIsConnected) {
     const userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
     if (userMessagesQueue && userMessagesQueue.length) {
-      if (messageId === undefined) {
+      if (!isDefined(messageId)) {
         const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
           cachedBotSendMessageId,
@@ -13970,7 +13949,7 @@ function telegramQueueProcess(user, messageId) {
       // will send a last message, to prevent spamming the telegram with flipping some states in ioBroker. In case of user input - we will not lost any message
       do {
         telegramObjects = objectDeepClone(userMessagesQueue[currentPos]);
-        if (telegramObjects === undefined) {
+        if (!isDefined(telegramObjects)) {
           if (currentPos < userMessagesQueue.length - 1) {
             currentPos = userMessagesQueue.length - 1;
           } else if (currentPos > 0) currentPos -= 1;
@@ -13987,7 +13966,7 @@ function telegramQueueProcess(user, messageId) {
           telegramObjects[0][telegramCommandDeleteMessage].isBotMessage
         ) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
-          if (telegramObjects[0][telegramCommandDeleteMessage].options.message_id === undefined) {
+          if (!isDefined(telegramObjects[0][telegramCommandDeleteMessage].options.message_id)) {
             warns(`No message for Delete! Going to skip command ${JSON.stringify(telegramObjects[0])}.`);
             telegramObjects.shift();
           }
@@ -14001,7 +13980,7 @@ function telegramQueueProcess(user, messageId) {
             telegramObjects = undefined;
           }
         }
-      } while (telegramObjects === undefined && userMessagesQueue.length);
+      } while (!isDefined(telegramObjects) && userMessagesQueue.length);
       if (telegramObjects) {
         if (messageId) {
           if (telegramObjects[0].hasOwnProperty(telegramCommandEditMessage)) {
@@ -14217,7 +14196,7 @@ function telegramActionOnUserRequestRaw(obj) {
       } else if (userRequest.hasOwnProperty('message') && userRequest.message.hasOwnProperty('message_id')) {
         messageId = userRequest.message.message_id;
       }
-      if (messageId !== undefined) {
+      if (isDefined(messageId)) {
         if (userRequest.hasOwnProperty('chat') && userRequest.chat.hasOwnProperty('id')) {
           chatId = userRequest.chat.id;
         } else if (
@@ -14227,14 +14206,14 @@ function telegramActionOnUserRequestRaw(obj) {
         ) {
           chatId = userRequest.message.chat.id;
         }
-        if (chatId != undefined) {
+        if (isDefined(chatId)) {
           if (userRequest.hasOwnProperty('text')) {
             command = userRequest.text;
           } else if (userRequest.hasOwnProperty('data')) {
             command = userRequest.data;
           }
           let user = {};
-          if (command !== undefined || userRequest.hasOwnProperty('document')) {
+          if (isDefined(command) || userRequest.hasOwnProperty('document')) {
             user = {
               userId: userRequest.from.id,
               chatId: chatId,
@@ -14244,7 +14223,7 @@ function telegramActionOnUserRequestRaw(obj) {
             };
             if (user.userId == user.chatId) cachedValueSet(user, cachedUser, user);
           }
-          if (command !== undefined) {
+          if (isDefined(command)) {
             if (userRequest.data) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
               if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
@@ -14343,7 +14322,7 @@ function telegramActionOnSendToUserRaw(obj) {
     if (
       botMessage.hasOwnProperty('reply_markup') &&
       botMessage.reply_markup.hasOwnProperty('inline_keyboard') &&
-      botMessage.reply_markup.inline_keyboard !== undefined
+      isDefined(botMessage.reply_markup.inline_keyboard)
     ) {
       const inline_keyboard = botMessage.reply_markup.inline_keyboard;
       isBotMessage =
@@ -14503,6 +14482,15 @@ autoTelegramMenuInstanceInit();
 //*** Utility functions - begin ***//
 
 /**
+ * Simple check is variable defined or not.
+ * @param {any} variable - The variable to check
+ * @returns {boolean} The result of checking.
+ */
+function isDefined(variable) {
+  return typeof variable !== 'undefined' && variable !== null;
+}
+
+/**
  * This function is a wrapper of embedded `typeof` operator.
  * @param {*} value - The input value, to return or check a type of it.
  * @param {string=} compareWithType - The text code of possible JavaScript type, to compare with.
@@ -14596,7 +14584,7 @@ function getObjectEnriched(id, enumId) {
 
 function checkNumberStateValue(stateId, value, stateObject) {
   const currentObject = stateObject ? stateObject : getObjectEnriched(stateId);
-  if (value !== undefined && currentObject && currentObject.common) {
+  if (isDefined(value) && currentObject && currentObject.common) {
     const currentObjectCommon = currentObject.common,
       currentType = currentObjectCommon['type'];
     if (currentType === 'number') {
@@ -14604,8 +14592,8 @@ function checkNumberStateValue(stateId, value, stateObject) {
         ? Number(currentObjectCommon['step'])
         : 1;
       return (
-        (currentObjectCommon.min === undefined || value >= Number(currentObjectCommon.min)) &&
-        (currentObjectCommon.max === undefined || value <= Number(currentObjectCommon.max)) &&
+        (!isDefined(currentObjectCommon.min) || value >= Number(currentObjectCommon.min)) &&
+        (!isDefined(currentObjectCommon.max) || value <= Number(currentObjectCommon.max)) &&
         value % currentStateValuesStep === 0
       );
     }
@@ -14678,7 +14666,7 @@ function objectAssignToTemplateLevelOne(template, inputObject, level = 0) {
     // Recursively call the function for the property value
     const newValue = objectAssignToTemplateLevelOne(template[key], inputValue, level + 1);
     // Add the new value to the result object if it's defined
-    if (newValue !== undefined) result[key] = newValue;
+    if (isDefined(newValue)) result[key] = newValue;
   }
   // Return the result object
   return result;
@@ -14715,7 +14703,7 @@ function objectKeysSort(inputObject) {
  * @param {any=} debug - The selector for the logging.
  */
 function logs(txt, debug) {
-  if (configOptions.getOption(cfgDebugMode) || debug !== undefined) {
+  if (configOptions.getOption(cfgDebugMode) || isDefined(debug)) {
     console.log((arguments.callee && arguments.callee.caller ? arguments.callee.caller.name : '') + ': ' + txt);
   }
 }
