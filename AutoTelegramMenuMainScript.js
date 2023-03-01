@@ -1159,6 +1159,7 @@ class ConfigOptions {
                     }
                     break;
                   }
+
                   case 'number': {
                     if (isSystemLevelOption || optionScope === configOptionScopeUser)
                       currentItem.name = `${currentItem.name} [${currentOptionValue}]`;
@@ -1166,6 +1167,7 @@ class ConfigOptions {
                     subMenuItem.command = cmdGetInput;
                     break;
                   }
+
                   case 'string': {
                     let maxTextLength = this.globalConfig[cfgSummaryTextLengthMax] - 5 - currentItemName.length;
                     if (isSystemLevelOption || optionScope === configOptionScopeUser)
@@ -1179,6 +1181,7 @@ class ConfigOptions {
                     subMenuItem.command = cmdGetInput;
                     break;
                   }
+
                   case 'boolean': {
                     if (isSystemLevelOption || optionScope === configOptionScopeUser)
                       currentItem.name += ` ${
@@ -1914,8 +1917,8 @@ class MenuRoles {
   static #ruleDetails(user, rule) {
     return rule
       ? `\n<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
-          {label: translationsItemTextGet(user, 'RuleMask'), valueString: rule.mask},
-          {label: translationsItemTextGet(user, 'RuleAccessLevel'), valueString: rule.accessLevel},
+          {label: translationsItemTextGet(user, 'RuleMask'), value: rule.mask},
+          {label: translationsItemTextGet(user, 'RuleAccessLevel'), value: rule.accessLevel},
         ])}</code>`
       : '';
   }
@@ -1983,7 +1986,7 @@ class MenuRoles {
         name: `${menuItemToProcess.name}${menuItemToProcess.icon ? ` ${menuItemToProcess.icon}` : ''}`,
         icon: iconItemButton,
         group: holderItemId ? holderItemId : menuButtonsDefaultGroup,
-        function: (user, _menuItemToProcess) => MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule)),
+        text: (user, _menuItemToProcess) => MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule)),
         submenu: new Array(),
       };
       const currentItemId = holderItemId ? `${holderItemId}.${menuItemToProcess.id}` : menuItemToProcess.id,
@@ -2026,8 +2029,7 @@ class MenuRoles {
             name: `${currentItemName}${currentItem.icon ? ` ${currentItem.icon}` : ''}`,
             icon: iconItemButton,
             options: {upperItemId: currentItemId, itemId},
-            function: (user, _menuItemToProcess) =>
-              MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule)),
+            text: (user, _menuItemToProcess) => MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule)),
             submenu: selectMask,
           });
         });
@@ -2039,7 +2041,7 @@ class MenuRoles {
               name: `${subMenuItem.name}`,
               icon: iconItemButton,
               options: {upperItemId: currentItemId, itemId: subMenuItem.id},
-              function: (user, _menuItemToProcess) =>
+              text: (user, _menuItemToProcess) =>
                 MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule)),
               submenu: selectMask,
             });
@@ -2083,7 +2085,7 @@ class MenuRoles {
       name: `${translationsItemMenuGet(user, 'SetAccelLevel')}[${savedRule.mask}]`,
       icon: iconItemEdit,
       options: {dataType: dataTypeMenuRoleRules, roleId, ruleIndex: -1, [menuOptionHorizontalNavigation]: false},
-      function: (user, _menuItemToProcess) => MenuRoles.#ruleDetails(user, savedRule),
+      text: (user, _menuItemToProcess) => MenuRoles.#ruleDetails(user, savedRule),
       submenu: (user, menuItemToProcess) => {
         return this.#menuRuleSetAccessLevel(user, menuItemToProcess);
       },
@@ -2160,7 +2162,7 @@ class MenuRoles {
         group: 'itemAdd',
         icon: iconItemPlus,
         options: {roleId, [menuOptionHorizontalNavigation]: false},
-        function: (user, _menuItemToProcess) => {
+        text: (user, _menuItemToProcess) => {
           if (!cachedValueExists(user, cachedRolesRoleUnderEdit)) {
             cachedValueSet(user, cachedRolesRoleUnderEdit, {roleId: roleId, rules: currentRoleRules});
           }
@@ -2214,15 +2216,15 @@ class MenuRoles {
       currentRoleDetailsList = [
         {
           label: translationsItemTextGet(user, 'RoleId'),
-          valueString: roleId,
+          value: roleId,
         },
         {
           label: translationsItemTextGet(user, 'RoleRulesCount'),
-          valueString: `${currentRoleRules.length}`,
+          value: `${currentRoleRules.length}`,
         },
         {
           label: translationsItemTextGet(user, 'RoleAssignedUsers'),
-          valueString: `${this.getUsers(roleId).length}`,
+          value: `${this.getUsers(roleId).length}`,
         },
       ];
     return currentRoleDetailsList.length
@@ -2257,7 +2259,7 @@ class MenuRoles {
         name: `[${roleId}]`,
         icon: currentIcon,
         options: {roleId},
-        function: (user, menuItemToProcess) => {
+        text: (user, menuItemToProcess) => {
           return this.#menuItemDetailsRole(user, menuItemToProcess);
         },
         accessLevel: currentAccessLevel,
@@ -2272,7 +2274,7 @@ class MenuRoles {
         name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
         group: 'addItem',
         icon: iconItemPlus,
-        function: (user, _menuItemToProcess) => {
+        text: (user, _menuItemToProcess) => {
           if (cachedValueExists(user, cachedRolesNewRoleId)) {
             const newRoleId = cachedValueGet(user, cachedRolesNewRoleId);
             if (newRoleId.length <= 12) {
@@ -2607,13 +2609,11 @@ class MenuUsers extends MenuRoles {
             label: `${translationsItemTextGet(user, 'user', item)}`,
           };
           if (typeof currentUser[item] === 'boolean') {
-            currentUserDetailsLineObject.valueString = currentUser[item]
+            currentUserDetailsLineObject.value = currentUser[item]
               ? configOptions.getOption(cfgDefaultIconOn, user)
               : configOptions.getOption(cfgDefaultIconOff, user);
           } else {
-            currentUserDetailsLineObject.valueString = currentUser.hasOwnProperty(item)
-              ? currentUser[item]
-              : currentItem;
+            currentUserDetailsLineObject.value = currentUser.hasOwnProperty(item) ? currentUser[item] : currentItem;
           }
           currentUserDetailsList.push(currentUserDetailsLineObject);
         }
@@ -2955,6 +2955,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
         translationCurrentPart = translationInputPart;
         break;
       }
+
       case 'overwrite':
       case 'enrich': {
         Object.keys(translationInputPart).forEach((translationKey) => {
@@ -2990,6 +2991,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
         });
         break;
       }
+
       case 'template': {
         const translationTemplatePart = objectDeepClone(translationInputPart);
         Object.keys(translationTemplatePart).forEach((translationKey) => {
@@ -3013,6 +3015,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
         translationCurrentPart = translationTemplatePart;
         break;
       }
+
       default:
         break;
     }
@@ -3572,7 +3575,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
                 uploadMode: currentUploadMode,
                 translationPart,
               },
-              function: translationsUploadMenuItemDetails,
+              text: translationsUploadMenuItemDetails,
               submenu: new Array(),
             };
           translationsUpdateModes.forEach((translationUpdateMode, translationUpdateModeIndex) => {
@@ -3581,7 +3584,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               name: translationsItemMenuGet(user, idTranslation, translationUpdateMode),
               icon: iconItemApply,
               group: cmdItemsProcess,
-              function: translationsUploadMenuItemDetails,
+              text: translationsUploadMenuItemDetails,
               command: cmdItemsProcess,
               options: {
                 [menuOptionHorizontalNavigation]: false,
@@ -3616,14 +3619,13 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
       _currentVersion = inputTranslation.version;
     currentItemDetailsList.push({
       label: translationsItemCoreGet(user, 'cfgMenuLanguage'),
-      valueString: configOptions.getOption(cfgMenuLanguage, user),
+      value: configOptions.getOption(cfgMenuLanguage, user),
     });
-    currentItemDetailsList.push({label: translationsItemTextGet(user, 'languageInFile'), valueString: currentLanguage});
+    currentItemDetailsList.push({label: translationsItemTextGet(user, 'languageInFile'), value: currentLanguage});
     if (currentPart)
       currentItemDetailsList.push({
         label: translationsItemTextGet(user, 'translationPart'),
-        valueString:
-          currentPart.indexOf(prefixExtensionId) === 0 ? currentPart : translationsGetPartName(user, currentPart),
+        value: currentPart.indexOf(prefixExtensionId) === 0 ? currentPart : translationsGetPartName(user, currentPart),
       });
   }
   return currentItemDetailsList.length
@@ -3950,7 +3952,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
           id: doUploadDirectly,
           command: cmdItemUpload,
           options: {dataType: dataTypeTranslation, uploadMode: doUploadDirectly, translationPart: translationPartId},
-          function: translationsUploadMenuItemDetails,
+          text: translationsUploadMenuItemDetails,
           submenu: translationsMenuGenerateUploadTranslation,
         },
         {
@@ -3960,7 +3962,7 @@ function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
           id: doUploadFromRepo,
           command: cmdItemUpload,
           options: {dataType: dataTypeTranslation, uploadMode: doUploadFromRepo, translationPart: translationPartId},
-          function: translationsUploadMenuItemDetails,
+          text: translationsUploadMenuItemDetails,
           submenu: translationsMenuGenerateUploadTranslation,
         },
       ],
@@ -5365,11 +5367,11 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
         label: `${translationsItemTextGet(user, 'list', item)}`,
       };
       if (typeof currentEnumerationItem[item] === 'boolean') {
-        currentItemDetailsLineObject.valueString = currentEnumerationItem[item]
+        currentItemDetailsLineObject.value = currentEnumerationItem[item]
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user);
       } else {
-        currentItemDetailsLineObject.valueString = currentEnumerationItem.hasOwnProperty(item)
+        currentItemDetailsLineObject.value = currentEnumerationItem.hasOwnProperty(item)
           ? currentEnumerationItem[item]
           : currentEnumerationItem.hasOwnProperty('enum')
           ? `[${currentEnumerationItem.enum}.]${currentItem}`
@@ -5385,7 +5387,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       );
     currentItemDetailsList.push({
       label: translationsItemTextGet(user, 'ListPrevious'),
-      valueString: previousItem
+      value: previousItem
         ? enumerationsItemName(user, enumerationType, previousItem, currentEnumerationsList[previousItem])
         : '',
     });
@@ -5395,15 +5397,13 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       nextItem = Object.keys(currentEnumerationsList).find((item) => currentEnumerationsList[item].order === nextOrder);
     currentItemDetailsList.push({
       label: translationsItemTextGet(user, 'ListNext'),
-      valueString: nextItem
-        ? enumerationsItemName(user, enumerationType, nextItem, currentEnumerationsList[nextItem])
-        : '',
+      value: nextItem ? enumerationsItemName(user, enumerationType, nextItem, currentEnumerationsList[nextItem]) : '',
     });
   }
   if (enumerationType === dataTypeFunction || enumerationType === dataTypeDestination) {
     currentItemDetailsList.push({
       label: translationsItemMenuGet(user, 'holder'),
-      valueString:
+      value:
         currentEnumerationItem.holder && currentEnumerationsList.hasOwnProperty(currentEnumerationItem.holder)
           ? enumerationsItemName(
               user,
@@ -5418,11 +5418,11 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
     const dataTypeActiveSubItemsCount = enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, currentItem);
     currentItemDetailsList.push({
       label: `${translationsItemMenuGet(user, enumerationsList[enumerationTypeExtraId].id)}`,
-      valueString: `${dataTypeActiveSubItemsCount}`,
+      value: `${dataTypeActiveSubItemsCount}`,
     });
     currentItemDetailsList.push({
       label: `${translationsItemTextGet(user, 'canBeDeleted')}`,
-      valueString: `${
+      value: `${
         dataTypeActiveSubItemsCount === 0
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user)
@@ -5431,7 +5431,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
   } else if (currentEnumerationItem.enum) {
     currentItemDetailsList.push({
       label: `${translationsItemTextGet(user, 'canBeDeleted')}`,
-      valueString: `${
+      value: `${
         (configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
           enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) ||
         enumerationsIsItemCanBeDeleted(enumerationType, currentItem, false)
@@ -5536,7 +5536,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
         }`,
         icon: currentIcon,
         accessLevel: currentAccessLevel,
-        function: enumerationsMenuItemDetailsEnumerationItem,
+        text: enumerationsMenuItemDetailsEnumerationItem,
         options: {
           [menuOptionHorizontalNavigation]: true,
           dataType: enumerationType,
@@ -5871,7 +5871,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       },
       accessLevel: currentAccessLevel,
       icon: iconItemAlerts,
-      function: enumerationsMenuItemDetailsDevice,
+      text: enumerationsMenuItemDetailsDevice,
       group: 'alerts',
       submenu: alertsMenuGenerateExtraSubscription,
     });
@@ -5886,7 +5886,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
         },
         accessLevel: currentAccessLevel,
         icon: iconItemTrigger,
-        function: enumerationsMenuItemDetailsDevice,
+        text: enumerationsMenuItemDetailsDevice,
         group: 'triggers',
         submenu: triggersMenuGenerate,
       });
@@ -6074,7 +6074,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
     typeof stateIdOrObject === 'string' && existsObject(stateIdOrObject)
       ? getObjectEnriched(stateIdOrObject)
       : stateIdOrObject;
-  let valueString = '';
+  let text = '';
   if (
     currObject &&
     typeof currObject === 'object' &&
@@ -6113,37 +6113,35 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
             ? currentFunction.iconOff
             : configOptions.getOption(cfgDefaultIconOff, user);
       if (isDefined(currentStateValue)) {
-        valueString = translationsGetObjectName(user, currentStateValueId, functionId);
-        if (valueString === 'Undefined' || valueString.includes(currentStateValueId)) {
-          valueString = currentStateValue ? currentIconOn : currentIconOff;
+        text = translationsGetObjectName(user, currentStateValueId, functionId);
+        if (text === 'Undefined' || text.includes(currentStateValueId)) {
+          text = currentStateValue ? currentIconOn : currentIconOff;
         }
       } else {
-        valueString = currentIconOff;
+        text = currentIconOff;
       }
     } else if (currObject.common.hasOwnProperty('states') && ['string', 'number'].includes(currObject.common['type'])) {
       const states = enumerationsExtractPossibleValueStates(currObject.common['states']);
       if (isDefined(currentStateValue)) {
         if (states.hasOwnProperty(currentStateValue)) {
-          valueString = translationsGetObjectName(user, currentStateValueId, functionId);
-          if (valueString === 'Undefined' || valueString.includes(currentStateValueId))
-            valueString = states[currentStateValue];
-          if (!isDefined(valueString)) valueString = currentStateValue;
+          text = translationsGetObjectName(user, currentStateValueId, functionId);
+          if (text === 'Undefined' || text.includes(currentStateValueId)) text = states[currentStateValue];
+          if (!isDefined(text)) text = currentStateValue;
         } else {
-          valueString = `${currentStateValue}`;
+          text = `${currentStateValue}`;
         }
       }
     } else if (currentStateValueType === 'number') {
-      valueString =
+      text =
         (!isDefined(currentStateValue)
           ? ''
           : `${Number.isInteger(currentStateValue) ? currentStateValue : currentStateValue.toFixed(2)}`) +
         (currObjectUnit ? ' ' + currObjectUnit : '');
     } else if (currentStateValueType === 'string') {
-      valueString =
-        (!isDefined(currentStateValue) ? '' : currentStateValue) + (currObjectUnit ? ' ' + currObjectUnit : '');
+      text = (!isDefined(currentStateValue) ? '' : currentStateValue) + (currObjectUnit ? ' ' + currObjectUnit : '');
     }
   }
-  return valueString;
+  return text;
 }
 
 /**
@@ -6176,14 +6174,14 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
               isPrimaryState ? translationsPrimaryStateId : stateObject,
               currentFunctionId,
             ),
-            valueString: enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
+            value: enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
           });
           if (attributeState) {
             if (stateDetails && stateDetails.hasOwnProperty('stateAttributes')) {
               stateDetails.stateAttributes.forEach((stateAttributeId) => {
                 const stateAttributeLine = {
                   label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
-                  valueString: '',
+                  value: '',
                 };
                 switch (stateAttributeId) {
                   case 'ts':
@@ -6191,19 +6189,21 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
                     const timeStamp = attributeState[stateAttributeId]
                       ? new Date(Number(attributeState[stateAttributeId]))
                       : undefined;
-                    stateAttributeLine.valueString = timeStamp
+                    stateAttributeLine.value = timeStamp
                       ? formatDate(timeStamp, configOptions.getOption(cfgDateTimeTemplate, user))
                       : '';
                     break;
                   }
+
                   case 'ack': {
-                    stateAttributeLine.valueString = attributeState.ack
+                    stateAttributeLine.value = attributeState.ack
                       ? configOptions.getOption(cfgDefaultIconOn, user)
                       : configOptions.getOption(cfgDefaultIconOff, user);
                     break;
                   }
+
                   default: {
-                    stateAttributeLine.valueString = attributeState[stateAttributeId];
+                    stateAttributeLine.value = attributeState[stateAttributeId];
                     break;
                   }
                 }
@@ -6921,6 +6921,7 @@ function alertsProcessMessageTemplate(user, template, variables) {
           result = result.toLowerCase();
           break;
         }
+
         case 'toUpperCase': {
           result = result.toUpperCase();
           break;
@@ -7285,7 +7286,7 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
         name: `${alertDate}: ${alertMessage.message}`,
         icon: alertMessage.ack ? iconItemAlertOff : iconItemAlertOn,
         options: {[menuOptionHorizontalNavigation]: true, item: alertIndex},
-        function: alertMessageAcknowledge,
+        text: alertMessageAcknowledge,
         submenu: [],
       });
     }
@@ -8117,7 +8118,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
         name: `${triggerName}${stateUnits}${currentTriggerDetails} (${onTimeInterval})`,
         icon: triggersGetEnabledIcon(trigger),
         options: {...stateOptions, id: triggerId, stateUnits},
-        function: triggersMenuItemDetailsTrigger,
+        text: triggersMenuItemDetailsTrigger,
         submenu: triggersMenuGenerateManageTrigger,
       });
     });
@@ -8416,45 +8417,45 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
     if (trigger) {
       const sourceStateDetails = {
         label: ` ${translationsGetObjectName(user, stateId, functionId)}`,
-        valueString: enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
+        value: enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
       };
       if (isDefined(trigger.onAbove) && isDefined(trigger.onLess)) {
-        sourceStateDetails.valueString = `${trigger.onAbove ? '&gt;=' : '&lt;'} ${sourceStateDetails.valueString}`;
+        sourceStateDetails.value = `${trigger.onAbove ? '&gt;=' : '&lt;'} ${sourceStateDetails.value}`;
         sourceStateDetails.lengthModifier = -3;
       }
       const triggerAttributesArray = [
         {
           label: translationsItemTextGet(user, 'isEnabled'),
-          valueString: triggersGetEnabledIcon(trigger),
+          value: triggersGetEnabledIcon(trigger),
         },
         {
           label: translationsItemTextGet(user, onTimeIntervalId),
-          valueString: trigger[onTimeIntervalId],
+          value: trigger[onTimeIntervalId],
         },
         {
           label: translationsItemTextGet(user, 'source'),
-          valueString: '',
+          value: '',
         },
         {
           label: ` ${translationsItemTextGet(user, 'function')}`,
-          valueString: enumerationsItemName(user, dataTypeFunction, functionId),
+          value: enumerationsItemName(user, dataTypeFunction, functionId),
         },
         {
           label: ` ${translationsItemTextGet(user, 'device')}`,
-          valueString: enumerationsGetDeviceName(user, options.state, functionId, destinationId),
+          value: enumerationsGetDeviceName(user, options.state, functionId, destinationId),
         },
         sourceStateDetails,
         {
           label: translationsItemTextGet(user, 'messageTo'),
-          valueString: '',
+          value: '',
         },
         {
           label: ` ${translationsItemTextGet(user, 'user')}`,
-          valueString: usersInMenu.getUserName(trigger.user),
+          value: usersInMenu.getUserName(trigger.user),
         },
         {
           label: ` ${translationsItemTextGet(user, 'log')}`,
-          valueString: trigger.log
+          value: trigger.log
             ? configOptions.getOption(cfgDefaultIconOn, user)
             : configOptions.getOption(cfgDefaultIconOff, user),
         },
@@ -8465,31 +8466,31 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
       if (targetStateId && targetFunctionId) {
         const targetStateDetails = {
           label: ` ${translationsGetObjectName(user, targetStateId, targetFunctionId)}`,
-          valueString: enumerationsStateValueDetails(user, targetStateId, targetFunctionId, {val: trigger.targetValue}),
+          value: enumerationsStateValueDetails(user, targetStateId, targetFunctionId, {val: trigger.targetValue}),
         };
         triggerAttributesArray.push({
           label: translationsItemTextGet(user, 'target'),
-          valueString: '',
+          value: '',
         });
         triggerAttributesArray.push({
           label: ` ${translationsItemTextGet(user, 'function')}`,
-          valueString: enumerationsItemName(user, dataTypeFunction, targetFunctionId),
+          value: enumerationsItemName(user, dataTypeFunction, targetFunctionId),
         });
         triggerAttributesArray.push({
           label: ` ${translationsItemTextGet(user, 'device')}`,
-          valueString: enumerationsGetDeviceName(user, targetStateId, targetFunctionId, targetDestinationId),
+          value: enumerationsGetDeviceName(user, targetStateId, targetFunctionId, targetDestinationId),
         });
         triggerAttributesArray.push(targetStateDetails);
       }
       if (typeOf(trigger.conditions, 'array') && trigger.conditions.length) {
         triggerAttributesArray.push({
           label: `${translationsItemTextGet(user, 'conditions')}`,
-          valueString: `${trigger.conditions.length}`,
+          value: `${trigger.conditions.length}`,
         });
         trigger.conditions.forEach((condition) => {
           triggerAttributesArray.push({
             label: ` ${triggersGetConditionShortDescription(user, condition)}`,
-            valueString: menuIconGenerate(user, condition.isEnabled, triggersConditionIconsArray),
+            value: menuIconGenerate(user, condition.isEnabled, triggersConditionIconsArray),
           });
         });
       }
@@ -8525,7 +8526,7 @@ function triggersMenuItemGenerateManageConditions(user, currentIndex, trigger, t
         name: triggersGetConditionShortDescription(user, condition),
         icon: menuIconGenerate(user, isEnabled, triggersConditionIconsArray),
         options: {...triggerOptions, item: 'conditions', index: subMenuIndex},
-        function: triggersMenuItemDetailsCondition,
+        text: triggersMenuItemDetailsCondition,
         submenu: triggersMenuGenerateManageCondition,
       });
     });
@@ -8661,29 +8662,27 @@ function triggersMenuItemDetailsCondition(user, menuItemToProcess) {
           conditionAttributesArray = [
             {
               label: translationsItemTextGet(user, 'isEnabled'),
-              valueString: menuIconGenerate(user, isEnabled, triggersConditionIconsArray),
+              value: menuIconGenerate(user, isEnabled, triggersConditionIconsArray),
             },
             {
               label: ` ${translationsItemTextGet(user, 'function')}`,
-              valueString: enumerationsItemName(user, dataTypeFunction, functionId),
+              value: enumerationsItemName(user, dataTypeFunction, functionId),
             },
             {
               label: ` ${translationsItemTextGet(user, 'device')}`,
-              valueString: enumerationsGetDeviceName(user, stateId, functionId, destinationId),
+              value: enumerationsGetDeviceName(user, stateId, functionId, destinationId),
             },
             {
               label: ` ${translationsItemTextGet(user, 'state')}`,
-              valueString: translationsGetObjectName(user, stateId, functionId),
+              value: translationsGetObjectName(user, stateId, functionId),
             },
             {
               label: ` ${translationsItemTextGet(user, 'operator')}`,
-              valueString: isDefined(operator) ? operator : '',
+              value: isDefined(operator) ? operator : '',
             },
             {
               label: ` ${translationsItemTextGet(user, 'value')}`,
-              valueString: isDefined(value)
-                ? enumerationsStateValueDetails(user, stateId, functionId, {val: value})
-                : '',
+              value: isDefined(value) ? enumerationsStateValueDetails(user, stateId, functionId, {val: value}) : '',
             },
           ];
         text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, conditionAttributesArray)}</code>`;
@@ -8771,22 +8770,27 @@ function triggersCheckConditions(conditions) {
                 check = currentValue === value;
                 break;
               }
+
               case '!=': {
                 check = currentValue !== value;
                 break;
               }
+
               case '>': {
                 check = currentValue > value;
                 break;
               }
+
               case '>=': {
                 check = currentValue >= value;
                 break;
               }
+
               case '<': {
                 check = currentValue <= value;
                 break;
               }
+
               case '<=': {
                 check = currentValue >= value;
                 break;
@@ -9191,7 +9195,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             index: `${currentIndex}.${memberId}`,
             name: `${memberTopObjectName} (${member.split('.').pop()})`,
             icon: enumerationsList[dataTypeReport].icon,
-            function: (_user, _menuItemToProcess) => `${memberTopObjectName} (${member})`,
+            text: (_user, _menuItemToProcess) => `${memberTopObjectName} (${member})`,
             submenu: [
               menuMenuItemGenerateDeleteItem(user, `${currentIndex}.${memberId}`, 0, {
                 dataType: dataTypeReportMember,
@@ -9319,7 +9323,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
                       icon: queryStates.includes(id)
                         ? configOptions.getOption(cfgDefaultIconOn, user)
                         : enumerationsList[dataTypeDestination].icon,
-                      function: (_user, _menuItemToProcess) => `${stateTopObjectName} (${id})`,
+                      text: (_user, _menuItemToProcess) => `${stateTopObjectName} (${id})`,
                       submenu: [
                         {
                           index: `${currentIndex}.${subMenuIndex - 1}.${index}`,
@@ -9555,7 +9559,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
                 }
                 reportLines[reportLines.length - 1] = {
                   ...reportLines[reportLines.length - 1],
-                  valueString: enumerationsStateValueDetails(user, currentStateObject, currentFuncId),
+                  value: enumerationsStateValueDetails(user, currentStateObject, currentFuncId),
                 };
               });
             });
@@ -9911,7 +9915,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
           menuItem.submenu.push({
             name: `${translationsGetEnumName(user, dataTypeReport, reportId)}`,
             icon: currentReport.icon ? currentReport.icon : enumerationsList[dataTypeReport].icon,
-            function: simpleReportGenerate,
+            text: simpleReportGenerate,
             group: currentReport.group ? currentReport.group : menuButtonsDefaultGroup,
             id: reportId,
             submenu: (user, menuItemToProcess) => {
@@ -10438,7 +10442,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
                   state: deviceStateId,
                   device: devicePrefix,
                 },
-                function: enumerationsMenuItemDetailsDevice,
+                text: enumerationsMenuItemDetailsDevice,
                 icons: currentIcons,
                 icon: currentIcon,
                 submenu: enumerationsMenuGenerateDevice,
@@ -10524,17 +10528,21 @@ function menuMenuItemDetailsPrintFixedLengthLines(user, linesArray) {
   let text = '';
   linesArray.forEach((line) => {
     let label = line.label;
-    const value = line.hasOwnProperty('valueString') ? `${line.valueString}` : '',
+    const value = line.hasOwnProperty('value') ? `${line.value}` : '',
       valueLengthModifier = line.hasOwnProperty('lengthModifier') ? line.lengthModifier : 0,
       valueLength = getStringLength(value) + valueLengthModifier,
       labelLengthMax = maxLineLength - valueLength,
       labelLengthModifier = valueLength ? 1 : 0;
     let labelLength = getStringLength(label);
     if (labelLength + labelLengthModifier > labelLengthMax) {
-      label = label.slice(0, -(labelLength - labelLengthMax));
+      label = label.slice(0, -(labelLength + labelLengthModifier - labelLengthMax));
       labelLength = getStringLength(label);
     }
-    if (labelLength) label += (valueLength ? ':' : '').padEnd(labelLengthMax - labelLength - labelLengthModifier);
+    if (labelLength) {
+      label += valueLength ? ':' : '';
+      labelLength = getStringLength(label);
+      label += ''.padEnd(labelLengthMax - labelLength);
+    }
     text += `${text ? '\n' : ''}${label}${value}`;
   });
   return text;
@@ -10610,9 +10618,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
       };
     }
   }
-  switch (typeOf(menuItemToProcess.submenu)) {
+  const subMenu = menuItemToProcess.submenu;
+  switch (typeOf(subMenu)) {
     case 'string': {
-      const extensionMenuId = menuItemToProcess.submenu;
+      const extensionMenuId = subMenu;
       messageTo(
         extensionMenuId,
         {
@@ -10641,11 +10650,13 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
       );
       break;
     }
+
     case 'function': {
-      menuItemToProcess.submenu = menuItemToProcess.submenu(user, menuItemToProcess);
+      menuItemToProcess.submenu = subMenu(user, menuItemToProcess);
       menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
       break;
     }
+
     default: {
       const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
       if (hierarchicalCaption) {
@@ -10653,25 +10664,19 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         // @ts-ignore
         currentIndent = currentIndent.padStart(currentIndent.length + hierarchicalCaption);
       }
-      let currentSubMenuPos;
-      if (menuItemToProcess.submenu.length > 0 && targetMenuPos && targetMenuPos.length > 0) {
-        currentSubMenuPos = targetMenuPos.shift();
-        if (typeof currentSubMenuPos === 'string' && isNaN(Number(currentSubMenuPos))) {
-          currentSubMenuPos = menuItemToProcess.submenu.findIndex(
+      let subMenuPos;
+      if (subMenu && subMenu.length > 0 && targetMenuPos && targetMenuPos.length > 0) {
+        subMenuPos = targetMenuPos.shift();
+        if (typeof subMenuPos === 'string' && isNaN(Number(subMenuPos))) {
+          subMenuPos = subMenu.findIndex(
             (item) =>
-              (item.hasOwnProperty('id') && item.id === currentSubMenuPos) ||
-              item.index.split('.').pop() === currentSubMenuPos,
+              (item.hasOwnProperty('id') && item.id === subMenuPos) || item.index.split('.').pop() === subMenuPos,
           );
         } else {
-          currentSubMenuPos = Number(currentSubMenuPos);
+          subMenuPos = Number(subMenuPos);
         }
       }
-      if (
-        isDefined(currentSubMenuPos) &&
-        currentSubMenuPos >= 0 &&
-        menuItemToProcess.submenu.length > 0 &&
-        currentSubMenuPos < menuItemToProcess.submenu.length
-      ) {
+      if (isDefined(subMenuPos) && subMenuPos >= 0 && subMenu.length > 0 && subMenuPos < subMenu.length) {
         messageObject.message +=
           (hierarchicalCaption
             ? '\n\r' + (messageObject.message ? currentIndent + iconItemToSubItem : '')
@@ -10680,22 +10685,21 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             : '') +
           menuMenuItemGetIcon(user, menuItemToProcess) +
           menuItemToProcess.name;
-        const subMenuItem = menuItemToProcess.submenu[currentSubMenuPos];
+        const subMenuItem = subMenu[subMenuPos];
         messageObject.index = subMenuItem.index;
         if (messageObject.index === topItemIndex) {
           messageObject.shortIndex = topItemIndex;
         } else if (isDefined(messageObject.shortIndex)) {
-          messageObject.shortIndex = [messageObject.shortIndex, currentSubMenuPos].join('.');
+          messageObject.shortIndex = [messageObject.shortIndex, subMenuPos].join('.');
         } else {
-          messageObject.shortIndex = currentSubMenuPos;
+          messageObject.shortIndex = subMenuPos;
         }
         messageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
-        messageObject.function = subMenuItem.hasOwnProperty('function') ? subMenuItem.function : undefined;
         messageObject.options =
           subMenuItem.hasOwnProperty('options') && isDefined(subMenuItem.options) ? subMenuItem.options : {};
         if (isDefined(messageObject.navigationLeft)) messageObject.navigationLeft = undefined;
         if (isDefined(messageObject.navigationRight)) messageObject.navigationRight = undefined;
-        const currentSubMenuMaxIndex = menuItemToProcess.submenu.length - 1,
+        const subMenuMaxIndex = subMenu.length - 1,
           currentOptions = messageObject.options,
           horizontalNavigation =
             currentOptions && currentOptions.hasOwnProperty(menuOptionHorizontalNavigation)
@@ -10704,27 +10708,23 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
                 : -1
               : 0;
         if (
-          currentSubMenuMaxIndex > 0 &&
+          subMenuMaxIndex > 0 &&
           (horizontalNavigation > 0 || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
           !(horizontalNavigation < 0)
         ) {
-          if (currentSubMenuPos > 0) {
-            for (let itemPos = currentSubMenuPos - 1; itemPos >= 0; itemPos--) {
-              if (
-                !isDefined(menuItemToProcess.submenu[itemPos].command) ||
-                !menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix)
-              ) {
+          if (subMenuPos > 0) {
+            for (let itemPos = subMenuPos - 1; itemPos >= 0; itemPos--) {
+              const currentSubMenuItem = subMenu[itemPos];
+              if (!isDefined(currentSubMenuItem.command) || !currentSubMenuItem.command.includes(cmdPrefix)) {
                 messageObject.navigationLeft = itemPos;
                 break;
               }
             }
           }
-          if (currentSubMenuPos < currentSubMenuMaxIndex) {
-            for (let itemPos = currentSubMenuPos + 1; itemPos <= currentSubMenuMaxIndex; itemPos++) {
-              if (
-                !isDefined(menuItemToProcess.submenu[itemPos].command) ||
-                !menuItemToProcess.submenu[itemPos].command.includes(cmdPrefix)
-              ) {
+          if (subMenuPos < subMenuMaxIndex) {
+            for (let itemPos = subMenuPos + 1; itemPos <= subMenuMaxIndex; itemPos++) {
+              const currentSubMenuItem = subMenu[itemPos];
+              if (!isDefined(currentSubMenuItem.command) || !currentSubMenuItem.command.includes(cmdPrefix)) {
                 messageObject.navigationRight = itemPos;
                 break;
               }
@@ -10734,7 +10734,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         menuMenuDraw(user, targetMenuPos, messageOptions, subMenuItem, messageObject, currentIndent);
       } else {
         cachedValueDelete(user, cachedMenuItemsAndRows);
-        if (currentSubMenuPos >= menuItemToProcess.submenu.length) {
+        if (!isDefined(subMenu) || subMenuPos >= subMenu.length) {
           let savedPos = cachedValueGet(user, cachedMenuItem);
           if (targetMenuPos && targetMenuPos.length) {
             for (let i = targetMenuPos.length - 1; i >= 0; i--) {
@@ -10743,12 +10743,12 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
               }
             }
           }
-          if (savedPos[savedPos.length - 1] === currentSubMenuPos) {
+          if (savedPos[savedPos.length - 1] === subMenuPos) {
             savedPos.pop();
           }
           cachedValueSet(user, cachedMenuItem, savedPos);
         }
-        if (menuItemToProcess.submenu.length) {
+        if (subMenu && subMenu.length) {
           cachedValueSet(user, cachedMenuItemsAndRows, [menuItemToProcess, {...messageObject}, currentIndent]);
         }
         messageObject.message +=
@@ -10759,19 +10759,16 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             : '') +
           menuMenuItemGetIcon(user, menuItemToProcess) +
           menuItemToProcess.name;
-        if (messageObject.hasOwnProperty('function') && typeof messageObject.function === 'function') {
-          const functionResult = messageObject.function(user, menuItemToProcess);
-          if (typeof functionResult === 'string') {
-            messageObject.message += functionResult.length > 0 ? '\r\n' + functionResult : '';
-          }
-        } else if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
-          messageObject.message += menuItemToProcess.text.length > 0 ? menuItemToProcess.text : '';
+        if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
+          let menuText = menuItemToProcess.text;
+          if (typeOf(menuText, 'function')) menuText = menuText(user, menuItemToProcess);
+          if (typeOf(menuText, 'string')) messageObject.message += menuText.length > 0 ? menuText : '';
         }
         messageObject.buttons = [];
         let currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
           currentBackIndex = currentIndex ? currentIndex.split('.').slice(0, -1).join('.') : undefined;
         const maxButtonsCount = configOptions.getOption(cfgMaxButtonsOnScreen, user);
-        let buttonsCount = menuItemToProcess.submenu.length;
+        let buttonsCount = subMenu.length;
         let buttonsOffset = 0;
         if (buttonsCount > maxButtonsCount) {
           if (cachedValueExists(user, cachedMenuButtonsOffset)) {
@@ -10791,50 +10788,49 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         }
         const _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
           callbackDataToCache = new Map();
-        // currentMenuItem.submenu.forEach(currentSubMenuItem => {
         for (
           let buttonsIndex = 0;
           buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount);
           buttonsIndex++
         ) {
-          const currentSubMenuItem = menuItemToProcess.submenu[buttonsIndex + buttonsOffset];
+          const subMenuItem = subMenu[buttonsIndex + buttonsOffset];
           const currentSubIndex =
-            currentSubMenuItem.index.length > 50
-              ? currentSubMenuItem.index.replace(messageObject.index, messageObject.shortIndex)
-              : currentSubMenuItem.index;
+            subMenuItem.index.length > 50
+              ? subMenuItem.index.replace(messageObject.index, messageObject.shortIndex)
+              : subMenuItem.index;
           let callbackData = menuItemButtonPrefix + currentSubIndex;
           if (
-            currentSubMenuItem.hasOwnProperty('command') &&
-            typeof currentSubMenuItem.command === 'string' &&
-            currentSubMenuItem.command.indexOf(cmdPrefix) === 0 &&
-            currentSubMenuItem.command !== cmdPrefix
+            subMenuItem.hasOwnProperty('command') &&
+            typeof subMenuItem.command === 'string' &&
+            subMenuItem.command.indexOf(cmdPrefix) === 0 &&
+            subMenuItem.command !== cmdPrefix
           ) {
-            if (currentSubMenuItem.options) {
+            if (subMenuItem.options) {
               callbackData = commandsCallbackDataPrepare(
-                currentSubMenuItem.command,
-                currentSubMenuItem.options,
+                subMenuItem.command,
+                subMenuItem.options,
                 currentSubIndex,
                 callbackDataToCache,
               );
             } else {
-              callbackData = currentSubMenuItem.command;
+              callbackData = subMenuItem.command;
             }
-          } else if (currentSubMenuItem.hasOwnProperty('extensionCommandId')) {
+          } else if (subMenuItem.hasOwnProperty('extensionCommandId')) {
             callbackData = commandsCallbackDataPrepare(
               cmdExternalCommand,
               {
-                function: currentSubMenuItem.extensionId,
-                item: currentSubMenuItem.extensionCommandId,
-                attribute: currentSubMenuItem.externalCommandParams,
+                function: subMenuItem.extensionId,
+                item: subMenuItem.extensionCommandId,
+                attribute: subMenuItem.externalCommandParams,
               },
               currentSubIndex,
               callbackDataToCache,
             );
           }
           messageObject.buttons.push({
-            icon: menuMenuItemGetIcon(user, currentSubMenuItem),
-            text: currentSubMenuItem.name,
-            group: currentSubMenuItem.group ? currentSubMenuItem.group : menuButtonsDefaultGroup,
+            icon: menuMenuItemGetIcon(user, subMenuItem),
+            text: subMenuItem.name,
+            group: subMenuItem.group ? subMenuItem.group : menuButtonsDefaultGroup,
             callback_data: callbackData,
           });
         }
@@ -11242,10 +11238,12 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
             case 'index': {
               break;
             }
+
             case 'subordinates': {
               newMenuRowItem[attributeId] = [...menuItem[attributeId]];
               break;
             }
+
             case 'submenu': {
               if (typeOf(menuItem.submenu, 'array') && menuItem.submenu.length) {
                 newMenuRowItem.submenu = menuMenuReIndex(menuItem.submenu, newMenuRowItem.index, extraOptions);
@@ -11254,6 +11252,7 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
               }
               break;
             }
+
             case 'options': {
               if (extraOptions) {
                 if (menuItem.options) {
@@ -11557,11 +11556,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   }
                   break;
                 }
+
                 case 'setId':
                 case 'fixId': {
                   cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
                   break;
                 }
+
                 case 'names': {
                   enumerationsUpdateItemName(
                     user,
@@ -11573,6 +11574,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   );
                   break;
                 }
+
                 case 'convertValueCode': {
                   if (
                     enumerationsTestValueConversionCode(
@@ -11591,6 +11593,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   }
                   break;
                 }
+
                 default: {
                   const oldIcon =
                     commandOptions.dataType === dataTypePrimaryEnums && commandOptions.attribute === 'icon'
@@ -11821,6 +11824,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           }
                           break;
                         }
+
                         case onTimeIntervalId: {
                           if (Number.isNaN(userInputToProcess)) {
                             warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
@@ -11907,6 +11911,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     }
                     break;
                   }
+
                   case 'edit': {
                     if (isDefined(commandOptions.id)) {
                       const id = commandOptions.id,
@@ -11948,6 +11953,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                   }
                                   break;
                                 }
+
                                 case 'targetValue': {
                                   if (!checkNumberStateValue(commandOptions.targetState, triggerValue)) {
                                     warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
@@ -11961,6 +11967,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                   }
                                   break;
                                 }
+
                                 default: {
                                   trigger[item] = triggerValue;
                                   break;
@@ -11969,6 +11976,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             }
                             break;
                           }
+
                           case 'conditions': {
                             const conditions = trigger.conditions,
                               index = commandOptions.index,
@@ -12022,6 +12030,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             }
                             break;
                           }
+
                           case alertMessageTemplateId: {
                             backStepsForCacheDelete--;
                           }
@@ -12040,6 +12049,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     }
                     break;
                   }
+
                   default: {
                     triggers = undefined;
                   }
@@ -12224,6 +12234,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 cachedValueDelete(user, cachedRolesNewRoleId);
                 break;
               }
+
               default: {
                 // menuMessageObject.message =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', commandOptions.dataType))} "${getFromTranslation(user, generateTextId(commandOptions.dataType, currentParam))}" = ${enumerationItems[commandOptions.dataType].list[currentItem][currentParam]}:`;
                 break;
@@ -12381,6 +12392,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
         break;
       }
+
       case cmdHome: {
         if (cachedValueExists(user, cachedDelCachedOnBack)) {
           const cachedToDelete = cachedValueGet(user, cachedDelCachedOnBack);
@@ -12395,10 +12407,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, []);
         break;
       }
+
       case cmdSetState: {
         setStateValue(user, commandOptions.state, commandOptions.value);
         break;
       }
+
       case cmdExternalCommand: {
         logs(`otherCommands.external:\n- currentCommand = ${JSON.stringify(commandOptions)}`);
         if (timer) clearTimeout(timer);
@@ -12425,6 +12439,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         );
         break;
       }
+
       case cmdAcknowledgeAlert:
       case cmdAcknowledgeAllAlerts:
       case cmdAcknowledgeAndUnsubscribeAlert: {
@@ -12443,6 +12458,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
         break;
       }
+
       case cmdItemPress: {
         switch (commandOptions.dataType) {
           case dataTypeDestination:
@@ -12663,6 +12679,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           }
                           break;
                         }
+
                         case 'conditions': {
                           const conditions = isDefined(trigger.conditions) ? trigger.conditions : [],
                             length = conditions.length,
@@ -12699,6 +12716,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                 }
                                 break;
                               }
+
                               case 'state':
                               case 'value':
                               case 'operator': {
@@ -12797,6 +12815,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemDownload: {
         nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
           if (err) {
@@ -12829,6 +12848,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         });
         break;
       }
+
       case cmdItemUpload: {
         switch (commandOptions.dataType) {
           case dataTypeTranslation:
@@ -12898,6 +12918,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
         break;
       }
+
       case cmdItemDelete: {
         switch (commandOptions.dataType) {
           default:
@@ -12910,6 +12931,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemDeleteConfirm: {
         switch (commandOptions.dataType) {
           case dataTypeDestination:
@@ -13092,6 +13114,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
                 break;
               }
+
               default: {
                 break;
               }
@@ -13134,6 +13157,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         if (currentMenuPosition) menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemMark: {
         switch (commandOptions.dataType) {
           case dataTypeDestination:
@@ -13192,6 +13216,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             menuMenuItemsAndRowsClearCached(user);
             break;
           }
+
           default: {
             break;
           }
@@ -13199,6 +13224,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemsProcess: {
         switch (commandOptions.dataType) {
           case dataTypeDestination:
@@ -13300,6 +13326,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           }
                           break;
                         }
+
                         case 'alertPropagateGlobal': {
                           if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
                             const currentItemEnums = currentStateObject['enumIds'];
@@ -13313,6 +13340,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           }
                           break;
                         }
+
                         default: {
                           toProcessState = true;
                           break;
@@ -13620,6 +13648,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 currentMenuPosition = undefined;
                 break;
               }
+
               case backupModeRestore: {
                 currentMenuPosition = undefined;
                 backupRestore(commandOptions.fileName, commandOptions.item)
@@ -13632,6 +13661,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   .catch(() => telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgError')));
                 break;
               }
+
               default: {
                 break;
               }
@@ -13646,6 +13676,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         if (currentMenuPosition) menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemReset: {
         switch (commandOptions.dataType) {
           case dataTypeConfig: {
@@ -13752,6 +13783,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemMoveUp:
       case cmdItemMoveDown: {
         switch (commandOptions.dataType) {
@@ -13791,6 +13823,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             break;
           }
+
           case dataTypeConfig: {
             const currentOptionArray = configOptions.getOption(
               commandOptions.item,
@@ -13812,6 +13845,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 menuMenuItemsAndRowsClearCached(user);
                 break;
               }
+
               default: {
                 break;
               }
@@ -13827,6 +13861,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemNameGet: {
         const currentList = enumerationsList[commandOptions.dataType].list;
         if (!currentList[commandOptions.item].isExternal) {
@@ -13835,6 +13870,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
         break;
       }
+
       case cmdCreateReportEnum: {
         let obj = {...simpleReportFunctionTemplate};
         obj.common.name.en = stringCapitalize(commandOptions.item);
@@ -13851,6 +13887,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdUseCommonTranslation: {
         const currentTranslationId = commandOptions.translationId,
           commonTranslationId = `${translationsCommonFunctionsAttributesPrefix}.${currentTranslationId
@@ -13867,6 +13904,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, cachedValueGet(user, cachedMenuItem).slice(0, -1));
         break;
       }
+
       case cmdAlertSubscribe: {
         alertsManage(
           user,
@@ -13879,6 +13917,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdItemJumpTo: {
         const jumpToArray = commandOptions.jumpToArray ? commandOptions.jumpToArray : [];
         jumpToArray.forEach((jumpToItem) => {
@@ -13900,6 +13939,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdSetOffset: {
         currentMenuPosition = commandOptions.index.split('.');
         const currentOffset = [commandOptions.index, commandOptions.offset].join(itemsDelimiter);
@@ -13908,12 +13948,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdDeleteAllSentImages: {
         sentImagesDelete(user);
         menuMenuItemsAndRowsClearCached(user);
         menuMenuDraw(user, currentMenuPosition);
         break;
       }
+
       case cmdNoOperation: {
         menuMenuDraw(user, currentMenuPosition);
         break;
@@ -15107,6 +15149,11 @@ function objectKeysSort(inputObject) {
   return sortedObject;
 }
 
+/**
+ * This function trying to calculate "real" length, taking in account the Emoji's specifics.
+ * @param {string} string - The source string.
+ * @returns {number} The calculated string length.
+ */
 function getStringLength(string) {
   let count = 0;
   if (typeOf(string, 'string') && string) {
