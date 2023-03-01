@@ -24,6 +24,9 @@ const nodeVm = require('node:vm');
 // @ts-ignore
 const axios = require('axios');
 
+// @ts-ignore
+const emojiRegex = require('emoji-regex');
+
 /* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
 /* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
 /* global autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
@@ -214,6 +217,7 @@ const cmdPrefix = 'cmd',
   iconItemUnavailable = '🆘',
   iconItemEmpty = '❔';
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
+const checkEmojiRegex = emojiRegex();
 
 //*** ConfigOptions - begin ***//
 
@@ -2605,7 +2609,6 @@ class MenuUsers extends MenuRoles {
             currentUserDetailsLineObject.valueString = currentUser[item]
               ? configOptions.getOption(cfgDefaultIconOn, user)
               : configOptions.getOption(cfgDefaultIconOff, user);
-            currentUserDetailsLineObject.lengthModifier = 1;
           } else {
             currentUserDetailsLineObject.valueString = currentUser.hasOwnProperty(item)
               ? currentUser[item]
@@ -5364,7 +5367,6 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
         currentItemDetailsLineObject.valueString = currentEnumerationItem[item]
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user);
-        currentItemDetailsLineObject.lengthModifier = 1;
       } else {
         currentItemDetailsLineObject.valueString = currentEnumerationItem.hasOwnProperty(item)
           ? currentEnumerationItem[item]
@@ -5419,7 +5421,6 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
     });
     currentItemDetailsList.push({
       label: `${translationsItemTextGet(user, 'canBeDeleted')}`,
-      lengthModifier: 1,
       valueString: `${
         dataTypeActiveSubItemsCount === 0
           ? configOptions.getOption(cfgDefaultIconOn, user)
@@ -5429,7 +5430,6 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
   } else if (currentEnumerationItem.enum) {
     currentItemDetailsList.push({
       label: `${translationsItemTextGet(user, 'canBeDeleted')}`,
-      lengthModifier: 1,
       valueString: `${
         (configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
           enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) ||
@@ -5779,9 +5779,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 for (const [possibleValue, _possibleName] of Object.entries(states)) {
                   const subSubMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                    name: `${
-                      enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue})['valueString']
-                    }`,
+                    name: `${enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue})}`,
                     command: cmdSetState,
                     options: {...currentOptions, value: possibleValue},
                     group: 'possibleValues',
@@ -5790,9 +5788,12 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   };
                   subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
                   if (stateValue == possibleValue) {
-                    subMenuItem.name += ` (${
-                      enumerationsStateValueDetails(user, stateObject, functionId, currentState)['valueString']
-                    })`;
+                    subMenuItem.name += ` (${enumerationsStateValueDetails(
+                      user,
+                      stateObject,
+                      functionId,
+                      currentState,
+                    )})`;
                   }
                 }
               }
@@ -6063,13 +6064,13 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
 }
 
 /**
- * This function get the ioBroker state value and return it as object contained an formatted string and it's length modifier, taking in account all possible states and it's units.
+ * This function get the ioBroker state value and return it as object contained an formatted string.
  * @param {object} user - The user object.
  * @param {string|object} stateIdOrObject - The id of the state or the it's object representation.
  * @param {string} functionId - The id of the associated function.
  * @param {object=} currentState - The object, contained the current state information.
  * @param {boolean=} skipCodeConversion - The selector to skip code conversion.
- * @returns {object} The resulted object contained the formatted string.
+ * @returns {string} The resulted formatted string.
  */
 function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState, skipCodeConversion = false) {
   const currObject =
@@ -6077,7 +6078,6 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
       ? getObjectEnriched(stateIdOrObject)
       : stateIdOrObject;
   let valueString = '';
-  let lengthModifier = 0;
   if (
     currObject &&
     typeof currObject === 'object' &&
@@ -6119,11 +6119,9 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         valueString = translationsGetObjectName(user, currentStateValueId, functionId);
         if (valueString === 'Undefined' || valueString.includes(currentStateValueId)) {
           valueString = currentStateValue ? currentIconOn : currentIconOff;
-          lengthModifier = valueString.length === 1 ? 1 : 0;
         }
       } else {
         valueString = currentIconOff;
-        lengthModifier = valueString.length === 1 ? 1 : 0;
       }
     } else if (currObject.common.hasOwnProperty('states') && ['string', 'number'].includes(currObject.common['type'])) {
       const states = enumerationsExtractPossibleValueStates(currObject.common['states']);
@@ -6148,7 +6146,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         (!isDefined(currentStateValue) ? '' : currentStateValue) + (currObjectUnit ? ' ' + currObjectUnit : '');
     }
   }
-  return {valueString, lengthModifier};
+  return valueString;
 }
 
 /**
@@ -6181,7 +6179,7 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
               isPrimaryState ? translationsPrimaryStateId : stateObject,
               currentFunctionId,
             ),
-            ...enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
+            valueString: enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
           });
           if (attributeState) {
             if (stateDetails && stateDetails.hasOwnProperty('stateAttributes')) {
@@ -6189,7 +6187,6 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
                 const stateAttributeLine = {
                   label: ` ${translationsGetObjectName(user, stateAttributeId, currentFunctionId, undefined, true)}`,
                   valueString: '',
-                  lengthModifier: 0,
                 };
                 switch (stateAttributeId) {
                   case 'ts':
@@ -6206,7 +6203,6 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
                     stateAttributeLine.valueString = attributeState.ack
                       ? configOptions.getOption(cfgDefaultIconOn, user)
                       : configOptions.getOption(cfgDefaultIconOff, user);
-                    stateAttributeLine.lengthModifier = 1;
                     break;
                   }
                   default: {
@@ -7003,13 +6999,13 @@ function alertsActionOnSubscribedState(object) {
               alertObject,
               alertFunctionId,
               object.state,
-            )['valueString'];
+            );
             messageValues.alertStateOldValue = enumerationsStateValueDetails(
               user,
               alertObject,
               alertFunctionId,
               object.oldState,
-            )['valueString'];
+            );
           }
           if (
             chatId !== triggersInAlertsId &&
@@ -7113,13 +7109,13 @@ function alertsActionOnSubscribedState(object) {
                     alertObject,
                     alertFunctionId,
                     object.state,
-                  )['valueString'];
+                  );
                   messageValues.alertStateOldValue = enumerationsStateValueDetails(
                     thresholdUser,
                     alertObject,
                     alertFunctionId,
                     object.oldState,
-                  )['valueString'];
+                  );
                   const targetFunctionId = threshold.targetFunction,
                     targetFunction =
                       functionsList && functionsList.hasOwnProperty(targetFunctionId)
@@ -7156,7 +7152,7 @@ function alertsActionOnSubscribedState(object) {
                       targetState,
                       targetFunctionId,
                       {val: targetValue},
-                    )['valueString'];
+                    );
                   }
                 }
                 messageValues['alertThresholdValue'] = thresholdValue;
@@ -8100,7 +8096,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
         } ${translationsItemTextGet(user, 'secondsShort')}`,
         triggerId = trigger.id,
         triggerValue = trigger.value,
-        triggerName = enumerationsStateValueDetails(user, stateObject, functionId, {val: triggerValue})['valueString'],
+        triggerName = enumerationsStateValueDetails(user, stateObject, functionId, {val: triggerValue}),
         currentTriggerDetails = stateSubType === 'number' ? ` [${trigger.onAbove ? iconItemAbove : iconItemLess}]` : '';
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
@@ -8220,10 +8216,7 @@ function triggersMenuItemGenerateSetPrimaryValue(
       if (stateValues.length) {
         stateValues.forEach((value) => {
           if (!triggers || triggersGetIndex(triggers, value) < 0)
-            values.set(
-              value,
-              enumerationsStateValueDetails(user, currentObject, functionId, {val: value}, true)['valueString'],
-            );
+            values.set(value, enumerationsStateValueDetails(user, currentObject, functionId, {val: value}, true));
         });
         if (values.size)
           menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, values, itemGroup, {
@@ -8279,7 +8272,6 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         mode: 'edit',
         id: triggerId,
       };
-    const triggerIcons = [iconItemTrigger, iconItemDisabled];
     subMenuIndex = subMenu.push(
       menuMenuItemGenerateBooleanItem(
         user,
@@ -8287,7 +8279,12 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         subMenuIndex,
         translationsItemTextGet(user, 'isEnabled'),
         '',
-        {...triggerOptions, item: 'isEnabled', value: trigger.isEnabled, icons: triggerIcons},
+        {
+          ...triggerOptions,
+          item: 'isEnabled',
+          value: trigger.isEnabled,
+          icons: [iconItemTrigger, iconItemDisabled],
+        },
       ),
     );
     if (stateSubType === 'number') {
@@ -8431,17 +8428,16 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
     if (trigger) {
       const sourceStateDetails = {
         label: ` ${translationsGetObjectName(user, stateId, functionId)}`,
-        ...enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
+        valueString: enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
       };
       if (isDefined(trigger.onAbove) && isDefined(trigger.onLess)) {
         sourceStateDetails.valueString = `${trigger.onAbove ? '&gt;=' : '&lt;'} ${sourceStateDetails.valueString}`;
-        sourceStateDetails.lengthModifier = sourceStateDetails.lengthModifier - 3;
+        sourceStateDetails.lengthModifier = -3;
       }
       const triggerAttributesArray = [
         {
           label: translationsItemTextGet(user, 'isEnabled'),
           valueString: triggersGetEnabledIcon(trigger),
-          lengthModifier: 1,
         },
         {
           label: translationsItemTextGet(user, onTimeIntervalId),
@@ -8473,7 +8469,6 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           valueString: trigger.log
             ? configOptions.getOption(cfgDefaultIconOn, user)
             : configOptions.getOption(cfgDefaultIconOff, user),
-          lengthModifier: 1,
         },
       ];
       const targetStateId = trigger.targetState,
@@ -8482,7 +8477,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
       if (targetStateId && targetFunctionId) {
         const targetStateDetails = {
           label: ` ${translationsGetObjectName(user, targetStateId, targetFunctionId)}`,
-          ...enumerationsStateValueDetails(user, targetStateId, targetFunctionId, {val: trigger.targetValue}),
+          valueString: enumerationsStateValueDetails(user, targetStateId, targetFunctionId, {val: trigger.targetValue}),
         };
         triggerAttributesArray.push({
           label: translationsItemTextGet(user, 'target'),
@@ -9310,7 +9305,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
                 }
                 reportLines[reportLines.length - 1] = {
                   ...reportLines[reportLines.length - 1],
-                  ...enumerationsStateValueDetails(user, currentStateObject, currentFuncId),
+                  valueString: enumerationsStateValueDetails(user, currentStateObject, currentFuncId),
                 };
               });
             });
@@ -10275,22 +10270,24 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
  * @returns {string} The result formatted string.
  */
 function menuMenuItemDetailsPrintFixedLengthLines(user, linesArray) {
-  const maxLineLen = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user);
-  let printedText = '';
-  linesArray.forEach((lineObject) => {
-    let lineLabel = lineObject['label'];
-    const lineValue = lineObject.hasOwnProperty('valueString') ? `${lineObject['valueString']}` : '',
-      lineValueLength =
-        lineValue.length + (lineObject.hasOwnProperty('lengthModifier') ? lineObject['lengthModifier'] : 0),
-      lineLabelLengthMax = maxLineLen - lineValueLength;
-    if (lineLabelLengthMax <= lineLabel.length) {
-      lineLabel = `${lineLabel.slice(0, lineLabelLengthMax - 1)}:`;
-    } else {
-      lineLabel = `${lineLabel}:`.padEnd(lineLabelLengthMax);
+  const maxLineLength = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user);
+  let text = '';
+  linesArray.forEach((line) => {
+    let label = line.label;
+    const value = line.hasOwnProperty('valueString') ? `${line.valueString}` : '',
+      valueLengthModifier = line.hasOwnProperty('lengthModifier') ? line.lengthModifier : 0,
+      valueLength = getStringLength(value) + valueLengthModifier,
+      labelLengthMax = maxLineLength - valueLength,
+      labelLengthModifier = valueLength ? 1 : 0;
+    let labelLength = getStringLength(label);
+    if (labelLength + labelLengthModifier > labelLengthMax) {
+      label = label.slice(0, -(labelLength - labelLengthMax));
+      labelLength = getStringLength(label);
     }
-    printedText += `${printedText ? '\r\n' : ''}${lineLabel}${lineValue}`;
+    if (labelLength) label += (valueLength ? ':' : '').padEnd(labelLengthMax - labelLength - labelLengthModifier);
+    text += `${text ? '\n' : ''}${label}${value}`;
   });
-  return printedText;
+  return text;
 }
 
 //*** menu items related functions - end ***//
@@ -10945,7 +10942,7 @@ function menuButtonsArraySplitIntoButtonsPerRowsArray(user, buttonsArray) {
     currentRowLength = 0,
     currentGroup = '';
   buttonsArray.forEach((currentButton, _buttonIndex) => {
-    const currentLength = currentButton.text.length + (currentButton.icon ? 2 : 0);
+    const currentLength = getStringLength(currentButton.text) + getStringLength(currentButton.icon) + 1;
     if (
       (buttonsRow.length > 0 && currentRowLength + currentLength > maxTextLength) ||
       (currentGroup && currentGroup !== currentButton.group)
@@ -14733,6 +14730,18 @@ function objectKeysSort(inputObject) {
     sortedObject = inputObject;
   }
   return sortedObject;
+}
+
+function getStringLength(string) {
+  let count = 0;
+  if (typeOf(string, 'string') && string) {
+    count = string.length;
+    for (const match of string.matchAll(checkEmojiRegex)) {
+      const emoji = match[0];
+      count += 2 - emoji.length;
+    }
+  }
+  return count;
 }
 
 /**
