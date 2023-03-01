@@ -149,6 +149,7 @@
       "textAccessLevelSilent": "Stumm",
       "textAddNewAttributeValue": "Neuen Wert für Attribut hinzufügen",
       "textCanBeDeleted": "Kann gelöscht werden",
+      "textConditions": "core.textConditions",
       "textCurrentValue": "Aktueller Wert",
       "textDevice": "core.textDevice",
       "textEnterTo": "Betreten des ...",
@@ -196,6 +197,7 @@
       "textNames": "Benennungen Deklinationen",
       "textNumber": "Zahl",
       "textOnTimeInterval": "Minimaler Timeout zum Auslösen",
+      "textOperator": "core.textOperator",
       "textQueryRole": "Abfragerolle",
       "textQueryState": "Abfragezustand",
       "textRoleAssignedUsers": "Zugewiesene Benutzer",
@@ -210,11 +212,10 @@
       "textSetRoleId": "Rollen-ID setzen",
       "textSetShowAccessLevel": "Zugriffsebene zum Anzeigen festlegen",
       "textSource": "core.textSource",
+      "textState": "core.textState",
       "textSwitchOff": "Ausschalten",
       "textSwitchOn": "Einschalten",
       "textTarget": "core.textTarget",
-      "textTargetState": "core.textTargetState",
-      "textTargetValue": "core.textTargetValue",
       "textTimeRange12h": "12 Stunden",
       "textTimeRange1D": "Ein Tag",
       "textTimeRange1M": "Ein Monat",
@@ -236,6 +237,7 @@
       "textUserLastName": "Nachname",
       "textUserUserId": "ID",
       "textUserUserName": "Spitzname",
+      "textValue": "core.textValue",
       "textWrongValue": "Falscher Wert!"
     }
   }

@@ -145,6 +145,7 @@
     "textAccessLevelSilent": "Тихий",
     "textAddNewAttributeValue": "Додати нове значення",
     "textCanBeDeleted": "Можна видалити",
+    "textConditions": "",
     "textCurrentValue": "Поточне значення",
     "textDevice": "",
     "textEnterTo": "Увійти в ...",
@@ -192,6 +193,7 @@
     "textNames": "Відмінювання найменувань",
     "textNumber": "Число",
     "textOnTimeInterval": "Мінімальна затримка до реагування",
+    "textOperator": "",
     "textQueryRole": "Роль",
     "textQueryState": "Стан",
     "textRoleAssignedUsers": "Пов'язано користувачів",
@@ -206,11 +208,10 @@
     "textSetRoleId": "Задати ID ролі",
     "textSetShowAccessLevel": "Рівень доступу для відображення",
     "textSource": "",
+    "textState": "",
     "textSwitchOff": "Вимкнути",
     "textSwitchOn": "Увімкнути",
     "textTarget": "",
-    "textTargetState": "",
-    "textTargetValue": "",
     "textTimeRange12h": "12 годин",
     "textTimeRange1D": "День",
     "textTimeRange1M": "Місяць",
@@ -232,6 +233,7 @@
     "textUserLastName": "Прізвище",
     "textUserUserId": "ID",
     "textUserUserName": "Нік",
+    "textValue": "",
     "textWrongValue": "Помилкове значення!"
   }
 }

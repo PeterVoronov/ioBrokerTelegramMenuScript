@@ -145,6 +145,7 @@
     "textAccessLevelSilent": "Тихий",
     "textAddNewAttributeValue": "Добавить новое значение",
     "textCanBeDeleted": "Можно удалить",
+    "textConditions": "",
     "textCurrentValue": "Текущее значение",
     "textDevice": "",
     "textEnterTo": "Войти в ...",
@@ -192,6 +193,7 @@
     "textNames": "Склонения наименования",
     "textNumber": "Число",
     "textOnTimeInterval": "Минимальный тайм-аут для срабатывания",
+    "textOperator": "",
     "textQueryRole": "Роль",
     "textQueryState": "Состояние",
     "textRoleAssignedUsers": "Связано пользователей",
@@ -206,11 +208,10 @@
     "textSetRoleId": "Задать ID роли",
     "textSetShowAccessLevel": "Уровень доступа для отображения",
     "textSource": "",
+    "textState": "",
     "textSwitchOff": "Выключить",
     "textSwitchOn": "Включить",
     "textTarget": "",
-    "textTargetState": "",
-    "textTargetValue": "",
     "textTimeRange12h": "12 часов",
     "textTimeRange1D": "День",
     "textTimeRange1M": "Месяц",
@@ -232,6 +233,7 @@
     "textUserLastName": "Фамилия",
     "textUserUserId": "ID",
     "textUserUserName": "Ник",
+    "textValue": "",
     "textWrongValue": "Ошибочное значение!"
   }
 }
