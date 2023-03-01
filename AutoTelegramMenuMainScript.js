@@ -7609,7 +7609,7 @@ function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
     stateOptions = {dataType: dataTypeAlertSubscribed, state: stateId, mode: 'edit'};
   let subMenu = [],
     subMenuIndex = 0;
-  const timeText = `${translationsItemTextGet(user, onTimeIntervalId)} {${currentOnTimeInterval}}`,
+  const timeText = `${translationsItemTextGet(user, onTimeIntervalId)} (${currentOnTimeInterval})`,
     timeOptions = {...stateOptions, item: onTimeIntervalId, value: currentOnTimeInterval};
   subMenuIndex = subMenu.push(
     menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, timeText, '', timeOptions),
@@ -7628,7 +7628,7 @@ function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
   if (currentAlertDetails[alertMessageTemplateId]) {
     itemTemplate.submenu.push(menuMenuItemGenerateResetItem(user, templateIndex, 1, templateOptions));
   } else {
-    itemTemplate.name += `(${translationsItemTextGet(user, 'global')}})`;
+    itemTemplate.name += ` (${translationsItemTextGet(user, 'global')})`;
   }
   subMenuIndex = subMenu.push(itemTemplate);
 
@@ -7670,21 +7670,23 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
     [thresholds, currentStateThresholds] = alertsGetStateAlertDetailsOrThresholds(user, stateId, true);
   let subMenu = [],
     subMenuIndex = 0;
-  thresholds.forEach((threshold) => {
-    const thresholdValue = threshold.value,
-      onTimeInterval = `${
-        threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0
-      } ${translationsItemTextGet(user, 'secondsShort')}`;
-    subMenuIndex = subMenu.push({
-      index: `${currentIndex}.${subMenuIndex}`,
-      name: `${thresholdValue}${stateUnits} [${threshold.onAbove ? iconItemAbove : ''}${
-        threshold.onLess ? iconItemLess : ''
-      }](${onTimeInterval})`,
-      icon: iconItemEdit,
-      options: {...options, id: threshold.id, units: stateUnits},
-      submenu: alertsMenuGenerateManageThreshold,
+  if (typeOf(thresholds, 'array')) {
+    thresholds.forEach((threshold) => {
+      const thresholdValue = threshold.value,
+        onTimeInterval = `${
+          threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0
+        } ${translationsItemTextGet(user, 'secondsShort')}`;
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: `${thresholdValue}${stateUnits} [${threshold.onAbove ? iconItemAbove : ''}${
+          threshold.onLess ? iconItemLess : ''
+        }](${onTimeInterval})`,
+        icon: iconItemEdit,
+        options: {...options, id: threshold.id, units: stateUnits},
+        submenu: alertsMenuGenerateManageThreshold,
+      });
     });
-  });
+  }
   subMenuIndex = subMenu.push(
     menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {
       dataType: dataTypeAlertSubscribed,
@@ -7767,7 +7769,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
         user,
         currentIndex,
         subMenuIndex,
-        `${translationsItemTextGet(user, onTimeIntervalId)} {${onTimeInterval}}`,
+        `${translationsItemTextGet(user, onTimeIntervalId)} (${onTimeInterval})`,
         'thresholdOn',
         {...thresholdOptions, item: onTimeIntervalId, value: onTimeInterval},
       ),
@@ -7786,7 +7788,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
     if (threshold[alertMessageTemplateId]) {
       itemTemplate.submenu.push(menuMenuItemGenerateResetItem(user, templateIndex, 1, templateOptions));
     } else {
-      itemTemplate.name += `(${translationsItemTextGet(user, 'global')}})`;
+      itemTemplate.name += ` (${translationsItemTextGet(user, 'global')})`;
     }
     subMenuIndex = subMenu.push(itemTemplate);
 
@@ -8306,7 +8308,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         user,
         `${currentIndex}.${subMenuIndex}`,
         subMenuIndex,
-        `${translationsItemTextGet(user, onTimeIntervalId)} {${onTimeInterval}}`,
+        `${translationsItemTextGet(user, onTimeIntervalId)} (${onTimeInterval})`,
         'thresholdOn',
         {...triggerOptions, item: onTimeIntervalId, value: onTimeInterval},
       ),
@@ -8325,7 +8327,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
     if (trigger[alertMessageTemplateId]) {
       itemTemplate.submenu.push(menuMenuItemGenerateResetItem(user, templateIndex, 1, templateOptions));
     } else {
-      itemTemplate.name += `(${translationsItemTextGet(user, 'global')}})`;
+      itemTemplate.name += ` (${translationsItemTextGet(user, 'global')})`;
     }
     subMenuIndex = subMenu.push(itemTemplate);
 
@@ -8497,6 +8499,14 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
   return text;
 }
 
+/**
+ * This function generates Menu item with sub menu with all Conditions of current Trigger.
+ * @param {object} user - The user object.
+ * @param {string} currentIndex - The index of a current Menu item.
+ * @param {object} trigger - The current Trigger.
+ * @param {object} triggerOptions - The current Trigger menu options.
+ * @returns {object} The Menu item object.
+ */
 function triggersMenuItemGenerateManageConditions(user, currentIndex, trigger, triggerOptions) {
   const conditions = trigger.conditions,
     menuItem = {
@@ -8531,12 +8541,18 @@ function triggersMenuItemGenerateManageConditions(user, currentIndex, trigger, t
   return menuItem;
 }
 
+/**
+ * This function generates a short descriptions of current Condition for the Trigger.
+ * @param {object} user - The user object.
+ * @param {object} condition - The current condition.
+ * @returns {string} - The condition description.
+ */
 function triggersGetConditionShortDescription(user, condition) {
   let text = '';
   if (condition) {
     const {state: stateId, function: functionId, destination: destinationId, operator, value} = condition;
     text += enumerationsGetDeviceName(user, stateId, functionId, destinationId);
-    text += `: ${translationsGetObjectName(user, stateId, functionId)}`;
+    text += `:${translationsGetObjectName(user, stateId, functionId)}`;
     text += ` ${isDefined(operator) ? operator : ''}`;
     text += ` ${isDefined(value) ? enumerationsStateValueDetails(user, stateId, functionId, {val: value}) : ''}`;
   }
@@ -11754,6 +11770,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                         threshold = undefined;
                       } else {
+                        if (!typeOf(detailsOrThresholds, 'array')) detailsOrThresholds = new Array();
                         detailsOrThresholds.push({
                           isEnabled: true,
                           id: thresholdValue,
@@ -11764,6 +11781,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           [onTimeIntervalId]: 0,
                         });
                         detailsOrThresholds = triggersSort(detailsOrThresholds);
+                        currentMenuPosition.push(triggersGetIndex(detailsOrThresholds, thresholdValue));
+                        backStepsForCacheDelete--;
                       }
                     }
                     break;
@@ -11882,6 +11901,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           conditions: undefined,
                         });
                         triggers = triggersSort(triggers);
+                        currentMenuPosition.push(triggersGetIndex(triggers, triggerId));
+                        backStepsForCacheDelete--;
                       }
                     }
                     break;
@@ -12575,7 +12596,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     conditions: undefined,
                   });
                   triggers = triggersSort(triggers, commandOptions.sorted);
-                  currentMenuPosition.splice(-1, 1);
+                  currentMenuPosition.splice(-1, 1, triggersGetIndex(triggers, commandOptions.value));
+                  backStepsForCacheDelete--;
                   break;
                 }
 
