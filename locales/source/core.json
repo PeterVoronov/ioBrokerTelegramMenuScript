@@ -145,6 +145,7 @@
     "textAccessLevelSilent": "Silent",
     "textAddNewAttributeValue": "Add new value for attribute",
     "textCanBeDeleted": "Can be deleted",
+    "textConditions": "Conditions",
     "textCurrentValue": "Current value",
     "textDevice": "Device",
     "textEnterTo": "Enter to ...",
@@ -192,6 +193,7 @@
     "textNames": "Naming declensions",
     "textNumber": "Number",
     "textOnTimeInterval": "Minimal timeout to trigger",
+    "textOperator": "Operator",
     "textQueryRole": "Query role",
     "textQueryState": "Query state",
     "textRoleAssignedUsers": "Assigned users",
@@ -206,11 +208,10 @@
     "textSetRoleId": "Set role ID",
     "textSetShowAccessLevel": "Set access level to show",
     "textSource": "Source",
+    "textState": "Attribute/Button",
     "textSwitchOff": "Switch Off",
     "textSwitchOn": "Switch On",
     "textTarget": "Target",
-    "textTargetState": "Attribute/Button",
-    "textTargetValue": "Value",
     "textTimeRange12h": "12 hours",
     "textTimeRange1D": "One day",
     "textTimeRange1M": "One month",
@@ -232,6 +233,7 @@
     "textUserLastName": "Last name",
     "textUserUserId": "ID",
     "textUserUserName": "Nickname",
+    "textValue": "Value",
     "textWrongValue": "Wrong value!"
   }
 }

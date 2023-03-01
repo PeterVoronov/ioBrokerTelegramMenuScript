@@ -8360,7 +8360,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
     }
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
-      name: translationsItemTextGet(user, 'targetState'),
+      name: translationsItemTextGet(user, 'state'),
       icon: iconItemEdit,
       group: 'target',
       options: {...triggerOptions, value: targetStateId, item: 'targetState'},
@@ -8379,7 +8379,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
             ...triggerOptions,
             function: targetFunction,
             type: targetSubType,
-            itemName: translationsItemTextGet(user, 'targetValue'),
+            itemName: translationsItemTextGet(user, 'value'),
             itemIcon: iconItemEdit,
             itemGroup: 'target',
             targetState: targetStateId,
