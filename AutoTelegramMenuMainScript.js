@@ -10753,7 +10753,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         }
         messageObject.message +=
           (hierarchicalCaption
-            ? '\n\r' + (messageObject.message ? currentIndent + iconItemToSubItem : '')
+            ? '\n' + (messageObject.message ? currentIndent + iconItemToSubItem : '')
             : messageObject.message
             ? ` ${iconItemToSubItemByArrow} `
             : '') +
@@ -10762,7 +10762,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
           let menuText = menuItemToProcess.text;
           if (typeOf(menuText, 'function')) menuText = menuText(user, menuItemToProcess);
-          if (typeOf(menuText, 'string')) messageObject.message += menuText.length > 0 ? menuText : '';
+          if (typeOf(menuText, 'string') && menuText) messageObject.message +=  '\n' +  menuText;
         }
         messageObject.buttons = [];
         let currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
