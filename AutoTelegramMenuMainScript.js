@@ -10336,8 +10336,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       isFunctionsFirstGlobal = configOptions.getOption(cfgMenuFunctionsFirst),
       inverseMasks = isFunctionsFirst !== isFunctionsFirstGlobal,
       primaryMenuItem = primaryMenuItemsList[primaryLevelMenuItemId],
-      primaryState = isFunctionsFirst ? primaryMenuItem.state : '',
-      primaryStateSectionsCount = isFunctionsFirst ? primaryMenuItem.statesSectionsCount : 0,
       secondaryMenuItemsList = enumerationsList[secondaryInputType].list,
       secondaryMenuItemsIndex = Object.keys(secondaryMenuItemsList)
         .filter((destId) => secondaryMenuItemsList[destId].isEnabled && secondaryMenuItemsList[destId].isAvailable)
@@ -10353,30 +10351,33 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       subMenu = menuMenuReIndex(menuItemToProcess.subordinates, currentIndex, extraOptions);
     }
     /**
-     * this way to find an objects only by function and then filter by destination,
-     * is a ten times faster than include destination in search pattern,
-     * like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`)
+     * ! This way to find an objects only by function and then filter by destination,
+     * ! is a ten times faster than include destination in search pattern,
+     * ! like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`)
+     * ! And more strange - if I remove check of id in query, to filter it later in code - it additionally five times faster!
      */
-    $(
-      `state[id=*${isFunctionsFirst ? `.${primaryState}` : ''}](${primaryMenuItem.enum}=${primaryLevelMenuItemId})`,
-    ).each((stateId) => {
+    $(`state(${primaryMenuItem.enum}=${primaryLevelMenuItemId})`).each((stateId) => {
       if (existsObject(stateId)) {
         const currentObject = getObjectEnriched(stateId, '*');
-        let shortStateId = isFunctionsFirst ? stateId.split('.').slice(-primaryStateSectionsCount).join('.') : '';
+        let statesSectionsCount, functionState;
         if (currentObject.hasOwnProperty('enumIds')) {
           secondaryMenuItemsIndex.forEach((currentLevelMenuItemId) => {
-            const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId];
-            if (!isFunctionsFirst)
-              shortStateId = stateId.split('.').slice(-currentLevelMenuItem.statesSectionsCount).join('.');
-            if (
-              (isFunctionsFirst || currentLevelMenuItem.state === shortStateId) &&
-              currentObject['enumIds'].includes(
-                `${prefixEnums}.${secondaryMenuItemsList[currentLevelMenuItemId].enum}.${currentLevelMenuItemId}`,
-              )
-            ) {
-              if (!deviceList.hasOwnProperty(currentLevelMenuItemId)) deviceList[currentLevelMenuItemId] = [];
-              if (!deviceList[currentLevelMenuItemId].includes(stateId))
-                deviceList[currentLevelMenuItemId].push(stateId);
+            const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId],
+              secondaryFullId = `${prefixEnums}.${currentLevelMenuItem.enum}.${currentLevelMenuItemId}`;
+            if (currentObject['enumIds'].includes(secondaryFullId)) {
+              if (isFunctionsFirst) {
+                functionState = primaryMenuItem.state;
+                statesSectionsCount = primaryMenuItem.statesSectionsCount;
+              } else {
+                functionState = currentLevelMenuItem.state;
+                statesSectionsCount = currentLevelMenuItem.statesSectionsCount;
+              }
+              const shortStateId = stateId.split('.').slice(-statesSectionsCount).join('.');
+              if (functionState === shortStateId) {
+                if (!deviceList.hasOwnProperty(currentLevelMenuItemId)) deviceList[currentLevelMenuItemId] = [];
+                if (!deviceList[currentLevelMenuItemId].includes(stateId))
+                  deviceList[currentLevelMenuItemId].push(stateId);
+              }
             }
           });
         }
@@ -10762,7 +10763,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
           let menuText = menuItemToProcess.text;
           if (typeOf(menuText, 'function')) menuText = menuText(user, menuItemToProcess);
-          if (typeOf(menuText, 'string') && menuText) messageObject.message +=  '\n' +  menuText;
+          if (typeOf(menuText, 'string') && menuText) messageObject.message += '\n' + menuText;
         }
         messageObject.buttons = [];
         let currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
