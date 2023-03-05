@@ -5724,8 +5724,8 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       deviceAttributesCheckOnGraphs = (user, _stateId, stateIdFull, stateObject, _stateDetails, _options) => {
         const stateObjectCommon = stateObject.common;
         if (stateObjectCommon) {
-          const currentStateType = stateObjectCommon['type'];
-          if (enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) && currentStateType === 'number') {
+          // const currentStateType = stateObjectCommon['type'];
+          if (enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId)/*  && currentStateType === 'number' */) {
             statesForGraphs.set(stateIdFull, translationsGetObjectName(user, stateObject, functionId));
           }
         }
@@ -5842,7 +5842,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             if (
               isGraphsEnabled &&
               enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) &&
-              currentStateType === 'number' &&
+              /* currentStateType === 'number' && */
               !statesForGraphs.has(stateIdFull)
             ) {
               statesForGraphs.set(stateIdFull, stateName);
