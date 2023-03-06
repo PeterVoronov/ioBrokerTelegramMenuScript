@@ -57,7 +57,6 @@
     "menuAlertPropagateFuncAndDest": "До поточної Функції та Розташування",
     "menuAlertPropagateDestination": "До поточного Розташування",
     "menuAlertPropagateFunction": "До поточної Функції",
-    "menuAlertPropagateGlobal": "До всіх подібних станів",
     "menuAlertPropagateOverwrite": "Замінити, якщо вже визначено",
     "menuAlertPropagateSkip": "Пропустити, якщо вже визначено",
     "menuAlerts": "Повідомлення",
