@@ -6644,11 +6644,13 @@ const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
   alertThresholdId = 'threshold',
   onTimeIntervalId = 'onTimeInterval',
   alertMessageTemplateId = 'messageTemplate',
+  alertPropagateFuncAndDest = 'alertPropagateFuncAndDest',
+  alertPropagateDestination = 'alertPropagateDestination',
+  alertPropagateFunction = 'alertPropagateFunction',
   alertPropagateDistributions = [
-    'alertPropagateFuncAndDest',
-    'alertPropagateDestination',
-    'alertPropagateFunction',
-    'alertPropagateGlobal',
+    alertPropagateFuncAndDest,
+    alertPropagateDestination,
+    alertPropagateFunction,
   ],
   alertPropagateOptions = ['alertPropagateOverwrite', 'alertPropagateSkip'],
   thresholdsVariables = new Map();
@@ -13275,9 +13277,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 propagateRange = commandOptions.range,
                 propagateMode = commandOptions.mode,
                 functionsList = enumerationsList[dataTypeFunction].list,
-                functionsListIds = Object.keys(functionsList).filter(
-                  (itemId) => !functionsList[itemId].isExternal && functionsList[itemId].isEnabled,
-                ),
                 alertFunctionId = commandOptions.function,
                 alertFunction =
                   functionsList && alertFunctionId && functionsList.hasOwnProperty(alertFunctionId)
@@ -13285,9 +13284,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     : undefined,
                 alertStateSectionsCount = alertFunction ? alertFunction.statesSectionsCount : 1,
                 destinationsList = enumerationsList[dataTypeDestination].list,
-                destinationsListIds = Object.keys(destinationsList).filter(
-                  (itemId) => destinationsList[itemId].isEnabled,
-                ),
                 alertDestinationId = commandOptions.destination,
                 alertDestination =
                   destinationsList && alertDestinationId && destinationsList.hasOwnProperty(alertDestinationId)
@@ -13302,49 +13298,54 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   filterId = `state[id=*.${alertStateShortId}]`,
                   filterFunction = `(${alertFunction.enum}=${alertFunctionId})`,
                   filterDestination = `(${alertDestination.enum}=${alertDestinationId})`,
-                  filterEnum = ['alertPropagateFuncAndDest', 'alertPropagateFunction'].includes(propagateRange)
+                  filterEnum = [alertPropagateFuncAndDest, alertPropagateFunction].includes(propagateRange)
                     ? filterFunction
                     : propagateRange === 'alertPropagateDestination'
                     ? filterDestination
                     : '';
                 $(`${filterId}${filterEnum}`).each((stateId) => {
                   if (stateId !== alertStateId) {
+                    let targetDestinationId = alertDestinationId,
+                      targetFunctionId = alertFunctionId;
                     const enumMask =
-                        propagateRange === 'alertPropagateFuncAndDest'
+                        propagateRange === alertPropagateFuncAndDest
                           ? alertDestination.enum
-                          : propagateRange === 'alertPropagateGlobal'
-                          ? '*'
-                          : '',
+                          : '*',
                       currentStateObject = getObject(stateId, enumMask);
                     if (currentStateObject) {
                       let toProcessState = false;
-                      switch (propagateRange) {
-                        case 'alertPropagateFuncAndDest': {
-                          if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
-                            toProcessState = currentStateObject['enumIds'].includes(
+                      const currentStateEnumIds = currentStateObject['enumIds'];
+                      if (currentStateEnumIds){
+                        switch (propagateRange) {
+
+                          case alertPropagateFuncAndDest: {
+                            toProcessState = currentStateEnumIds.includes(
                               `${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`,
                             );
+                            break;
                           }
-                          break;
-                        }
 
-                        case 'alertPropagateGlobal': {
-                          if (currentStateObject.hasOwnProperty('enumIds') && currentStateObject['enumIds']) {
-                            const currentItemEnums = currentStateObject['enumIds'];
-                            toProcessState =
-                              functionsListIds.filter((itemId) =>
-                                currentItemEnums.includes(`${prefixEnums}.${functionsList[itemId].enum}.${itemId}`),
-                              ).length > 0 &&
-                              destinationsListIds.filter((itemId) =>
-                                currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`),
-                              ).length > 0;
+                          default: {
+                            const currentDataType =
+                              propagateRange === alertPropagateFunction ? dataTypeDestination : dataTypeFunction,
+                                currentEnums = enumerationsList[currentDataType].enums,
+                                currentEnumsList = Object.keys(currentEnums);
+                            currentEnumsList.filter(enumId => currentEnums[enumId].isEnabled).every(enumId => {
+                              const enumFullId = [prefixEnums, enumId, ''].join('.'),
+                                enumIndex = currentStateEnumIds.findIndex(enumId => enumId.indexOf(enumFullId) === 0);
+                              if (enumIndex >= 0) {
+                                const foundId = currentStateEnumIds[enumIndex].replace(enumFullId, '');
+                                if (propagateRange === alertPropagateFunction) {
+                                  targetDestinationId = foundId;
+                                } else {
+                                  targetFunctionId = foundId;
+                                }
+                                toProcessState = true;
+                              }
+                              return !toProcessState;
+                            });
+                            break;
                           }
-                          break;
-                        }
-
-                        default: {
-                          toProcessState = true;
-                          break;
                         }
                       }
                       if (toProcessState) {
@@ -13362,8 +13363,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             alertsManage(
                               user,
                               stateId,
-                              alertFunctionId,
-                              alertDestinationId,
+                              targetFunctionId,
+                              targetDestinationId,
                               Object.keys(alertStateAlertDetails).length ? alertStateAlertDetails : undefined,
                             );
                           }
