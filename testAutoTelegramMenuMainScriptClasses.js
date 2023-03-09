@@ -447,16 +447,78 @@ class MenuItemDevice extends MenuItem {
   }
 }
 
-class MenuItemValue extends MenuItem {
-  #value;
+class baseValue {
+  id;
   owner;
+  #value;
+  #type;
+  #subtype;
+  #step;
+  #min;
+  #max;
+  #states;
 
   constructor(owner) {
-    super({}, '', '', 'value', undefined, undefined);
+    this.setOwner(owner);
+  }
+
+  setOwner(owner) {
     if (owner !== undefined && owner !== null) {
       if (owner instanceof MenuItemWithValue) {
         owner.assignValue(this);
+        this.#configure();
       }
+    }
+  }
+
+  #configure() {
+    if (this.owner.details) {
+      const details = this.owner.details;
+      if (details.states) {
+        this.#type = 'enumerable';
+        this.#states = new Map();
+        if (details.type) this.#subtype = details.type;
+        const states = details.states;
+        let statesArray;
+        if (typeof states === 'string') {
+          statesArray = states.indexOf(';') > 0 ? states.split(';') : states.indexOf(',') > 0 ? states.split(',') : [];
+        } else if (Array.isArray(states)) {
+          statesArray = states;
+        } else if (typeof states === 'object') {
+          statesArray = Object.entries(states);
+        }
+        if (statesArray && statesArray.length) {
+          statesArray.forEach((stateItem) => {
+            let value, name;
+            if (Array.isArray(stateItem)) {
+              [value, name] = stateItem;
+            } else if (typeof stateItem === 'string') {
+              if (stateItem.includes(':')) {
+                [value, name] = stateItem.split(':');
+                if (this.#subtype === 'number') {
+                  // @ts-ignore
+                  if (!isNaN(value)) {
+                    value = Number(value);
+                  } else {
+                    value = undefined;
+                  }
+                }
+              } else {
+                value = stateItem.trim();
+                name = stateItem;
+              }
+            }
+            if (value !== undefined && name !== undefined) {
+              this.#states.set(value, name.trim());
+            }
+          });
+        }
+      } else if (details.type) {
+        this.#type = details.type;
+      }
+      if (details.min !== undefined) this.#min = details.min;
+      if (details.max !== undefined) this.#max = details.max;
+      if (details.step !== undefined) this.#step = details.step;
     }
   }
 
@@ -471,32 +533,83 @@ class MenuItemValue extends MenuItem {
     return this.#value;
   }
 
-  saveValue(value) {}
+  get possibleValues() {
+    let values = new Map();
+    if (!this.#type) {
+      this.#configure();
+    }
+    if (this.#type === 'boolean') {
+      values.set(true, 'true');
+      values.set(false, 'false');
+    } else if (this.#type === 'enumerable') {
+      values = this.#states;
+    } else if (this.#type === 'number' && this.#min !== undefined && this.#max !== undefined) {
+      const step = this.#step || 1;
+      for (let value = this.#min; value <= this.#max; value += step) {
+        values.set(value, `${value}`);
+      }
+    }
+    return values;
+  }
+
+  saveValue(value) {
+    return true;
+  }
 
   checkValue(value) {
-    return {result: true, error: null};
+    let result = true,
+      error;
+    if (this.#type === 'number' || this.#subtype === 'number') {
+      if (isNaN(value)) {
+        error = {id: 'TypeError'};
+        result = false;
+      } else {
+        value = Number(value);
+      }
+    }
+    if (result) {
+      if (this.#type === 'boolean') {
+        value = !this.#value;
+      } else {
+        const possibleValues = this.possibleValues;
+        if (!possibleValues.has(value)) {
+          if (possibleValues.size) {
+            error = {id: 'OutOfRange'};
+          } else if (this.#type === 'number') {
+            if (
+              (this.#min !== undefined && value > this.#min) ||
+              (this.#max !== undefined && value < this.#max) ||
+              (this.#step !== undefined && value % this.#step !== 0)
+            ) {
+              result = false;
+              error = {id: 'OutOfRange'};
+            }
+          }
+        }
+      }
+    }
+    return {result, value, error};
   }
 
   setValue(value) {
+    let result = true,
+      error = null;
     if (this.#value !== value) {
-      const check = this.checkValue(value);
-      if (check.result) {
-        this.saveValue(value);
-        this.#value = value;
-      } else {
-        return check;
+      ({result, value, error} = this.checkValue(value));
+      if (result) {
+        if (this.saveValue(value)) {
+          this.#value = value;
+        } else {
+          result = false;
+          error = {id: 'SetStateError'};
+        }
       }
-    } else {
-      return {result: true, error: null};
     }
-  }
-
-  draw() {
-    console.log(`${this.name}: ${this.#value}`);
+    return {result, error};
   }
 }
 
-class MenuItemStateValue extends MenuItemValue {
+class MenuItemStateValue extends baseValue {
   fullId = '';
   constructor(owner) {
     super(owner);
@@ -506,7 +619,6 @@ class MenuItemStateValue extends MenuItemValue {
   }
 
   loadValue() {
-    log(` > ${this.fullId}`);
     if (existsState(this.fullId)) {
       const value = getState(this.fullId);
       if (value && value.val !== undefined) {
@@ -515,6 +627,14 @@ class MenuItemStateValue extends MenuItemValue {
     } else {
       return undefined;
     }
+  }
+
+  saveValue(value) {
+    if (existsState(this.fullId) || existsObject(this.fullId)) {
+      setState(this.fullId, value);
+      return true;
+    }
+    return false;
   }
 }
 
@@ -526,7 +646,7 @@ class MenuItemWithValue extends MenuItem {
   }
 
   assignValue(value) {
-    if (value !== undefined && value !== null && value instanceof MenuItemValue) {
+    if (value !== undefined && value !== null && value instanceof baseValue) {
       if (value.id !== this.id) {
         if (value.owner !== undefined && value.owner !== null) {
           value.owner.freeValue();
@@ -543,6 +663,14 @@ class MenuItemWithValue extends MenuItem {
       this.value.owner = undefined;
       this.value.id = '';
       this.value = undefined;
+    }
+  }
+
+  get text() {
+    if (this.value !== undefined && this.value !== null) {
+      return [this.name, this.value.getValue()].join(': ');
+    } else {
+      return this.id;
     }
   }
 }
@@ -563,14 +691,6 @@ class MenuItemDeviceState extends MenuItemWithValue {
     }
     new MenuItemStateValue(this);
   }
-
-  get text() {
-    if (this.value !== undefined && this.value !== null) {
-      return [this.name, this.value.getValue()].join(': ');
-    } else {
-      return this.id;
-    }
-  }
 }
 class MenuItemDeviceAttribute extends MenuItemDeviceState {
   constructor(attributes, id, fullId, holder) {
@@ -580,17 +700,29 @@ class MenuItemDeviceAttribute extends MenuItemDeviceState {
 }
 
 class MenuItemDeviceButton extends MenuItemDeviceState {
+  #value;
+
   constructor(attributes, id, fullId, holder) {
     super({isButton: 'true', type: 'button', ...attributes}, id, fullId, holder);
     this.applyAttributes(attributes);
   }
+
+  press(value) {
+    let result = false,
+      error = {id: 'EmptyValue'};
+    if (this.value) {
+      value = this.#value !== undefined ? this.#value : value;
+      ({result, error} = this.value.setValue(value));
+    }
+    return {result, error};
+  }
 }
 
-class MenuItemValueEnumerable extends MenuItemValue {}
+class MenuItemValueEnumerable extends baseValue {}
 
 class MMenuItemValueBoolean extends MenuItemValueEnumerable {}
 
-class MenuItemValueNumber extends MenuItemValue {}
+class MenuItemValueNumber extends baseValue {}
 
 let root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination);
 // const address = ['family', 'oldcat', 'network', 'vpn', 'OldCatMi11t'];
