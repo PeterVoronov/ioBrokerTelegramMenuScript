@@ -177,7 +177,7 @@ class MenuItem {
   }
 
   go(address, value, noRun = false) {
-    // log(`${this.id}: ${this.isButton}, go address = ${address}, noRun = ${noRun}`);
+    log(`${this.id}: ${this.isButton}, go address = ${address}, noRun = ${noRun}`);
     if (!noRun) {
       address = this.run(address, value);
     } else {
@@ -629,9 +629,23 @@ class valueBase {
 
   run(address, value) {
     // log(`${this.owner.type}, ${this.#type}, ${JSON.stringify(address)}, ${value}, ${this.constructor.name}, ${JSON.stringify(this)}`);
-    this.getValue();
-    if (this.#type === 'boolean') {
-      this.setValue(!this.#value);
+    if (this.owner && this.owner.isButton) {
+      if (this.#value === undefined || this.#value === null) this.getValue();
+      if (this.#type === 'boolean') {
+        this.setValue(!this.#value);
+        address = [-1];
+      } else if (this.#type === 'enumerable') {
+        if (value === undefined || value === null) {
+          this.#states.forEach((name, value) => {
+            const button = new MenuItemValueButton({}, name, value, value === this.#value, this.owner);
+            button.assignValue(this);
+          });
+        } else {
+          this.setValue(value);
+          address = [-2];
+        }
+      }
+    } else {
       address = [-1];
     }
     return address;
@@ -712,21 +726,10 @@ class MenuItemWithValue extends MenuItem {
 
   assignValue(value) {
     if (value !== undefined && value !== null && value instanceof valueBase) {
-      if (value.id !== this.id) {
-        if (value.owner !== undefined && value.owner !== null) {
-          value.owner.freeValue();
-        }
-        this.value = value;
+      this.value = value;
+      if (!value.owner) {
         this.value.setOwner(this);
       }
-    }
-  }
-
-  freeValue() {
-    if (this.value !== undefined && this.value !== null) {
-      this.value.owner = undefined;
-      this.value.id = '';
-      this.value = undefined;
     }
   }
 
@@ -741,6 +744,24 @@ class MenuItemWithValue extends MenuItem {
   run(address, value) {
     // log(`run: ${JSON.stringify(this.value)}`);
     if (this.value) address = this.value.run(address, value);
+    return super.run(address, value);
+  }
+}
+
+class MenuItemValueButton extends MenuItemWithValue {
+  #value;
+  #current;
+
+  constructor(attributes, name, value, current, holder) {
+    super({isButton: 'true', type: 'button', ...attributes}, name, '', 'valueButton', holder);
+    this.#value = value;
+    this.#current = current;
+    this.id = `${value}`.replaceAll('.', '');
+  }
+
+  run(address, value) {
+    // log(`run: ${JSON.stringify(this.value)}`);
+    if (this.value) address = this.value.run(address, this.#value);
     return super.run(address, value);
   }
 }
@@ -770,22 +791,10 @@ class MenuItemDeviceAttribute extends MenuItemDeviceState {
 }
 
 class MenuItemDeviceButton extends MenuItemDeviceState {
-  #value;
-
   constructor(attributes, id, fullId, holder) {
     super({isButton: 'true', type: 'button', ...attributes}, id, fullId, holder);
     this.applyAttributes(attributes);
   }
-
-  /* press(value) {
-    let result = false,
-      error = {id: 'EmptyValue'};
-    if (this.value) {
-      value = this.#value !== undefined ? this.#value : value;
-      ({result, error} = this.value.setValue(value));
-    }
-    return {result, error};
-  } */
 }
 
 let /* root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination); */
@@ -798,7 +807,9 @@ let /* root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination); */
     '',
     dataTypeFunction,
   );
-const address = ['network', 'vpn', 'family', 'oldcat', 'OldCatNew', 'enabled' /* */];
+// const address = ['network', 'vpn', 'family', 'oldcat', 'OldCatNew', 'enabled' /* */];
+
+const address = ['plug', 'office', 'heater', 'power_outage_memory' /*, 'restore'  */];
 
 log(`address = ${address}`);
 log(`result = ${JSON.stringify(root.go(address))}`);
