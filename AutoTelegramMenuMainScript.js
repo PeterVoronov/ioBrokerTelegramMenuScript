@@ -5789,7 +5789,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
                   if (stateValue == possibleValue) {
                     subMenuItem.name +=
-                      ' ' + enumerationsStateValueDetails(user, stateObject, functionId, currentState);
+                      ` [${enumerationsStateValueDetails(user, stateObject, functionId, currentState)}]`;
                   }
                 }
               }

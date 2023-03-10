@@ -40,7 +40,8 @@
         "readFile":"readonly",
         "delFile":"readonly",
         "schedule":"readonly",
-        "formatDate":"readonly"
+        "formatDate":"readonly",
+        "log": "readonly"
     },
     "plugins": [
         "@typescript-eslint"
