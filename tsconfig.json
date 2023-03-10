@@ -10,7 +10,7 @@
       "resolveJsonModule": true,
       "strict": true,
       "noImplicitAny": false,
-      "target": "es2018",
+      "target": "ES2021",
       "typeRoots": [
         ".iobroker/types",
         "node_modules/@types"
