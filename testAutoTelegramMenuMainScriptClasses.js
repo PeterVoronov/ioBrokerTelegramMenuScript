@@ -3,7 +3,7 @@ const dataTypeDestination = 'destination',
   dataTypeFunction = 'function',
   dataTypeReport = 'report';
 const prefixEnums = 'enum';
-// let goCount = 0;
+let goCount = 7;
 
 //*** MenuTem Class - begin ***//
 class MenuItem {
@@ -168,40 +168,49 @@ class MenuItem {
     console.log(text);
   }
 
-  run(address) {
+  run(address, value) {
     if (this.toRun) {
-      return this.toRun(this, () => this.go(address, true));
+      return this.toRun(this, value, () => this.go(address, value, true));
     } else {
-      return this.go(address, true);
+      return this.go(address, value, true);
     }
   }
 
-  go(address, noRun) {
+  go(address, value, noRun = false) {
     // log(`${this.id}: ${this.isButton}, go address = ${address}, noRun = ${noRun}`);
     if (!noRun) {
-      address = this.run(address);
+      address = this.run(address, value);
     } else {
       if (this.isButton) {
         let workAddress;
         if (Array.isArray(address) && address.length) {
           workAddress = [...address];
-          if (this.nested && this.nested.length) {
-            let index = workAddress.shift();
-            if (isNaN(index)) {
-              index = this.findNestedIndexById(index);
-            } else {
-              index = Number(index);
-            }
-            if (index >= 0 && index < this.nested.length) {
-              const nested = this.nested[index];
-              const go = nested.go(workAddress);
-              if (go !== undefined && go.length === 1 && go[0] === -1) {
-                workAddress = address;
+          if (address.length === 1 && address[0] < 0) {
+            address = [0]; // to make it changed and avoid the draw method call
+          } else {
+            if (this.nested && this.nested.length) {
+              let index = workAddress.shift();
+              if (isNaN(index)) {
+                index = this.findNestedIndexById(index);
               } else {
-                workAddress = go;
+                index = Number(index);
               }
-            } else {
-              workAddress = address;
+              if (index >= 0 && index < this.nested.length) {
+                const nested = this.nested[index];
+                const go = nested.go(workAddress, value);
+                if (go !== undefined && go.length === 1 && go[0] < 0) {
+                  go[0]++;
+                  if (go[0] === 0) {
+                    workAddress = address;
+                  } else {
+                    workAddress = go;
+                  }
+                } else {
+                  workAddress = go;
+                }
+              } else {
+                workAddress = address;
+              }
             }
           }
         }
@@ -281,7 +290,8 @@ class MenuItemRoot extends MenuItem {
     return holder;
   }
 
-  run(address) {
+  run(address, value) {
+    this.nested = new Array();
     const primaryList = enumerationsList[this.topLevelType].list,
       primaryFilter = (itemId) => primaryList[itemId].isEnabled,
       primarySort = (a, b) => primaryList[a].order - primaryList[b].order,
@@ -337,7 +347,7 @@ class MenuItemRoot extends MenuItem {
         const secondaryItem = secondaryList[secondaryId];
         this.#pushTo(this, secondaryId, secondaryItem, secondaryList, secondaryItemClass);
       });
-    return this.go(address, true);
+    return super.run(address, value);
   }
 }
 
@@ -405,7 +415,7 @@ class MenuItemDevice extends MenuItem {
     this.applyAttributes(attributes);
   }
 
-  run(address) {
+  run(address, value) {
     let currentFunction, _currentDestination;
     if (this.holder.function) {
       currentFunction = this.holder.function;
@@ -442,12 +452,11 @@ class MenuItemDevice extends MenuItem {
         });
       }
     }
-    super.run(address);
-    // return this.go(address, true);
+    return super.run(address, value);
   }
 }
 
-class baseValue {
+class valueBase {
   id;
   owner;
   #value;
@@ -458,17 +467,20 @@ class baseValue {
   #max;
   #states;
 
-  constructor(owner) {
-    this.setOwner(owner);
+  constructor() {
+    this.id = '';
   }
 
   setOwner(owner) {
     if (owner !== undefined && owner !== null) {
       if (owner instanceof MenuItemWithValue) {
-        owner.assignValue(this);
+        this.owner = owner;
+        this.id = owner.id;
         this.#configure();
+        return true;
       }
     }
+    return false;
   }
 
   #configure() {
@@ -594,28 +606,81 @@ class baseValue {
   setValue(value) {
     let result = true,
       error = null;
-    if (this.#value !== value) {
-      ({result, value, error} = this.checkValue(value));
-      if (result) {
-        if (this.saveValue(value)) {
-          this.#value = value;
-        } else {
-          result = false;
-          error = {id: 'SetStateError'};
+    if (value !== undefined) {
+      if (this.#value === undefined) this.getValue();
+      if (this.#value !== value) {
+        ({result, value, error} = this.checkValue(value));
+        // log(`setValue: result = ${result}, value = ${value}, error = ${JSON.stringify(error)}`)
+        if (result) {
+          if (this.saveValue(value)) {
+            this.#value = value;
+            // log(`setValue: #value = ${this.#value}`)
+          } else {
+            result = false;
+            error = {id: 'SetStateError'};
+          }
         }
       }
+    } else {
+      error = {id: 'EmptyValue'};
     }
     return {result, error};
   }
+
+  run(address, value) {
+    // log(`${this.owner.type}, ${this.#type}, ${JSON.stringify(address)}, ${value}, ${this.constructor.name}, ${JSON.stringify(this)}`);
+    this.getValue();
+    if (this.#type === 'boolean') {
+      this.setValue(!this.#value);
+      address = [-1];
+    }
+    return address;
+  }
+
+  toJSON() {
+    const object = {};
+    Object.entries(this).forEach(([key, value]) => {
+      switch (key) {
+        case 'holder':
+          if (value) {
+            object[key] = {id: value.id, type: value.type, name: value.name};
+          } else {
+            object[key] = undefined;
+          }
+          break;
+
+        case 'nested':
+          if (value && Array.isArray(value)) {
+            object[key] = value.map((item) => item.toJSON());
+          } else {
+            object[key] = undefined;
+          }
+          break;
+
+        default:
+          if (value instanceof MenuItem) {
+            object[key] = {id: value.id, type: value.type, name: value.name};
+          } else {
+            object[key] = value;
+          }
+          break;
+      }
+    });
+    return {[this.constructor.name]: object};
+  }
 }
 
-class MenuItemStateValue extends baseValue {
+class valueState extends valueBase {
   fullId = '';
-  constructor(owner) {
-    super(owner);
-    if (owner instanceof MenuItemDeviceState) {
-      this.fullId = owner.fullId;
+
+  setOwner(owner) {
+    if (super.setOwner(owner)) {
+      if (owner instanceof MenuItemDeviceState) {
+        this.fullId = owner.fullId;
+        return true;
+      }
     }
+    return false;
   }
 
   loadValue() {
@@ -646,14 +711,13 @@ class MenuItemWithValue extends MenuItem {
   }
 
   assignValue(value) {
-    if (value !== undefined && value !== null && value instanceof baseValue) {
+    if (value !== undefined && value !== null && value instanceof valueBase) {
       if (value.id !== this.id) {
         if (value.owner !== undefined && value.owner !== null) {
           value.owner.freeValue();
         }
         this.value = value;
-        value.owner = this;
-        value.id = this.id;
+        this.value.setOwner(this);
       }
     }
   }
@@ -673,6 +737,12 @@ class MenuItemWithValue extends MenuItem {
       return this.id;
     }
   }
+
+  run(address, value) {
+    // log(`run: ${JSON.stringify(this.value)}`);
+    if (this.value) address = this.value.run(address, value);
+    return super.run(address, value);
+  }
 }
 
 class MenuItemDeviceState extends MenuItemWithValue {
@@ -689,7 +759,7 @@ class MenuItemDeviceState extends MenuItemWithValue {
         this.name = object.common.name;
       }
     }
-    new MenuItemStateValue(this);
+    this.assignValue(new valueState());
   }
 }
 class MenuItemDeviceAttribute extends MenuItemDeviceState {
@@ -707,7 +777,7 @@ class MenuItemDeviceButton extends MenuItemDeviceState {
     this.applyAttributes(attributes);
   }
 
-  press(value) {
+  /* press(value) {
     let result = false,
       error = {id: 'EmptyValue'};
     if (this.value) {
@@ -715,26 +785,20 @@ class MenuItemDeviceButton extends MenuItemDeviceState {
       ({result, error} = this.value.setValue(value));
     }
     return {result, error};
-  }
+  } */
 }
 
-class MenuItemValueEnumerable extends baseValue {}
-
-class MMenuItemValueBoolean extends MenuItemValueEnumerable {}
-
-class MenuItemValueNumber extends baseValue {}
-
-let root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination);
-// const address = ['family', 'oldcat', 'network', 'vpn', 'OldCatMi11t'];
-root = new MenuItemRoot(
-  {
-    /* deviceClass: MenuItemDeviceNoButton */
-  },
-  'rootMenu',
-  '',
-  dataTypeFunction,
-);
-const address = ['network', 'vpn', 'family', 'oldcat', 'OldCatNew' /*, 'enabled'  */];
+let /* root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination); */
+  // const address = ['family', 'oldcat', 'network', 'vpn', 'OldCatMi11t'];
+  root = new MenuItemRoot(
+    {
+      /* deviceClass: MenuItemDeviceNoButton */
+    },
+    'rootMenu',
+    '',
+    dataTypeFunction,
+  );
+const address = ['network', 'vpn', 'family', 'oldcat', 'OldCatNew', 'enabled' /* */];
 
 log(`address = ${address}`);
 log(`result = ${JSON.stringify(root.go(address))}`);
