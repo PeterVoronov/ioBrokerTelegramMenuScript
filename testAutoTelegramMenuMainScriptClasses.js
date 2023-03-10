@@ -177,7 +177,7 @@ class MenuItem {
   }
 
   go(address, value, noRun = false) {
-    log(`${this.id}: ${this.isButton}, go address = ${address}, noRun = ${noRun}`);
+    // log(`${this.id}: ${this.isButton}, go address = ${address}, noRun = ${noRun}`);
     if (!noRun) {
       address = this.run(address, value);
     } else {
