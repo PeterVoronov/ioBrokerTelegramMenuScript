@@ -190,8 +190,9 @@ class MenuItem {
           } else {
             if (this.nested && this.nested.length) {
               let index = workAddress.shift();
-              if (isNaN(index)) {
-                index = this.findNestedIndexById(index);
+              const nestedIds = this.nested.map((nested) => nested.id);
+              if (isNaN(index) || nestedIds.includes(index)) {
+                index = nestedIds.indexOf(index);
               } else {
                 index = Number(index);
               }
@@ -527,10 +528,18 @@ class valueBase {
         }
       } else if (details.type) {
         this.#type = details.type;
+        if (this.#type === 'number') {
+          if (details.min !== undefined) this.#min = details.min;
+          if (details.max !== undefined) this.#max = details.max;
+          if (details.step !== undefined) this.#step = details.step;
+          const possibleValues = this.possibleValues;
+          if (possibleValues.size) {
+            this.#type = 'enumerable';
+            this.#subtype = 'number';
+            this.#states = possibleValues;
+          }
+        }
       }
-      if (details.min !== undefined) this.#min = details.min;
-      if (details.max !== undefined) this.#max = details.max;
-      if (details.step !== undefined) this.#step = details.step;
     }
   }
 
@@ -600,6 +609,7 @@ class valueBase {
         }
       }
     }
+    // log(`check error = ${JSON.stringify(error)}, value = ${value} : ${typeof value}}`)
     return {result, value, error};
   }
 
@@ -610,11 +620,9 @@ class valueBase {
       if (this.#value === undefined) this.getValue();
       if (this.#value !== value) {
         ({result, value, error} = this.checkValue(value));
-        // log(`setValue: result = ${result}, value = ${value}, error = ${JSON.stringify(error)}`)
         if (result) {
           if (this.saveValue(value)) {
             this.#value = value;
-            // log(`setValue: #value = ${this.#value}`)
           } else {
             result = false;
             error = {id: 'SetStateError'};
@@ -629,24 +637,42 @@ class valueBase {
 
   run(address, value) {
     // log(`${this.owner.type}, ${this.#type}, ${JSON.stringify(address)}, ${value}, ${this.constructor.name}, ${JSON.stringify(this)}`);
+    let stepBack = -1;
     if (this.owner && this.owner.isButton) {
       if (this.#value === undefined || this.#value === null) this.getValue();
       if (this.#type === 'boolean') {
         this.setValue(!this.#value);
-        address = [-1];
+        address = [stepBack];
       } else if (this.#type === 'enumerable') {
         if (value === undefined || value === null) {
+          let min,
+            max,
+            prev,
+            next,
+            step = this.#step || 1;
+          if (this.#subtype === 'number' && this.#states.size > 10) {
+            min = this.#value - 3 * step;
+            max = this.#value + 3 * step;
+            prev = this.#value - 6 * step;
+            next = this.#value + 6 * step;
+          }
+          this.owner.nested = new Array();
           this.#states.forEach((name, value) => {
-            const button = new MenuItemValueButton({}, name, value, value === this.#value, this.owner);
-            button.assignValue(this);
+            if (this.#subtype !== 'number' || value === prev || value === next || (value >= min && value <= max)) {
+              const button = new MenuItemValueButton({}, name, value, value === this.#value, this.owner);
+              button.assignValue(this);
+            }
           });
         } else {
           this.setValue(value);
-          address = [-2];
+          if (!(this.#subtype === 'number' && (this.#min !== undefined || this.#max !== undefined))) {
+            stepBack--;
+          }
+          address = [stepBack];
         }
       }
     } else {
-      address = [-1];
+      address = [stepBack];
     }
     return address;
   }
@@ -809,7 +835,9 @@ let /* root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination); */
   );
 // const address = ['network', 'vpn', 'family', 'oldcat', 'OldCatNew', 'enabled' /* */];
 
-const address = ['plug', 'office', 'heater', 'power_outage_memory' /*, 'restore'  */];
+// const address = ['plug', 'office', 'heater', 'power_outage_memory' /*, 'restore'  */];
+
+const address = ['warmfloor', 'canteen', 'canteen', 'current_heating_setpoint' /* , '22'  */];
 
 log(`address = ${address}`);
 log(`result = ${JSON.stringify(root.go(address))}`);
