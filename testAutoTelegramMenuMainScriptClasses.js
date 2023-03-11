@@ -7,11 +7,13 @@ let goCount = 7;
 
 //*** MenuTem Class - begin ***//
 class MenuItem {
+  user;
   type = '';
   id = '';
   holder;
-  #name = '';
-  isButton;
+  #nameId = '';
+  isButton = false;
+  isInput = false;
   #index;
   #text;
   toRun;
@@ -22,15 +24,15 @@ class MenuItem {
 
   /**
    * Constructor function for the class
-   * @param {object} attributes - The MenuItem attributes = {exec, button}.
-   * @param {string} name - The MenuITem name.
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
    * @param {string=} id - The MenuITem id.
    * @param {string=} type - The MenuITem type.
    * @param {string=} text - The MenuITem text.
    * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
    */
-  constructor(attributes, name, id, type, text, holder) {
-    this.#name = name;
+  constructor(attributes, nameId, id, type, text, holder) {
+    this.#nameId = nameId;
     this.id = id ? id : '';
     this.type = type ? type : '';
     this.#text = text;
@@ -73,6 +75,7 @@ class MenuItem {
       nested.removeFromHolder();
       nested.index = this.nested.length;
       nested.holder = this;
+      nested.user = this.user;
       this.nested.push(nested);
       if (!this.isButton) this.isButton = true;
     }
@@ -113,22 +116,15 @@ class MenuItem {
   }
 
   get text() {
-    let text = this.#text === undefined ? '' : this.#text;
-    if (this.nested)
-      this.nested.forEach((nested) => {
-        if (!nested.isButton) {
-          text += `\n${nested.text}`;
-        }
-      });
-    return text;
+    return this.#text || '';
   }
 
   get name() {
-    return [this.details.icon ? this.details.icon : '', this.#name].join('');
+    return [this.details.icon || '', this.#nameId].join('');
   }
 
-  set name(name) {
-    this.#name = name;
+  set name(nameId) {
+    this.#nameId = nameId;
   }
 
   getHeader(hierarchical) {
@@ -150,22 +146,28 @@ class MenuItem {
   }
 
   get button() {
-    let text = '';
+    let button = undefined;
     if (this.isButton) {
-      text = `\n[text = ${this.text}, id = ${this.mask}, type = ${this.type}, index = ${this.index.join('.')}]`;
+      button = {text: `${this.text}, id = ${this.mask}, type = ${this.type}`, callback_data: this.index.join('.')};
     }
-    return text;
+    return button;
   }
 
   draw() {
-    let text = `\n${this.getHeader(2)}:\n${this.text}`;
-    if (this.nested) {
-      text += `\nid = ${this.mask}\n`;
-      this.nested.forEach((nested) => {
-        text += nested.button;
-      });
+    const message = {};
+    if (this.isInput) {
+      message.message = this.text;
+    } else {
+      message.message = `\n${this.getHeader(2)}:\n${this.text}`;
+      if (this.nested) {
+        const attributesTextArray = this.nested.filter((nested) => !nested.isButton).map((item) => item.text);
+        message.message += attributesTextArray.length ? `\n${attributesTextArray.join('\n')}` : '';
+        message.buttons = this.nested.filter((nested) => nested.isButton).map((nested) => nested.button);
+      } else {
+        message.buttons = [];
+      }
     }
-    console.log(text);
+    console.log(`${message.message}\n${message.buttons ? JSON.stringify(message, null, 1) : ''}`);
   }
 
   run(address, value) {
@@ -266,8 +268,15 @@ class MenuItemRoot extends MenuItem {
   topLevelType = '';
   deviceClass = MenuItemDevice;
 
-  constructor(attributes, name, id, topLevelType) {
-    super({isButton: true}, name, id, 'root');
+  /**
+   *
+   * @param {object} user - The user object.
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} topLevelType - The selector of first level of menu - Destinations or Functions.
+   */
+  constructor(user, attributes, topLevelType) {
+    super({isButton: true}, 'rootMenu', '', 'root');
+    this.user = user;
     this.topLevelType = topLevelType;
     this.applyAttributes(attributes);
   }
@@ -367,15 +376,32 @@ enumerationsList[dataTypeReport] = reportsList;
 // log(JSON.stringify(enumerationsList));
 
 class MenuItemEnumerations extends MenuItem {
-  constructor(attributes, name, id, type, text, holder) {
-    super({isButton: true}, name, id, type, text, holder);
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
+   * @param {string=} id - The MenuITem id.
+   * @param {string=} type - The MenuITem type.
+   * @param {string=} text - The MenuITem text.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
+  constructor(attributes, nameId, id, type, text, holder) {
+    super({isButton: true}, nameId, id, type, text, holder);
     this.details = attributes;
   }
 }
 
 class MenuItemFunction extends MenuItemEnumerations {
-  constructor(attributes, name, id, text, holder) {
-    super(attributes, name, id, dataTypeFunction, text, holder);
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
+   * @param {string=} id - The MenuITem id.
+   * @param {string=} text - The MenuITem text.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
+  constructor(attributes, nameId, id, text, holder) {
+    super(attributes, nameId, id, dataTypeFunction, text, holder);
     if (holder) {
       if (holder.type === this.type) {
         if (holder.holder && holder.holder.type !== 'root') {
@@ -391,8 +417,16 @@ class MenuItemFunction extends MenuItemEnumerations {
 }
 
 class MenuItemDestination extends MenuItemEnumerations {
-  constructor(attributes, name, id, text, holder) {
-    super(attributes, name, id, dataTypeDestination, text, holder);
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
+   * @param {string=} id - The MenuITem id.
+   * @param {string=} text - The MenuITem text.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
+  constructor(attributes, nameId, id, text, holder) {
+    super(attributes, nameId, id, dataTypeDestination, text, holder);
     if (holder) {
       if (holder.type === this.type) {
         if (holder.holder && holder.holder.type !== 'root') {
@@ -411,8 +445,15 @@ class MenuItemDevice extends MenuItem {
   objectId = '';
   primaryStateId = '';
 
-  constructor(attributes, name, id, holder) {
-    super({isButton: true}, name, id, 'device', undefined, holder);
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
+   * @param {string=} id - The MenuITem id.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
+  constructor(attributes, nameId, id, holder) {
+    super({isButton: true}, nameId, id, 'device', undefined, holder);
     this.applyAttributes(attributes);
   }
 
@@ -468,6 +509,9 @@ class valueBase {
   #max;
   #states;
 
+  /**
+   *
+   */
   constructor() {
     this.id = '';
   }
@@ -478,6 +522,7 @@ class valueBase {
         this.owner = owner;
         this.id = owner.id;
         this.#configure();
+        if (!['boolean', 'enumerable'].includes(this.#type)) owner.isInput = true;
         return true;
       }
     }
@@ -533,11 +578,11 @@ class valueBase {
           if (details.max !== undefined) this.#max = details.max;
           if (details.step !== undefined) this.#step = details.step;
           const possibleValues = this.possibleValues;
-          if (possibleValues.size) {
+          /* if (possibleValues.size) {
             this.#type = 'enumerable';
             this.#subtype = 'number';
             this.#states = possibleValues;
-          }
+          } */
         }
       }
     }
@@ -620,6 +665,7 @@ class valueBase {
       if (this.#value === undefined) this.getValue();
       if (this.#value !== value) {
         ({result, value, error} = this.checkValue(value));
+        // log(`check error = ${JSON.stringify(error)}`);
         if (result) {
           if (this.saveValue(value)) {
             this.#value = value;
@@ -635,16 +681,25 @@ class valueBase {
     return {result, error};
   }
 
-  run(address, value) {
+  run(runBy, address, value) {
     // log(`${this.owner.type}, ${this.#type}, ${JSON.stringify(address)}, ${value}, ${this.constructor.name}, ${JSON.stringify(this)}`);
+    // log(` = ${by === this.owner}`);
     let stepBack = -1;
-    if (this.owner && this.owner.isButton) {
-      if (this.#value === undefined || this.#value === null) this.getValue();
-      if (this.#type === 'boolean') {
+    if (this.#value === undefined || this.#value === null) this.getValue();
+    if (runBy && runBy.isButton) {
+      const isOwner = this.owner === runBy;
+      if (isOwner && this.#type === 'boolean') {
         this.setValue(!this.#value);
         address = [stepBack];
       } else if (this.#type === 'enumerable') {
-        if (value === undefined || value === null) {
+        const isNumerable = this.#subtype === 'number' && this.#min !== undefined && this.#max !== undefined;
+        if (isOwner) {
+          if (value !== undefined && value !== null) {
+            this.setValue(value);
+            if (isNumerable) {
+              this.#states = this.possibleValues;
+            }
+          }
           let min,
             max,
             prev,
@@ -658,21 +713,35 @@ class valueBase {
           }
           this.owner.nested = new Array();
           this.#states.forEach((name, value) => {
-            if (this.#subtype !== 'number' || value === prev || value === next || (value >= min && value <= max)) {
+            if (
+              this.#subtype !== 'number' ||
+              value === prev ||
+              value === next ||
+              (value >= min && value <= max && value !== this.#value)
+            ) {
               const button = new MenuItemValueButton({}, name, value, value === this.#value, this.owner);
               button.assignValue(this);
             }
           });
-        } else {
-          this.setValue(value);
-          if (!(this.#subtype === 'number' && (this.#min !== undefined || this.#max !== undefined))) {
-            stepBack--;
+          if (isNumerable) {
+            const input = new MenuItemWithValue({isButton: true, isInput: true}, 'edit', 'edit', 'input', this.owner);
+            input.assignValue(this);
           }
+        } else {
+          if (value !== undefined && value !== null) {
+            this.setValue(value);
+            if (!isNumerable) {
+              stepBack--;
+            }
+            address = [stepBack];
+          }
+        }
+      } else {
+        if (value !== undefined && value !== null) {
+          this.setValue(value);
           address = [stepBack];
         }
       }
-    } else {
-      address = [stepBack];
     }
     return address;
   }
@@ -746,8 +815,16 @@ class valueState extends valueBase {
 class MenuItemWithValue extends MenuItem {
   value;
 
-  constructor(attributes, name, id, type, holder) {
-    super(attributes, name, id, type, undefined, holder);
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
+   * @param {string=} id - The MenuITem ID.
+   * @param {string=} type - The MenuITem type.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
+  constructor(attributes, nameId, id, type, holder) {
+    super(attributes, nameId, id, type, undefined, holder);
   }
 
   assignValue(value) {
@@ -769,25 +846,37 @@ class MenuItemWithValue extends MenuItem {
 
   run(address, value) {
     // log(`run: ${JSON.stringify(this.value)}`);
-    if (this.value) address = this.value.run(address, value);
+    if (this.value) address = this.value.run(this, address, value);
     return super.run(address, value);
   }
 }
 
 class MenuItemValueButton extends MenuItemWithValue {
   #value;
-  #current;
+  #isCurrentValue;
 
-  constructor(attributes, name, value, current, holder) {
-    super({isButton: 'true', type: 'button', ...attributes}, name, '', 'valueButton', holder);
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} nameId - The MenuItem name translate ID.
+   * @param {any} value - The MenuItem value.
+   * @param {boolean} isCurrentValue - The flag, if the value is current value.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
+  constructor(attributes, nameId, value, isCurrentValue, holder) {
+    super({isButton: 'true', type: 'button', ...attributes}, nameId, '', 'valueButton', holder);
     this.#value = value;
-    this.#current = current;
+    this.#isCurrentValue = isCurrentValue;
     this.id = `${value}`.replaceAll('.', '');
+  }
+
+  get text() {
+    return `${this.name}${this.#isCurrentValue ? ' V' : ''}`;
   }
 
   run(address, value) {
     // log(`run: ${JSON.stringify(this.value)}`);
-    if (this.value) address = this.value.run(address, this.#value);
+    if (this.value) address = this.value.run(this, address, this.#value);
     return super.run(address, value);
   }
 }
@@ -795,6 +884,13 @@ class MenuItemValueButton extends MenuItemWithValue {
 class MenuItemDeviceState extends MenuItemWithValue {
   fullId = '';
 
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} id - The MenuITem ID.
+   * @param {string} fullId - The full ID of the ioBroker state.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
   constructor(attributes, id, fullId, holder) {
     super({isButton: false, ...attributes}, '', id, 'state', holder);
     this.applyAttributes(attributes);
@@ -809,7 +905,15 @@ class MenuItemDeviceState extends MenuItemWithValue {
     this.assignValue(new valueState());
   }
 }
+
 class MenuItemDeviceAttribute extends MenuItemDeviceState {
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} id - The MenuITem ID.
+   * @param {string} fullId - The full ID of the ioBroker state.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
   constructor(attributes, id, fullId, holder) {
     super({isButton: false, type: 'attribute', ...attributes}, id, fullId, holder);
     this.applyAttributes(attributes);
@@ -817,6 +921,13 @@ class MenuItemDeviceAttribute extends MenuItemDeviceState {
 }
 
 class MenuItemDeviceButton extends MenuItemDeviceState {
+  /**
+   *
+   * @param {object} attributes - The MenuItem attributes = {isButton, ...}. The other way to set it in constructor.
+   * @param {string} id - The MenuITem ID.
+   * @param {string} fullId - The full ID of the ioBroker state.
+   * @param {MenuItem=} holder - The MenuItem which holds this MenuItem.
+   */
   constructor(attributes, id, fullId, holder) {
     super({isButton: 'true', type: 'button', ...attributes}, id, fullId, holder);
     this.applyAttributes(attributes);
@@ -825,20 +936,18 @@ class MenuItemDeviceButton extends MenuItemDeviceState {
 
 let /* root = new MenuItemRoot({}, 'rootMenu', '', dataTypeDestination); */
   // const address = ['family', 'oldcat', 'network', 'vpn', 'OldCatMi11t'];
-  root = new MenuItemRoot(
-    {
-      /* deviceClass: MenuItemDeviceNoButton */
-    },
-    'rootMenu',
-    '',
-    dataTypeFunction,
-  );
+  root = new MenuItemRoot({userId: 123456789}, {}, dataTypeFunction);
 // const address = ['network', 'vpn', 'family', 'oldcat', 'OldCatNew', 'enabled' /* */];
 
 // const address = ['plug', 'office', 'heater', 'power_outage_memory' /*, 'restore'  */];
 
-const address = ['warmfloor', 'canteen', 'canteen', 'current_heating_setpoint' /* , '22'  */];
+const address = [
+  'warmfloor',
+  'canteen',
+  'canteen' /*, 'mode' , 'heat' */,
+  'current_heating_setpoint' /*, 'edit'  , '22' */,
+];
 
 log(`address = ${address}`);
-log(`result = ${JSON.stringify(root.go(address))}`);
+log(`result = ${JSON.stringify(root.go(address /* , '22' */))}`);
 // log(`root = ${JSON.stringify(root, null, 1)}`);
