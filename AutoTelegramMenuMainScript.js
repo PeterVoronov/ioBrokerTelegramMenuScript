@@ -4347,7 +4347,15 @@ const enumerationsNamesMain = 'Main',
       name: enumerationsNamesMain,
       names: [enumerationsNamesBasic, enumerationsNamesMany],
       group: '',
-      deviceAttributes: {},
+      deviceAttributes: {
+        state: {
+          isEnabled: true,
+          convertValueCode: '',
+          stateAttributes: ['ts', 'lc'],
+          nameTranslationId: 'functions.functions.unknown.state',
+          order: 0,
+        },
+      },
       deviceButtons: {},
       simplifyMenuWithOneDevice: false,
       showDestNameOnSimplify: true,
@@ -4575,15 +4583,17 @@ function enumerationsInit(enumerationType, withExtensions = false) {
               }
             }
           }
-          currentEnumerationList[currentItem] = {
-            ...enumerationsDefaultObjects[
-              currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType
-            ],
+          const newItem = {
+            ...enumerationsDefaultObjects[enumerationType],
             order: currentItemPosition,
             holder: holderItemId,
             enum: enumType,
             icon: enumerationsList[enumerationType].enums[enumType].icon,
           };
+          if (enumerationType === dataTypeFunction && newItem.deviceAttributes && newItem.deviceAttributes.state) {
+            newItem.deviceAttributes.state.nameTranslationId = translationsGetObjectId('state', currentItem, undefined);
+          }
+          currentEnumerationList[currentItem] = newItem;
           countItems++;
         }
       }
@@ -5788,8 +5798,12 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   };
                   subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
                   if (stateValue == possibleValue) {
-                    subMenuItem.name +=
-                      ` [${enumerationsStateValueDetails(user, stateObject, functionId, currentState)}]`;
+                    subMenuItem.name += ` [${enumerationsStateValueDetails(
+                      user,
+                      stateObject,
+                      functionId,
+                      currentState,
+                    )}]`;
                   }
                 }
               }
@@ -6167,11 +6181,7 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
           isCurrentStateNotEmpty = attributeState && isDefined(attributeState.val);
         if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
           deviceAttributesArray.push({
-            label: translationsGetObjectName(
-              user,
-              isPrimaryState ? translationsPrimaryStateId : stateObject,
-              currentFunctionId,
-            ),
+            label: translationsGetObjectName(user, stateObject, currentFunctionId),
             value: enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
           });
           if (attributeState) {
@@ -11520,23 +11530,27 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             case dataTypeDeviceAttributes:
             case dataTypeDeviceButtons: {
               const currentEnumerationsList = enumerationsGetList(
-                commandOptions.dataType,
-                commandOptions.dataTypeExtraId,
-              );
-              switch (commandOptions.attribute) {
+                  commandOptions.dataType,
+                  commandOptions.dataTypeExtraId,
+                ),
+                attribute = commandOptions.attribute;
+              switch (attribute) {
                 case 'state': {
-                  const currentDeviceAttributes = currentEnumerationsList[commandOptions.item].deviceAttributes;
-                  if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(commandOptions.attribute)) {
+                  const currentEnumeration = currentEnumerationsList[commandOptions.item],
+                    currentDeviceAttributes = currentEnumeration.deviceAttributes,
+                    currentState = currentEnumeration[attribute];
+                  if (currentDeviceAttributes && currentDeviceAttributes.hasOwnProperty(currentState)) {
                     currentDeviceAttributes[userInputToProcess] = objectDeepClone(
-                      currentDeviceAttributes[commandOptions.attribute],
+                      currentDeviceAttributes[currentState],
                     );
                     currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(
                       userInputToProcess.split('.').join('_'),
                       commandOptions.item,
                       undefined,
                     );
-                    delete currentDeviceAttributes[commandOptions.attribute];
+                    delete currentDeviceAttributes[currentState];
                   }
+                  currentEnumeration[attribute] = userInputToProcess;
                   break;
                 }
 
@@ -11567,7 +11581,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       userInputToProcess,
                     )
                   ) {
-                    currentEnumerationsList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
+                    currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
                   } else {
                     warns(
                       `Unacceptable value '${userInputToProcess}' code conversion of attribute ${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
@@ -11579,11 +11593,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                 default: {
                   const oldIcon =
-                    commandOptions.dataType === dataTypePrimaryEnums && commandOptions.attribute === 'icon'
-                      ? currentEnumerationsList[commandOptions.item][commandOptions.attribute]
+                    commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon'
+                      ? currentEnumerationsList[commandOptions.item][attribute]
                       : '';
-                  currentEnumerationsList[commandOptions.item][commandOptions.attribute] = userInputToProcess;
-                  if (commandOptions.dataType === dataTypePrimaryEnums && commandOptions.attribute === 'icon') {
+                  currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
+                  if (commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon') {
                     const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
                     Object.keys(workList).forEach((currentListItem) => {
                       if (
@@ -11615,7 +11629,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ) {
                 currentEnumerationsList[commandOptions.item].group = userInputToProcess;
               }
-              enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
+              enumerationsSave(
+                enumerationsGetPrimaryDataType(commandOptions.groupDataType, commandOptions.groupDataTypeExtraId),
+              );
               break;
             }
 
