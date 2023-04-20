@@ -12647,19 +12647,30 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           break;
                         }
 
-                        case 'targetState':
-                        case 'targetValue':
-                        case 'user': {
-                          if (item === 'targetState') {
-                            if (trigger[item] !== commandOptions.value) {
-                              trigger.isEnabled = false;
-                              trigger.targetValue = undefined;
-                            }
-                            trigger.targetFunction = commandOptions.function;
-                            trigger.targetDestination = commandOptions.destination;
-                            currentMenuPosition = commandOptions.currentIndex.split('.');
+                        case 'targetState': {
+                          if (trigger[item] !== commandOptions.value) {
+                            trigger.isEnabled = false;
+                            trigger.targetValue = undefined;
                           }
+                          trigger.targetFunction = commandOptions.function;
+                          trigger.targetDestination = commandOptions.destination;
+                          currentMenuPosition = commandOptions.currentIndex.split('.');
+                          currentMenuPosition.splice(-1, 1);
+                          break;
+                        }
+
+                        case 'targetValue': {
                           trigger[item] = commandOptions.value;
+                          currentMenuPosition.splice(-1, 1);
+                          break;
+                        }
+
+                        case 'user': {
+                          if (trigger[item] === commandOptions.value) {
+                            delete trigger[item];
+                          } else {
+                            trigger[item] = commandOptions.value;
+                          }
                           currentMenuPosition.splice(-1, 1);
                           break;
                         }
