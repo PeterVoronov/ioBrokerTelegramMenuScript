@@ -13805,7 +13805,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             const currentEnumerationsList = enumerationsGetList(
                 commandOptions.dataType,
                 commandOptions.dataTypeExtraId,
-              ),
+              );
+            enumerationsReorderItems(currentEnumerationsList);
+            const
               currentOrder = currentEnumerationsList[commandOptions.item].order,
               newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1);
             const newItem = Object.keys(currentEnumerationsList).find((cItem) => {
