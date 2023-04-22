@@ -5523,6 +5523,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
     enumerationsInit(enumerationPrimaryType);
   }
   const currentEnumerationsList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
+  enumerationsReorderItems(currentEnumerationsList);
   if (enumerationsDeviceStatesTypes.includes(enumerationType)) {
     if (Object.keys(enumerationsGetList).length === 0) {
       enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType);
@@ -13806,7 +13807,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 commandOptions.dataType,
                 commandOptions.dataTypeExtraId,
               );
-            enumerationsReorderItems(currentEnumerationsList);
             const
               currentOrder = currentEnumerationsList[commandOptions.item].order,
               newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1);
