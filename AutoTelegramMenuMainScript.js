@@ -5818,7 +5818,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 }
               }
               subMenuItem.icon = '';
-              subMenuItem.name += ` (${stateValue ? stateValue : iconItemNotFound}${
+              subMenuItem.name += ` (${isDefined(stateValue) ? stateValue : iconItemNotFound}${
                 stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
               })`;
               states.forEach((possibleValue) => {
@@ -12653,6 +12653,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             trigger.isEnabled = false;
                             trigger.targetValue = undefined;
                           }
+                          trigger[item] = commandOptions.value;
                           trigger.targetFunction = commandOptions.function;
                           trigger.targetDestination = commandOptions.destination;
                           currentMenuPosition = commandOptions.currentIndex.split('.');
