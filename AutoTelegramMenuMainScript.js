@@ -220,6 +220,8 @@ const cmdPrefix = 'cmd',
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
 const checkEmojiRegex = emojiRegex();
 
+const encodedStr = (rawStr) => rawStr.replace(/[\u00A0-\u9999<>\&]/g, (char) => '&#'+char.charCodeAt(0)+';');
+
 //*** ConfigOptions - begin ***//
 
 const cfgPrefix = 'cfg',
@@ -8673,7 +8675,7 @@ function triggersMenuItemDetailsCondition(user, menuItemToProcess) {
             },
             {
               label: ` ${translationsItemTextGet(user, 'operator')}`,
-              value: isDefined(operator) ? operator : '',
+              value: isDefined(operator) ? encodedStr(operator) : '',
             },
             {
               label: ` ${translationsItemTextGet(user, 'value')}`,
@@ -12551,7 +12553,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               currentEnumerationsList[commandOptions.item].group =
                 currentEnumerationsList[commandOptions.item].group === commandOptions.group ? '' : commandOptions.group;
             }
-            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
+            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.groupDataType, commandOptions.groupDataTypeExtraId));
             break;
           }
 
