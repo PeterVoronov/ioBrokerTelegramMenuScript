@@ -5811,12 +5811,34 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                 }
               }
             } else if (currentStateType === 'number') {
-              const step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : 1,
-                valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
+              const valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
                 valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined;
+              let
+                step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : undefined,
+                stepDecimalsCount = 0;
+              if (!isDefined(step)) {
+                const
+                  possibleStepMin = isDefined(valueMin) && (valueMin % 1 > 0) ? valueMin % 1 : 1,
+                  possibleStepMax = isDefined(valueMax) && (valueMax % 1 > 0) ? valueMax % 1 : 1;
+                step = possibleStepMin < possibleStepMax ? possibleStepMin : possibleStepMax;
+                if ((stateValue % 1 > 0) && (stateValue % 1 < step)) {
+                  step = stateValue % 1;
+                } else if (stateValue % step > 0) {
+                  step = stateValue % step;
+                };
+                const stepParts = step.toLocaleString('en-US').split('.');
+                stepDecimalsCount = stepParts.length === 1 ? 0 : stepParts[1].length;
+                if (stepDecimalsCount === 1) {
+                  step = step % 0.2 === 0 ? 0.2 : (step % 0.5 === 0 ? 0.5 : 0.1);
+                } else if (stepDecimalsCount === 2) {
+                  step = step % 0.02 === 0 ? 0.02 : (step % 0.05 === 0 ? 0.05 : 0.01);
+                } else if (stepDecimalsCount === 3) {
+                  step = step % 0.002 === 0 ? 0.002 : (step % 0.005 === 0 ? 0.005 : 0.001);
+                }
+              }
               for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
                 if ((!isDefined(valueMin) || value >= valueMin) && (!isDefined(valueMax) || value <= valueMax)) {
-                  states.push(value);
+                  states.push(value.toFixed(stepDecimalsCount));
                 }
               }
               subMenuItem.icon = '';
@@ -11368,16 +11390,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     if (timer) clearTimeout(timer);
     cachedValueSet(user, cachedCurrentState, '');
     telegramMessageDisplayPopUp(user, result.error ? result.error : translationsItemTextGet(user, 'MsgSuccess'));
-    if (!result.error || result.success) {
-      menuMenuItemsAndRowsClearCached(user);
-      if (isFromGetInput) {
-        menuMenuDraw(user, undefined, {
-          clearBefore: user.userId !== user.chatId,
-          clearUserMessage: user.userId === user.chatId,
-        });
-      } else {
-        menuMenuDraw(user);
-      }
+    menuMenuItemsAndRowsClearCached(user);
+    if (isFromGetInput) {
+      menuMenuDraw(user, undefined, {
+        clearBefore: user.userId !== user.chatId,
+        clearUserMessage: user.userId === user.chatId,
+      });
+    } else {
+      menuMenuDraw(user);
     }
   }
 
@@ -11417,8 +11437,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 Object.keys(currentStatePossibleValues),
               )}`,
             );
-            telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueNotInTheList'));
-            clearTimeout(timer);
+            setStateCallback(translationsItemTextGet(user, 'MsgValueNotInTheList'));
           }
         } else if (currentStateType === 'number') {
           const possibleNumber = Number(stateValue);
@@ -11428,18 +11447,15 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             warns(
               `Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currentObjectCommon)}`,
             );
-            telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-            clearTimeout(timer);
+            setStateCallback(translationsItemTextGet(user, 'MsgValueUnacceptable'));
           }
         } else {
-          clearTimeout(timer);
           warns(`Unsupported object type: '${currentStateType}'`);
-          telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgUnsupportedObjectType'));
+          setStateCallback(translationsItemTextGet(user, 'MsgUnsupportedObjectType'));
         }
       } else {
-        clearTimeout(timer);
         warns(`Unacceptable value '${stateValue}' for state conditions ${JSON.stringify(currentObject.common)}`);
-        telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+        setStateCallback(translationsItemTextGet(user, 'MsgValueUnacceptable'));
       }
     }
   }
@@ -15054,13 +15070,10 @@ function checkNumberStateValue(stateId, value, stateObject) {
     const currentObjectCommon = currentObject.common,
       currentType = currentObjectCommon['type'];
     if (currentType === 'number') {
-      const currentStateValuesStep = currentObjectCommon.hasOwnProperty('step')
-        ? Number(currentObjectCommon['step'])
-        : 1;
       return (
         (!isDefined(currentObjectCommon.min) || value >= Number(currentObjectCommon.min)) &&
         (!isDefined(currentObjectCommon.max) || value <= Number(currentObjectCommon.max)) &&
-        value % currentStateValuesStep === 0
+        (!isDefined(currentObjectCommon.step) || value % Number(currentObjectCommon.step) === 0)
       );
     }
   }
