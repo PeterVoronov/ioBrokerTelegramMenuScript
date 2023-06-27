@@ -220,7 +220,7 @@ const cmdPrefix = 'cmd',
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
 const checkEmojiRegex = emojiRegex();
 
-const encodedStr = (rawStr) => rawStr.replace(/[\u00A0-\u9999<>\&]/g, (char) => '&#'+char.charCodeAt(0)+';');
+const encodedStr = (rawStr) => rawStr.replace(/[\u00A0-\u9999<>\&]/g, (char) => '&#' + char.charCodeAt(0) + ';');
 
 //*** ConfigOptions - begin ***//
 
@@ -5813,27 +5813,25 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             } else if (currentStateType === 'number') {
               const valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
                 valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined;
-              let
-                step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : undefined,
+              let step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : undefined,
                 stepDecimalsCount = 0;
               if (!isDefined(step)) {
-                const
-                  possibleStepMin = isDefined(valueMin) && (valueMin % 1 > 0) ? valueMin % 1 : 1,
-                  possibleStepMax = isDefined(valueMax) && (valueMax % 1 > 0) ? valueMax % 1 : 1;
+                const possibleStepMin = isDefined(valueMin) && valueMin % 1 > 0 ? valueMin % 1 : 1,
+                  possibleStepMax = isDefined(valueMax) && valueMax % 1 > 0 ? valueMax % 1 : 1;
                 step = possibleStepMin < possibleStepMax ? possibleStepMin : possibleStepMax;
-                if ((stateValue % 1 > 0) && (stateValue % 1 < step)) {
+                if (stateValue % 1 > 0 && stateValue % 1 < step) {
                   step = stateValue % 1;
                 } else if (stateValue % step > 0) {
                   step = stateValue % step;
-                };
+                }
                 const stepParts = step.toLocaleString('en-US').split('.');
                 stepDecimalsCount = stepParts.length === 1 ? 0 : stepParts[1].length;
                 if (stepDecimalsCount === 1) {
-                  step = step % 0.2 === 0 ? 0.2 : (step % 0.5 === 0 ? 0.5 : 0.1);
+                  step = step % 0.2 === 0 ? 0.2 : step % 0.5 === 0 ? 0.5 : 0.1;
                 } else if (stepDecimalsCount === 2) {
-                  step = step % 0.02 === 0 ? 0.02 : (step % 0.05 === 0 ? 0.05 : 0.01);
+                  step = step % 0.02 === 0 ? 0.02 : step % 0.05 === 0 ? 0.05 : 0.01;
                 } else if (stepDecimalsCount === 3) {
-                  step = step % 0.002 === 0 ? 0.002 : (step % 0.005 === 0 ? 0.005 : 0.001);
+                  step = step % 0.002 === 0 ? 0.002 : step % 0.005 === 0 ? 0.005 : 0.001;
                 }
               }
               for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
@@ -5861,7 +5859,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               });
               subSubMenuIndex = subMenuItem.submenu.push({
                 index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${translationsItemMenuGet(user, 'SetValue')} (${stateValue ? stateValue : ''}${
+                name: `${translationsItemMenuGet(user, 'SetValue')} (${isDefined(stateValue) ? stateValue : ''}${
                   stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
                 })`,
                 icon: iconItemEdit,
@@ -12569,7 +12567,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               currentEnumerationsList[commandOptions.item].group =
                 currentEnumerationsList[commandOptions.item].group === commandOptions.group ? '' : commandOptions.group;
             }
-            enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.groupDataType, commandOptions.groupDataTypeExtraId));
+            enumerationsSave(
+              enumerationsGetPrimaryDataType(commandOptions.groupDataType, commandOptions.groupDataTypeExtraId),
+            );
             break;
           }
 
@@ -13823,11 +13823,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeDeviceButtons:
           case dataTypeDeviceStatesAttributes: {
             const currentEnumerationsList = enumerationsGetList(
-                commandOptions.dataType,
-                commandOptions.dataTypeExtraId,
-              );
-            const
-              currentOrder = currentEnumerationsList[commandOptions.item].order,
+              commandOptions.dataType,
+              commandOptions.dataTypeExtraId,
+            );
+            const currentOrder = currentEnumerationsList[commandOptions.item].order,
               newOrder = currentOrder + (currentCommand === cmdItemMoveUp ? -1 : 1);
             const newItem = Object.keys(currentEnumerationsList).find((cItem) => {
               return currentEnumerationsList[cItem].order === newOrder;
