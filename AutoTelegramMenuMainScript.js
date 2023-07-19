@@ -220,7 +220,7 @@ const cmdPrefix = 'cmd',
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
 const checkEmojiRegex = emojiRegex();
 
-const encodedStr = (rawStr) => rawStr.replace(/[\u00A0-\u9999<>\&]/g, (char) => '&#' + char.charCodeAt(0) + ';');
+const encodedStr = (rawStr) => rawStr.replace(/[<>\&]/g, (char) => '&#' + char.charCodeAt(0) + ';');
 
 //*** ConfigOptions - begin ***//
 
@@ -530,6 +530,7 @@ class ConfigOptions {
       this.globalConfig[cfgItem] = value;
       this.saveOption(cfgItem);
       if (cfgItem === cfgUpdateMessageTime) this.functionScheduleMenuMessageRenew(value);
+      if (cfgItem === cfgMenuRefreshInterval) this.setScheduler();
     }
   }
 
@@ -1235,7 +1236,7 @@ class ConfigOptions {
         ' * * * *';
       logs(`scheduleString = ${scheduleString}`);
       this.menuSchedule = schedule(scheduleString, () => {
-        this.functionScheduleMenuUpdate;
+        this.functionScheduleMenuUpdate();
       });
     }
   }
@@ -4894,7 +4895,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
 
       case 'stateAttributes': {
         subMenuIndex = subMenu.push({
-          index: `${currentIndex}.${devicesMenuIndex}`,
+          index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
           accessLevel: currentAccessLevel,
           options: {
@@ -5224,6 +5225,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             subMenuIndex = subMenu.push(subMenuItem);
           });
         }
+
         currentIds.forEach((currentId) => {
           const currentTranslationShortId = currentId.split('.').join('_'),
             currentTranslationId = `${translationType}.${currentTranslationShortId}`;
@@ -8695,7 +8697,7 @@ function triggersMenuItemDetailsCondition(user, menuItemToProcess) {
             },
             {
               label: ` ${translationsItemTextGet(user, 'operator')}`,
-              value: isDefined(operator) ? encodedStr(operator) : '',
+              value: isDefined(operator) ? operator : '',
             },
             {
               label: ` ${translationsItemTextGet(user, 'value')}`,
@@ -8784,12 +8786,12 @@ function triggersCheckConditions(conditions) {
             const currentValue = stateValue.val;
             switch (operator) {
               case '==': {
-                check = currentValue === value;
+                check = currentValue == value;
                 break;
               }
 
               case '!=': {
-                check = currentValue !== value;
+                check = currentValue != value;
                 break;
               }
 
@@ -8804,12 +8806,12 @@ function triggersCheckConditions(conditions) {
               }
 
               case '<': {
-                check = currentValue <= value;
+                check = currentValue < value;
                 break;
               }
 
               case '<=': {
-                check = currentValue >= value;
+                check = currentValue <= value;
                 break;
               }
             }
@@ -10561,7 +10563,7 @@ function menuMenuItemDetailsPrintFixedLengthLines(user, linesArray) {
     }
     text += `${text ? '\n' : ''}${label}${value}`;
   });
-  return text;
+  return encodedStr(text);
 }
 
 //*** menu items related functions - end ***//
@@ -10775,10 +10777,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             : '') +
           menuMenuItemGetIcon(user, menuItemToProcess) +
           menuItemToProcess.name;
+        messageObject.message = encodedStr(messageObject.message);
         if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
           let menuText = menuItemToProcess.text;
           if (typeOf(menuText, 'function')) menuText = menuText(user, menuItemToProcess);
-          if (typeOf(menuText, 'string') && menuText) messageObject.message += '\n' + menuText;
+          if (typeOf(menuText, 'string') && menuText) messageObject.message += `\n${menuText}`;
         }
         messageObject.buttons = [];
         let currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
@@ -10798,7 +10801,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             }
           }
         }
-        if (currentIndex && currentIndex.length > 44) {
+        if (currentIndex && currentIndex.length > 40) {
           currentIndex = currentIndex.replace(messageObject.index, messageObject.shortIndex);
           currentBackIndex = currentIndex.split('.').slice(0, -1).join('.');
         }
@@ -11076,16 +11079,18 @@ function menuMenuClose(user) {
  */
 function menuMenuUpdateBySchedule() {
   const usersIds = usersInMenu.getUsers();
+  // logs(`try to refresh menu for users ${usersIds}`, _l);
   for (const userId of usersIds) {
     const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
+      // logs(`for user = ${JSON.stringify(userId)} menu on pos ${JSON.stringify(itemPos)}`, _l);
       if (!cachedValueGet(user, cachedIsWaitForInput) && isDefined(itemPos)) {
-        logs('make an menu update for = ' + JSON.stringify(user));
+        logs(`make an menu update for = ${JSON.stringify(user)}`);
         menuMenuDraw(user);
       }
     } else {
-      logs('for user = ' + JSON.stringify(userId) + ' menu is closed');
+      logs(`for user = ${JSON.stringify(userId)} menu is closed`);
     }
   }
 }
