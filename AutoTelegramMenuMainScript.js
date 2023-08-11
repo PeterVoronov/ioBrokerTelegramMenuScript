@@ -35,7 +35,8 @@ const emojiRegex = require('emoji-regex');
 const _l = true;
 
 /*** Make functions to be printable in JSON.stringify with names ***/
-Object.defineProperty(Function.prototype, 'toJSON', {
+
+Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
   // eslint-disable-next-line space-before-function-paren
   value: function () {
     return `function ${this.name}`;
@@ -43,13 +44,13 @@ Object.defineProperty(Function.prototype, 'toJSON', {
 });
 
 /*** Make RegExp to be printable in JSON.stringify with names ***/
-Object.defineProperty(RegExp.prototype, 'toJSON', {
+Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
   value: RegExp.prototype.toString,
 });
 
 /*** Make new method `format` to be available for the Date object ***/
 /*** Make RegExp to be printable in JSON.stringify with names ***/
-Object.defineProperty(RegExp.prototype, 'toJSON', {
+Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
   value: RegExp.prototype.toString,
 });
 
@@ -438,7 +439,7 @@ class ConfigOptions {
    */
   getOptionWithModifier(cfgItem, user) {
     let result = this.getOption(cfgItem, user);
-    switch (cfgItem) {
+    switch (cfgItem) { // NOSONAR
       case cfgSummaryTextLengthMax:
         if (
           user.userId != user.chatId &&
@@ -626,7 +627,7 @@ class ConfigOptions {
         result = `${value}`;
       }
       const currentMask = this.getMask(cfgItem);
-      switch (typeOf(currentMask)) {
+      switch (typeOf(currentMask)) { // NOSONAR
         case 'regexp':
           result = currentMask?.test(result) ? result : undefined;
           break;
@@ -959,7 +960,7 @@ class ConfigOptions {
                   const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
                     {scope: optionScope, value: currentLanguage} = menuItemToProcess.options;
                   Object.keys(translationsList)
-                    .sort()
+                    .sort() // NOSONAR
                     .forEach((languageId) => {
                       const subMenuItem = {
                         index: `${currentIndex}.${subMenuIndex}`,
@@ -1446,7 +1447,7 @@ class MenuRoles {
   sortRoles(roles) {
     let sortedRoles = {};
     Object.keys(roles)
-      .sort()
+      .sort() // NOSONAR
       .forEach((roleId) => {
         sortedRoles[roleId] = roles[roleId];
       });
@@ -1987,7 +1988,7 @@ class MenuRoles {
         index: `${currentIndex}`,
         name: `${menuItemToProcess.name}${menuItemToProcess.icon ? ` ${menuItemToProcess.icon}` : ''}`,
         icon: iconItemButton,
-        group: holderItemId ? holderItemId : menuButtonsDefaultGroup,
+        group: holderItemId || menuButtonsDefaultGroup,
         text: (user, _menuItemToProcess) => MenuRoles.#ruleDetails(user, cachedValueGet(user, cachedRolesNewRule)),
         submenu: new Array(),
       };
@@ -3025,7 +3026,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
   let result = '';
   if (cachedValueExists(user, cachedTranslationsToUpload)) {
     const translationInputFull = cachedValueGet(user, cachedTranslationsToUpload),
-      _translationInputLanguage = translationInputFull.hasOwnProperty('language')
+      _translationInputLanguage = translationInputFull.hasOwnProperty('language') // NOSONAR
         ? translationsValidateLanguageId(translationInputFull.language)
         : '',
       translationInputVersionCompare = translationsCompareVersion(translationInputFull['version']);
@@ -3041,7 +3042,7 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
       if (translationPossibleUpdateModes.includes(translationUpdateMode)) {
         const translationInput = translationInputFull[idTranslation];
         translationCurrentParts.forEach((translationPart) => {
-          if (translationPart.indexOf(prefixExtensionId) === 0) {
+          if (translationPart.startsWith(prefixExtensionId)) {
             const extensionId = translationPart.replace(prefixExtensionId, '').toLowerCase();
             if (extensionId) {
               if (!translationCurrent.hasOwnProperty(idFunctions)) translationCurrent[idFunctions] = {};
@@ -3141,23 +3142,19 @@ function translationsPointOnItemOwner(user, translationId, pointOnItemItself = f
 function translationsItemGet(user, translationId) {
   const currentTranslation = translationsPointOnItemOwner(user, translationId),
     translationIdArray = translationId ? translationId.split('.') : [],
-    idPrefix = translationIdArray.length ? translationIdArray[0] : '',
     shortId = translationIdArray.pop();
   if (translationId && shortId && currentTranslation) {
     if (!currentTranslation.hasOwnProperty(shortId)) {
       warns(
         `translationId '${translationId}' is not found. getFromTranslation is called from ${
-          arguments?.callee?.caller ? arguments.callee.caller.name : ''
+          arguments?.callee?.caller?.name ? arguments.callee.caller.name : '' // NOSONAR
         }`,
       );
       currentTranslation[shortId] = translationId;
       translationsSave(user);
     } else if (
-      (translationId.indexOf(translationsCommonFunctionsAttributesPrefix) !== 0 &&
-        currentTranslation[shortId].indexOf(translationsCommonFunctionsAttributesPrefix) === 0) ||
-      (idPrefix &&
-        translationId.indexOf(translationsCommonFunctionsAttributesPrefix) !== 0 &&
-        currentTranslation[shortId].indexOf(translationsCommonFunctionsAttributesPrefix) === 0)
+      !translationId.startsWith(translationsCommonFunctionsAttributesPrefix)  &&
+        currentTranslation[shortId].startsWith(translationsCommonFunctionsAttributesPrefix)
     ) {
       return translationsItemGet(user, currentTranslation[shortId]);
     }
@@ -3441,8 +3438,8 @@ function translationsGetForExtension(user, extensionId) {
   let translations = {};
   if (extensionId) {
     let extensionFunctionId = extensionId;
-    if (extensionFunctionId.indexOf(prefixExtensionId) === 0) {
-      extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, '');
+    if (extensionFunctionId.startsWith(prefixExtensionId)) {
+      extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, '');// NOSONAR
     } else {
       extensionId = `${prefixExtensionId}.${stringCapitalize(extensionId)}`;
     }
@@ -3495,7 +3492,7 @@ function translationsCheckAndCacheUploadedFile(
         try {
           inputTranslation = typeOf(inputTranslation, 'string') ? JSON.parse(inputTranslation) : inputTranslation;
           const currentLanguage = translationsValidateLanguageId(inputTranslation.language);
-          translationFileName = translationFileName ? translationFileName : `locale_${currentLanguage}.json`;
+          translationFileName = translationFileName || `locale_${currentLanguage}.json`;
           if (
             inputTranslation.type === translationsType &&
             inputTranslation.version === translationsVersion &&
@@ -3543,7 +3540,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
       {translationPart: currentPart} = menuItemToProcess.options,
       currentLanguage = inputTranslation ? translationsValidateLanguageId(inputTranslation.language) : '',
       currentUploadMode = menuItemToProcess.id,
-      _currentVersion = inputTranslation ? inputTranslation.version : '';
+      _currentVersion = inputTranslation ? inputTranslation.version : ''; // NOSONAR
     if (currentLanguage && inputTranslation.translation) {
       const translationParts = currentPart ? [currentPart] : [...translationsTopItems, doAll];
       translationParts.forEach((translationPart) => {
@@ -3617,7 +3614,7 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
   if (cachedValueExists(user, cachedTranslationsToUpload)) {
     const inputTranslation = cachedValueGet(user, cachedTranslationsToUpload),
       currentLanguage = translationsValidateLanguageId(inputTranslation.language),
-      _currentVersion = inputTranslation.version;
+      _currentVersion = inputTranslation.version; // NOSONAR
     currentItemDetailsList.push({
       label: translationsItemCoreGet(user, 'cfgMenuLanguage'),
       value: configOptions.getOption(cfgMenuLanguage, user),
@@ -3650,10 +3647,10 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
   Object.keys(currentTranslation)
-    .filter((key) => key.indexOf(translationType) === 0)
-    .sort()
+    .filter((key) => key.startsWith(translationType))
+    .sort() // NOSONAR
     .forEach((translationKey) => {
-      if (!translationKey.includes('.') && translationKey.indexOf(translationType) === 0) {
+      if (!translationKey.includes('.') && translationKey.startsWith(translationType)) {
         let subSubMenuIndex = 0,
           subMenuItem = {
             index: `${currentIndex}.${subMenuIndex}`,
@@ -3711,9 +3708,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
       dataType: currentDataType,
       translationPrefix,
     } = menuItemToProcess.options,
-    translationType = translationPrefix
-      ? translationPrefix
-      : `${idFunctions}.${currentFunctionEnum}.${currentFunctionId.replace('.', '_')}`,
+    translationType = translationPrefix || `${idFunctions}.${currentFunctionEnum}.${currentFunctionId.replace('.', '_')}`,
     currentTranslation = translationsPointOnItemOwner(user, translationType, true),
     deviceAttributesListKeys =
       currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId)
@@ -3740,7 +3735,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
     )
     .filter(
       (translationKey) =>
-        !currentFunctionId || currentDeviceListKeys.find((attrId) => translationKey.indexOf(attrId) === 0),
+        !currentFunctionId || currentDeviceListKeys.find((attrId) => translationKey.startsWith(attrId)),
     )
     .forEach((translationKey, translationKeyIndex) => {
       const currentTranslationId = `${translationType}.${translationKey}`;
@@ -3886,7 +3881,6 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     extensionId = menuItemToProcess.id,
     translationType = `${idFunctions}.${idExternal}.${extensionId}.${translationsSubPrefix}`,
-    _currentTranslation = translationsPointOnItemOwner(user, translationType, true),
     currentTranslationKeys = enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId)
       ? enumerationsList[dataTypeFunction].list[extensionId].translationsKeys
       : [];
@@ -4044,7 +4038,7 @@ function cachedGetValueId(user, valueId) {
 function cachedValueExists(user, valueId) {
   const id = cachedGetValueId(user, valueId);
   if (id) {
-    if (valueId.indexOf(prefixExternalStates) === 0) valueId = prefixExternalStates;
+    if (valueId.startsWith(prefixExternalStates)) valueId = prefixExternalStates;
     return cachedValuesMap.has(id) || (cachedValuesStatesCommonAttributes.hasOwnProperty(valueId) && existsState(id));
   }
   return false;
@@ -4062,7 +4056,7 @@ function cachedValueGet(user, valueId, getLastChange = false) {
   const id = cachedGetValueId(user, valueId);
   let result, stateLastChange;
   if (id) {
-    if (valueId.indexOf(prefixExternalStates) === 0) valueId = prefixExternalStates;
+    if (valueId.startsWith(prefixExternalStates)) valueId = prefixExternalStates;
     if ((!cachedValuesMap.has(id) || getLastChange) && cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
       if (existsState(id)) {
         const currentState = getState(id);
@@ -4122,7 +4116,7 @@ function cachedValueSet(user, valueId, value) {
     ) {
       cachedValuesMap.set(id, value);
       const common = {};
-      if (valueId.indexOf(prefixExternalStates) === 0) {
+      if (valueId.startsWith(prefixExternalStates)) {
         common.name = `${cachedValuesStatesCommonAttributes[prefixExternalStates].name} ${valueId}`;
         valueId = prefixExternalStates;
       }
@@ -4458,7 +4452,7 @@ const enumerationsNamesMain = 'Main',
  */
 function enumerationsCompareOrderOfItems(a, b, enumerationType, enumerationList) {
   if (enumerationList || enumerationsList.hasOwnProperty(enumerationType)) {
-    const itemsList = enumerationList ? enumerationList : enumerationsList[enumerationType].list;
+    const itemsList = enumerationList || enumerationsList[enumerationType].list;
     if (itemsList.hasOwnProperty(a) && itemsList.hasOwnProperty(b)) {
       return itemsList[a].order - itemsList[b].order;
     } else if (itemsList.hasOwnProperty(a)) {
@@ -4575,7 +4569,7 @@ function enumerationsInit(enumerationType, withExtensions = false) {
               currentItemPosition++;
             } while (
               currentItemPosition < countItems &&
-              currentEnumerationIds[currentItemPosition].indexOf(holderItemId) === 0
+              currentEnumerationIds[currentItemPosition].startsWith(holderItemId)
             );
             if (currentItemPosition < countItems) {
               for (let itemIndex = currentItemPosition; itemIndex < countItems; itemIndex++) {
@@ -5015,7 +5009,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
               icon: iconItemEdit,
-              group: enumerationItemAttr.indexOf('icon') === 0 ? 'icon' : menuButtonsDefaultGroup,
+              group: enumerationItemAttr.startsWith('icon') ? 'icon' : menuButtonsDefaultGroup,
               submenu: new Array(),
             },
             currentHolder = currentEnumerationItem[enumerationItemAttr];
@@ -5064,7 +5058,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       }
 
       default: {
-        switch (typeof currentEnumerationItem[enumerationItemAttr]) {
+        switch (typeof currentEnumerationItem[enumerationItemAttr]) { // NOSONAR
           case 'boolean': {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
@@ -5103,7 +5097,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 attribute: enumerationItemAttr,
                 dataTypeExtraId: enumerationTypeExtraId,
               },
-              group: enumerationItemAttr.indexOf('icon') === 0 ? 'icon' : menuButtonsDefaultGroup,
+              group: enumerationItemAttr.startsWith('icon') ? 'icon' : menuButtonsDefaultGroup,
               submenu: new Array(),
             };
             if (isCurrentAccessLevelAllowModify && enumerationItemAttributesWithReset.includes(enumerationItemAttr)) {
@@ -5784,7 +5778,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
               if (isDefined(states) && Object.keys(states).length > 0) {
                 subMenuItem.icon = '';
-                for (const [possibleValue, _possibleName] of Object.entries(states)) {
+                for (const [possibleValue, _possibleName] of Object.entries(states)) { // NOSONAR
                   const subSubMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue})}`,
@@ -6056,7 +6050,7 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
 function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShortId, convertValueCodeToTest) {
   let result = true,
     isStateToTestOnFound = false,
-    stateToTestValue = undefined;
+    stateToTestValue;
   const functionsList = enumerationsList[dataTypeFunction].list,
     destinationsList = enumerationsList[dataTypeDestination].list,
     destinationsListIds = Object.keys(destinationsList).filter((itemId) => destinationsList[itemId].isEnabled),
@@ -6107,7 +6101,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
     currObject.hasOwnProperty('_id') &&
     currObject.hasOwnProperty('common')
   ) {
-    skipCodeConversion = skipCodeConversion ? skipCodeConversion : false;
+    skipCodeConversion = skipCodeConversion || false;
     const currentId = currObject._id,
       currentFunction = enumerationsList[dataTypeFunction].list[functionId],
       currentAttributeId = currentId.split('.').slice(-currentFunction.statesSectionsCount).join('.'),
@@ -6251,7 +6245,7 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
  */
 function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
   const enumerationPrimaryType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId);
-  let currentList = undefined;
+  let currentList;
   if (enumerationTypeExtraId) {
     if (enumerationType === dataTypePrimaryEnums) {
       currentList = enumerationsList[enumerationPrimaryType].enums;
@@ -6292,7 +6286,7 @@ function enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId)
  * @returns {object}
  */
 function enumerationsGetDeviceState(enumerationType, enumerationTypeExtraId) {
-  let currentDeviceState = undefined;
+  let currentDeviceState;
   if (typeOf(enumerationTypeExtraId, 'object')) {
     if (
       enumerationTypeExtraId.hasOwnProperty('dataType') &&
@@ -6699,7 +6693,7 @@ function alertsGet() {
       try {
         alertsRules = JSON.parse(alertsState.val, JSONReviverWithMap);
       } catch (err) {
-        // cachedStates[id] = cachedVal;
+        // NOSONAR // cachedStates[id] = cachedVal;
         warns(`Alert parse error - ${JSON.stringify(err)}`);
         alertsRules = {};
       }
@@ -6863,7 +6857,7 @@ function alertsInit(checkStates = false) {
 function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) {
   const alertMessages = alertsHistoryClearOld(user);
   alertMessages.push({
-    ack: isAcknowledged ? true : false,
+    ack: !!isAcknowledged,
     id: alertId,
     message: alertMessage,
     // @ts-ignore
@@ -6872,7 +6866,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) 
   alertsStoreMessagesToCache(user, alertMessages);
   const itemPos = cachedValueGet(user, cachedMenuItem),
     isMenuOn = cachedValueGet(user, cachedMenuOn),
-    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
+    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
       user,
       cachedBotSendMessageId,
       timeDelta96,
@@ -7344,7 +7338,6 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     currentAccessLevel = menuItemToProcess.accessLevel,
-    _isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     options = menuItemToProcess.options,
     {mode, function: functionId, destination: destinationId, item: deviceId} = options,
     levelFirstId = isFunctionsFirst ? functionId : destinationId,
@@ -7408,7 +7401,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
           .filter(
             (levelId) =>
               !levelFirstId ||
-              (isLevelFirstIdHolder && levelId !== levelFirstId && levelId.indexOf(levelFirstId) === 0),
+              (isLevelFirstIdHolder && levelId !== levelFirstId && levelId.startsWith(levelFirstId)),
           )
           .sort((a, b) => levelFirstList[a].order - levelFirstList[b].order)
           .forEach((alertLevel) => {
@@ -7438,7 +7431,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
             .filter(
               (levelId) =>
                 !levelSecondId ||
-                (isLevelSecondIdHolder && levelId !== levelSecondId && levelId.indexOf(levelSecondId) === 0),
+                (isLevelSecondIdHolder && levelId !== levelSecondId && levelId.startsWith(levelSecondId)),
             )
             .sort((a, b) => levelSecondList[a].order - levelSecondList[b].order)
             .forEach((alertLevel) => {
@@ -7465,7 +7458,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
         const objectsIdList = alertsListPrepared[levelFirstId][levelSecondId];
         if (objectsIdList)
           Object.keys(objectsIdList)
-            .sort()
+            .sort() // NOSONAR
             .forEach((objectId) => {
               levelMenuIndex = subMenu.push({
                 index: `${currentIndex}.${levelMenuIndex}`,
@@ -8178,7 +8171,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
  * @returns {object} The Menu Item as object.
  */
 function triggersMenuItemGenerateSetPrimaryValue(user, upperItemIndex, itemIndex, currentObject, triggers, options) {
-  let menuItem = undefined;
+  let menuItem;
   if (currentObject?.common) {
     const currentObjectCommon = currentObject.common,
       {function: functionId, type, convertValueCode, itemName, itemIcon, itemGroup, mode} = options;
@@ -8601,7 +8594,7 @@ function triggersMenuGenerateManageCondition(user, menuItemToProcess) {
           targetSubType = triggersGetStateCommonType(stateId, stateObject),
           operatorName = translationsItemTextGet(user, 'operator'),
           operatorsMap = new Map();
-        triggersConditionOperators.slice(0, targetSubType !== 'number' ? 2 : undefined).forEach((operator) => {
+        triggersConditionOperators.slice(0, targetSubType !== 'number' ? 2 : undefined).forEach((operator) => { // NOSONAR
           operatorsMap.set(operator, operator);
         });
         subMenuIndex = subMenu.push(
@@ -8835,7 +8828,7 @@ let _backupScheduleReference;
  */
 function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
   const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
-    _currentId = menuItemToProcess.id,
+    _currentId = menuItemToProcess.id, // NOSONAR
     currentAccessLevel = menuItemToProcess.accessLevel,
     backupFiles = backupGetFolderList();
   let subMenu = [],
@@ -8870,8 +8863,8 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
             ? {}
             : {command: cmdNoOperation};
       backupFiles.forEach((fileName, fileIndex) => {
-        const backupFileDetails = fileName.match(backupFileMask),
-          [_fullName, backupDate, backupTime, backupMode] =
+        const backupFileDetails = RegExp(backupFileMask).exec(fileName),
+          [_fullName, backupDate, backupTime, backupMode] = // NOSONAR
             backupFileDetails && backupFileDetails.length === 4 ? backupFileDetails : [];
         if (backupDate && backupTime && backupMode) {
           restoreSubMenu.submenu.push({
@@ -8970,7 +8963,7 @@ async function backupFileRead(backupFileName) {
         warns(`Cant' read backup file ${backupFileName}! Error is '${error}'.`);
         reject(error);
       } else {
-        // warns(`Backup file ${backupFileName} is created successfully.`);
+        // NOSONAR // warns(`Backup file ${backupFileName} is created successfully.`);
         resolve(data ? `${data}` : '');
       }
     });
@@ -9144,7 +9137,7 @@ function backupGetFolderList() {
       currentDir.replace(adapterSubPath, nodePath.join('iobroker-data', 'files', '0_userdata.0', backupFolder)),
     );
     const listOfBackups = nodeFS.readdirSync(backupDir);
-    result = listOfBackups.filter((fileName) => backupFileMask.test(fileName)).sort();
+    result = listOfBackups.filter((fileName) => backupFileMask.test(fileName)).sort(); // NOSONAR
   }
   return result;
 }
@@ -9237,7 +9230,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             Object.keys(enumerationsList[dataTypeDestination].list)
               .filter((key) => enumerationsList[dataTypeDestination].list[key].isEnabled)
               .forEach((key) => {
-                const _isSelected = queryDests.includes(key) ? '|' : '';
+                const _isSelected = queryDests.includes(key) ? '|' : ''; // NOSONAR
                 subMenuIndex = subMenu.push({
                   index: `${currentIndex}.${subMenuIndex}`,
                   name: `${translationsGetEnumName(user, dataTypeDestination, key)}`,
@@ -9510,8 +9503,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
       Array.isArray(reportObject.common['members']) &&
       reportObject.common['members'].length
     ) {
-      const reportStatesList = reportObject.common['members'].sort(),
-        _funcsList = enumerationsList[dataTypeFunction].list,
+      const reportStatesList = reportObject.common['members'].sort(), // NOSONAR
         isAlwaysExpanded = reportsList.list[reportId].alwaysExpanded;
       let reportStatesStructure = simpleReportPrepareStructure(reportStatesList);
       const reportLines = new Array();
@@ -9584,7 +9576,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
       Array.isArray(reportObject.common['members']) &&
       reportObject.common['members'].length
     ) {
-      const reportStatesList = reportObject.common['members'].sort();
+      const reportStatesList = reportObject.common['members'].sort(); // NOSONAR
       let shortStates = reportStatesList
         .map((state) => state.split('.').pop())
         .reduce((previousState, currentState) => {
@@ -10370,7 +10362,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)
       .forEach((currentLevelMenuItemId) => {
         if (currentLevelMenuItemId?.includes('.')) {
-          const [holderId, _subordinatedId] = currentLevelMenuItemId.split('.');
+          const [holderId, _subordinatedId] = currentLevelMenuItemId.split('.'); // NOSONAR
           if (!Object.keys(deviceList).includes(holderId)) {
             deviceList[holderId] = [];
           }
@@ -10379,7 +10371,6 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     Object.keys(deviceList)
       .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)
       .forEach((currentLevelMenuItemId) => {
-        // if (deviceList.hasOwnProperty(currentLevelMenuItemId)) {
         const menuItemId = `${primaryLevelMenuItemId}${rolesIdAndMaskDelimiter}${currentLevelMenuItemId}`,
           currentAccessLevel = user?.userId
             ? usersInMenu.getMenuItemAccess(user.userId, menuItemId, inverseMasks)
@@ -10480,7 +10471,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
                 holderItem.submenu.push(currentMenuItem);
               }
               /** can be used, instead of checking item in GenMenuRowToProcess by last index part **/
-              // holderItem.submenu = makeMenuIndexed(holderItem.submenu, holderItem.index);
+              // NOSONAR // holderItem.submenu = makeMenuIndexed(holderItem.submenu, holderItem.index);
             }
           } else {
             subMenu.push(currentMenuItem);
@@ -10562,7 +10553,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
   /**
    * Default situation for call to draw menu, outside the function (i.e. no iterative call)
    */
-  let topItemIndex = undefined;
+  let topItemIndex;
   if (!menuItemToProcess) {
     if (targetMenuPos) {
       cachedValueSet(user, cachedMenuItem, targetMenuPos);
@@ -10591,7 +10582,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         ? cachedValueGet(user, cachedMenuItemsAndRows)
         : [null, null, 0],
       savedPos = savedMenu?.index ? savedMenu.index.split('.') : null;
-    if (savedPos && targetMenuPos && targetMenuPos.join('.').indexOf(savedPos.join('.')) === 0) {
+    if (savedPos && targetMenuPos && targetMenuPos.join('.').startsWith(savedPos.join('.'))) {
       targetMenuPos = targetMenuPos.slice(savedPos.length);
       menuItemToProcess = savedMenu;
       messageObject = {...savedRows};
@@ -10694,7 +10685,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         if (
           subMenuMaxIndex > 0 &&
           (horizontalNavigation > 0 || configOptions.getOption(cfgShowHorizontalNavigation, user)) &&
-          !(horizontalNavigation < 0)
+          horizontalNavigation >= 0
         ) {
           if (subMenuPos > 0) {
             for (let itemPos = subMenuPos - 1; itemPos >= 0; itemPos--) {
@@ -10771,8 +10762,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           currentIndex = currentIndex.replace(messageObject.index, messageObject.shortIndex);
           currentBackIndex = currentIndex.split('.').slice(0, -1).join('.');
         }
-        const _isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
-          callbackDataToCache = new Map();
+        const callbackDataToCache = new Map();
         for (
           let buttonsIndex = 0;
           buttonsIndex < (buttonsCount > maxButtonsCount ? maxButtonsCount : buttonsCount);
@@ -11045,12 +11035,12 @@ function menuMenuClose(user) {
  */
 function menuMenuUpdateBySchedule() {
   const usersIds = usersInMenu.getUsers();
-  // logs(`try to refresh menu for users ${usersIds}`, _l);
+  // NOSONAR // logs(`try to refresh menu for users ${usersIds}`, _l);
   for (const userId of usersIds) {
     const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
-      // logs(`for user = ${JSON.stringify(userId)} menu on pos ${JSON.stringify(itemPos)}`, _l);
+      // NOSONAR // logs(`for user = ${JSON.stringify(userId)} menu on pos ${JSON.stringify(itemPos)}`, _l);
       if (!cachedValueGet(user, cachedIsWaitForInput) && isDefined(itemPos)) {
         logs(`make an menu update for = ${JSON.stringify(user)}`);
         menuMenuDraw(user);
@@ -11077,7 +11067,7 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
       clearSchedule(menuRefreshScheduled.get(idOfUser).reference);
       menuRefreshScheduled.delete(idOfUser);
     } else {
-      const currentUser = idOfUser ? idOfUser : menuRefreshTimeAllUsers;
+      const currentUser = idOfUser || menuRefreshTimeAllUsers;
       const scheduledRefresh = menuRefreshScheduled.has(currentUser)
         ? menuRefreshScheduled.get(currentUser)
         : {atTime: '', reference: null};
@@ -11118,12 +11108,12 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
       (idOfUser === menuRefreshTimeAllUsers && (!menuRefreshScheduled.has(userId) || forceNow || noDraw))
     ) {
       const user = telegramGenerateUserObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
-      const [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(
+      const [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
           user,
           cachedBotSendMessageId,
           timeDelta48,
         ),
-        [_lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld(
+        [_lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
           user,
           cachedBotSendMessageId,
           timeDelta24,
@@ -11327,11 +11317,7 @@ function commandsExtractCommandWithOptions(user, userInputString, commandsOption
   let currentOptions = {};
   const [currentCommand, currentCommandIndex] = commandsParamsUnpack(userInputString, [cmdNoOperation]);
   if (currentCommandIndex) {
-    const cachedLongCommands = commandsOptionsList
-      ? commandsOptionsList
-      : cachedValueExists(user, cachedCommandsOptionsList)
-      ? cachedValueGet(user, cachedCommandsOptionsList)
-      : undefined;
+    const cachedLongCommands = commandsOptionsList || cachedValueGet(user, cachedCommandsOptionsList);
     if (cachedLongCommands?.has(currentCommandIndex)) {
       currentOptions = cachedLongCommands.get(currentCommandIndex);
     }
@@ -11430,7 +11416,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   }
 
   const isWaitForInput = cachedValueGet(user, cachedIsWaitForInput),
-    userInput = isWaitForInput ? isWaitForInput : userInputToProcess,
+    userInput = isWaitForInput || userInputToProcess,
     menuMessageObject = {};
   let currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
@@ -11443,7 +11429,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (currentCommand) {
         case cmdItemUpload: {
-          switch (commandOptions.dataType) {
+          switch (commandOptions.dataType) { // NOSONAR
             case dataTypeTranslation: {
               const isTranslationFileOk = translationsCheckAndCacheUploadedFile(
                 user,
@@ -11501,7 +11487,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               const currentTranslation = translationsGetCurrentForUser(user);
               if (commandOptions.translationType && commandOptions.item && !commandOptions.index) {
                 const newPosition = Object.keys(currentTranslation)
-                  .filter((key) => !key.includes('.') && key.indexOf(commandOptions.item) === 0)
+                  .filter((key) => !key.includes('.') && key.startsWith(commandOptions.item))
                   .sort((a, b) => currentTranslation[a].localeCompare(currentTranslation[b]))
                   .indexOf(commandOptions.translationType);
                 if (newPosition >= 0) {
@@ -11637,7 +11623,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
             case dataTypeReportMember: {
               let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
-              queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
+              queryParams = queryParams || simpleReportQueryParamsTemplate();
               queryParams[commandOptions.item] = userInputToProcess;
               cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
               break;
@@ -11670,7 +11656,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       const currentMask = configOptions.getMask(commandOptions.item),
                         configItemMask = configOptions.getMaskDescription(commandOptions.item),
                         parsedValueArray = currentMask?.test(userInputToProcess)
-                          ? userInputToProcess.match(currentMask)
+                          ? RegExp(currentMask).exec(userInputToProcess)
                           : [],
                         parsedValue =
                           parsedValueArray &&
@@ -11976,7 +11962,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               if (index < length) {
                                 backStepsForCacheDelete -= 2;
                                 const condition = conditions[index];
-                                switch (subItem) {
+                                switch (subItem) { // NOSONAR
                                   case 'value': {
                                     if (Number.isNaN(userInputToProcess)) {
                                       warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
@@ -12222,7 +12208,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
 
               default: {
-                // menuMessageObject.message =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', commandOptions.dataType))} "${getFromTranslation(user, generateTextId(commandOptions.dataType, currentParam))}" = ${enumerationItems[commandOptions.dataType].list[currentItem][currentParam]}:`;
+                // NOSONAR // menuMessageObject.message =  `${getFromTranslation(user, generateTranslationIdForText('SetNewAttributeValue'))} ${getFromTranslation(user, generateTextId('for', commandOptions.dataType))} "${getFromTranslation(user, generateTextId(commandOptions.dataType, currentParam))}" = ${enumerationItems[commandOptions.dataType].list[currentItem][currentParam]}:`;
                 break;
               }
             }
@@ -12334,7 +12320,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 user,
                 'SetNewAttributeValue',
               )} '${currentName}' (${translationsItemTextGet(user, 'CurrentValue')} = ${
-                currentValue ? currentValue : iconItemNotFound
+                currentValue || iconItemNotFound
               }${stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''})`;
               if (stateObjectCommon.type === 'number') {
                 menuMessageObject.message += `, ${translationsItemTextGet(user, 'Number')}`; //
@@ -12465,7 +12451,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ) {
                 currentDataItem[commandOptions.attribute] = commandOptions.value;
               } else {
-                switch (typeOf(currentDataItem[commandOptions.attribute])) {
+                switch (typeOf(currentDataItem[commandOptions.attribute])) { // NOSONAR
                   case 'boolean': {
                     if (!isDefined(commandOptions.value)) {
                       currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
@@ -12544,7 +12530,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (commandOptions.item) {
+            switch (commandOptions.item) { // NOSONAR
               case cfgMenuLanguage:
                 configOptions.setOption(
                   commandOptions.item,
@@ -12850,7 +12836,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemUpload: {
-        switch (commandOptions.dataType) {
+        switch (commandOptions.dataType) { // NOSONAR
           case dataTypeTranslation:
             switch (commandOptions.uploadMode) {
               case doUploadDirectly: {
@@ -12920,7 +12906,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemDelete: {
-        switch (commandOptions.dataType) {
+        switch (commandOptions.dataType) { // NOSONAR
           default:
             currentMenuPosition.push(
               // @ts-ignore
@@ -13049,9 +13035,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (commandOptions.item) {
+            switch (commandOptions.item) { // NOSONAR
               case cfgMenuLanguage: {
-                switch (commandOptions.scope) {
+                switch (commandOptions.scope) { // NOSONAR
                   case configOptionScopeGlobal:
                     if (translationsList.hasOwnProperty(commandOptions.value)) {
                       delete translationsList[commandOptions.value];
@@ -13092,7 +13078,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 : undefined,
               currentRoleId = currentRole ? currentRole.roleId : commandOptions.roleId;
 
-            switch (currentRoleId) {
+            switch (currentRoleId) { // NOSONAR
               case commandOptions.roleId: {
                 let currentRules = currentRole
                   ? currentRole.rules
@@ -13168,7 +13154,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeReportMember: {
             let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
-            queryParams = queryParams ? queryParams : simpleReportQueryParamsTemplate();
+            queryParams = queryParams || simpleReportQueryParamsTemplate();
             switch (commandOptions.itemType) {
               case dataTypeDestination:
                 if (queryParams.queryDests.includes(commandOptions.item)) {
@@ -13254,7 +13240,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               );
               telegramMessageDisplayPopUp(
                 user,
-                updateTranslationResult ? updateTranslationResult : translationsItemTextGet(user, 'MsgSuccess'),
+                updateTranslationResult || translationsItemTextGet(user, 'MsgSuccess'),
               );
             } else {
               telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
@@ -13309,7 +13295,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       let toProcessState = false;
                       const currentStateEnumIds = currentStateObject['enumIds'];
                       if (currentStateEnumIds) {
-                        switch (propagateRange) {
+                        switch (propagateRange) { // NOSONAR
                           case alertPropagateFuncAndDest: {
                             toProcessState = currentStateEnumIds.includes(
                               `${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`,
@@ -13402,7 +13388,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (commandOptions.item) {
+            switch (commandOptions.item) { // NOSONAR
               case cfgMenuLanguage:
                 if (commandOptions.scope === configOptionScopeGlobal) {
                   const newLanguageId = commandOptions.value;
@@ -13508,7 +13494,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     Array.isArray(reportObject.common['members']) &&
                     reportObject.common['members'].length
                   ) {
-                    const reportStatesList = reportObject.common['members'].sort(),
+                    const reportStatesList = reportObject.common['members'].sort(), // NOSONAR
                       reportStatesStructure = simpleReportPrepareStructure(reportStatesList),
                       graphLines = graphTemplate.native.data.lines,
                       templateLine = graphLines.pop();
@@ -13707,7 +13693,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   threshold = undefined;
                 }
               }
-              switch (item) {
+              switch (item) { // NOSONAR
                 case alertMessageTemplateId: {
                   threshold[alertMessageTemplateId] = '';
                   break;
@@ -13738,7 +13724,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 backStepsForCacheDelete = -3;
               if (triggerIndex >= 0) {
                 const trigger = triggers[triggerIndex];
-                switch (item) {
+                switch (item) { // NOSONAR
                   case alertMessageTemplateId: {
                     trigger[alertMessageTemplateId] = '';
                     break;
@@ -13815,7 +13801,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               commandOptions.item,
               commandOptions.scope === configOptionScopeGlobal ? null : user,
             );
-            switch (commandOptions.item) {
+            switch (commandOptions.item) { // NOSONAR
               case cfgGraphsIntervals: {
                 const currentIntervalIndex = Number(commandOptions.index),
                   currentInterval = currentOptionArray[currentIntervalIndex],
@@ -13966,12 +13952,12 @@ function telegramGetGroupChats(activeOnly) {
     if (!isNaN(chatId) && chatId < 0) {
       if (activeOnly) {
         const user = telegramGenerateUserObjectFromId(undefined, chatId),
-          [_lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
+          [_lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
             user,
             cachedBotSendMessageId,
             timeDelta48,
           ),
-          [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
+          [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
             user,
             cachedLastMessage,
             timeDelta96,
@@ -14431,19 +14417,20 @@ function telegramQueueProcess(user, messageId) {
  * @param {number=} messageIdToDelete - The Telegram message unique id for the deletion.
  * @returns
  */
-function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegramObjectOnly = false, messageIdToDelete) {
+function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegramObjectOnly = false, messageIdToDelete = undefined) {
   const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
     user,
     cachedBotSendMessageId,
     timeDelta48,
   );
-  const messageId = messageIdToDelete
-    ? messageIdToDelete
-    : isUserMessageToDelete
-    ? cachedValueGet(user, cachedMessageId)
-    : isBotMessageOldOrNotExists
-    ? undefined
-    : lastBotMessageId;
+  let messageId;
+  if (isDefined(messageIdToDelete)) {
+    messageId = messageIdToDelete;
+  } else if (isUserMessageToDelete) {
+    messageId = cachedValueGet(user, cachedMessageId);
+  } else if (! isBotMessageOldOrNotExists) {
+    messageId = lastBotMessageId;
+  }
   if (messageId) {
     const telegramObject = {
       deleteMessage: {
@@ -14544,7 +14531,7 @@ function telegramGetUserIdForTelegram(user) {
 function telegramGenerateUserObjectFromId(userId, chatId) {
   let user = {
     userId: userId,
-    chatId: userId ? userId : chatId,
+    chatId: userId || chatId,
   };
   const cachedObject = cachedValueGet(user, cachedUser);
   if (
@@ -14659,7 +14646,7 @@ function telegramActionOnUserRequestRaw(obj) {
                 cachedValueDelete(user, cachedTelegramMessagesQueue);
               }
               /** and as we received command - the menu is on now **/
-              // setCachedState(user, cachedMenuOn, true);
+              // NOSONAR // setCachedState(user, cachedMenuOn, true);
             }
             cachedValueSet(user, cachedMessageId, messageId);
             commandsUserInputProcess(user, command);
@@ -15014,7 +15001,7 @@ function getObjectEnriched(id, enumId) {
  * @returns {boolean} The result of checks. If acceptable - it's true.
  */
 function checkNumberStateValue(stateId, value, stateObject) {
-  const currentObject = stateObject ? stateObject : getObjectEnriched(stateId);
+  const currentObject = stateObject || getObjectEnriched(stateId);
   if (isDefined(value) && currentObject && currentObject.common) {
     const currentObjectCommon = currentObject.common,
       currentType = currentObjectCommon['type'];
@@ -15109,7 +15096,7 @@ function objectKeysSort(inputObject) {
   let sortedObject = {};
   // Check for type of inputObject and sort by alphabetical order
   if (typeOf(inputObject) === 'object') {
-    const keys = Object.keys(inputObject).sort();
+    const keys = Object.keys(inputObject).sort(); // NOSONAR
     // Iterate through each key and copy values to sortedObject
     keys.forEach((id) => {
       // Recursive call of function when encountering object value
@@ -15149,7 +15136,7 @@ function getStringLength(string) {
  */
 function logs(txt, debug) {
   if (configOptions.getOption(cfgDebugMode) || isDefined(debug)) {
-    console.log((arguments?.callee?.caller?.name ? arguments.callee.caller.name : '') + ': ' + txt);
+    console.log((arguments?.callee?.caller?.name ? arguments.callee.caller.name : '') + ': ' + txt); // NOSONAR
   }
 }
 
@@ -15158,7 +15145,7 @@ function logs(txt, debug) {
  * @param {string} txt - The text to be logged.
  */
 function warns(txt) {
-  console.warn((arguments?.callee?.caller?.name ? arguments?.callee?.caller.name : '') + ': ' + txt);
+  console.warn((arguments?.callee?.caller?.name ? arguments?.callee?.caller.name : '') + ': ' + txt); // NOSONAR
 }
 
 /**
@@ -15166,7 +15153,7 @@ function warns(txt) {
  * @param {string} txt - The text to be logged.
  */
 function errs(txt) {
-  console.error((arguments?.callee?.caller?.name ? arguments.callee.caller.name : '') + ': ' + txt);
+  console.error((arguments?.callee?.caller?.name ? arguments.callee.caller.name : '') + ': ' + txt); // NOSONAR
 }
 
 /**
