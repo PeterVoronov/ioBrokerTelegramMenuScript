@@ -36,6 +36,7 @@ const _l = true;
 
 /*** Make functions to be printable in JSON.stringify with names ***/
 
+// prettier-ignore
 Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
   // eslint-disable-next-line space-before-function-paren
   value: function () {
@@ -44,12 +45,14 @@ Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
 });
 
 /*** Make RegExp to be printable in JSON.stringify with names ***/
+// prettier-ignore
 Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
   value: RegExp.prototype.toString,
 });
 
 /*** Make new method `format` to be available for the Date object ***/
 /*** Make RegExp to be printable in JSON.stringify with names ***/
+// prettier-ignore
 Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
   value: RegExp.prototype.toString,
 });
@@ -439,7 +442,7 @@ class ConfigOptions {
    */
   getOptionWithModifier(cfgItem, user) {
     let result = this.getOption(cfgItem, user);
-    switch (cfgItem) { // NOSONAR
+    switch (cfgItem) {
       case cfgSummaryTextLengthMax:
         if (
           user.userId != user.chatId &&
@@ -627,7 +630,7 @@ class ConfigOptions {
         result = `${value}`;
       }
       const currentMask = this.getMask(cfgItem);
-      switch (typeOf(currentMask)) { // NOSONAR
+      switch (typeOf(currentMask)) {
         case 'regexp':
           result = currentMask?.test(result) ? result : undefined;
           break;
@@ -3153,8 +3156,8 @@ function translationsItemGet(user, translationId) {
       currentTranslation[shortId] = translationId;
       translationsSave(user);
     } else if (
-      !translationId.startsWith(translationsCommonFunctionsAttributesPrefix)  &&
-        currentTranslation[shortId].startsWith(translationsCommonFunctionsAttributesPrefix)
+      !translationId.startsWith(translationsCommonFunctionsAttributesPrefix) &&
+      currentTranslation[shortId].startsWith(translationsCommonFunctionsAttributesPrefix)
     ) {
       return translationsItemGet(user, currentTranslation[shortId]);
     }
@@ -3439,7 +3442,7 @@ function translationsGetForExtension(user, extensionId) {
   if (extensionId) {
     let extensionFunctionId = extensionId;
     if (extensionFunctionId.startsWith(prefixExtensionId)) {
-      extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, '');// NOSONAR
+      extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, ''); // NOSONAR
     } else {
       extensionId = `${prefixExtensionId}.${stringCapitalize(extensionId)}`;
     }
@@ -3708,7 +3711,8 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
       dataType: currentDataType,
       translationPrefix,
     } = menuItemToProcess.options,
-    translationType = translationPrefix || `${idFunctions}.${currentFunctionEnum}.${currentFunctionId.replace('.', '_')}`,
+    translationType =
+      translationPrefix || `${idFunctions}.${currentFunctionEnum}.${currentFunctionId.replace('.', '_')}`,
     currentTranslation = translationsPointOnItemOwner(user, translationType, true),
     deviceAttributesListKeys =
       currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId)
@@ -5058,7 +5062,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       }
 
       default: {
-        switch (typeof currentEnumerationItem[enumerationItemAttr]) { // NOSONAR
+        switch (typeof currentEnumerationItem[enumerationItemAttr]) {
           case 'boolean': {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
@@ -5677,10 +5681,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
  */
 function enumerationsIsHistoryEnabledForState(stateObject, historyAdapterId) {
   const stateObjectCommon = stateObject ? stateObject.common : undefined;
-  return (
-    stateObjectCommon?.custom?.hasOwnProperty(historyAdapterId) &&
-    stateObjectCommon.custom[historyAdapterId]
-  );
+  return stateObjectCommon?.custom?.hasOwnProperty(historyAdapterId) && stateObjectCommon.custom[historyAdapterId];
 }
 
 /**
@@ -5778,7 +5779,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
               if (isDefined(states) && Object.keys(states).length > 0) {
                 subMenuItem.icon = '';
-                for (const [possibleValue, _possibleName] of Object.entries(states)) { // NOSONAR
+                for (const [possibleValue, _possibleName] of Object.entries(states)) {
                   const subSubMenuItem = {
                     index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
                     name: `${enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue})}`,
@@ -6866,7 +6867,7 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) 
   alertsStoreMessagesToCache(user, alertMessages);
   const itemPos = cachedValueGet(user, cachedMenuItem),
     isMenuOn = cachedValueGet(user, cachedMenuOn),
-    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
+    [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
       user,
       cachedBotSendMessageId,
       timeDelta96,
@@ -7400,8 +7401,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
           .filter((levelId) => levelFirstList[levelId].isEnabled && levelFirstList[levelId].isAvailable)
           .filter(
             (levelId) =>
-              !levelFirstId ||
-              (isLevelFirstIdHolder && levelId !== levelFirstId && levelId.startsWith(levelFirstId)),
+              !levelFirstId || (isLevelFirstIdHolder && levelId !== levelFirstId && levelId.startsWith(levelFirstId)),
           )
           .sort((a, b) => levelFirstList[a].order - levelFirstList[b].order)
           .forEach((alertLevel) => {
@@ -8594,6 +8594,7 @@ function triggersMenuGenerateManageCondition(user, menuItemToProcess) {
           targetSubType = triggersGetStateCommonType(stateId, stateObject),
           operatorName = translationsItemTextGet(user, 'operator'),
           operatorsMap = new Map();
+        // prettier-ignore
         triggersConditionOperators.slice(0, targetSubType !== 'number' ? 2 : undefined).forEach((operator) => { // NOSONAR
           operatorsMap.set(operator, operator);
         });
@@ -11108,12 +11109,12 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
       (idOfUser === menuRefreshTimeAllUsers && (!menuRefreshScheduled.has(userId) || forceNow || noDraw))
     ) {
       const user = telegramGenerateUserObjectFromId(userId > 0 ? userId : undefined, userId > 0 ? undefined : userId);
-      const [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
+      const [_lastBotMessageId48, isBotMessageOld48OrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
           cachedBotSendMessageId,
           timeDelta48,
         ),
-        [_lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
+        [_lastBotMessageId24, isBotMessageOld24OrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
           cachedBotSendMessageId,
           timeDelta24,
@@ -11429,7 +11430,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (currentCommand) {
         case cmdItemUpload: {
-          switch (commandOptions.dataType) { // NOSONAR
+          switch (commandOptions.dataType) {
             case dataTypeTranslation: {
               const isTranslationFileOk = translationsCheckAndCacheUploadedFile(
                 user,
@@ -11962,7 +11963,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               if (index < length) {
                                 backStepsForCacheDelete -= 2;
                                 const condition = conditions[index];
-                                switch (subItem) { // NOSONAR
+                                switch (subItem) {
                                   case 'value': {
                                     if (Number.isNaN(userInputToProcess)) {
                                       warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
@@ -12451,7 +12452,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ) {
                 currentDataItem[commandOptions.attribute] = commandOptions.value;
               } else {
-                switch (typeOf(currentDataItem[commandOptions.attribute])) { // NOSONAR
+                switch (typeOf(currentDataItem[commandOptions.attribute])) {
                   case 'boolean': {
                     if (!isDefined(commandOptions.value)) {
                       currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
@@ -12530,7 +12531,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (commandOptions.item) { // NOSONAR
+            switch (commandOptions.item) {
               case cfgMenuLanguage:
                 configOptions.setOption(
                   commandOptions.item,
@@ -12836,7 +12837,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemUpload: {
-        switch (commandOptions.dataType) { // NOSONAR
+        switch (commandOptions.dataType) {
           case dataTypeTranslation:
             switch (commandOptions.uploadMode) {
               case doUploadDirectly: {
@@ -12906,7 +12907,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemDelete: {
-        switch (commandOptions.dataType) { // NOSONAR
+        switch (commandOptions.dataType) {
           default:
             currentMenuPosition.push(
               // @ts-ignore
@@ -13035,9 +13036,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (commandOptions.item) { // NOSONAR
+            switch (commandOptions.item) {
               case cfgMenuLanguage: {
-                switch (commandOptions.scope) { // NOSONAR
+                switch (commandOptions.scope) {
                   case configOptionScopeGlobal:
                     if (translationsList.hasOwnProperty(commandOptions.value)) {
                       delete translationsList[commandOptions.value];
@@ -13078,7 +13079,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 : undefined,
               currentRoleId = currentRole ? currentRole.roleId : commandOptions.roleId;
 
-            switch (currentRoleId) { // NOSONAR
+            switch (currentRoleId) {
               case commandOptions.roleId: {
                 let currentRules = currentRole
                   ? currentRole.rules
@@ -13238,10 +13239,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 commandOptions.translationPart,
                 commandOptions.updateMode,
               );
-              telegramMessageDisplayPopUp(
-                user,
-                updateTranslationResult || translationsItemTextGet(user, 'MsgSuccess'),
-              );
+              telegramMessageDisplayPopUp(user, updateTranslationResult || translationsItemTextGet(user, 'MsgSuccess'));
             } else {
               telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
             }
@@ -13295,7 +13293,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       let toProcessState = false;
                       const currentStateEnumIds = currentStateObject['enumIds'];
                       if (currentStateEnumIds) {
-                        switch (propagateRange) { // NOSONAR
+                        switch (propagateRange) {
                           case alertPropagateFuncAndDest: {
                             toProcessState = currentStateEnumIds.includes(
                               `${prefixEnums}.${alertDestination.enum}.${alertDestinationId}`,
@@ -13388,7 +13386,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           case dataTypeConfig: {
-            switch (commandOptions.item) { // NOSONAR
+            switch (commandOptions.item) {
               case cfgMenuLanguage:
                 if (commandOptions.scope === configOptionScopeGlobal) {
                   const newLanguageId = commandOptions.value;
@@ -13693,7 +13691,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   threshold = undefined;
                 }
               }
-              switch (item) { // NOSONAR
+              switch (item) {
                 case alertMessageTemplateId: {
                   threshold[alertMessageTemplateId] = '';
                   break;
@@ -13724,7 +13722,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 backStepsForCacheDelete = -3;
               if (triggerIndex >= 0) {
                 const trigger = triggers[triggerIndex];
-                switch (item) { // NOSONAR
+                switch (item) {
                   case alertMessageTemplateId: {
                     trigger[alertMessageTemplateId] = '';
                     break;
@@ -13801,7 +13799,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               commandOptions.item,
               commandOptions.scope === configOptionScopeGlobal ? null : user,
             );
-            switch (commandOptions.item) { // NOSONAR
+            switch (commandOptions.item) {
               case cfgGraphsIntervals: {
                 const currentIntervalIndex = Number(commandOptions.index),
                   currentInterval = currentOptionArray[currentIntervalIndex],
@@ -13952,12 +13950,12 @@ function telegramGetGroupChats(activeOnly) {
     if (!isNaN(chatId) && chatId < 0) {
       if (activeOnly) {
         const user = telegramGenerateUserObjectFromId(undefined, chatId),
-          [_lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
+          [_lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
             user,
             cachedBotSendMessageId,
             timeDelta48,
           ),
-          [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld( // NOSONAR
+          [_lastUserMessageId, isUserMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
             user,
             cachedLastMessage,
             timeDelta96,
@@ -14417,7 +14415,12 @@ function telegramQueueProcess(user, messageId) {
  * @param {number=} messageIdToDelete - The Telegram message unique id for the deletion.
  * @returns
  */
-function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegramObjectOnly = false, messageIdToDelete = undefined) {
+function telegramMessageClearCurrent(
+  user,
+  isUserMessageToDelete,
+  createTelegramObjectOnly = false,
+  messageIdToDelete = undefined,
+) {
   const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
     user,
     cachedBotSendMessageId,
@@ -14428,7 +14431,7 @@ function telegramMessageClearCurrent(user, isUserMessageToDelete, createTelegram
     messageId = messageIdToDelete;
   } else if (isUserMessageToDelete) {
     messageId = cachedValueGet(user, cachedMessageId);
-  } else if (! isBotMessageOldOrNotExists) {
+  } else if (!isBotMessageOldOrNotExists) {
     messageId = lastBotMessageId;
   }
   if (messageId) {
