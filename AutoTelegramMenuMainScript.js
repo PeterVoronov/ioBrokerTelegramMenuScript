@@ -8629,6 +8629,7 @@ function triggersMenuGenerateManageCondition(user, menuItemToProcess) {
             value: value,
           },
         );
+        if (valueItem) subMenu.push(valueItem);
       }
     }
   }
