@@ -1,0 +1,24 @@
+{
+    "sonarlint.rules": {
+        "javascript:S3776": {
+            "level": "off",
+            "name": "Cognitive Complexity of functions should not be too high"
+        },
+        "javascript:S2685": {
+            "level": "off",
+            "name": "\"arguments.caller\" and \"arguments.callee\" should not be used"
+        },
+        "javascript:S1301": {
+            "level": "off",
+            "name": "\"switch\" statements should have at least 3 \"case\" clauses"
+        },
+        "javascript:S1481": {
+            "level": "off",
+            "name": "Unused local variables and functions should be removed"
+        },
+        "javascript:S107": {
+            "level": "off",
+            "name": "Functions should not have too many parameters"
+        }
+    }
+}
