@@ -1695,12 +1695,10 @@ class MenuRoles {
           } else {
             effectiveRegexp = rule.regexpDirect;
           }
+        } else if (inverseMasks) {
+          effectiveRegexp = rule.regexpInvertedHalf;
         } else {
-          if (inverseMasks) {
-            effectiveRegexp = rule.regexpInvertedHalf;
-          } else {
-            effectiveRegexp = rule.regexpDirectHalf;
-          }
+          effectiveRegexp = rule.regexpDirectHalf;
         }
         return (
           effectiveRegexp.test(menuItemId) &&
@@ -4667,20 +4665,17 @@ function enumerationsUpdateItemName(
       if (nameDeclinationKey) {
         if (tmpKeys.includes(nameDeclinationKey))
           translationsItemStore(user, `${translationIdPrefix}${nameDeclinationKey}`, newName);
-      } else {
-        if (translationsItemGet(user, `${translationIdPrefix}${enumerationsNamesMain}`) != newName) {
-          tmpKeys.forEach((nameKey) =>
-            translationsItemStore(
-              user,
-              `${translationIdPrefix}${nameKey}`,
-              nameKey === enumerationsNamesMain ? newName : newName.toLowerCase(),
-            ),
-          );
-        }
+      } else if (translationsItemGet(user, `${translationIdPrefix}${enumerationsNamesMain}`) != newName) {
+        tmpKeys.forEach((nameKey) =>
+          translationsItemStore(
+            user,
+            `${translationIdPrefix}${nameKey}`,
+            nameKey === enumerationsNamesMain ? newName : newName.toLowerCase(),
+          ),
+        );
       }
-    } else {
-      if (translationsItemGet(user, `${translationIdPrefix}${enumerationsNamesMain}`) != newName)
-        translationsItemStore(user, `${translationIdPrefix}${enumerationsNamesMain}`, newName);
+    } else if (translationsItemGet(user, `${translationIdPrefix}${enumerationsNamesMain}`) != newName) {
+      translationsItemStore(user, `${translationIdPrefix}${enumerationsNamesMain}`, newName);
     }
   }
 }
@@ -5417,14 +5412,12 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
         currentItemDetailsLineObject.value = currentEnumerationItem[item]
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user);
+      } else if (currentEnumerationItem.hasOwnProperty(item)) {
+        currentItemDetailsLineObject.value = currentEnumerationItem[item];
+      } else if (currentEnumerationItem.hasOwnProperty('enum')) {
+        currentItemDetailsLineObject.value = `[${currentEnumerationItem.enum}.]${currentItem}`;
       } else {
-        if (currentEnumerationItem.hasOwnProperty(item)) {
-          currentItemDetailsLineObject.value = currentEnumerationItem[item];
-        } else if (currentEnumerationItem.hasOwnProperty('enum')) {
-          currentItemDetailsLineObject.value = `[${currentEnumerationItem.enum}.]${currentItem}`;
-        } else {
-          currentItemDetailsLineObject.value = currentItem;
-        }
+        currentItemDetailsLineObject.value = currentItem;
       }
       currentItemDetailsList.push(currentItemDetailsLineObject);
     }
@@ -8097,16 +8090,12 @@ function triggersSort(triggers, preSorted) {
         }
       } else if (triggerA.type === 'boolean') {
         return triggerA.value ? -1 : 1;
+      } else if (preSorted) {
+        return preSorted.indexOf(triggerA.value) - preSorted.indexOf(triggerB.value);
+      } else if (typeOf(triggerA.value, 'number')) {
+        return triggerA.value - triggerB.value;
       } else {
-        if (preSorted) {
-          return preSorted.indexOf(triggerA.value) - preSorted.indexOf(triggerB.value);
-        } else {
-          if (typeOf(triggerA.value, 'number')) {
-            return triggerA.value - triggerB.value;
-          } else {
-            return triggerA.value.localeCompare(triggerB.value);
-          }
-        }
+        return triggerA.value.localeCompare(triggerB.value);
       }
     });
   }
@@ -10494,7 +10483,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
                 deviceId = devicePrefix.split('.').pop();
               let deviceMenuItem = {
                 index: `${currentIndex}.${currentLevelMenuItemId}.${deviceId}`,
-                name: `${translationsGetObjectName(user, devicePrefix, functionId, destinationId)}`,
+                name: translationsGetObjectName(user, devicePrefix, functionId, destinationId),
                 type: menuItemToProcess.type,
                 id: menuItemId,
                 accessLevel: currentAccessLevel,
@@ -11547,7 +11536,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           switch (commandOptions.dataType) {
             case dataTypeTranslation: {
               let currentTranslationId;
-              if (commandOptions.translationType && commandOptions.item && commandOptions.index) {
+              if (commandOptions.translationType && isDefined(commandOptions.item) && isDefined(commandOptions.index)) {
                 currentTranslationId = commandOptions.translationType;
                 let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
                 if (
@@ -12040,7 +12029,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               subItem = commandOptions.subItem;
                             logs(
                               `conditions = ${typeOf(conditions)}: '${JSON.stringify(conditions)}', index = ${index}`,
-                              _l,
                             );
                             if (isDefined(conditions) && isDefined(index) && subItem) {
                               const length = conditions.length;
@@ -12761,7 +12749,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             `conditions = ${typeOf(conditions)}: '${JSON.stringify(
                               conditions,
                             )}', index = ${index}, length = ${length}`,
-                            _l,
                           );
                           if (isDefined(index) && subItem && index <= length) {
                             if (!isDefined(trigger.conditions)) trigger.conditions = conditions;
@@ -12866,14 +12853,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 currentRule['accessLevel'] = commandOptions.accessLevel;
                 cachedValueSet(user, cachedRolesNewRule, currentRule);
               }
-            } else {
-              if (rolesInMenu.existsId(commandOptions.roleId)) {
-                let currentRules = rolesInMenu.getRules(commandOptions.roleId);
-                if (currentRules.length > currentIndex) {
-                  const currentRule = {...currentRules[currentIndex]};
-                  currentRule['accessLevel'] = commandOptions.accessLevel;
-                  cachedValueSet(user, cachedRolesNewRule, currentRule);
-                }
+            } else if (rolesInMenu.existsId(commandOptions.roleId)) {
+              let currentRules = rolesInMenu.getRules(commandOptions.roleId);
+              if (currentRules.length > currentIndex) {
+                const currentRule = {...currentRules[currentIndex]};
+                currentRule['accessLevel'] = commandOptions.accessLevel;
+                cachedValueSet(user, cachedRolesNewRule, currentRule);
               }
             }
             break;
@@ -14052,7 +14037,7 @@ function telegramGetGroupChats(activeOnly) {
             cachedLastMessage,
             timeDelta96,
           );
-        if (!isBotMessageOldOrNotExists && !isUserMessageOldOrNotExists) chatsList.push(chatId);
+        if (!isBotMessageOldOrNotExists || !isUserMessageOldOrNotExists) chatsList.push(chatId);
       } else {
         chatsList.push(chatId);
       }
@@ -14416,14 +14401,12 @@ function telegramQueueProcess(user, messageId) {
         sendTo(telegramAdapter, telegramObject, (result) => {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
         });
-      } else {
-        if (userMessagesQueue) {
-          userMessagesQueue.splice(0, currentLength);
-          if (userMessagesQueue.length === 0) {
-            cachedValueDelete(user, cachedTelegramMessagesQueue);
-          } else {
-            cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
-          }
+      } else if (userMessagesQueue) {
+        userMessagesQueue.splice(0, currentLength);
+        if (userMessagesQueue.length === 0) {
+          cachedValueDelete(user, cachedTelegramMessagesQueue);
+        } else {
+          cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
         }
       }
     }
