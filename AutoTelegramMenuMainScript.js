@@ -4316,7 +4316,9 @@ function sentImagesDelete(user) {
    * @param {number[]} sentImages - An array of Id's of  message with images sent to telegram
    */
   function sentImagesDeleteCallBack(result, user, telegramObject, sentImages) {
-    if (!result) {
+    logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
+    logs(`Converted result: ${JSON.stringify(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
+    if (!result || (typeOf(result, 'object') && Object.keys(result).length === 0)) {
       warns(
         `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
           user,
@@ -9075,8 +9077,8 @@ function backupCreate(backupMode) {
  */
 function backupRestore(fileName, restoreItem) {
   return new Promise((resolve, reject) => {
+    const backupFileName = nodePath.join(backupFolder, fileName);
     if (backupFileMask.test(fileName)) {
-      const backupFileName = nodePath.join(backupFolder, fileName);
       backupFileRead(backupFileName)
         .then((backupData) => {
           if (backupData) {
@@ -9139,8 +9141,7 @@ function backupRestore(fileName, restoreItem) {
                 });
                 resolve(true);
               } else {
-                warns(`Inconsistent data from file ${backupFileName}!\nData in file is '${backupData}'`);
-                reject(false);
+                throw new Error(`Inconsistent data from file ${backupFileName}!\nData in file is '${backupData}'`);
               }
             } catch (error) {
               warns(
@@ -9151,14 +9152,14 @@ function backupRestore(fileName, restoreItem) {
               reject(error);
             }
           } else {
-            reject(false);
+            throw new Error(`No backup data in file ${backupFileName}!`);
           }
         })
         .catch((error) => {
           reject(error);
         });
     } else {
-      reject(false);
+      reject(new Error(`Backup file ${backupFileName} doesn't exists!`));
     }
   });
 }
@@ -10633,8 +10634,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     if (targetMenuPos) {
       cachedValueSet(user, cachedMenuItem, targetMenuPos);
       targetMenuPos = [...targetMenuPos];
+    } else if (cachedValueExists(user, cachedMenuItem)) {
+      targetMenuPos = cachedValueGet(user, cachedMenuItem);
     } else {
-      targetMenuPos = cachedValueExists(user, cachedMenuItem) ? cachedValueGet(user, cachedMenuItem) : [];
+      targetMenuPos = [];
+      cachedValueSet(user, cachedMenuItem, targetMenuPos);
     }
     topItemIndex = targetMenuPos?.length ? targetMenuPos[0] : undefined;
     menuItemToProcess = user.rootMenu
@@ -14169,10 +14173,8 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
           messageObject.message,
         parse_mode: 'HTML',
       };
+      telegramObject.chatId = user.chatId;
       if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
-      if (user.userId != user.chatId) {
-        telegramObject.chatId = user.chatId;
-      }
       if ((createNewMessage && !isMenuOn) || clearBefore || isBotMessageOldOrNotExists) {
         if (isDefined(messageObject.buttons)) {
           telegramObject.reply_markup = {
@@ -14253,7 +14255,7 @@ function telegramObjectPushToQueue(user, telegramObject) {
 function telegramQueueProcess(user, messageId) {
   /**
    * The function to process the result of sending the message to the Telegram adapter, and take and process a "linked" one, if it exists(for example delete and new one).
-   * @param {number} result - The result of sending the message by Telegram adapter.
+   * @param {number|array|object} result - The result of sending the message by Telegram adapter.
    * @param {object} user - The user object.
    * @param {object} telegramObject - The Telegram message object, result of sending is processing.
    * @param {object[]} telegramObjects - The arrays of Telegram objects, which can contain one message, or two, "linked" together.
@@ -14270,14 +14272,27 @@ function telegramQueueProcess(user, messageId) {
     waitForLog = false,
   ) {
     let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue),
+      toSkip = false,
       telegramError;
     const currentTS = Date.now();
-    if (!result) {
-      if (waitForLog) {
+    logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
+    logs(`Converted result: ${JSON.stringify(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
+    if (typeOf(result) === 'number') {
+      result = {};
+    } else if (typeOf(result) === 'array') {
+      if (result.length === 1) {
+        result = JSON.parse(result[0]);
+      }
+    }
+    logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
+    if (!result || (typeOf(result, 'object') && (isDefined(result?.error) || Object.keys(result).length === 0))) {
+      logs(`check = waitForLog = ${waitForLog}, total = ${waitForLog && !isDefined(result?.error)}`, _l);
+      if (waitForLog && !isDefined(result?.error)) {
         setTimeout(() => {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false);
         }, telegramDelayToCatchLog);
       } else {
+        logs(`errors = ${JSON.stringify(telegramLastErrors, null, 1)}`, _l);
         if (telegramLastErrors?.size) {
           if (user.chatId > 0 && telegramLastErrors.has(user.chatId)) {
             telegramError = telegramLastErrors.get(user.chatId);
@@ -14297,21 +14312,28 @@ function telegramQueueProcess(user, messageId) {
             }
           }
         }
-        warns(
-          `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({
-            ...user,
-            rootMenu: null,
-          })})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(telegramError, null, 2)}.`,
-        );
-        if (telegramError?.error?.level === telegramErrorLevelFatal) {
+        if (isDefined(telegramError?.error)) {
+          result.error = telegramError.error;
+        }
+        if (isDefined(result?.error)) {
+          logs(`error = ${JSON.stringify(result.error, null, 1)}`, _l);
+          warns(
+            `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({
+              ...user,
+              rootMenu: null,
+            })})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(result.error, null, 2)}.`,
+          );
+        }
+        if (result?.error?.level === telegramErrorLevelFatal) {
           warns(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
             warns(`Retrying message send.`);
             telegramQueueProcess(user);
           }, telegramDelayToSendReTry);
         } else if (
-          telegramError?.error?.level === telegramErrorLevelTelegram &&
-          telegramObject?.hasOwnProperty(telegramError.command)
+          result?.error?.level === telegramErrorLevelTelegram &&
+          // @ts-ignore
+          telegramObject?.hasOwnProperty(result?.error?.command)
         ) {
           const [currentMessageId, isCurrentMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
             user,
@@ -14320,14 +14342,14 @@ function telegramQueueProcess(user, messageId) {
           );
           if (
             !isCurrentMessageOldOrNotExists &&
-            currentMessageId != telegramObject[telegramError.command].options.message_id
+            currentMessageId != telegramObject[result?.error?.command].options.message_id
           ) {
-            telegramObject[telegramError.command].options.message_id = currentMessageId;
+            telegramObject[result?.error?.command].options.message_id = currentMessageId;
             sendTo(telegramAdapter, telegramObject, (result) => {
               telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
             });
           } else {
-            result = -1;
+            toSkip = true;
           }
         } else if (
           telegramObject &&
@@ -14351,10 +14373,10 @@ function telegramQueueProcess(user, messageId) {
               telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
             });
           } else {
-            result = -1;
+            toSkip = true;
           }
         }
-        if (telegramObject && result === -1) {
+        if (telegramObject && toSkip) {
           if (telegramObject.hasOwnProperty(telegramCommandEditMessage) && telegramObjects.length === 1) {
             telegramObject.reply_markup = {
               inline_keyboard: telegramObject[telegramCommandEditMessage].options.reply_markup.inline_keyboard,
@@ -14368,46 +14390,43 @@ function telegramQueueProcess(user, messageId) {
         }
       }
     }
-    if (result) {
-      if (
-        result === 1 &&
-        telegramObject.hasOwnProperty('type') &&
-        ['document', 'photo'].includes(telegramObject['type'])
-      ) {
-        if (nodePath.dirname(telegramObject.text).includes(temporaryFolderPrefix))
-          nodeFS.rm(nodePath.dirname(telegramObject.text), {recursive: true, force: true}, (err) => {
-            if (err)
-              warns(
-                `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${JSON.stringify(err)}'.`,
-              );
-          });
-      }
-      if (
-        result === 1 &&
-        telegramObject &&
-        telegramObject[telegramCommandDeleteMessage] &&
-        telegramObject[telegramCommandDeleteMessage].isBotMessage &&
-        cachedValueExists(user, cachedBotSendMessageId)
-      ) {
-        if (
-          cachedValueGet(user, cachedBotSendMessageId) ==
-          telegramObject[telegramCommandDeleteMessage].options.message_id
-        ) {
-          cachedValueDelete(user, cachedBotSendMessageId);
-        }
-      }
-      if (telegramObjects.length) {
-        telegramObject = telegramObjects.shift();
-        sendTo(telegramAdapter, telegramObject, (result) => {
-          telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
+    if (
+      !isDefined(result?.error) &&
+      telegramObject.hasOwnProperty('type') &&
+      ['document', 'photo'].includes(telegramObject['type'])
+    ) {
+      if (nodePath.dirname(telegramObject.text).includes(temporaryFolderPrefix))
+        nodeFS.rm(nodePath.dirname(telegramObject.text), {recursive: true, force: true}, (err) => {
+          if (err)
+            warns(
+              `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${JSON.stringify(err)}'.`,
+            );
         });
-      } else if (userMessagesQueue) {
-        userMessagesQueue.splice(0, currentLength);
-        if (userMessagesQueue.length === 0) {
-          cachedValueDelete(user, cachedTelegramMessagesQueue);
-        } else {
-          cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
-        }
+    }
+    if (
+      !isDefined(result?.error) &&
+      telegramObject &&
+      telegramObject[telegramCommandDeleteMessage] &&
+      telegramObject[telegramCommandDeleteMessage].isBotMessage &&
+      cachedValueExists(user, cachedBotSendMessageId)
+    ) {
+      if (
+        cachedValueGet(user, cachedBotSendMessageId) == telegramObject[telegramCommandDeleteMessage].options.message_id
+      ) {
+        cachedValueDelete(user, cachedBotSendMessageId);
+      }
+    }
+    if (telegramObjects.length) {
+      telegramObject = telegramObjects.shift();
+      sendTo(telegramAdapter, telegramObject, (result) => {
+        telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
+      });
+    } else if (userMessagesQueue) {
+      userMessagesQueue.splice(0, currentLength);
+      if (userMessagesQueue.length === 0) {
+        cachedValueDelete(user, cachedTelegramMessagesQueue);
+      } else {
+        cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
       }
     }
   }
@@ -14514,7 +14533,7 @@ function telegramMessageClearCurrent(
   }
   if (messageId) {
     const telegramObject = {
-      deleteMessage: {
+      [telegramCommandDeleteMessage]: {
         options: {
           chat_id: user.chatId,
           message_id: messageId,
@@ -14523,9 +14542,7 @@ function telegramMessageClearCurrent(
       },
     };
     if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
-    if (user.userId != user.chatId) {
-      telegramObject.chatId = user.chatId;
-    }
+    telegramObject.chatId = user.chatId;
     if (!createTelegramObjectOnly) {
       cachedValueSet(user, cachedLastMessage, '');
       telegramObjectPushToQueue(user, telegramObject);
@@ -14555,6 +14572,8 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
     if (user.userId == user.chatId) {
       if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       sendTo(telegramAdapter, telegramObject, (result) => {
+        logs(`SendToTelegram: pop-up result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
+        logs(`Converted result: ${JSON.stringify(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
         if (!result) {
           warns(
             `Can't send pop-up message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
@@ -14575,7 +14594,8 @@ let telegramIsConnected = false;
 const telegramQueuesIsWaitingConnection = [],
   telegramLastErrors = new Map(),
   telegramErrorParseRegExp =
-    /^telegram.\d\s+\(\d+\)\s+Cannot\s+send\s+(\w+)\s+\[(chatId|user)\s-\s(-?\d+|\w+)\]:\s+Error:\s(\w+?):\s(.+?):\s(.+)$/,
+    /^telegram.\d\s+\(\d+\)\s+(Cannot\s+send|Failed)\s+(\w+)\s+\[(chatId|user)\s-\s(-?\d+|\w+)\]:\s+Error:\s(\w+?):\s(.+?):\s(.+)$/,
+  telegramCommandSendNewMessage = 'sendMessage',
   telegramCommandEditMessage = 'editMessageText',
   telegramCommandDeleteMessage = 'deleteMessage',
   telegramErrorLevelFatal = 'EFATAL',
@@ -14585,6 +14605,60 @@ const telegramQueuesIsWaitingConnection = [],
   telegramBotSendRawId = `${telegramAdapter}.communicate.botSendRaw`,
   telegramRequestRawId = `${telegramAdapter}.communicate.requestRaw`,
   telegramRequestPathFile = `${telegramAdapter}.communicate.pathFile`;
+
+/**
+ * This function processes the reponce of the iobroker Telegram adapter on SendTo command.
+ * @param {number|array} response - The response itself. Old versions returned number value. From version ... it has to return the arrays of strings.
+ * @param {object=} telegramObject - The sent message as object.
+ * @returns {object} The response as object, enriched by result attribute and error details
+ *
+ */
+function telegramSendToAdapterResponse(response, telegramObject) {
+  let result = {chatId: 0, messageId: 0, operation: '', success: false, error: {type: '', source: '', details: {}}};
+  if (isDefined(telegramObject)) {
+    if (isDefined(telegramObject[telegramCommandEditMessage])) {
+      result.operation = telegramCommandEditMessage;
+    } else if (isDefined(telegramObject[telegramCommandDeleteMessage])) {
+      result.operation = telegramCommandDeleteMessage;
+    } else {
+      result.operation = telegramCommandSendNewMessage;
+    }
+    result.messageId = telegramObject[result.operation]?.options?.message_id
+      ? telegramObject[result.operation].options.message_id
+      : 0;
+    if (telegramObject.chatId) {
+      result.chatId = telegramObject.chatId;
+    } else if (telegramObject[result.operation]?.options?.chat_id) {
+      result.chatId = telegramObject[result.operation]?.options?.chat_id;
+    }
+  }
+  if (typeOf(response, 'number')) {
+    result.success = response !== 0;
+  } else if (result.chatId) {
+    // @ts-ignore
+    response.forEach((element) => {
+      if (!result.success) {
+        try {
+          let responseObject = JSON.parse(element);
+          if (responseObject?.[result.chatId]) {
+            if (result.operation === telegramCommandSendNewMessage) {
+              result.success = true;
+              result.messageId = responseObject[result.chatId];
+            } else if (
+              result.messageId &&
+              (result.operation === telegramCommandDeleteMessage || result.operation === telegramCommandEditMessage)
+            ) {
+              result.success = responseObject[result.chatId] === result.messageId;
+            }
+          }
+        } catch (error) {
+          warns(`Can't parse telegram adaper response element: ${element}!`, _l);
+        }
+      }
+    });
+  }
+  return result;
+}
 
 /**
  * This function extracts the user Id for the Telegram message object.
@@ -14634,19 +14708,21 @@ function telegramGenerateUserObjectFromId(userId) {
  */
 function telegramActionOnLogError(logRecord) {
   if (typeOf(logRecord, 'object') && logRecord.hasOwnProperty('from') && logRecord.from === telegramAdapter) {
+    logs(`errorlog : ${JSON.stringify(logRecord, null, 1)}`, _l);
     try {
       const telegramErrorParsed = telegramErrorParseRegExp.exec(logRecord.message);
-      if (telegramErrorParsed && telegramErrorParsed.length === 7) {
+      logs(`telegramErrorParsed : ${JSON.stringify(telegramErrorParsed, null, 1)}`, _l);
+      if (telegramErrorParsed && telegramErrorParsed.length === 8) {
         const // @ts-ignore
           chatId = isNaN(telegramErrorParsed[3]) ? 0 : Number(telegramErrorParsed[3]),
           errorMessage = {
             ts: logRecord.ts,
-            command: telegramErrorParsed[1],
             chatId: chatId,
             error: {
-              level: telegramErrorParsed[4],
-              info: telegramErrorParsed[5],
-              message: telegramErrorParsed[6],
+              command: telegramErrorParsed[2],
+              level: telegramErrorParsed[5],
+              info: telegramErrorParsed[6],
+              message: telegramErrorParsed[7],
             },
           };
         if (chatId) {
@@ -14660,7 +14736,7 @@ function telegramActionOnLogError(logRecord) {
         }
       }
     } catch (error) {
-      //
+      warns(`Can't parse log record: ${JSON.stringify(logRecord, null, 1)}`, _l);
     }
   }
 }
