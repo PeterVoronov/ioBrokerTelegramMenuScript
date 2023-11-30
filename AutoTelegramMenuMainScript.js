@@ -72,6 +72,7 @@ const cmdPrefix = 'cmd',
   cmdUseCommonTranslation = `${cmdPrefix}UseCTransl`,
   cmdItemAdd = `${cmdPrefix}ItemAdd`,
   cmdItemPress = `${cmdPrefix}ItemPress`,
+  cmdItemSetValue = `${cmdPrefix}ItemSetValue`,
   cmdItemMoveUp = `${cmdPrefix}ItemMoveUp`,
   cmdItemMoveDown = `${cmdPrefix}ItemMoveDown`,
   cmdItemNameGet = `${cmdPrefix}ItemNameGet`,
@@ -4316,9 +4317,10 @@ function sentImagesDelete(user) {
    * @param {number[]} sentImages - An array of Id's of  message with images sent to telegram
    */
   function sentImagesDeleteCallBack(result, user, telegramObject, sentImages) {
+    const resultObject = telegramSendToAdapterResponse(result, telegramObject);
     logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
-    logs(`Converted result: ${JSON.stringify(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
-    if (!result || (typeOf(result, 'object') && Object.keys(result).length === 0)) {
+    logs(`resultObject: ${JSON.stringify(resultObject, null, 1)}`, _l);
+    if (!resultObject.success) {
       warns(
         `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
           user,
@@ -5786,118 +5788,40 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
                 : undefined,
               states = [];
-            const subMenuItem = {
-              index: `${currentIndex}.${subMenuIndex}`,
-              name: `${stateName}`,
-              group: currentButton.group ? currentButton.group : menuButtonsDefaultGroup,
-              submenu: new Array(),
-            };
+            let subMenuItemName = stateName;
+            if (currentStateType === 'number' && !stateObjectCommon.hasOwnProperty('states')) {
+              subMenuItemName += ` (${isDefined(stateValue) ? stateValue : iconItemNotFound}${
+                stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
+              })`;
+            }
             const currentOptions = {
               function: functionId,
               state: stateIdFull,
+              type: currentStateType,
+              stateObject: stateObject,
               valueType: currentStateType,
               device: devicePrefix,
+              replaceCommand: cmdSetState,
+              value: stateValue,
+              icon: '',
+              showCurrent: true,
+              icons:
+                deviceButtonId === primaryStateId
+                  ? [currentFunction.iconOn, currentFunction.iconOff]
+                  : [defaultIconOn, defaultIconOff],
             };
-            if (currentStateType === 'boolean') {
-              if (!isDefined(stateValue)) {
-                subMenuItem.icon = iconItemNotFound;
-              } else if (deviceButtonId === primaryStateId) {
-                subMenuItem.icon = stateValue ? currentFunction.iconOn : currentFunction.iconOff;
-              } else {
-                subMenuItem.icon = stateValue ? defaultIconOn : defaultIconOff;
-              }
-              subMenuItem.command = cmdSetState;
-              subMenuItem.options = currentOptions;
-            } else if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
-              states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
-              if (isDefined(states) && Object.keys(states).length > 0) {
-                subMenuItem.icon = '';
-                for (const [possibleValue, _possibleName] of Object.entries(states)) {
-                  const subSubMenuItem = {
-                    index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                    name: `${enumerationsStateValueDetails(user, stateObject, functionId, {val: possibleValue})}`,
-                    command: cmdSetState,
-                    options: {...currentOptions, value: possibleValue},
-                    group: 'possibleValues',
-                    icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
-                    submenu: [],
-                  };
-                  subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
-                  if (stateValue == possibleValue) {
-                    subMenuItem.name += ` [${enumerationsStateValueDetails(
-                      user,
-                      stateObject,
-                      functionId,
-                      currentState,
-                    )}]`;
-                  }
-                }
-              }
-            } else if (currentStateType === 'number') {
-              const valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
-                valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined;
-              let step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : undefined,
-                stepDecimalsCount = 0;
-              if (!isDefined(step)) {
-                const possibleStepMin = isDefined(valueMin) && valueMin % 1 > 0 ? valueMin % 1 : 1,
-                  possibleStepMax = isDefined(valueMax) && valueMax % 1 > 0 ? valueMax % 1 : 1;
-                step = possibleStepMin < possibleStepMax ? possibleStepMin : possibleStepMax;
-                if (stateValue % 1 > 0 && stateValue % 1 < step) {
-                  step = stateValue % 1;
-                } else if (stateValue % step > 0) {
-                  step = stateValue % step;
-                }
-                const stepParts = step.toLocaleString('en-US').split('.');
-                stepDecimalsCount = stepParts.length === 1 ? 0 : stepParts[1].length;
-                const factor = Math.pow(0.1, stepDecimalsCount);
-                if (step % (2 * factor) === 0) {
-                  step = 2 * factor;
-                } else if (step % (5 * factor) === 0) {
-                  step = 5 * factor;
-                } else {
-                  step = factor;
-                }
-              }
-              for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
-                if ((!isDefined(valueMin) || value >= valueMin) && (!isDefined(valueMax) || value <= valueMax)) {
-                  states.push(value.toFixed(stepDecimalsCount));
-                }
-              }
-              subMenuItem.icon = '';
-              subMenuItem.name += ` (${isDefined(stateValue) ? stateValue : iconItemNotFound}${
-                stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
-              })`;
-              states.forEach((possibleValue) => {
-                const subSubMenuItem = {
-                  index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                  name: `${possibleValue}${
-                    stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
-                  }`,
-                  command: cmdSetState,
-                  options: {...currentOptions, value: possibleValue},
-                  group: 'possibleValues',
-                  icon: stateValue == possibleValue ? defaultIconOn : defaultIconOff,
-                  submenu: [],
-                };
-                subSubMenuIndex = subMenuItem.submenu.push(subSubMenuItem);
-              });
-              subSubMenuIndex = subMenuItem.submenu.push({
-                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                name: `${translationsItemMenuGet(user, 'SetValue')} (${isDefined(stateValue) ? stateValue : ''}${
-                  stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
-                })`,
-                icon: iconItemEdit,
-                command: cmdGetInput,
-                options: {...currentOptions, dataType: dataTypeStateValue},
-                submenu: [],
-              });
-            }
-            if (isDefined(subMenuItem.icon) || subMenuItem.icons) {
-              if (deviceButtonId !== primaryStateShortId) {
-                subMenuIndex = subMenu.push(subMenuItem);
-              } else {
-                subMenuIndex = subMenu.unshift(subMenuItem);
-              }
+            const subMenuItem = menuMenuItemGenerateEditItemWithState(
+              user,
+              currentIndex,
+              subMenuIndex,
+              subMenuItemName,
+              '',
+              currentOptions,
+            );
+            if (deviceButtonId !== primaryStateShortId) {
+              subMenuIndex = subMenu.push(subMenuItem);
+            } else {
+              subMenuIndex = subMenu.unshift(subMenuItem);
             }
             if (
               isGraphsEnabled &&
@@ -8182,7 +8106,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
       }
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${triggerName}${stateUnits}${currentTriggerDetails} (${onTimeInterval})`,
+        name: `${triggerName}${currentTriggerDetails} (${onTimeInterval})`,
         icon: triggersGetEnabledIcon(trigger),
         options: {...stateOptions, id: triggerId, stateUnits},
         text: triggersMenuItemDetailsTrigger,
@@ -8332,11 +8256,18 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
     );
     if (stateSubType === 'number') {
       subMenuIndex = subMenu.push(
-        menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${triggerValue}${stateUnits}`, 'value', {
-          ...triggerOptions,
-          item: 'value',
-          value: triggerValue,
-        }),
+        menuMenuItemGenerateEditItemWithState(
+          user,
+          currentIndex,
+          subMenuIndex,
+          `${triggerValue}${stateUnits}`,
+          'value',
+          {
+            ...triggerOptions,
+            item: 'value',
+            value: triggerValue,
+          },
+        ),
       );
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
@@ -8476,8 +8407,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         value: enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
       };
       if (isDefined(trigger.onAbove) && isDefined(trigger.onLess)) {
-        sourceStateDetails.value = `${trigger.onAbove ? '&gt;=' : '&lt;'} ${sourceStateDetails.value}`;
-        sourceStateDetails.lengthModifier = -3;
+        sourceStateDetails.value = `${trigger.onAbove ? '˃=' : '˂'} ${sourceStateDetails.value}`;
       }
       const triggerAttributesArray = [
         {
@@ -10181,7 +10111,7 @@ function menuMenuItemGenerateEditItem(_user, upperItemIndex, itemIndex, itemName
   const menuItem = {
     index: `${upperItemIndex}.${itemIndex}`,
     name: itemName,
-    icon: iconItemEdit,
+    icon: isDefined(options?.icon) ? options.icon : iconItemEdit,
     command: cmdGetInput,
     options: options,
     submenu: [],
@@ -10260,15 +10190,19 @@ function menuMenuItemGenerateResetItem(user, upperItemIndex, itemIndex, options)
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
 function menuMenuItemGenerateBooleanItem(_user, upperItemIndex, itemIndex, itemName, groupId, options) {
-  let menuItemIcon = '';
+  let menuItemIcon = isDefined(options?.icon) ? options.icon : '';
   if (options.icons) {
-    menuItemIcon = options.icons[options.value ? 0 : 1];
+    if (!isDefined(options.value)) {
+      menuItemIcon = iconItemNotFound;
+    } else {
+      menuItemIcon = options.icons[options.value ? 0 : 1];
+    }
   }
   const menuItem = {
     index: `${upperItemIndex}.${itemIndex}`,
     name: itemName,
     icon: menuItemIcon,
-    command: cmdItemPress,
+    command: options?.replaceCommand ? options.replaceCommand : cmdItemPress,
     options: options,
     submenu: [],
   };
@@ -10291,7 +10225,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
   const menuItem = {
     index: `${upperItemIndex}.${itemIndex}`,
     name: itemName,
-    icon: options.icon ? options.icon : iconItemEdit,
+    icon: isDefined(options?.icon) ? options.icon : iconItemEdit,
     options: options,
     submenu: new Array(),
   };
@@ -10305,13 +10239,118 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         index: `${upperItemIndex}.${itemIndex}.${subMenuIndex}`,
         name: subItemName,
         icon: isDefined(options.value) && currentValue === subItemValue ? iconSelected : '',
-        command: cmdItemPress,
+        command: options?.replaceCommand ? options.replaceCommand : cmdItemPress,
         options: {...options, value: subItemValue},
       });
-      if (showCurrent && subItemValue === currentValue) menuItem.name += ` (${subItemName})`;
+      if (showCurrent && subItemValue === currentValue) menuItem.name += ` [${subItemName}]`;
     });
   }
   if (groupId) menuItem.group = groupId;
+  return menuItem;
+}
+
+/**
+ * Generates menu item which can process editing of the value related to the State.
+ * Or direct State value change or, for example, trigger value related to State.
+ * @param {object} user - The user object.
+ * @param {string} upperItemIndex - The upper level item menu index.
+ * @param {number} itemIndex - The index of an item to be created.
+ * @param {string} itemName - The name of the menu item.
+ * @param {string} groupId - The name of the menu item.
+ * @param {object} options - The options to be processed by `cmdGetInput`.
+ * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
+ */
+function menuMenuItemGenerateEditItemWithState(user, upperItemIndex, itemIndex, itemName, groupId, options) {
+  let menuItem;
+  if (isDefined(options?.state)) {
+    const stateObject = options?.stateObject ? options.stateObject : getObject(options.state),
+      stateObjectCommon = stateObject?.common,
+      stateType = options?.type,
+      stateValue = options?.value;
+    if (stateType === 'boolean') {
+      menuItem = menuMenuItemGenerateBooleanItem(user, upperItemIndex, itemIndex, itemName, groupId, {
+        ...options,
+        replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
+      });
+    } else if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(stateType)) {
+      const states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
+      if (isDefined(states) && Object.keys(states).length > 0) {
+        const valuesMap = new Map();
+        for (const [possibleValue, _possibleName] of Object.entries(states)) {
+          valuesMap.set(
+            possibleValue,
+            `${enumerationsStateValueDetails(user, stateObject, options.function, {val: possibleValue})}`,
+          );
+        }
+        menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, valuesMap, groupId, {
+          ...options,
+          replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
+          currentValue: stateValue,
+        });
+      }
+    } else if (stateType === 'number') {
+      const valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
+        valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined,
+        valuesMap = new Map();
+      let step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : undefined,
+        stepDecimalsCount = 0;
+      if (!isDefined(step)) {
+        const possibleStepMin = isDefined(valueMin) && valueMin % 1 > 0 ? valueMin % 1 : 1,
+          possibleStepMax = isDefined(valueMax) && valueMax % 1 > 0 ? valueMax % 1 : 1;
+        step = possibleStepMin < possibleStepMax ? possibleStepMin : possibleStepMax;
+        if (stateValue % 1 > 0 && stateValue % 1 < step) {
+          step = stateValue % 1;
+        } else if (stateValue % step > 0) {
+          step = stateValue % step;
+        }
+        const stepParts = step.toLocaleString('en-US').split('.');
+        stepDecimalsCount = stepParts.length === 1 ? 0 : stepParts[1].length;
+        const factor = Math.pow(0.1, stepDecimalsCount);
+        if (step % (2 * factor) === 0) {
+          step = 2 * factor;
+        } else if (step % (5 * factor) === 0) {
+          step = 5 * factor;
+        } else {
+          step = factor;
+        }
+      }
+      for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
+        if (
+          (!isDefined(valueMin) || value >= valueMin) &&
+          (!isDefined(valueMax) || value <= valueMax) &&
+          value !== stateValue
+        ) {
+          valuesMap.set(
+            value.toFixed(stepDecimalsCount),
+            `${value.toFixed(stepDecimalsCount)}${
+              stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
+            }`,
+          );
+        }
+      }
+      menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, valuesMap, groupId, {
+        ...options,
+        replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
+        currentValue: stateValue,
+      });
+      menuItem.submenu.push(
+        menuMenuItemGenerateEditItem(
+          user,
+          `${upperItemIndex}.${itemIndex}`,
+          menuItem.submenu.length,
+          `${translationsItemMenuGet(user, 'SetValue')} (${isDefined(stateValue) ? stateValue : ''}${
+            stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
+          })`,
+          groupId,
+          options,
+        ),
+      );
+    } else {
+      menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, options);
+    }
+  } else {
+    menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, options);
+  }
   return menuItem;
 }
 
@@ -11503,7 +11542,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       commandOptions,
     )}`,
   );
-  if (isWaitForInput) {
+  if (isWaitForInput || currentCommand === cmdItemSetValue) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (currentCommand) {
         case cmdItemUpload: {
@@ -11535,6 +11574,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           break;
         }
 
+        case cmdItemSetValue:
+          userInputToProcess = commandOptions?.value;
+        // fall through
         case cmdGetInput:
         default: {
           switch (commandOptions.dataType) {
@@ -12125,25 +12167,29 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
       }
     }
-    logs(`isWaitForInput.end: menuMessageObject.message = ${menuMessageObject.message}`);
-    if (menuMessageObject.message) {
-      menuMessageObject.message += botMessageStamp;
-      cachedValueSet(user, cachedLastMessage, '');
-      telegramMessageObjectPush(user, menuMessageObject, {
-        clearBefore: user.userId !== user.chatId || currentCommand !== cmdGetInput,
-        clearUserMessage: user.userId === user.chatId,
-        createNewMessage: false,
-        isSilent: false,
-      });
-    } else {
-      cachedValueSet(user, cachedIsWaitForInput, false);
-      /** if it private chat - delete user input, if it group - clear menu, and recreate it after user input **/
-      if (commandOptions.dataType !== dataTypeStateValue) {
-        menuMenuDraw(user, currentMenuPosition, {
+    if (isWaitForInput) {
+      logs(`isWaitForInput.end: menuMessageObject.message = ${menuMessageObject.message}`);
+      if (menuMessageObject.message) {
+        menuMessageObject.message += botMessageStamp;
+        cachedValueSet(user, cachedLastMessage, '');
+        telegramMessageObjectPush(user, menuMessageObject, {
           clearBefore: user.userId !== user.chatId || currentCommand !== cmdGetInput,
-          clearUserMessage: user.userId === user.chatId && currentCommand === cmdGetInput,
+          clearUserMessage: user.userId === user.chatId,
+          createNewMessage: false,
+          isSilent: false,
         });
+      } else {
+        cachedValueSet(user, cachedIsWaitForInput, false);
+        /** if it private chat - delete user input, if it group - clear menu, and recreate it after user input **/
+        if (commandOptions.dataType !== dataTypeStateValue) {
+          menuMenuDraw(user, currentMenuPosition, {
+            clearBefore: user.userId !== user.chatId || currentCommand !== cmdGetInput,
+            clearUserMessage: user.userId === user.chatId && currentCommand === cmdGetInput,
+          });
+        }
       }
+    } else {
+      menuMenuDraw(user, currentMenuPosition);
     }
   } else if (currentCommand.indexOf(cmdClose) === 0) {
     logs(`menuClose: currentCommand = ${currentCommand}`);
@@ -14272,22 +14318,15 @@ function telegramQueueProcess(user, messageId) {
     waitForLog = false,
   ) {
     let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue),
-      toSkip = false,
+      isMessageCantBeDeletedOrEdited = false,
       telegramError;
-    const currentTS = Date.now();
+    const currentTS = Date.now(),
+      resultObject = telegramSendToAdapterResponse(result, telegramObject);
     logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
-    logs(`Converted result: ${JSON.stringify(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
-    if (typeOf(result) === 'number') {
-      result = {};
-    } else if (typeOf(result) === 'array') {
-      if (result.length === 1) {
-        result = JSON.parse(result[0]);
-      }
-    }
-    logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
-    if (!result || (typeOf(result, 'object') && (isDefined(result?.error) || Object.keys(result).length === 0))) {
-      logs(`check = waitForLog = ${waitForLog}, total = ${waitForLog && !isDefined(result?.error)}`, _l);
-      if (waitForLog && !isDefined(result?.error)) {
+    logs(`Converted result: ${JSON.stringify(resultObject, null, 1)}`, _l);
+    if (!resultObject.success) {
+      logs(`check = waitForLog = ${waitForLog}, total = ${waitForLog && !resultObject.error.level}`, _l);
+      if (waitForLog && !isDefined(resultObject.error.level)) {
         setTimeout(() => {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false);
         }, telegramDelayToCatchLog);
@@ -14313,27 +14352,31 @@ function telegramQueueProcess(user, messageId) {
           }
         }
         if (isDefined(telegramError?.error)) {
-          result.error = telegramError.error;
+          resultObject.error = telegramError.error;
         }
-        if (isDefined(result?.error)) {
-          logs(`error = ${JSON.stringify(result.error, null, 1)}`, _l);
+        if (resultObject.error?.level) {
+          logs(`error = ${JSON.stringify(resultObject.error, null, 1)}`, _l);
           warns(
             `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({
               ...user,
               rootMenu: null,
-            })})!\nResult = ${JSON.stringify(result)}.\nError details = ${JSON.stringify(result.error, null, 2)}.`,
+            })})!\nResult = ${JSON.stringify(resultObject)}.\nError details = ${JSON.stringify(
+              resultObject.error,
+              null,
+              2,
+            )}.`,
           );
         }
-        if (result?.error?.level === telegramErrorLevelFatal) {
+        if (resultObject.error?.level === telegramErrorLevelFatal) {
           warns(`Going to retry send the whole message after timeout = ${telegramDelayToSendReTry} ms.`);
           setTimeout(() => {
             warns(`Retrying message send.`);
             telegramQueueProcess(user);
           }, telegramDelayToSendReTry);
         } else if (
-          result?.error?.level === telegramErrorLevelTelegram &&
+          resultObject.error?.level === telegramErrorLevelTelegram &&
           // @ts-ignore
-          telegramObject?.hasOwnProperty(result?.error?.command)
+          telegramObject?.hasOwnProperty(resultObject.error?.command)
         ) {
           const [currentMessageId, isCurrentMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
             user,
@@ -14342,14 +14385,14 @@ function telegramQueueProcess(user, messageId) {
           );
           if (
             !isCurrentMessageOldOrNotExists &&
-            currentMessageId != telegramObject[result?.error?.command].options.message_id
+            currentMessageId != telegramObject[resultObject.error?.command].options.message_id
           ) {
-            telegramObject[result?.error?.command].options.message_id = currentMessageId;
+            telegramObject[resultObject.error?.command].options.message_id = currentMessageId;
             sendTo(telegramAdapter, telegramObject, (result) => {
               telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
             });
           } else {
-            toSkip = true;
+            isMessageCantBeDeletedOrEdited = true;
           }
         } else if (
           telegramObject &&
@@ -14373,10 +14416,10 @@ function telegramQueueProcess(user, messageId) {
               telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
             });
           } else {
-            toSkip = true;
+            isMessageCantBeDeletedOrEdited = true;
           }
         }
-        if (telegramObject && toSkip) {
+        if (telegramObject && isMessageCantBeDeletedOrEdited) {
           if (telegramObject.hasOwnProperty(telegramCommandEditMessage) && telegramObjects.length === 1) {
             telegramObject.reply_markup = {
               inline_keyboard: telegramObject[telegramCommandEditMessage].options.reply_markup.inline_keyboard,
@@ -14390,30 +14433,26 @@ function telegramQueueProcess(user, messageId) {
         }
       }
     }
-    if (
-      !isDefined(result?.error) &&
-      telegramObject.hasOwnProperty('type') &&
-      ['document', 'photo'].includes(telegramObject['type'])
-    ) {
-      if (nodePath.dirname(telegramObject.text).includes(temporaryFolderPrefix))
-        nodeFS.rm(nodePath.dirname(telegramObject.text), {recursive: true, force: true}, (err) => {
-          if (err)
-            warns(
-              `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${JSON.stringify(err)}'.`,
-            );
-        });
-    }
-    if (
-      !isDefined(result?.error) &&
-      telegramObject &&
-      telegramObject[telegramCommandDeleteMessage] &&
-      telegramObject[telegramCommandDeleteMessage].isBotMessage &&
-      cachedValueExists(user, cachedBotSendMessageId)
-    ) {
+    if (resultObject.success) {
+      if (telegramObject.hasOwnProperty('type') && ['document', 'photo'].includes(telegramObject['type'])) {
+        if (nodePath.dirname(telegramObject.text).includes(temporaryFolderPrefix))
+          nodeFS.rm(nodePath.dirname(telegramObject.text), {recursive: true, force: true}, (err) => {
+            if (err)
+              warns(
+                `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${JSON.stringify(err)}'.`,
+              );
+          });
+      }
       if (
-        cachedValueGet(user, cachedBotSendMessageId) == telegramObject[telegramCommandDeleteMessage].options.message_id
+        telegramObject?.[telegramCommandDeleteMessage]?.isBotMessage &&
+        cachedValueExists(user, cachedBotSendMessageId)
       ) {
-        cachedValueDelete(user, cachedBotSendMessageId);
+        if (
+          cachedValueGet(user, cachedBotSendMessageId) ==
+          telegramObject[telegramCommandDeleteMessage].options.message_id
+        ) {
+          cachedValueDelete(user, cachedBotSendMessageId);
+        }
       }
     }
     if (telegramObjects.length) {
@@ -14614,7 +14653,13 @@ const telegramQueuesIsWaitingConnection = [],
  *
  */
 function telegramSendToAdapterResponse(response, telegramObject) {
-  let result = {chatId: 0, messageId: 0, operation: '', success: false, error: {type: '', source: '', details: {}}};
+  let result = {
+    chatId: 0,
+    messageId: 0,
+    operation: '',
+    success: false,
+    error: {command: '', level: '', info: '', message: ''},
+  };
   if (isDefined(telegramObject)) {
     if (isDefined(telegramObject[telegramCommandEditMessage])) {
       result.operation = telegramCommandEditMessage;
