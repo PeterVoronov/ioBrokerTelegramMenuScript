@@ -5781,13 +5781,11 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
         if (isCurrentStateWritable) {
           const stateName = translationsGetObjectName(user, stateObject, functionId);
           if (stateName) {
-            let subSubMenuIndex = 0,
-              currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
+            const currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
               stateValue = isDefined(currentState)
                 ? // @ts-ignore
                   enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
-                : undefined,
-              states = [];
+                : undefined;
             let subMenuItemName = stateName;
             if (currentStateType === 'number' && !stateObjectCommon.hasOwnProperty('states')) {
               subMenuItemName += ` (${isDefined(stateValue) ? stateValue : iconItemNotFound}${
@@ -5797,7 +5795,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             const currentOptions = {
               function: functionId,
               state: stateIdFull,
-              type: currentStateType,
+              stateType: currentStateType,
               stateObject: stateObject,
               valueType: currentStateType,
               device: devicePrefix,
@@ -7669,12 +7667,20 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
     });
   }
   subMenuIndex = subMenu.push(
-    menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {
-      dataType: dataTypeAlertSubscribed,
-      state: stateId,
-      type: alertThresholdId,
-      mode: 'add',
-    }),
+    menuMenuItemGenerateEditItemWithState(
+      user,
+      currentIndex,
+      subMenuIndex,
+      `${translationsItemCoreGet(user, cmdItemAdd)}`,
+      'addNew',
+      {
+        dataType: dataTypeAlertSubscribed,
+        state: stateId,
+        icon: iconItemPlus,
+        type: alertThresholdId,
+        mode: 'add',
+      },
+    ),
   );
   const isThresholdsSetChanged = JSON.stringify(currentStateThresholds) !== JSON.stringify(thresholds);
   if (isThresholdsSetChanged || Object.keys(currentStateThresholds).length) {
@@ -7721,11 +7727,18 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
         : configOptions.getOption(cfgAlertMessageTemplateThreshold, user),
       thresholdOptions = {dataType: dataTypeAlertSubscribed, state: stateId, type: alertThresholdId, id, mode: 'edit'};
     subMenuIndex = subMenu.push(
-      menuMenuItemGenerateEditItem(user, currentIndex, subMenuIndex, `${thresholdValue}${stateUnits}`, 'value', {
-        ...thresholdOptions,
-        item: 'value',
-        value: thresholdValue,
-      }),
+      menuMenuItemGenerateEditItemWithState(
+        user,
+        currentIndex,
+        subMenuIndex,
+        `${thresholdValue}${stateUnits}`,
+        'value',
+        {
+          ...thresholdOptions,
+          item: 'value',
+          value: thresholdValue,
+        },
+      ),
     );
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
@@ -10216,7 +10229,7 @@ function menuMenuItemGenerateBooleanItem(_user, upperItemIndex, itemIndex, itemN
  * @param {string} upperItemIndex - The upper level item menu index.
  * @param {number} itemIndex - The index of an item to be created.
  * @param {string} itemName - The name of the menu item.
- * @param {Map} itemValues - The Map object with value:Nam pairs for the menu item.
+ * @param {Map|object[]} itemValues - The Map object with value:Nam pairs for the menu item. Or array of Map objects.
  * @param {string} groupId - The name of the menu item.
  * @param {object} options - The options to be processed by `cmdGetInput`.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
@@ -10229,20 +10242,24 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     options: options,
     submenu: new Array(),
   };
-  if (itemValues && typeOf(itemValues, 'map')) {
+  if (itemValues && (typeOf(itemValues, 'map') || typeOf(itemValues, 'array'))) {
+    const itemValuesGroups = typeOf(itemValues, 'map') ? [itemValues] : itemValues;
     let subMenuIndex = 0;
     const iconSelected = configOptions.getOption(cfgDefaultIconOn, user),
       currentValue = options.value,
       showCurrent = options.showCurrent && isDefined(currentValue);
-    itemValues.forEach((subItemName, subItemValue) => {
-      subMenuIndex = menuItem.submenu.push({
-        index: `${upperItemIndex}.${itemIndex}.${subMenuIndex}`,
-        name: subItemName,
-        icon: isDefined(options.value) && currentValue === subItemValue ? iconSelected : '',
-        command: options?.replaceCommand ? options.replaceCommand : cmdItemPress,
-        options: {...options, value: subItemValue},
+    itemValuesGroups.forEach((itemValuesGroup, groupIndex) => {
+      itemValuesGroup.forEach((subItemName, subItemValue) => {
+        subMenuIndex = menuItem.submenu.push({
+          index: `${upperItemIndex}.${itemIndex}.${subMenuIndex}`,
+          name: subItemName,
+          group: `line${groupIndex}`,
+          icon: isDefined(options.value) && currentValue === subItemValue ? iconSelected : '',
+          command: options?.replaceCommand ? options.replaceCommand : cmdItemPress,
+          options: {...options, value: subItemValue},
+        });
+        if (showCurrent && subItemValue === currentValue) menuItem.name += ` [${subItemName}]`;
       });
-      if (showCurrent && subItemValue === currentValue) menuItem.name += ` [${subItemName}]`;
     });
   }
   if (groupId) menuItem.group = groupId;
@@ -10262,11 +10279,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
  */
 function menuMenuItemGenerateEditItemWithState(user, upperItemIndex, itemIndex, itemName, groupId, options) {
   let menuItem;
+  logs(`state = ${options?.state}, name = ${itemName}`, _l);
   if (isDefined(options?.state)) {
     const stateObject = options?.stateObject ? options.stateObject : getObject(options.state),
       stateObjectCommon = stateObject?.common,
-      stateType = options?.type,
-      stateValue = options?.value;
+      stateType = options?.stateType ? options.stateType : stateObjectCommon['type'],
+      stateValue = options?.value ? options.value : getState(options.state)?.val;
     if (stateType === 'boolean') {
       menuItem = menuMenuItemGenerateBooleanItem(user, upperItemIndex, itemIndex, itemName, groupId, {
         ...options,
@@ -10291,7 +10309,8 @@ function menuMenuItemGenerateEditItemWithState(user, upperItemIndex, itemIndex, 
     } else if (stateType === 'number') {
       const valueMin = stateObjectCommon.hasOwnProperty('min') ? stateObjectCommon['min'] : undefined,
         valueMax = stateObjectCommon.hasOwnProperty('max') ? stateObjectCommon['max'] : undefined,
-        valuesMap = new Map();
+        valuesMap = new Map(),
+        valuesMapArray = new Array();
       let step = stateObjectCommon.hasOwnProperty('step') ? stateObjectCommon['step'] : undefined,
         stepDecimalsCount = 0;
       if (!isDefined(step)) {
@@ -10318,7 +10337,7 @@ function menuMenuItemGenerateEditItemWithState(user, upperItemIndex, itemIndex, 
         if (
           (!isDefined(valueMin) || value >= valueMin) &&
           (!isDefined(valueMax) || value <= valueMax) &&
-          value !== stateValue
+          (options?.mode === 'add' || value !== stateValue)
         ) {
           valuesMap.set(
             value.toFixed(stepDecimalsCount),
@@ -10328,23 +10347,47 @@ function menuMenuItemGenerateEditItemWithState(user, upperItemIndex, itemIndex, 
           );
         }
       }
-      menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, valuesMap, groupId, {
+      if (stateValue > 10) {
+        const valuesMap = new Map();
+        step = Math.round(stateValue / 4);
+        for (let value = stateValue - 2 * step; value <= stateValue + 2 * step; value += step) {
+          if (
+            (!isDefined(valueMin) || value >= valueMin) &&
+            (!isDefined(valueMax) || value <= valueMax) &&
+            value !== stateValue
+          ) {
+            valuesMap.set(
+              Math.round(value),
+              `${Math.round(value)}${stateObjectCommon.hasOwnProperty('unit') ? ' ' + stateObjectCommon['unit'] : ''}`,
+            );
+          }
+        }
+        valuesMapArray.push(valuesMap);
+      }
+      valuesMapArray.push(valuesMap);
+      menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, valuesMapArray, groupId, {
         ...options,
         replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
         currentValue: stateValue,
       });
-      menuItem.submenu.push(
-        menuMenuItemGenerateEditItem(
-          user,
-          `${upperItemIndex}.${itemIndex}`,
-          menuItem.submenu.length,
-          `${translationsItemMenuGet(user, 'SetValue')} (${isDefined(stateValue) ? stateValue : ''}${
-            stateObjectCommon.hasOwnProperty('unit') ? ` ${stateObjectCommon['unit']}` : ''
-          })`,
-          groupId,
-          options,
-        ),
-      );
+      if (options?.mode === 'add') {
+        menuItem.submenu.push(
+          menuMenuItemGenerateAddItem(user, `${upperItemIndex}.${itemIndex}`, menuItem.submenu.length, options),
+        );
+      } else {
+        menuItem.submenu.push(
+          menuMenuItemGenerateEditItem(
+            user,
+            `${upperItemIndex}.${itemIndex}`,
+            menuItem.submenu.length,
+            `${translationsItemMenuGet(user, 'SetValue')} (${isDefined(stateValue) ? stateValue : ''}${
+              stateObjectCommon.hasOwnProperty('unit') ? ' ' + stateObjectCommon['unit'] : ''
+            })`,
+            groupId,
+            options,
+          ),
+        );
+      }
     } else {
       menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, options);
     }
