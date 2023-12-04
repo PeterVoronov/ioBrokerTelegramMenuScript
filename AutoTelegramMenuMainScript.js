@@ -1231,7 +1231,7 @@ class ConfigOptions {
     }
     if (this.globalConfig.cfgMenuRefreshInterval > 0) {
       const scheduleString =
-        '*' +
+        '0' +
         (this.globalConfig.cfgMenuRefreshInterval < 60 ? '/' + this.globalConfig.cfgMenuRefreshInterval : '') +
         ' *' +
         (this.globalConfig.cfgMenuRefreshInterval >= 60
@@ -10747,6 +10747,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
       targetMenuPos = targetMenuPos.slice(savedPos.length);
       menuItemToProcess = savedMenu;
       messageObject = {...savedRows};
+      if (typeOf(menuItemToProcess?.options?.generatedBy, 'function')) {
+        menuItemToProcess.submenu = menuItemToProcess.options.generatedBy;
+        messageObject.buttons = [];
+      }
       currentIndent = savedTab;
     } else {
       messageObject = {
@@ -10789,6 +10793,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     }
 
     case 'function': {
+      if (!isDefined(menuItemToProcess.options)) menuItemToProcess.options = {};
+      menuItemToProcess.options.generatedBy = subMenu;
       menuItemToProcess.submenu = subMenu(user, menuItemToProcess);
       menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
       break;
@@ -10884,7 +10890,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           }
           cachedValueSet(user, cachedMenuItem, savedPos);
         }
-        if (subMenu?.length) {
+        if (subMenu?.length > 0) {
           cachedValueSet(user, cachedMenuItemsAndRows, [menuItemToProcess, {...messageObject}, currentIndent]);
         }
         messageObject.message += messageCaption + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
@@ -11617,9 +11623,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           break;
         }
 
-        case cmdItemSetValue:
+        case cmdItemSetValue: {
           userInputToProcess = commandOptions?.value;
-        // fall through
+        }
+        // eslint-disable-next-line no-fallthrough
         case cmdGetInput:
         default: {
           switch (commandOptions.dataType) {
