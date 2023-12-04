@@ -14747,7 +14747,7 @@ function telegramSendToAdapterResponse(response, telegramObject) {
             }
           }
         } catch (error) {
-          warns(`Can't parse telegram adaper response element: ${element}!`, _l);
+          warns(`Can't parse telegram adaper response element: ${element}!`);
         }
       }
     });
@@ -14831,7 +14831,7 @@ function telegramActionOnLogError(logRecord) {
         }
       }
     } catch (error) {
-      warns(`Can't parse log record: ${JSON.stringify(logRecord, null, 1)}`, _l);
+      warns(`Can't parse log record: ${JSON.stringify(logRecord, null, 1)}`);
     }
   }
 }
@@ -15409,11 +15409,11 @@ function errs(txt) {
 
 /**
  * The replacer function, to convert map objects to JSON.
- * @param {any} key - The key(name) of the object, to be replaced.
+ * @param {any} _key - The key(name) of the object, to be replaced.
  * @param {any} value - The value of the object, to be replaced.
  * @returns {any} The result of replace.
  */
-function JSONReplacerWithMap(key, value) {
+function JSONReplacerWithMap(_key, value) {
   if (value instanceof Map) {
     return {
       dataType: 'Map',
@@ -15426,11 +15426,11 @@ function JSONReplacerWithMap(key, value) {
 
 /**
  * The reviver function, to convert JSON to the Map object.
- * @param {any} key - The key(name) of the object, to be revived.
+ * @param {any} _key - The key(name) of the object, to be revived.
  * @param {any} value - The value of the object, to be revived.
  * @returns {any} The result of revive.
  */
-function JSONReviverWithMap(key, value) {
+function JSONReviverWithMap(_key, value) {
   if (typeof value === 'object' && value !== null) {
     if (value.dataType === 'Map') {
       return new Map(value.value);
