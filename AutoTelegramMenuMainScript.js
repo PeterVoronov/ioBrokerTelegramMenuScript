@@ -7921,18 +7921,29 @@ const triggersInAlertsId = 0,
   cachedTriggersDetails = 'triggersDetails',
   triggersTimeRangeId = 'triggersTimeRange',
   triggersTimeRangeHours = 'hours',
+  triggersTimeRangeHoursWithMinutes = 'hoursWithMinutes',
   triggersTimeRangeDaysOfWeek = 'daysOfWeek',
   triggersTimeRangeMonths = 'months',
   triggersTimeRangeQuarters = 'quarters',
   triggersTimeRangeSeasons = 'seasons',
-  triggersTimeRangeDaysOfYear = 'daysOfYear',
+  triggersTimeRangeMonthsWithDays = 'monthsWithDays',
   triggersTimeRangeAttributes = [
     triggersTimeRangeHours,
+    triggersTimeRangeHoursWithMinutes,
     triggersTimeRangeDaysOfWeek,
     triggersTimeRangeMonths,
     triggersTimeRangeQuarters,
     triggersTimeRangeSeasons,
-    triggersTimeRangeDaysOfYear,
+    triggersTimeRangeMonthsWithDays,
+  ],
+  triggersTimeRangeAttributesShort = [
+    'hoursShort',
+    'hoursWithMinutesShort',
+    'daysOfWeekShort',
+    'monthsShort',
+    'quartersShort',
+    'seasonsShort',
+    'monthsWithDaysShort',
   ],
   triggersIconsArray = [iconItemTrigger, iconItemDisabled],
   triggersConditionIconsArray = [iconItemCondition, iconItemDisabled],
@@ -8705,14 +8716,14 @@ function triggerTimeRangeCheck(time, timeRange) {
 function triggerTimeRangeShortDescription(user, timeRange) {
   let result = '';
   if (isDefined(timeRange)) {
-    triggersTimeRangeAttributes.forEach((timeRangeAttribute) => {
+    triggersTimeRangeAttributes.forEach((timeRangeAttribute, attributeIndex) => {
       if (timeRange.hasOwnProperty(timeRangeAttribute)) {
         if (result) result += ';';
+        result += `${translationsItemTextGet(user, triggersTimeRangeAttributesShort[attributeIndex])}[`;
         switch (timeRangeAttribute) {
           case triggersTimeRangeHours: {
             const allowedHours = timeRange[timeRangeAttribute];
             let lastHour = -1;
-            result += 'H[';
             for (const hour of allowedHours) {
               if (lastHour > -1) {
                 if (hour - lastHour > 1) {
