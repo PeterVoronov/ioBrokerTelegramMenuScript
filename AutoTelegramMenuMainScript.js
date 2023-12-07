@@ -92,12 +92,13 @@ const cmdPrefix = 'cmd',
   //*** Commands - end ***//
 
   telegramAdapter = `telegram.${telegramInstance}`,
-  //*** Various prefixes for ioBroker states ***//
+  //*** Location of source of the script ***//
   scriptRepositorySite = 'https://github.com/',
   scriptRepositorySubUrl = '/PeterVoronov/ioBrokerTelegramMenuScript/',
   scriptVersion = 'v0.9.5-dev',
   scriptBranchRemoteFolder = `${scriptRepositorySubUrl}blob/${scriptVersion}/`,
   scriptCoreLocalesRemoteFolder = `${scriptBranchRemoteFolder}locales/`,
+  //*** Various prefixes for ioBroker states ***//
   prefixPrimary = `0_userdata.0.telegram_automenu.${telegramInstance}`,
   prefixConfigStates = `${prefixPrimary}.config`,
   prefixTranslationStates = `${prefixPrimary}.translations`,
@@ -221,7 +222,8 @@ const cmdPrefix = 'cmd',
   iconItemReset = '↺',
   iconItemUnavailable = '🆘',
   iconItemCondition = '🤔', //☑️
-  iconItemEmpty = '❔';
+  iconItemEmpty = '❔',
+  iconItemClock = '⏰';
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
 const checkEmojiRegex = emojiRegex();
 
@@ -6922,7 +6924,8 @@ function alertsActionOnSubscribedState(object) {
     activeChatGroups = telegramGetGroupChats(true),
     stateId = object.id;
   if (isDefined(alerts) && alerts.hasOwnProperty(stateId)) {
-    const alertObject = getObjectEnriched(stateId, '*'),
+    const alertTimeStamp = new Date(Date.now()),
+      alertObject = getObjectEnriched(stateId, '*'),
       alertDestinationId = alerts[stateId].destination,
       alertFunctionId = alerts[stateId].function,
       functionsList = enumerationsList[dataTypeFunction].list,
@@ -7038,6 +7041,7 @@ function alertsActionOnSubscribedState(object) {
                     conditions,
                   } = threshold,
                   isNumeric = type === 'number',
+                  timeRange = threshold[triggersTimeRangeId],
                   onTimeInterval = threshold.hasOwnProperty(onTimeIntervalId) ? threshold[onTimeIntervalId] : 0,
                   idStoredTimer = ['timer', stateId, chatId, id].join(itemsDelimiter),
                   idStoredData = ['data', stateId, chatId, isNumeric ? id : ''].join(itemsDelimiter),
@@ -7045,7 +7049,12 @@ function alertsActionOnSubscribedState(object) {
                   alertMessageTemplate = threshold.hasOwnProperty(alertMessageTemplateId)
                     ? threshold[alertMessageTemplateId]
                     : alertDefaultTemplate;
-                let isLess, isAbove, isTriggered, storedValue, storedValueOld;
+                let isLess,
+                  isAbove,
+                  isTriggered,
+                  storedValue,
+                  storedValueOld,
+                  timeRangeIsOk = true;
                 if (isNumeric) {
                   storedValue =
                     timerOn && thresholdsVariables.has(idStoredData) ? thresholdsVariables.get(idStoredData) : 0;
@@ -7168,46 +7177,62 @@ function alertsActionOnSubscribedState(object) {
                     });
                   }
                 };
-                if (onTimeInterval) {
-                  if (timerOn) {
-                    let toClear;
-                    if (isNumeric) {
-                      let adjustment = 0;
-                      if (storedValue > 0 && isLess) {
-                        adjustment = -1;
-                      } else if (storedValue <= 0 && isAbove) {
-                        adjustment = 1;
+                if (isDefined(timeRange)) {
+                  timeRangeIsOk = triggerTimeRangeCheck(alertTimeStamp, timeRange);
+                  logs(
+                    `threshold timeRange check timeRangeIsOk: ${timeRangeIsOk},  alertTimeStamp: ${alertTimeStamp.toString()}, timeRange: ${JSON.stringify(
+                      timeRange,
+                      null,
+                      1,
+                    )}`,
+                    _l,
+                  );
+                }
+                if (timeRangeIsOk) {
+                  if (onTimeInterval) {
+                    if (timerOn) {
+                      let toClear;
+                      if (isNumeric) {
+                        let adjustment = 0;
+                        if (storedValue > 0 && isLess) {
+                          adjustment = -1;
+                        } else if (storedValue <= 0 && isAbove) {
+                          adjustment = 1;
+                        }
+                        toClear = storedValue + adjustment === 0 && storedValue !== 0;
+                      } else {
+                        toClear = stateValue !== storedValue;
                       }
-                      toClear = storedValue + adjustment === 0 && storedValue !== 0;
+                      if (toClear) {
+                        clearTimeout(timerOn);
+                        thresholdsVariables.delete(idStoredTimer);
+                        thresholdsVariables.delete(idStoredData);
+                      }
                     } else {
-                      toClear = stateValue !== storedValue;
-                    }
-                    if (toClear) {
-                      clearTimeout(timerOn);
-                      thresholdsVariables.delete(idStoredTimer);
-                      thresholdsVariables.delete(idStoredData);
-                    }
-                  } else {
-                    let currentStatus = 0;
-                    if (isNumeric) {
-                      if (isLess && onLess) {
-                        currentStatus = -1;
-                      } else if (isAbove && onAbove) {
-                        currentStatus = 1;
+                      let currentStatus = 0;
+                      if (isNumeric) {
+                        if (isLess && onLess) {
+                          currentStatus = -1;
+                        } else if (isAbove && onAbove) {
+                          currentStatus = 1;
+                        }
+                      }
+                      if (currentStatus !== 0 || isTriggered) {
+                        if (triggersCheckConditions(conditions)) {
+                          thresholdsVariables.set(
+                            idStoredData,
+                            isNumeric ? currentStatus : [stateValue, stateValueOld],
+                          );
+                          thresholdsVariables.set(
+                            idStoredTimer,
+                            setTimeout(pushAlertOrTriggerState, onTimeInterval * 1000),
+                          );
+                        }
                       }
                     }
-                    if (currentStatus !== 0 || isTriggered) {
-                      if (triggersCheckConditions(conditions)) {
-                        thresholdsVariables.set(idStoredData, isNumeric ? currentStatus : [stateValue, stateValueOld]);
-                        thresholdsVariables.set(
-                          idStoredTimer,
-                          setTimeout(pushAlertOrTriggerState, onTimeInterval * 1000),
-                        );
-                      }
-                    }
+                  } else if (isLess || isAbove || isTriggered) {
+                    if (triggersCheckConditions(conditions)) pushAlertOrTriggerState();
                   }
-                } else if (isLess || isAbove || isTriggered) {
-                  if (triggersCheckConditions(conditions)) pushAlertOrTriggerState();
                 }
               }
             });
@@ -7894,6 +7919,32 @@ function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
 
 const triggersInAlertsId = 0,
   cachedTriggersDetails = 'triggersDetails',
+  triggersTimeRangeId = 'triggersTimeRange',
+  triggersTimeRangeHours = 'hours',
+  triggersTimeRangeHoursWithMinutes = 'hoursWithMinutes',
+  triggersTimeRangeDaysOfWeek = 'daysOfWeek',
+  triggersTimeRangeMonths = 'months',
+  triggersTimeRangeQuarters = 'quarters',
+  triggersTimeRangeSeasons = 'seasons',
+  triggersTimeRangeMonthsWithDays = 'monthsWithDays',
+  triggersTimeRangeAttributes = [
+    triggersTimeRangeHours,
+    triggersTimeRangeHoursWithMinutes,
+    triggersTimeRangeDaysOfWeek,
+    triggersTimeRangeMonths,
+    triggersTimeRangeQuarters,
+    triggersTimeRangeSeasons,
+    triggersTimeRangeMonthsWithDays,
+  ],
+  triggersTimeRangeAttributesShort = [
+    'hoursShort',
+    'hoursWithMinutesShort',
+    'daysOfWeekShort',
+    'monthsShort',
+    'quartersShort',
+    'seasonsShort',
+    'monthsWithDaysShort',
+  ],
   triggersIconsArray = [iconItemTrigger, iconItemDisabled],
   triggersConditionIconsArray = [iconItemCondition, iconItemDisabled],
   triggersConditionOperators = ['==', '!=', '> ', '>=', '<', '<='];
@@ -8119,7 +8170,10 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
       }
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${triggerName}${currentTriggerDetails} (${onTimeInterval})`,
+        name: `${triggerName}${currentTriggerDetails} (${onTimeInterval}, ${triggerTimeRangeShortDescription(
+          user,
+          trigger[triggersTimeRangeId],
+        )})`,
         icon: triggersGetEnabledIcon(trigger),
         options: {...stateOptions, id: triggerId, stateUnits},
         text: triggersMenuItemDetailsTrigger,
@@ -8305,6 +8359,17 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         submenu: [],
       });
     }
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: `${translationsItemTextGet(user, triggersTimeRangeId)} (${triggerTimeRangeShortDescription(
+        user,
+        trigger[triggersTimeRangeId],
+      )})`,
+      icon: iconItemClock,
+      group: triggersTimeRangeId,
+      options: {...triggerOptions, item: triggersTimeRangeId},
+      submenu: triggersMenuGenerateManageTimeRange,
+    });
     subMenuIndex = subMenu.push(
       menuMenuItemGenerateEditItem(
         user,
@@ -8428,6 +8493,10 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           value: triggersGetEnabledIcon(trigger),
         },
         {
+          label: translationsItemTextGet(user, triggersTimeRangeId),
+          value: triggerTimeRangeShortDescription(user, trigger[triggersTimeRangeId]),
+        },
+        {
           label: translationsItemTextGet(user, onTimeIntervalId),
           value: trigger[onTimeIntervalId],
         },
@@ -8497,6 +8566,228 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
     }
   }
   return text;
+}
+
+/**
+ * This function generates the default values for the appropriate triggers TimeRange attribute.
+ * @param {string} triggerTimeRangeAttributeId - The attribute Id.
+ * @returns {any[]} - The description of the Trigger.
+ */
+function triggersTimeRangeAttributesGenerateDefaults(triggerTimeRangeAttributeId) {
+  let triggerTimeRangeAttribute = [];
+  switch (triggerTimeRangeAttributeId) {
+    case triggersTimeRangeHours: {
+      triggerTimeRangeAttribute = [...Array(24).keys()];
+      break;
+    }
+    case triggersTimeRangeDaysOfWeek: {
+      triggerTimeRangeAttribute = [...Array(8).keys()];
+      triggerTimeRangeAttribute.shift();
+      break;
+    }
+    case triggersTimeRangeMonths: {
+      triggerTimeRangeAttribute = [...Array(13).keys()];
+      triggerTimeRangeAttribute.shift();
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+  return triggerTimeRangeAttribute;
+}
+
+/**
+ * This function generates the sub Menu to manage Time Ranges for the appropriate Trigger.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options,
+    {state: targetStateId, id: triggerId} = options,
+    triggers = triggersGetStateTriggers(user, targetStateId),
+    triggerIndex = triggersGetIndex(triggers, triggerId);
+  let subMenu = [],
+    subMenuIndex = 0;
+  if (triggerIndex >= 0) {
+    const trigger = triggers[triggerIndex],
+      triggerTimeRange = isDefined(trigger[triggersTimeRangeId]) ? trigger[triggersTimeRangeId] : {};
+    triggersTimeRangeAttributes.forEach((triggersTimeRangeAttribute) => {
+      const triggerTimeRangeAttributePossibleValues = new Map(),
+        triggerHasTimeRangeAttribute = isDefined(triggerTimeRange[triggersTimeRangeAttribute]),
+        triggerTimeRangeAttributeValues = triggerHasTimeRangeAttribute
+          ? triggerTimeRange[triggersTimeRangeAttribute]
+          : triggersTimeRangeAttributesGenerateDefaults(triggersTimeRangeAttribute);
+      switch (triggersTimeRangeAttribute) {
+        case triggersTimeRangeHours: {
+          [...Array(24).keys()].forEach((hour) => {
+            triggerTimeRangeAttributePossibleValues.set(hour, hour);
+          });
+          break;
+        }
+        case triggersTimeRangeDaysOfWeek: {
+          const localDaysOfWeek = getLocalDaysOfWeekNames(configOptions.getOption(cfgMenuLanguage, user), 'long');
+          localDaysOfWeek.forEach((dayOfWeekName, dayOfWeek) => {
+            triggerTimeRangeAttributePossibleValues.set(dayOfWeek + 1, dayOfWeekName);
+          });
+          break;
+        }
+        case triggersTimeRangeMonths: {
+          const localMonths = getLocalMonthsNames(configOptions.getOption(cfgMenuLanguage, user), 'long');
+          localMonths.forEach((monthName, month) => {
+            triggerTimeRangeAttributePossibleValues.set(month + 1, monthName);
+          });
+          break;
+        }
+        default:
+          break;
+      }
+      if (triggerTimeRangeAttributePossibleValues.size > 0) {
+        subMenuIndex = subMenu.push(
+          menuMenuItemGenerateSelectItem(
+            user,
+            currentIndex,
+            subMenuIndex,
+            translationsItemTextGet(user, triggersTimeRangeAttribute),
+            triggerTimeRangeAttributePossibleValues,
+            triggersTimeRangeAttribute,
+            {
+              ...options,
+              subItem: triggersTimeRangeAttribute,
+              values: triggerTimeRangeAttributeValues,
+            },
+          ),
+        );
+      }
+    });
+  }
+  return subMenu;
+}
+
+/**
+ * This function checks time of trigger generation against configured Time Range.
+ * @param {Date} time - The time to check.
+ * @param {object} timeRange - The Time Range attribute of trigger.
+ * @returns {boolean} - The result of check.
+ */
+function triggerTimeRangeCheck(time, timeRange) {
+  let result = true;
+  if (isDefined(timeRange)) {
+    triggersTimeRangeAttributes.forEach((timeRangeAttribute) => {
+      if (timeRange.hasOwnProperty(timeRangeAttribute)) {
+        if (result) {
+          switch (timeRangeAttribute) {
+            case triggersTimeRangeHours: {
+              const currentHour = time.getHours(),
+                allowedHours = timeRange[timeRangeAttribute];
+              result = allowedHours.includes(currentHour);
+              break;
+            }
+            case triggersTimeRangeDaysOfWeek: {
+              const currentDayOfWeek = time.getDay(),
+                allowedDaysOfWeek = timeRange[timeRangeAttribute];
+              result = allowedDaysOfWeek.includes(currentDayOfWeek === 0 ? 7 : currentDayOfWeek);
+              break;
+            }
+            case triggersTimeRangeMonths: {
+              const currentMonth = time.getMonth() + 1,
+                allowedMonths = timeRange[timeRangeAttribute];
+              result = allowedMonths.includes(currentMonth);
+              break;
+            }
+            default:
+              break;
+          }
+        }
+      }
+    });
+  }
+  return result;
+}
+
+/**
+ * This function generates a short description of the Time Range attribute of the trigger.
+ * @param {object} user - The user object.
+ * @param {object} timeRange - The Time Range attribute of trigger.
+ * @returns {string} - The short description of the Time Range.
+ */
+function triggerTimeRangeShortDescription(user, timeRange) {
+  let result = '';
+  if (isDefined(timeRange)) {
+    triggersTimeRangeAttributes.forEach((timeRangeAttribute, attributeIndex) => {
+      if (timeRange.hasOwnProperty(timeRangeAttribute)) {
+        if (result) result += ';';
+        result += `${translationsItemTextGet(user, triggersTimeRangeAttributesShort[attributeIndex])}[`;
+        switch (timeRangeAttribute) {
+          case triggersTimeRangeHours: {
+            const allowedHours = timeRange[timeRangeAttribute];
+            let lastHour = -1;
+            for (const hour of allowedHours) {
+              if (lastHour > -1) {
+                if (hour - lastHour > 1) {
+                  if (result.endsWith('..')) result += `${lastHour}`;
+                  result += `,${hour}`;
+                } else if (!result.endsWith('..')) result += '..';
+              } else {
+                result += `${hour}`;
+              }
+              lastHour = hour;
+            }
+            if (result.endsWith('..')) result += `${lastHour}`;
+            result += ']';
+            break;
+          }
+          case triggersTimeRangeDaysOfWeek: {
+            const allowedDaysOfWeek = timeRange[timeRangeAttribute],
+              localDaysOfWeek = getLocalDaysOfWeekNames(configOptions.getOption(cfgMenuLanguage, user), 'short');
+            let lastDayOfWeek = 0;
+            result += 'DoW[';
+            for (const dayOfWeek of allowedDaysOfWeek) {
+              if (lastDayOfWeek > 0) {
+                if (dayOfWeek - lastDayOfWeek > 1) {
+                  if (result.endsWith('..')) result += localDaysOfWeek[lastDayOfWeek - 1];
+                  result += `,${localDaysOfWeek[dayOfWeek - 1]}`;
+                } else if (!result.endsWith('..')) result += '..';
+              } else {
+                result += localDaysOfWeek[dayOfWeek - 1];
+              }
+              lastDayOfWeek = dayOfWeek;
+            }
+            if (result.endsWith('..')) result += localDaysOfWeek[lastDayOfWeek - 1];
+            result += ']';
+            break;
+          }
+          case triggersTimeRangeMonths: {
+            const allowedMonths = timeRange[timeRangeAttribute],
+              localMonths = getLocalMonthsNames(configOptions.getOption(cfgMenuLanguage, user), 'short');
+            let lastMonth = 0;
+            result += 'M[';
+            for (const month of allowedMonths) {
+              if (lastMonth > 0) {
+                if (month - lastMonth > 1) {
+                  if (result.endsWith('..')) result += localMonths[lastMonth - 1];
+                  result += `,${localMonths[month - 1]}`;
+                } else if (!result.endsWith('..')) result += '..';
+              } else {
+                result += localMonths[month - 1];
+              }
+              lastMonth = month;
+            }
+            if (result.endsWith('..')) result += localMonths[lastMonth - 1];
+            result += ']';
+            break;
+          }
+          default:
+            break;
+        }
+      }
+    });
+  } else {
+    result = 'Any';
+  }
+  return result;
 }
 
 /**
@@ -10247,6 +10538,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     let subMenuIndex = 0;
     const iconSelected = configOptions.getOption(cfgDefaultIconOn, user),
       currentValue = options.value,
+      currentValues = options.values,
       showCurrent = options.showCurrent && isDefined(currentValue);
     itemValuesGroups.forEach((itemValuesGroup, groupIndex) => {
       itemValuesGroup.forEach((subItemName, subItemValue) => {
@@ -10254,7 +10546,11 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           index: `${upperItemIndex}.${itemIndex}.${subMenuIndex}`,
           name: subItemName,
           group: `line${groupIndex}`,
-          icon: isDefined(options.value) && currentValue === subItemValue ? iconSelected : '',
+          icon:
+            (isDefined(currentValue) && currentValue === subItemValue) ||
+            (isDefined(currentValues) && currentValues.includes(subItemValue))
+              ? iconSelected
+              : '',
           command: options?.replaceCommand ? options.replaceCommand : cmdItemPress,
           options: {...options, value: subItemValue},
         });
@@ -10279,7 +10575,6 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
  */
 function menuMenuItemGenerateEditItemWithState(user, upperItemIndex, itemIndex, itemName, groupId, options) {
   let menuItem;
-  logs(`state = ${options?.state}, name = ${itemName}`, _l);
   if (isDefined(options?.state)) {
     const stateObject = options?.stateObject ? options.stateObject : getObject(options.state),
       stateObjectCommon = stateObject?.common,
@@ -10747,8 +11042,10 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
       targetMenuPos = targetMenuPos.slice(savedPos.length);
       menuItemToProcess = savedMenu;
       messageObject = {...savedRows};
-      if (typeOf(menuItemToProcess?.options?.generatedBy, 'function')) {
+      // @ts-ignore
+      if (['function', 'string'].includes(typeOf(menuItemToProcess?.options?.generatedBy))) {
         menuItemToProcess.submenu = menuItemToProcess.options.generatedBy;
+        menuItemToProcess.options.generatedBy = undefined;
         messageObject.buttons = [];
       }
       currentIndent = savedTab;
@@ -10786,6 +11083,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             }
             targetMenuPos = [];
           }
+          if (!isDefined(menuItemToProcess.options)) menuItemToProcess.options = {};
+          menuItemToProcess.options.generatedBy = subMenu;
           menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
         },
       );
@@ -10793,9 +11092,9 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     }
 
     case 'function': {
+      menuItemToProcess.submenu = subMenu(user, menuItemToProcess);
       if (!isDefined(menuItemToProcess.options)) menuItemToProcess.options = {};
       menuItemToProcess.options.generatedBy = subMenu;
-      menuItemToProcess.submenu = subMenu(user, menuItemToProcess);
       menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
       break;
     }
@@ -11324,22 +11623,32 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
  * @returns {array[]} The Array of Arrays of buttons objects, represented the rows.
  */
 function menuButtonsArraySplitIntoButtonsPerRowsArray(user, buttonsArray) {
-  const maxTextLength = configOptions.getOptionWithModifier(cfgSummaryTextLengthMax, user),
+  const minimalButtonLength = 5,
+    buttonTextLengthTrigger = 11,
+    triggeredMaxButtonsCountInRow = 2,
+    // by some reasons "length" of the buttons row in a group chat is more then text part of message
+    // that's why the modifier is not applied
+    maxTextLength = configOptions.getOption(cfgSummaryTextLengthMax, user),
     menuButtonsDefaultGroup = 'defaultGroup';
   let buttonsRowsArray = [],
     buttonsRow = [],
     currentRowLength = 0,
-    currentGroup = '';
+    currentGroup = '',
+    isTextLengthTriggered = false;
   buttonsArray.forEach((currentButton, _buttonIndex) => {
-    const currentLength = getStringLength(currentButton.text) + getStringLength(currentButton.icon) + 1;
+    let currentLength = getStringLength(currentButton.text) + getStringLength(currentButton.icon) + 1;
+    if (currentLength < minimalButtonLength) currentLength = minimalButtonLength;
+    if (currentLength > buttonTextLengthTrigger) isTextLengthTriggered = true;
     if (
       (buttonsRow.length > 0 && currentRowLength + currentLength > maxTextLength) ||
+      (isTextLengthTriggered && buttonsRow.length >= triggeredMaxButtonsCountInRow) ||
       (currentGroup && currentGroup !== currentButton.group)
     ) {
       currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
       buttonsRowsArray.push(buttonsRow);
       buttonsRow = [];
       currentRowLength = 0;
+      isTextLengthTriggered = false;
     }
     currentGroup = currentButton.group ? currentButton.group : menuButtonsDefaultGroup;
     buttonsRow.push({
@@ -12836,6 +13145,43 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             trigger[item] = true;
                           } else {
                             triggers = undefined;
+                          }
+                          break;
+                        }
+
+                        case triggersTimeRangeId: {
+                          backStepsForCacheDelete -= 2;
+                          const subItem = commandOptions.subItem;
+                          if (!isDefined(trigger?.[item]?.[subItem])) {
+                            if (!isDefined(trigger?.[item])) trigger[item] = {};
+                            trigger[item][subItem] = triggersTimeRangeAttributesGenerateDefaults(subItem);
+                          }
+                          const triggerTimeRange = trigger[item],
+                            attributeValue = triggerTimeRange[subItem],
+                            value = commandOptions.value;
+                          switch (subItem) {
+                            case triggersTimeRangeHours:
+                            case triggersTimeRangeDaysOfWeek:
+                            case triggersTimeRangeMonths: {
+                              if (attributeValue.includes(value)) {
+                                triggerTimeRange[subItem] = attributeValue.filter((element) => element !== value);
+                              } else {
+                                attributeValue.push(value);
+                                if (
+                                  attributeValue.length === triggersTimeRangeAttributesGenerateDefaults(subItem).length
+                                ) {
+                                  delete triggerTimeRange[subItem];
+                                } else {
+                                  triggerTimeRange[subItem].sort((a, b) => a - b);
+                                }
+                              }
+                              break;
+                            }
+                            default:
+                              break;
+                          }
+                          if (Object.keys(triggerTimeRange).length === 0) {
+                            delete trigger[item];
                           }
                           break;
                         }
@@ -15378,6 +15724,40 @@ function getStringLength(string) {
     }
   }
   return count;
+}
+
+/**
+ * This function generates the name of days of week according current language.
+ * @param {string} locale - Locale or language Id.
+ * @param {string} type - "Type" of names - 'long', 'short', 'narrow'.
+ * @returns {string[]} The array of names.
+ */
+function getLocalDaysOfWeekNames(locale, type) {
+  let d = new Date(2000, 0, 3); // Monday
+  let days = [];
+  for (let i = 0; i < 7; i++) {
+    // @ts-ignore
+    days.push(d.toLocaleString(locale, {weekday: type}));
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
+}
+
+/**
+ * This function generates the name of Months according current language.
+ * @param {string} locale - Locale or language Id.
+ * @param {string} type - "Type" of names - 'long', 'short', 'narrow'.
+ * @returns {string[]} The array of names.
+ */
+function getLocalMonthsNames(locale, type) {
+  let d = new Date(2000, 0); // January
+  let months = [];
+  for (let i = 0; i < 12; i++) {
+    // @ts-ignore
+    months.push(d.toLocaleString(locale, {month: type}));
+    d.setMonth(i + 1);
+  }
+  return months;
 }
 
 /**
