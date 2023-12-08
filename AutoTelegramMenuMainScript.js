@@ -25,6 +25,9 @@ const nodeVm = require('node:vm');
 const axios = require('axios');
 
 // @ts-ignore
+const url = require('url');
+
+// @ts-ignore
 const emojiRegex = require('emoji-regex');
 
 /* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
@@ -93,11 +96,10 @@ const cmdPrefix = 'cmd',
 
   telegramAdapter = `telegram.${telegramInstance}`,
   //*** Location of source of the script ***//
-  scriptRepositorySite = 'https://github.com/',
-  scriptRepositorySubUrl = '/PeterVoronov/ioBrokerTelegramMenuScript/',
-  scriptVersion = 'v0.9.5-dev',
-  scriptBranchRemoteFolder = `${scriptRepositorySubUrl}blob/${scriptVersion}/`,
-  scriptCoreLocalesRemoteFolder = `${scriptBranchRemoteFolder}locales/`,
+  scriptGitHubAPISite = 'https://api.github.com/',
+  scriptRepositoryPath = '/PeterVoronov/ioBrokerTelegramMenuScript/',
+  scriptBranch = 'v0.9.5-dev',
+  scriptCoreLocalesRemoteFolder = 'locales',
   //*** Various prefixes for ioBroker states ***//
   prefixPrimary = `0_userdata.0.telegram_automenu.${telegramInstance}`,
   prefixConfigStates = `${prefixPrimary}.config`,
@@ -2734,7 +2736,7 @@ const /**
  */
 const translationsList = {}; // Localization translation
 const translationsCommonFunctionsAttributesPrefix = `${idFunctions}.common`,
-  translationsLocalesExtractRegExp = /<a.+?href="([^"]+)">locale_([^.]+).json<\/a>/g,
+  translationsLocalesExtractLanguageIdRegExp = /locale_(\w+).json/,
   translationsVersion = '1.0',
   translationsType = 'telegramMenuTranslation',
   cachedTranslationsToUpload = 'translationToUpload',
@@ -2840,16 +2842,31 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
    * This functions process the list of locales links iterative way, and returns the translations object into the `callback` function.
    * @param {object} repo - The axios object, initiated to the repo main link.
    * @param {string[]} languageIds - The array of language Ids, like ['en', 'de', 'uk', ...]
-   * @param {object} translations - The object, with languageId's as properties , with values - links to the 'locale_xx.json' files in repo.
+   * @param {object} localesUrls - The object, with languageId's as properties , with values - parsed urls objects
+   * to the 'locale_xx.json' files in repo.
+   * @param {object} translations - The object, with languageId's as properties , with values - downloaded translations.
    * @param {function(object=, string|object=):void} callback - The callback function in format `callback(translation, error)`.
    */
-  function translationsDownloadFromRepo(repo, languageIds, translations, callback) {
+  function translationsDownloadFromRepo(repo, languageIds, localesUrls, translations, callback) {
     const languageId = languageIds.shift();
-    if (languageId) {
+    if (
+      languageId &&
+      localesUrls[languageId]?.['href'] &&
+      localesUrls[languageId]?.['hostname'] &&
+      localesUrls[languageId]?.['path']
+    ) {
+      const localeUrl = localesUrls[languageId];
+      if (!isDefined(repo)) {
+        repo = axios.create({
+          baseURL: `${localeUrl.protocol}//${localeUrl.hostname}/`,
+          timeout: 10000,
+        });
+      }
       repo
-        .get(translations[languageId])
+        .get(localeUrl.path)
         .then((response) => {
           if (response?.data && typeOf(response.data, 'object')) {
+            if (!isDefined(translations)) translations = {};
             translations[languageId] = response.data;
           }
         })
@@ -2858,7 +2875,7 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
         })
         .then(() => {
           if (languageIds.length) {
-            translationsDownloadFromRepo(repo, languageIds, translations, callback);
+            translationsDownloadFromRepo(repo, languageIds, localesUrls, translations, callback);
           } else {
             callback(translations, undefined);
           }
@@ -2868,8 +2885,8 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
     }
   }
 
-  const github = axios.create({
-    baseURL: scriptRepositorySite,
+  const githubAPI = axios.create({
+    baseURL: scriptGitHubAPISite,
     timeout: 10000,
   });
   if (languageId && languageId !== doAll) {
@@ -2879,28 +2896,37 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
   }
   if (languageId) {
     const remoteFolder =
-      extensionId && extensionId !== translationsCoreId
-        ? `${scriptBranchRemoteFolder}${translationsExtensionsPrefix}/${extensionId
-            .replace(prefixExtensionId, '')
-            .toLowerCase()}/locales/`
-        : scriptCoreLocalesRemoteFolder;
-    github
-      .get(remoteFolder)
+      `/repos${scriptRepositoryPath}contents/` +
+      (extensionId && extensionId !== translationsCoreId
+        ? `${translationsExtensionsPrefix}/${extensionId.replace(prefixExtensionId, '').toLowerCase()}/`
+        : '') +
+      `${scriptCoreLocalesRemoteFolder}?ref=${scriptBranch}`;
+    githubAPI
+      .get(remoteFolder, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+        },
+      })
       .then((response) => {
-        if (response?.data) {
-          let localesLinks = {},
-            parsedLocale;
-          while ((parsedLocale = translationsLocalesExtractRegExp.exec(response.data))) {
-            if (parsedLocale?.length && parsedLocale[1] && parsedLocale[2]) {
-              localesLinks[parsedLocale[2]] = parsedLocale[1].replace('/blob/', '/raw/');
+        if (response?.data && typeOf(response.data, 'array')) {
+          const localesFolder = response.data,
+            localesLinks = {};
+          localesFolder.forEach((localesItem) => {
+            if (localesItem?.name && localesItem?.download_url) {
+              const parsedLocaleLanguageId = translationsLocalesExtractLanguageIdRegExp.exec(localesItem.name);
+              if (parsedLocaleLanguageId?.length === 2 && parsedLocaleLanguageId[1]) {
+                const localeLanguageId = parsedLocaleLanguageId[1];
+                if (languageId === doAll || languageId === localeLanguageId) {
+                  localesLinks[localeLanguageId] = url.parse(localesItem.download_url);
+                }
+              }
             }
-          }
-          if (languageId !== doAll && localesLinks.hasOwnProperty(languageId)) {
-            localesLinks = {[languageId]: localesLinks[languageId]};
-          } else if (languageId !== doAll) {
+          });
+          if (Object.keys(localesLinks).length === 0) {
             callback(undefined, `Language with id = ${languageId} is not presented in repo!`);
+          } else {
+            translationsDownloadFromRepo(null, Object.keys(localesLinks), localesLinks, undefined, callback);
           }
-          translationsDownloadFromRepo(github, Object.keys(localesLinks), localesLinks, callback);
         }
       })
       .catch((error) => {
@@ -13374,10 +13400,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
               case doUploadFromRepo: {
                 const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
+                logs(`currentLanguageId: ${currentLanguageId}, translationPart: ${commandOptions.translationPart}`, _l);
                 translationsLoadLocalesFromRepository(
                   currentLanguageId,
                   commandOptions.translationPart,
                   (locales, _error) => {
+                    logs(`locales, _error: ${locales} , ${_error}`, _l);
                     if (
                       locales &&
                       typeOf(locales, 'object') &&
