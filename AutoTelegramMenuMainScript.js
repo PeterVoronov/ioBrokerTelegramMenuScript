@@ -105,6 +105,7 @@ const cmdPrefix = 'cmd',
   prefixConfigStates = `${prefixPrimary}.config`,
   prefixTranslationStates = `${prefixPrimary}.translations`,
   prefixCacheStates = `${prefixPrimary}.cache`,
+  prefixCacheStatesCommon = `${prefixCacheStates}.common`,
   prefixExtensionId = 'ext',
   prefixExternalStates = 'external',
   prefixEnums = 'enum',
@@ -151,6 +152,7 @@ const cmdPrefix = 'cmd',
   idTranslation = 'translation',
   idExternal = dataTypeExtension,
   idAlerts = 'alerts',
+  idCachedAlertsStatesValues = 'alertsStatesPreviousValues',
   //*** Items default delimiter ***//
   itemsDelimiter = '::',
   //*** Do commands ***//
@@ -6649,6 +6651,7 @@ function extensionsInit() {
 //*** Alerts - begin ***//
 
 const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
+  cachedAlertsStatesValuesStateFullId = `${prefixCacheStatesCommon}.${idCachedAlertsStatesValues}`,
   cachedAlertMessages = 'alertMessages',
   cachedAlertsListPrepared = 'alertsListPrepared',
   cachedAlertThresholdSet = 'alertThresholdSet',
@@ -6662,7 +6665,8 @@ const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
   alertPropagateOptions = ['alertPropagateOverwrite', 'alertPropagateSkip'],
   thresholdsVariables = new Map();
 
-let alertsRules = {};
+let alertsRules = {},
+  cachedAlertsStatesValues = {};
 
 cachedValuesStatesCommonAttributes[cachedAlertMessages] = {
   name: 'List of alert messages from alert subscriptions',
@@ -6678,7 +6682,13 @@ cachedValuesStatesCommonAttributes[idAlerts] = {
   write: true,
   role: 'list',
 };
-
+cachedValuesStatesCommonAttributes[idCachedAlertsStatesValues] = {
+  name: 'List of previous(cached) values of states for alert subscription',
+  type: 'json',
+  read: true,
+  write: true,
+  role: 'list',
+};
 /**
  * This function return current alerts list as an object
  * @returns {object} List of alerts
@@ -6716,21 +6726,55 @@ function alertsStore(alerts) {
 }
 
 /**
- * This function is used to store the current `value` of monitored `state`.
+ * This function is used to store the current `value` of monitored `state` to
+ * enable check alert states on start functionality.
  * @param {string} alertStateId - Id of the `state`, monitored for alerts.
  * @param {any=} currentValue  - Current state `value`. If not defined - will be read from `state`.
  */
-function alertsStoreStateValue(alertStateId, currentValue) {
+function alertsStoreToCacheStateValue(alertStateId, currentValue) {
   if (!isDefined(currentValue)) {
     if (existsState(alertStateId)) {
       currentValue = getState(alertStateId).val;
     }
   }
-  const alerts = alertsGet();
-  if (isDefined(currentValue) && alerts.hasOwnProperty(alertStateId)) {
-    alerts[alertStateId].value = currentValue;
-    alertsStore(alerts);
+  if (isDefined(currentValue)) {
+    cachedAlertsStatesValues[alertStateId] = currentValue;
+    const stringValue = JSON.stringify(cachedAlertsStatesValues, JSONReplacerWithMap);
+    if (existsState(cachedAlertsStatesValuesStateFullId)) {
+      setState(cachedAlertsStatesValuesStateFullId, stringValue, true);
+    } else {
+      createState(
+        cachedAlertsStatesValuesStateFullId,
+        stringValue,
+        cachedValuesStatesCommonAttributes[idCachedAlertsStatesValues],
+      );
+    }
   }
+}
+
+/**
+ * This function is used to load the previous `value` of monitored `state` to
+ * enable check alert states on start functionality.
+ * @param {string} alertStateId - Id of the `state`, monitored for alerts.
+ * @returns {any} The previous value of `state`.
+ */
+function alertsLoadFromCacheStateValue(alertStateId) {
+  if (
+    !(typeOf(cachedAlertsStatesValues, 'object') && Object.keys(cachedAlertsStatesValues).length > 0) &&
+    existsState(cachedAlertsStatesValuesStateFullId)
+  ) {
+    const alertsStatesValuesState = getState(cachedAlertsStatesValuesStateFullId);
+    if (isDefined(alertsStatesValuesState) && typeOf(alertsStatesValuesState.val, 'string')) {
+      try {
+        cachedAlertsStatesValues = JSON.parse(alertsStatesValuesState.val, JSONReviverWithMap);
+      } catch (err) {
+        // NOSONAR // cachedStates[id] = cachedVal;
+        warns(`Alert states values parse error - ${JSON.stringify(err)}`);
+        if (!typeOf(cachedAlertsStatesValues, 'object')) cachedAlertsStatesValues = {};
+      }
+    }
+  }
+  return cachedAlertsStatesValues[alertStateId];
 }
 
 /**
@@ -6832,15 +6876,16 @@ function alertsInit(checkStates = false) {
   onMessage(extensionSendAlertToTelegramCommand, alertsOnAlertToTelegram);
   if (checkStates && configOptions.getOption(cfgCheckAlertStatesOnStartUp)) {
     statesToSubscribe.forEach((stateId) => {
-      if (alerts[stateId].hasOwnProperty('value') && existsState(stateId)) {
+      if (existsState(stateId)) {
         const currentValue = getState(stateId).val,
-          oldValue = alerts[stateId].value;
-        if (isDefined(currentValue) && currentValue !== oldValue) {
+          oldValue = alertsLoadFromCacheStateValue(stateId);
+        if (isDefined(currentValue) && isDefined(oldValue) && currentValue !== oldValue) {
           alertsActionOnSubscribedState({id: stateId, state: {val: currentValue}, oldState: {val: oldValue}});
         }
       }
     });
   }
+  triggersTimeRangeStartTimesUpdate();
 }
 
 /**
@@ -6965,7 +7010,8 @@ function alertsActionOnSubscribedState(object) {
           ? alertFunctionDeviceButtonsAndAttributes[alertStateShortId].convertValueCode
           : '',
         alertStateType = alertObject.common['type'];
-      if (configOptions.getOption(cfgCheckAlertStatesOnStartUp)) alertsStoreStateValue(stateId, object.state.val);
+      if (configOptions.getOption(cfgCheckAlertStatesOnStartUp))
+        alertsStoreToCacheStateValue(stateId, object.state.val);
       alerts[stateId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
         const user = telegramGenerateUserObjectFromId(chatId);
@@ -7956,24 +8002,39 @@ const triggersInAlertsId = 0,
   triggersTimeRangeAttributes = [
     triggersTimeRangeHours,
     triggersTimeRangeHoursWithMinutes,
-    triggersTimeRangeDaysOfWeek,
     triggersTimeRangeMonths,
     triggersTimeRangeQuarters,
     triggersTimeRangeSeasons,
     triggersTimeRangeMonthsWithDays,
+    triggersTimeRangeDaysOfWeek,
   ],
   triggersTimeRangeAttributesShort = [
     'hoursShort',
     'hoursWithMinutesShort',
-    'daysOfWeekShort',
     'monthsShort',
     'quartersShort',
     'seasonsShort',
     'monthsWithDaysShort',
+    'daysOfWeekShort',
   ],
+  triggersTimeRangeQuartersItems = {
+    I: [1, 2, 3],
+    II: [4, 5, 6],
+    III: [7, 8, 9],
+    IV: [10, 11, 12],
+  },
+  triggersTimeRangeSeasonsItems = {
+    winter: [12, 1, 2],
+    spring: [3, 4, 5],
+    summer: [6, 7, 8],
+    autumn: [9, 10, 11],
+  },
+  triggersTimeRangeSeasonsItemsShort = ['winterShort', 'springShort', 'summerShort', 'autumnShort'],
+  triggerTimeRangeStartTimes = 'startTimes',
   triggersIconsArray = [iconItemTrigger, iconItemDisabled],
   triggersConditionIconsArray = [iconItemCondition, iconItemDisabled],
-  triggersConditionOperators = ['==', '!=', '> ', '>=', '<', '<='];
+  triggersConditionOperators = ['==', '!=', '> ', '>=', '<', '<='],
+  triggersTimeRangeStartTimes = new Map();
 
 /**
  * This function returns a state type, described in 'common' section of State object.
@@ -8616,6 +8677,12 @@ function triggersTimeRangeAttributesGenerateDefaults(triggerTimeRangeAttributeId
       triggerTimeRangeAttribute.shift();
       break;
     }
+    case triggersTimeRangeQuarters:
+    case triggersTimeRangeSeasons: {
+      triggerTimeRangeAttribute = [...Array(5).keys()];
+      triggerTimeRangeAttribute.shift();
+      break;
+    }
     default: {
       break;
     }
@@ -8661,22 +8728,54 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
           break;
         }
         case triggersTimeRangeMonths: {
-          const localMonths = getLocalMonthsNames(configOptions.getOption(cfgMenuLanguage, user), 'long');
-          localMonths.forEach((monthName, month) => {
-            triggerTimeRangeAttributePossibleValues.set(month + 1, monthName);
-          });
+          if (
+            !isDefined(triggerTimeRange[triggersTimeRangeQuarters]) &&
+            !isDefined(triggerTimeRange[triggersTimeRangeSeasons])
+          ) {
+            const localMonths = getLocalMonthsNames(configOptions.getOption(cfgMenuLanguage, user), 'long');
+            localMonths.forEach((monthName, month) => {
+              triggerTimeRangeAttributePossibleValues.set(month + 1, monthName);
+            });
+          }
+          break;
+        }
+        case triggersTimeRangeQuarters:
+        case triggersTimeRangeSeasons: {
+          if (
+            !isDefined(triggerTimeRange[triggersTimeRangeMonths]) &&
+            ((triggersTimeRangeAttribute === triggersTimeRangeQuarters &&
+              !isDefined(triggerTimeRange[triggersTimeRangeSeasons])) ||
+              (triggersTimeRangeAttribute === triggersTimeRangeSeasons &&
+                !isDefined(triggerTimeRange[triggersTimeRangeQuarters])))
+          ) {
+            const items =
+              triggersTimeRangeAttribute === triggersTimeRangeQuarters
+                ? triggersTimeRangeQuartersItems
+                : triggersTimeRangeSeasonsItems;
+            Object.keys(items).forEach((item, index) => {
+              if (triggersTimeRangeAttribute === triggersTimeRangeSeasons) item = translationsItemTextGet(user, item);
+              triggerTimeRangeAttributePossibleValues.set(index + 1, item);
+            });
+          }
           break;
         }
         default:
           break;
       }
       if (triggerTimeRangeAttributePossibleValues.size > 0) {
+        const attributeValues = triggerHasTimeRangeAttribute
+          ? ` (${triggerTimeRangeShortDescription(
+              user,
+              {[triggersTimeRangeAttribute]: triggerTimeRange[triggersTimeRangeAttribute]},
+              true,
+            )})`
+          : '';
         subMenuIndex = subMenu.push(
           menuMenuItemGenerateSelectItem(
             user,
             currentIndex,
             subMenuIndex,
-            translationsItemTextGet(user, triggersTimeRangeAttribute),
+            `${translationsItemTextGet(user, triggersTimeRangeAttribute)}${attributeValues}`,
             triggerTimeRangeAttributePossibleValues,
             triggersTimeRangeAttribute,
             {
@@ -8704,28 +8803,38 @@ function triggerTimeRangeCheck(time, timeRange) {
     triggersTimeRangeAttributes.forEach((timeRangeAttribute) => {
       if (timeRange.hasOwnProperty(timeRangeAttribute)) {
         if (result) {
+          const allowedValues = timeRange[timeRangeAttribute];
+          let valueToCheck;
           switch (timeRangeAttribute) {
             case triggersTimeRangeHours: {
-              const currentHour = time.getHours(),
-                allowedHours = timeRange[timeRangeAttribute];
-              result = allowedHours.includes(currentHour);
+              valueToCheck = time.getHours();
               break;
             }
             case triggersTimeRangeDaysOfWeek: {
-              const currentDayOfWeek = time.getDay(),
-                allowedDaysOfWeek = timeRange[timeRangeAttribute];
-              result = allowedDaysOfWeek.includes(currentDayOfWeek === 0 ? 7 : currentDayOfWeek);
+              valueToCheck = time.getDay();
+              if (valueToCheck === 0) valueToCheck = 7;
               break;
             }
             case triggersTimeRangeMonths: {
+              valueToCheck = time.getMonth() + 1;
+              break;
+            }
+            case triggersTimeRangeQuarters:
+            case triggersTimeRangeSeasons: {
               const currentMonth = time.getMonth() + 1,
-                allowedMonths = timeRange[timeRangeAttribute];
-              result = allowedMonths.includes(currentMonth);
+                items =
+                  timeRangeAttribute === triggersTimeRangeQuarters
+                    ? triggersTimeRangeQuartersItems
+                    : triggersTimeRangeSeasonsItems;
+              Object.values(items).forEach((item, index) => {
+                if (item.includes(currentMonth)) valueToCheck = index + 1;
+              });
               break;
             }
             default:
               break;
           }
+          if (isDefined(valueToCheck)) result = allowedValues.includes(valueToCheck);
         }
       }
     });
@@ -8737,76 +8846,70 @@ function triggerTimeRangeCheck(time, timeRange) {
  * This function generates a short description of the Time Range attribute of the trigger.
  * @param {object} user - The user object.
  * @param {object} timeRange - The Time Range attribute of trigger.
+ * @param {boolean=} withoutShortNames - The selector of output format.
  * @returns {string} - The short description of the Time Range.
  */
-function triggerTimeRangeShortDescription(user, timeRange) {
+function triggerTimeRangeShortDescription(user, timeRange, withoutShortNames = false) {
   let result = '';
   if (isDefined(timeRange)) {
     triggersTimeRangeAttributes.forEach((timeRangeAttribute, attributeIndex) => {
       if (timeRange.hasOwnProperty(timeRangeAttribute)) {
         if (result) result += ';';
-        result += `${translationsItemTextGet(user, triggersTimeRangeAttributesShort[attributeIndex])}[`;
-        switch (timeRangeAttribute) {
-          case triggersTimeRangeHours: {
-            const allowedHours = timeRange[timeRangeAttribute];
-            let lastHour = -1;
-            for (const hour of allowedHours) {
-              if (lastHour > -1) {
-                if (hour - lastHour > 1) {
-                  if (result.endsWith('..')) result += `${lastHour}`;
-                  result += `,${hour}`;
-                } else if (!result.endsWith('..')) result += '..';
-              } else {
-                result += `${hour}`;
-              }
-              lastHour = hour;
+        if (!withoutShortNames)
+          result += `${translationsItemTextGet(user, triggersTimeRangeAttributesShort[attributeIndex])}[`;
+        if ([triggersTimeRangeHoursWithMinutes, triggersTimeRangeMonthsWithDays].includes(timeRangeAttribute)) {
+          result += '';
+        } else {
+          const allowedValues = timeRange[timeRangeAttribute],
+            valueFirst = allowedValues[0];
+          let lastValue = valueFirst,
+            valuesLocalNames = [],
+            lastValueLocalName = '';
+          switch (timeRangeAttribute) {
+            case triggersTimeRangeHours: {
+              break;
             }
-            if (result.endsWith('..')) result += `${lastHour}`;
-            result += ']';
-            break;
-          }
-          case triggersTimeRangeDaysOfWeek: {
-            const allowedDaysOfWeek = timeRange[timeRangeAttribute],
-              localDaysOfWeek = getLocalDaysOfWeekNames(configOptions.getOption(cfgMenuLanguage, user), 'short');
-            let lastDayOfWeek = 0;
-            result += 'DoW[';
-            for (const dayOfWeek of allowedDaysOfWeek) {
-              if (lastDayOfWeek > 0) {
-                if (dayOfWeek - lastDayOfWeek > 1) {
-                  if (result.endsWith('..')) result += localDaysOfWeek[lastDayOfWeek - 1];
-                  result += `,${localDaysOfWeek[dayOfWeek - 1]}`;
-                } else if (!result.endsWith('..')) result += '..';
-              } else {
-                result += localDaysOfWeek[dayOfWeek - 1];
-              }
-              lastDayOfWeek = dayOfWeek;
+            case triggersTimeRangeDaysOfWeek: {
+              valuesLocalNames = getLocalDaysOfWeekNames(configOptions.getOption(cfgMenuLanguage, user), 'short');
+              break;
             }
-            if (result.endsWith('..')) result += localDaysOfWeek[lastDayOfWeek - 1];
-            result += ']';
-            break;
-          }
-          case triggersTimeRangeMonths: {
-            const allowedMonths = timeRange[timeRangeAttribute],
-              localMonths = getLocalMonthsNames(configOptions.getOption(cfgMenuLanguage, user), 'short');
-            let lastMonth = 0;
-            result += 'M[';
-            for (const month of allowedMonths) {
-              if (lastMonth > 0) {
-                if (month - lastMonth > 1) {
-                  if (result.endsWith('..')) result += localMonths[lastMonth - 1];
-                  result += `,${localMonths[month - 1]}`;
-                } else if (!result.endsWith('..')) result += '..';
-              } else {
-                result += localMonths[month - 1];
-              }
-              lastMonth = month;
+            case triggersTimeRangeMonths: {
+              valuesLocalNames = getLocalMonthsNames(configOptions.getOption(cfgMenuLanguage, user), 'short');
+              break;
             }
-            if (result.endsWith('..')) result += localMonths[lastMonth - 1];
-            result += ']';
-            break;
+            case triggersTimeRangeQuarters: {
+              valuesLocalNames = Object.keys(triggersTimeRangeQuartersItems);
+              break;
+            }
+            case triggersTimeRangeSeasons: {
+              Object.keys(triggersTimeRangeSeasonsItemsShort).forEach((seasonShort) => {
+                valuesLocalNames.push(translationsItemTextGet(user, seasonShort));
+              });
+              break;
+            }
+            default:
+              break;
           }
-          default:
-            break;
+          for (const value of allowedValues) {
+            const valueLocalName = timeRangeAttribute === triggersTimeRangeHours ? value : valuesLocalNames[value - 1];
+            lastValueLocalName =
+              timeRangeAttribute === triggersTimeRangeHours ? lastValue : valuesLocalNames[lastValue - 1];
+            if (value > valueFirst) {
+              if (value - lastValue > 1) {
+                if (result.endsWith('..')) result += `${lastValueLocalName}`;
+                result += `,${valueLocalName}`;
+              } else if (!result.endsWith('..')) result += '..';
+            } else {
+              result += `${valueLocalName}`;
+            }
+            lastValue = value;
+          }
+          if (result.endsWith('..')) {
+            lastValueLocalName =
+              timeRangeAttribute === triggersTimeRangeHours ? lastValue : valuesLocalNames[lastValue - 1];
+            result += `${lastValueLocalName}`;
+          }
+          if (!withoutShortNames) result += ']';
         }
       }
     });
@@ -8814,6 +8917,232 @@ function triggerTimeRangeShortDescription(user, timeRange) {
     result = 'Any';
   }
   return result;
+}
+
+/**
+ * This function generates an array of start times (i.e. string in schedule format of time,
+ * when this trigger is starting to be applicable).
+ * @param {object} timeRange - The Time Range attribute of trigger.
+ * @returns {string[]} - The result array of the start times.
+ */
+function triggerTimeRangeGenerateStartTimes(timeRange) {
+  let scheduleString = '';
+  const result = [];
+  if (isDefined(timeRange)) {
+    triggersTimeRangeAttributes.forEach((attribute) => {
+      if (isDefined(timeRange[attribute])) {
+        let allowedValues = timeRange[attribute];
+        if ([triggersTimeRangeQuarters, triggersTimeRangeSeasons].includes(attribute)) {
+          const allowedValuesNew = [];
+          allowedValues.forEach((value) => {
+            const subValues =
+              attribute === triggersTimeRangeQuarters
+                ? Object.values(triggersTimeRangeQuartersItems)[value - 1]
+                : Object.values(triggersTimeRangeSeasonsItems)[value - 1];
+            subValues.forEach((subValue) => {
+              allowedValuesNew.push(subValue);
+            });
+          });
+          allowedValuesNew.sort((a, b) => a - b);
+          allowedValues = allowedValuesNew;
+        }
+        const valueFirst = allowedValues[0],
+          isItFirstAttribute = scheduleString.length === 0;
+        if (isItFirstAttribute) {
+          switch (attribute) {
+            case triggersTimeRangeHours: {
+              scheduleString += '0 0';
+              break;
+            }
+            case triggersTimeRangeMonths:
+            case triggersTimeRangeQuarters:
+            case triggersTimeRangeSeasons: {
+              scheduleString += `0 0 0 ${isDefined(timeRange[triggersTimeRangeDaysOfWeek]) ? '*' : '1'}`;
+              break;
+            }
+            case triggersTimeRangeDaysOfWeek: {
+              scheduleString += '0 0 0 * *';
+              break;
+            }
+            default: {
+              break;
+            }
+          }
+        } else {
+          switch (attribute) {
+            case triggersTimeRangeMonths:
+            case triggersTimeRangeQuarters:
+            case triggersTimeRangeSeasons: {
+              scheduleString += ' *';
+              break;
+            }
+            case triggersTimeRangeDaysOfWeek: {
+              if (scheduleString.split(' ').length === 3) {
+                scheduleString += ' * *';
+              }
+              break;
+            }
+            default: {
+              break;
+            }
+          }
+        }
+        let attributeMask = '',
+          lastValue = valueFirst;
+        for (const value of allowedValues) {
+          switch (attribute) {
+            case triggersTimeRangeHours:
+            case triggersTimeRangeMonths:
+            case triggersTimeRangeDaysOfWeek:
+            case triggersTimeRangeQuarters:
+            case triggersTimeRangeSeasons: {
+              if (value - lastValue > 1 || value === valueFirst) {
+                if (attributeMask.endsWith('-')) attributeMask += `${lastValue}`;
+                attributeMask += `${attributeMask.length > 0 ? ',' : ''}${value}`;
+              } else if (!isItFirstAttribute && !attributeMask.endsWith('-')) {
+                attributeMask += '-';
+              }
+              lastValue = value;
+              break;
+            }
+            default: {
+              break;
+            }
+          }
+        }
+        if (attributeMask.endsWith('-')) attributeMask += `${lastValue}`;
+        if (attributeMask.length === 0) attributeMask = '*';
+        switch (attribute) {
+          case triggersTimeRangeHours:
+          case triggersTimeRangeMonths:
+          case triggersTimeRangeDaysOfWeek:
+          case triggersTimeRangeQuarters:
+          case triggersTimeRangeSeasons: {
+            scheduleString += ` ${attributeMask}`;
+            break;
+          }
+          default:
+            break;
+        }
+      }
+    });
+    const itemsCount = scheduleString.split(' ').length;
+    for (let i = itemsCount; i < 6; i++) {
+      scheduleString += ' *';
+    }
+    result.push(scheduleString);
+  }
+  return result;
+}
+
+/**
+ * This function generates an map of start times (i.e. string in schedule format of time,
+ * when this trigger is starting to be applicable) with appropriate states and triggers definitions
+ * to enable checks of trigger states on the triggers time range borders (pseudo "first run").
+ * @param {object=} user - The user object.
+ * @param {string=} stateFullId - The appropriate state full Id or empty for all.
+ */
+function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'all') {
+  const updateOneState = stateFullId !== 'all',
+    statesToUpdate = updateOneState ? [stateFullId] : Object.keys(alertsGet()),
+    startTimesDeleted = [],
+    startTimesNew = [];
+  statesToUpdate.forEach((stateId) => {
+    const [triggers, triggersOld] = updateOneState
+      ? triggersGetStateTriggers(user, stateId, true)
+      : [triggersGetStateTriggers(user, stateId), []];
+    if (triggers.length + triggersOld.length > 0) {
+      triggersOld.forEach((triggerOld) => {
+        const startTimesOld = triggerOld?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes];
+        if (isDefined(startTimesOld)) {
+          startTimesOld.forEach((startTimeOld) => {
+            const triggersFiltered = triggers.filter(
+              (trigger) =>
+                isDefined(trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes]) &&
+                trigger[triggersTimeRangeId][triggerTimeRangeStartTimes].includes(startTimeOld),
+            );
+            if (triggersFiltered.length === 0) {
+              if (triggersTimeRangeStartTimes.has(startTimeOld)) {
+                const startTimeItems = triggersTimeRangeStartTimes.get(startTimeOld);
+                if (startTimeItems.length === 1) {
+                  triggersTimeRangeStartTimes.delete(startTimeOld);
+                  if (!startTimesDeleted.includes(startTimeOld)) startTimesDeleted.push(startTimeOld);
+                } else {
+                  triggersTimeRangeStartTimes.set(
+                    startTimeOld,
+                    startTimeItems.filter((startTime) => startTime.stateId !== stateId),
+                  );
+                }
+              }
+            }
+          });
+        }
+      });
+      const startTimesActual = [];
+      triggers.forEach((trigger) => {
+        const startTimes = trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes];
+        if (isDefined(startTimes)) {
+          startTimes.forEach((startTime) => {
+            if (!startTimesActual.includes(startTime)) startTimesActual.push(startTime);
+            const startTimeItems = triggersTimeRangeStartTimes.has(startTime)
+                ? triggersTimeRangeStartTimes.get(startTime)
+                : [],
+              startTimesItemsFiltered =
+                startTimeItems.length === 0
+                  ? startTimeItems
+                  : startTimeItems.filter((item) => {
+                      let result = item.stateId === stateId;
+                      if (result) result = item.value === trigger.value;
+                      if (result) result = item.onAbove === trigger.onAbove;
+                      if (result) result = item.onLess === trigger.onLess;
+                      return result;
+                    });
+            if (startTimesItemsFiltered.length === 0) {
+              if (startTimeItems.length === 0 && !startTimesNew.includes(startTime)) startTimesNew.push(startTime);
+              startTimeItems.push({
+                stateId: stateId,
+                value: trigger.value,
+                onAbove: trigger.onAbove,
+                onLess: trigger.onLess,
+              });
+              triggersTimeRangeStartTimes.set(startTime, startTimeItems);
+            }
+          });
+        }
+      });
+      startTimesActual.forEach((startTime) => {
+        if (triggersTimeRangeStartTimes.has(startTime)) {
+          const startTimeItems = triggersTimeRangeStartTimes.get(startTime);
+          startTimeItems
+            .filter((item) => item.stateId === stateId)
+            .forEach((item) => {
+              const triggersFiltered = triggers.filter((trigger) => {
+                let result = isDefined(trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes]);
+                if (result) result = trigger[triggersTimeRangeId][triggerTimeRangeStartTimes].includes(startTime);
+                if (result) result = item.value === trigger.value;
+                if (result) result = item.onAbove === trigger.onAbove;
+                if (result) result = item.onLess === trigger.onLess;
+                return result;
+              });
+              if (triggersFiltered.length === 0) {
+                startTimeItems.splice(
+                  startTimeItems.findIndex((itemToCheck) => {
+                    let result = item.stateId === itemToCheck.stateId;
+                    if (result) result = item.value === itemToCheck.value;
+                    if (result) result = item.onAbove === itemToCheck.onAbove;
+                    if (result) result = item.onLess === itemToCheck.onLess;
+                    return result;
+                  }),
+                );
+              }
+            });
+          if (startTimeItems.length === 0 && !startTimesDeleted.includes(startTime)) startTimesDeleted.push(startTime);
+        }
+      });
+    }
+  });
+  logs(`startTimesDeleted = ${startTimesDeleted}, startTimesNew = ${startTimesNew}`, _l);
+  logs(`triggersTimeRangeStartTimes = ${JSON.stringify(triggersTimeRangeStartTimes, JSONReplacerWithMap, 1)}`, _l);
 }
 
 /**
@@ -13102,6 +13431,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                 case 'save': {
                   if (commandOptions.function && commandOptions.destination) {
+                    triggersTimeRangeStartTimesUpdate(user, state);
                     alertsManage(user, state, commandOptions.function, commandOptions.destination, triggers, true);
                     menuMenuItemsAndRowsClearCached(user);
                     triggers = undefined;
@@ -13185,29 +13515,68 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           const triggerTimeRange = trigger[item],
                             attributeValue = triggerTimeRange[subItem],
                             value = commandOptions.value;
+                          delete triggerTimeRange[triggerTimeRangeStartTimes];
                           switch (subItem) {
                             case triggersTimeRangeHours:
-                            case triggersTimeRangeDaysOfWeek:
-                            case triggersTimeRangeMonths: {
+                            case triggersTimeRangeMonths:
+                            case triggersTimeRangeQuarters:
+                            case triggersTimeRangeSeasons:
+                            case triggersTimeRangeDaysOfWeek: {
                               if (attributeValue.includes(value)) {
                                 triggerTimeRange[subItem] = attributeValue.filter((element) => element !== value);
+                                let attributePosition = currentMenuPosition.pop();
+                                switch (subItem) {
+                                  case triggersTimeRangeQuarters: {
+                                    attributePosition -= 1;
+                                    break;
+                                  }
+                                  case triggersTimeRangeSeasons: {
+                                    attributePosition -= 2;
+                                    break;
+                                  }
+                                  default: {
+                                    break;
+                                  }
+                                }
+                                currentMenuPosition.push(attributePosition);
                               } else {
                                 attributeValue.push(value);
                                 if (
                                   attributeValue.length === triggersTimeRangeAttributesGenerateDefaults(subItem).length
                                 ) {
                                   delete triggerTimeRange[subItem];
+                                  let attributePosition = currentMenuPosition.pop();
+                                  switch (subItem) {
+                                    case triggersTimeRangeQuarters: {
+                                      attributePosition += 1;
+                                      break;
+                                    }
+                                    case triggersTimeRangeSeasons: {
+                                      attributePosition += 2;
+                                      break;
+                                    }
+                                    default: {
+                                      break;
+                                    }
+                                  }
+                                  currentMenuPosition.push(attributePosition);
                                 } else {
                                   triggerTimeRange[subItem].sort((a, b) => a - b);
                                 }
                               }
                               break;
                             }
-                            default:
+                            default: {
                               break;
+                            }
                           }
                           if (Object.keys(triggerTimeRange).length === 0) {
                             delete trigger[item];
+                          } else {
+                            triggerTimeRange[triggerTimeRangeStartTimes] = triggerTimeRangeGenerateStartTimes(
+                              trigger[item],
+                            );
+                            logs(`triggerStartTimes =  ${triggerTimeRange[triggerTimeRangeStartTimes]}`, _l);
                           }
                           break;
                         }
