@@ -30,6 +30,9 @@ const url = require('url');
 // @ts-ignore
 const emojiRegex = require('emoji-regex');
 
+// @ts-ignore
+const stringifySafe = require('json-stringify-safe');
+
 /* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
 /* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
 /* global autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
@@ -527,8 +530,7 @@ class ConfigOptions {
     if (this.#isUserConfigOption(cfgItem, user)) {
       const perUserConfig = this.perUserConfig.has(user.userId) ? this.perUserConfig.get(user.userId) : {};
       if (
-        JSON.stringify(this.getOption(cfgItem, null), JSONReplacerWithMap) ===
-        JSON.stringify(value, JSONReplacerWithMap)
+        stringifySafe(this.getOption(cfgItem, null), JSONReplacerWithMap) === stringifySafe(value, JSONReplacerWithMap)
       ) {
         this.deleteUserOption(cfgItem, user);
       } else {
@@ -559,9 +561,9 @@ class ConfigOptions {
       if (existsState(stateId))
         deleteState(stateId, (error, result) => {
           if (error) {
-            warns(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
+            warns(`Error during deletion of state '${stateId}' : ${stringifySafe(error)}`);
           } else {
-            logs(`configOptions key state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
+            logs(`configOptions key state '${stateId}' is deleted with result : ${stringifySafe(result)}`);
           }
         });
     }
@@ -583,7 +585,7 @@ class ConfigOptions {
           try {
             result = JSON.parse(value);
           } catch (err) {
-            errs(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
+            errs(`Parse error on configOptions[${cfgItem}] - ${stringifySafe(err)}`);
           }
         } else {
           result = value.split(',');
@@ -596,7 +598,7 @@ class ConfigOptions {
         try {
           value = JSON.parse(value, JSONReviverWithMap);
         } catch (err) {
-          errs(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
+          errs(`Parse error on configOptions[${cfgItem}] - ${stringifySafe(err)}`);
         }
         valueToParseType = typeof value;
       }
@@ -608,7 +610,7 @@ class ConfigOptions {
         try {
           value = JSON.parse(value);
         } catch (err) {
-          errs(`Parse error on configOptions[${cfgItem}] - ${JSON.stringify(err)}`);
+          errs(`Parse error on configOptions[${cfgItem}] - ${stringifySafe(err)}`);
         }
         valueToParseType = typeof value;
       }
@@ -676,12 +678,12 @@ class ConfigOptions {
       $(`state[id=${this.prefix}.*]`).each((stateId) => {
         const itemKey = '' + stateId.split('.').pop();
         if (!this.globalConfig.hasOwnProperty(itemKey)) {
-          logs(`Found obsolete configOptions key = ${JSON.stringify(itemKey)}`);
+          logs(`Found obsolete configOptions key = ${stringifySafe(itemKey)}`);
           deleteState(stateId, (error, result) => {
             if (error) {
-              warns(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
+              warns(`Error during deletion of state '${stateId}' : ${stringifySafe(error)}`);
             } else {
-              logs(`configOptions key state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
+              logs(`configOptions key state '${stateId}' is deleted with result : ${stringifySafe(result)}`);
             }
           });
         }
@@ -717,7 +719,7 @@ class ConfigOptions {
               if (typeOf(functionToProcess)) {
                 functionToProcess(cfgItem);
                 logs(
-                  `External function ${functionToProcess} is executed on configOptions[${cfgItem}, ${cfgItemPrefix}] = ${JSON.stringify(
+                  `External function ${functionToProcess} is executed on configOptions[${cfgItem}, ${cfgItemPrefix}] = ${stringifySafe(
                     actualValue,
                   )}`,
                 );
@@ -750,7 +752,7 @@ class ConfigOptions {
         if (existsState(id))
           deleteState(id, (error, _result) => {
             if (error) {
-              warns(`Error during deletion of state '${cfgItem}' : ${JSON.stringify(error)}`);
+              warns(`Error during deletion of state '${cfgItem}' : ${stringifySafe(error)}`);
             } else {
               createState(id, currentValue, {name: cfgItem, type: stateType, read: true, write: true});
             }
@@ -1402,7 +1404,7 @@ class MenuRoles {
     if (Array.isArray(rulesList)) {
       rulesList.forEach((newRule) => {
         if (typeof newRule === 'object' && newRule.hasOwnProperty('mask') && newRule.hasOwnProperty('accessLevel')) {
-          if (!this.data[itemId].find((rule) => JSON.stringify(rule) === JSON.stringify(newRule))) {
+          if (!this.data[itemId].find((rule) => stringifySafe(rule) === stringifySafe(newRule))) {
             this.data[itemId].push(newRule);
           }
         }
@@ -2217,7 +2219,7 @@ class MenuRoles {
       const currentCommandOptions = {dataType: dataTypeMenuRoles, roleId};
       if (
         (isNewRole && currentRoleRules.length) ||
-        JSON.stringify(this.getRules(roleId)) !== JSON.stringify(currentRoleRules)
+        stringifySafe(this.getRules(roleId)) !== stringifySafe(currentRoleRules)
       ) {
         subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
@@ -2800,12 +2802,12 @@ function translationsSave(user) {
     $(`state[id=${prefixTranslationStates}.*]`).each((stateId) => {
       const languageId = '' + stateId.split('.').pop();
       if (!translationsList.hasOwnProperty(languageId)) {
-        logs(`Found obsolete translation language = ${JSON.stringify(languageId)}`);
+        logs(`Found obsolete translation language = ${stringifySafe(languageId)}`);
         deleteState(stateId, (error, result) => {
           if (error) {
-            warns(`Error during deletion of state '${stateId}' : ${JSON.stringify(error)}`);
+            warns(`Error during deletion of state '${stateId}' : ${stringifySafe(error)}`);
           } else {
-            logs(`Obsolete translation language state '${stateId}' is deleted with result : ${JSON.stringify(result)}`);
+            logs(`Obsolete translation language state '${stateId}' is deleted with result : ${stringifySafe(result)}`);
           }
         });
       }
@@ -3575,13 +3577,13 @@ function translationsCheckAndCacheUploadedFile(
             warns(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
           }
         } catch (err) {
-          warns(`JSON parse error: ${JSON.stringify(err)} for translation '${translationFileName}'!`);
+          warns(`JSON parse error: ${stringifySafe(err)} for translation '${translationFileName}'!`);
         }
       } else {
         warns(`Translation '${translationFileName}' is uploaded, but has wrong size and can't be processed!`);
       }
       nodeFS.rm(translationFileFullPath, {force: true}, (err) => {
-        if (err) warns(`Can't delete translation file '${translationFileFullPath}'! Error: '${JSON.stringify(err)}'.`);
+        if (err) warns(`Can't delete translation file '${translationFileFullPath}'! Error: '${stringifySafe(err)}'.`);
       });
     } catch (err) {
       warns(`Can't read translation file '${translationFileFullPath}'!`);
@@ -4135,7 +4137,7 @@ function cachedValueGet(user, valueId, getLastChange = false) {
             try {
               cachedVal = JSON.parse(cachedVal, JSONReviverWithMap);
             } catch (err) {
-              warns(`Parse error - ${JSON.stringify(err)}`);
+              warns(`Parse error - ${stringifySafe(err)}`);
             }
           }
           cachedValuesMap.set(id, cachedVal);
@@ -4180,7 +4182,7 @@ function cachedValueSet(user, valueId, value) {
     const currentValue = cachedValuesMap.has(id) ? cachedValuesMap.get(id) : undefined;
     if (
       !isDefined(currentValue) ||
-      JSON.stringify(currentValue, JSONReplacerWithMap) !== JSON.stringify(value, JSONReplacerWithMap)
+      stringifySafe(currentValue, JSONReplacerWithMap) !== stringifySafe(value, JSONReplacerWithMap)
     ) {
       cachedValuesMap.set(id, value);
       const common = {};
@@ -4348,13 +4350,13 @@ function sentImagesDelete(user) {
    */
   function sentImagesDeleteCallBack(result, user, telegramObject, sentImages) {
     const resultObject = telegramSendToAdapterResponse(result, telegramObject);
-    logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
-    logs(`resultObject: ${JSON.stringify(resultObject, null, 1)}`, _l);
+    logs(`SendToTelegram: result (${typeOf(result)}) = ${stringifySafe(result, null, 1)}`, _l);
+    logs(`resultObject: ${stringifySafe(resultObject, null, 1)}`, _l);
     if (!resultObject.success) {
       warns(
-        `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
-          user,
-        )})!\nResult = ${JSON.stringify(result)}.`,
+        `Can't send message (${stringifySafe(telegramObject)}) to (${stringifySafe(user)})!\nResult = ${stringifySafe(
+          result,
+        )}.`,
       );
     }
     if (sentImages.length) {
@@ -6005,7 +6007,7 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
         try {
           inputValue = formatDate(new Date(inputValue), configOptions.getOption(cfgDateTimeTemplate, user));
         } catch (error) {
-          warns(`Can't print date printDate(${inputValue})! Error is "${JSON.stringify(error)}".`);
+          warns(`Can't print date printDate(${inputValue})! Error is "${stringifySafe(error)}".`);
         }
       } else {
         const sandbox = {value: inputValue, result: undefined};
@@ -6018,7 +6020,7 @@ function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueC
           }
           inputValue = sandbox.result;
         } catch (error) {
-          warns(`Can't convert value with ${convertValueCode}! Error is "${JSON.stringify(error)}".`);
+          warns(`Can't convert value with ${convertValueCode}! Error is "${stringifySafe(error)}".`);
         }
       }
     }
@@ -6641,7 +6643,7 @@ function extensionsInit() {
     {messageId: extensionsRegisterCommand, timeout: timeout},
     {timeout: timeout},
     (result) => {
-      logs(`${extensionsInitCommand} result = ${JSON.stringify(result)}`);
+      logs(`${extensionsInitCommand} result = ${stringifySafe(result)}`);
     },
   );
 }
@@ -6701,7 +6703,7 @@ function alertsGet() {
         alertsRules = JSON.parse(alertsState.val, JSONReviverWithMap);
       } catch (err) {
         // NOSONAR // cachedStates[id] = cachedVal;
-        warns(`Alert parse error - ${JSON.stringify(err)}`);
+        warns(`Alert parse error - ${stringifySafe(err)}`);
         alertsRules = {};
       }
     }
@@ -6769,7 +6771,7 @@ function alertsLoadFromCacheStateValue(alertStateId) {
         cachedAlertsStatesValues = JSON.parse(alertsStatesValuesState.val, JSONReviverWithMap);
       } catch (err) {
         // NOSONAR // cachedStates[id] = cachedVal;
-        warns(`Alert states values parse error - ${JSON.stringify(err)}`);
+        warns(`Alert states values parse error - ${stringifySafe(err)}`);
         if (!typeOf(cachedAlertsStatesValues, 'object')) cachedAlertsStatesValues = {};
       }
     }
@@ -6802,8 +6804,8 @@ function alertsManage(user, stateId, functionId, destinationId, alertDetailsOrTh
       alertDetails = alert.chatIds.has(userId) ? alert.chatIds.get(userId) : undefined;
     if (
       alertDetails &&
-      (JSON.stringify(alertDetails) === JSON.stringify(alertDetailsOrThresholds) ||
-        JSON.stringify(alertDetailsOrThresholds) === '{}' ||
+      (stringifySafe(alertDetails) === stringifySafe(alertDetailsOrThresholds) ||
+        stringifySafe(alertDetailsOrThresholds) === '{}' ||
         (isTriggers && alertDetailsOrThresholds.length === 0))
     ) {
       if (alert.chatIds.size === 1) {
@@ -6886,6 +6888,7 @@ function alertsInit(checkStates = false) {
     });
   }
   triggersTimeRangeStartTimesUpdate();
+  // triggersTimeRangeStartTimeScheduled('0 0 9 * * *')
 }
 
 /**
@@ -6993,7 +6996,8 @@ function alertsProcessMessageTemplate(user, template, variables) {
 function alertsActionOnSubscribedState(object) {
   const alerts = alertsGet(),
     activeChatGroups = telegramGetGroupChats(true),
-    stateId = object.id;
+    stateId = object.id,
+    isEmulatedForTriggers = object.isEmulatedForTriggers;
   if (isDefined(alerts) && alerts.hasOwnProperty(stateId)) {
     const alertTimeStamp = new Date(Date.now()),
       alertObject = getObjectEnriched(stateId, '*'),
@@ -7057,6 +7061,7 @@ function alertsActionOnSubscribedState(object) {
           }
           if (
             chatId !== triggersInAlertsId &&
+            !isEmulatedForTriggers &&
             (alertStateType === 'boolean' ||
               (alertObject.common.hasOwnProperty('states') && ['string', 'number'].includes(alertStateType)))
           ) {
@@ -7098,7 +7103,10 @@ function alertsActionOnSubscribedState(object) {
             } else {
               alertsMessagePush(user, stateId, alertMessageText, stateId === currentState);
             }
-          } else if ((chatId === triggersInAlertsId || alertStateType === 'number') && detailsOrThresholds.length) {
+          } else if (
+            (chatId === triggersInAlertsId || (alertStateType === 'number' && !isEmulatedForTriggers)) &&
+            detailsOrThresholds.length
+          ) {
             const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
             detailsOrThresholds.forEach((threshold) => {
               if (threshold.isEnabled) {
@@ -7234,16 +7242,14 @@ function alertsActionOnSubscribedState(object) {
                         `State ${targetState} will be set to ${targetValue} due to trigger of state ${stateId} on value ${thresholdValue}!`,
                       );
                     logs(
-                      `State ${targetState} will be set to ${targetValue} due to trigger of state ${stateId} on value ${thresholdValue}! = ${JSON.stringify(
+                      `State ${targetState} will be set to ${targetValue} due to trigger of state ${stateId} on value ${thresholdValue}! = ${stringifySafe(
                         threshold,
                       )}`,
                     );
                     setState(targetState, targetValue, (error) => {
                       if (error) {
                         warns(
-                          `Can't set value ${targetValue} to state ${targetState}! Error is - ${JSON.stringify(
-                            error,
-                          )}.`,
+                          `Can't set value ${targetValue} to state ${targetState}! Error is - ${stringifySafe(error)}.`,
                         );
                       }
                     });
@@ -7252,8 +7258,8 @@ function alertsActionOnSubscribedState(object) {
                 if (isDefined(timeRange)) {
                   timeRangeIsOk = triggerTimeRangeCheck(alertTimeStamp, timeRange);
                   logs(
-                    `threshold timeRange check timeRangeIsOk: ${timeRangeIsOk},  alertTimeStamp: ${alertTimeStamp.toString()}, timeRange: ${JSON.stringify(
-                      timeRange,
+                    `threshold timeRange check timeRangeIsOk: ${timeRangeIsOk},  alertTimeStamp: ${alertTimeStamp.toString()}, stateValue: ${stateValue}, threshold: ${stringifySafe(
+                      threshold,
                       null,
                       1,
                     )}`,
@@ -7711,7 +7717,7 @@ function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
   }
   subMenuIndex = subMenu.push(itemTemplate);
 
-  const isAlertDetailsSetChanged = JSON.stringify(currentStateAlertDetails) !== JSON.stringify(currentAlertDetails);
+  const isAlertDetailsSetChanged = stringifySafe(currentStateAlertDetails) !== stringifySafe(currentAlertDetails);
   subMenuIndex = subMenu.push({
     index: `${currentIndex}.${subMenuIndex}`,
     name: `${currentName} (${alertIsOn ? iconItemDelete : iconItemEdit})`,
@@ -7779,7 +7785,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
       },
     ),
   );
-  const isThresholdsSetChanged = JSON.stringify(currentStateThresholds) !== JSON.stringify(thresholds);
+  const isThresholdsSetChanged = stringifySafe(currentStateThresholds) !== stringifySafe(thresholds);
   if (isThresholdsSetChanged || Object.keys(currentStateThresholds).length) {
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
@@ -8283,7 +8289,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
       },
     );
     if (possibleValueItem) subMenuIndex = subMenu.push(possibleValueItem);
-    const isTriggersSetChanged = JSON.stringify(currentStateTriggers) !== JSON.stringify(triggers);
+    const isTriggersSetChanged = stringifySafe(currentStateTriggers) !== stringifySafe(triggers);
     if (isTriggersSetChanged || currentStateTriggers?.length) {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
@@ -9063,15 +9069,12 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
             );
             if (triggersFiltered.length === 0) {
               if (triggersTimeRangeStartTimes.has(startTimeOld)) {
-                const startTimeItems = triggersTimeRangeStartTimes.get(startTimeOld);
-                if (startTimeItems.length === 1) {
-                  triggersTimeRangeStartTimes.delete(startTimeOld);
+                const startTimeSchedule = triggersTimeRangeStartTimes.get(startTimeOld);
+                if (startTimeSchedule.thresholds?.length === 1) {
+                  startTimeSchedule.thresholds = [];
                   if (!startTimesDeleted.includes(startTimeOld)) startTimesDeleted.push(startTimeOld);
                 } else {
-                  triggersTimeRangeStartTimes.set(
-                    startTimeOld,
-                    startTimeItems.filter((startTime) => startTime.stateId !== stateId),
-                  );
+                  startTimeSchedule.thresholds = startTimeSchedule.filter((startTime) => startTime.stateId !== stateId);
                 }
               }
             }
@@ -9084,36 +9087,40 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
         if (isDefined(startTimes)) {
           startTimes.forEach((startTime) => {
             if (!startTimesActual.includes(startTime)) startTimesActual.push(startTime);
-            const startTimeItems = triggersTimeRangeStartTimes.has(startTime)
+            const startTimeSchedule = triggersTimeRangeStartTimes.has(startTime)
                 ? triggersTimeRangeStartTimes.get(startTime)
-                : [],
-              startTimesItemsFiltered =
-                startTimeItems.length === 0
-                  ? startTimeItems
-                  : startTimeItems.filter((item) => {
+                : {thresholds: []},
+              startTimeThresholds = startTimeSchedule.thresholds,
+              startTimesThresholdsFiltered =
+                startTimeThresholds.length === 0
+                  ? startTimeThresholds
+                  : startTimeThresholds.filter((item) => {
                       let result = item.stateId === stateId;
                       if (result) result = item.value === trigger.value;
                       if (result) result = item.onAbove === trigger.onAbove;
                       if (result) result = item.onLess === trigger.onLess;
                       return result;
                     });
-            if (startTimesItemsFiltered.length === 0) {
-              if (startTimeItems.length === 0 && !startTimesNew.includes(startTime)) startTimesNew.push(startTime);
-              startTimeItems.push({
+            if (startTimesThresholdsFiltered.length === 0) {
+              if (startTimeThresholds.length === 0) {
+                if (!startTimesNew.includes(startTime)) startTimesNew.push(startTime);
+                if (!triggersTimeRangeStartTimes.has(startTime))
+                  triggersTimeRangeStartTimes.set(startTime, startTimeSchedule);
+              }
+              startTimeThresholds.push({
                 stateId: stateId,
                 value: trigger.value,
                 onAbove: trigger.onAbove,
                 onLess: trigger.onLess,
               });
-              triggersTimeRangeStartTimes.set(startTime, startTimeItems);
             }
           });
         }
       });
       startTimesActual.forEach((startTime) => {
         if (triggersTimeRangeStartTimes.has(startTime)) {
-          const startTimeItems = triggersTimeRangeStartTimes.get(startTime);
-          startTimeItems
+          const startTimeThresholds = triggersTimeRangeStartTimes.get(startTime).thresholds;
+          startTimeThresholds
             .filter((item) => item.stateId === stateId)
             .forEach((item) => {
               const triggersFiltered = triggers.filter((trigger) => {
@@ -9125,8 +9132,8 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
                 return result;
               });
               if (triggersFiltered.length === 0) {
-                startTimeItems.splice(
-                  startTimeItems.findIndex((itemToCheck) => {
+                startTimeThresholds.splice(
+                  startTimeThresholds.findIndex((itemToCheck) => {
                     let result = item.stateId === itemToCheck.stateId;
                     if (result) result = item.value === itemToCheck.value;
                     if (result) result = item.onAbove === itemToCheck.onAbove;
@@ -9136,13 +9143,70 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
                 );
               }
             });
-          if (startTimeItems.length === 0 && !startTimesDeleted.includes(startTime)) startTimesDeleted.push(startTime);
+          if (startTimeThresholds.length === 0 && !startTimesDeleted.includes(startTime))
+            startTimesDeleted.push(startTime);
         }
       });
     }
   });
   logs(`startTimesDeleted = ${startTimesDeleted}, startTimesNew = ${startTimesNew}`, _l);
-  logs(`triggersTimeRangeStartTimes = ${JSON.stringify(triggersTimeRangeStartTimes, JSONReplacerWithMap, 1)}`, _l);
+  startTimesDeleted.forEach((startTime) => {
+    if (triggersTimeRangeStartTimes.has(startTime)) {
+      const startTimeSchedule = triggersTimeRangeStartTimes.get(startTime);
+      logs(`schedule to delete: ${stringifySafe(startTimeSchedule)}`, _l);
+      if (isDefined(startTimeSchedule.scheduleId)) clearSchedule(startTimeSchedule.scheduleId);
+      triggersTimeRangeStartTimes.delete(startTime);
+    }
+  });
+  startTimesNew.forEach((startTime) => {
+    if (triggersTimeRangeStartTimes.has(startTime)) {
+      const startTimeSchedule = triggersTimeRangeStartTimes.get(startTime);
+      startTimeSchedule.scheduleId = schedule(startTime, () => {
+        triggersTimeRangeStartTimeScheduled(startTime);
+      });
+      logs(`schedule created: ${stringifySafe(startTimeSchedule)}`, _l);
+    }
+  });
+  logs(
+    `triggersTimeRangeStartTimes = ${/* JSON. */ stringifySafe(triggersTimeRangeStartTimes, JSONReplacerWithMap, 1)}`,
+    _l,
+  );
+}
+
+/**
+ * This function emulates the threshold crossing on Time Range "start time" point for a trigger..
+ * @param {string} startTime - The appropriate schedule string.
+ */
+function triggersTimeRangeStartTimeScheduled(startTime) {
+  logs(`startTime = ${startTime}`, _l);
+  if (triggersTimeRangeStartTimes.has(startTime)) {
+    const schedule = triggersTimeRangeStartTimes.get(startTime),
+      thresholds = schedule.thresholds;
+    thresholds.forEach((threshold) => {
+      const {stateId, value, onAbove, onLess} = threshold,
+        triggerState = getState(stateId);
+      if (isDefined(triggerState?.val)) {
+        const currentValue = triggerState.val,
+          isBooleanOrList = !(isDefined(onAbove) || isDefined(onLess));
+        if (isBooleanOrList || (onAbove && currentValue >= value) || (onLess && currentValue < value)) {
+          let oldValue = currentValue;
+          if (onAbove) {
+            oldValue = value * 0.99;
+          } else if (onLess) {
+            oldValue = value * 1.01;
+          }
+          const thresholdObject = {
+            id: stateId,
+            state: {val: currentValue},
+            oldState: {val: oldValue},
+            isEmulatedForTriggers: true,
+          };
+          logs(`thresholdObject = ${stringifySafe(thresholdObject)}`, _l);
+          alertsActionOnSubscribedState(thresholdObject);
+        }
+      }
+    });
+  }
 }
 
 /**
@@ -9734,7 +9798,7 @@ function backupRestore(fileName, restoreItem) {
               }
             } catch (error) {
               warns(
-                `Can't parse data from file ${backupFileName}! Error is '${JSON.stringify(
+                `Can't parse data from file ${backupFileName}! Error is '${stringifySafe(
                   error,
                 )}'.\nData in file is '${backupData}'`,
               );
@@ -11860,13 +11924,13 @@ function menuMenuUpdateBySchedule() {
     const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
-      // NOSONAR // logs(`for user = ${JSON.stringify(userId)} menu on pos ${JSON.stringify(itemPos)}`, _l);
+      // NOSONAR // logs(`for user = ${stringifySafe(userId)} menu on pos ${stringifySafe(itemPos)}`, _l);
       if (!cachedValueGet(user, cachedIsWaitForInput) && isDefined(itemPos)) {
-        logs(`make an menu update for = ${JSON.stringify(user)}`);
+        logs(`make an menu update for = ${stringifySafe(user)}`);
         menuMenuDraw(user);
       }
     } else {
-      logs(`for user = ${JSON.stringify(userId)} menu is closed`);
+      logs(`for user = ${stringifySafe(userId)} menu is closed`);
     }
   }
 }
@@ -11941,25 +12005,25 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
         isCachedMenuOn = cachedValueGet(user, cachedMenuOn);
       if (isCachedMenuOn === true && ((!isBotMessageOld48OrNotExists && isBotMessageOld24OrNotExists) || noDraw)) {
         const itemPos = cachedValueGet(user, cachedMenuItem);
-        warns('for user = ' + JSON.stringify(user) + ' menu is open on ' + JSON.stringify(itemPos));
+        warns('for user = ' + stringifySafe(user) + ' menu is open on ' + stringifySafe(itemPos));
         if (!cachedValueGet(user, cachedIsWaitForInput) && isDefined(itemPos)) {
           if (noDraw) {
-            warns(`Make an menu object prepared for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`);
+            warns(`Make an menu object prepared for user/chat group = ${stringifySafe({...user, rootMenu: null})}`);
           } else {
-            warns(`Make an menu refresh for user/chat group = ${JSON.stringify({...user, rootMenu: null})}`);
+            warns(`Make an menu refresh for user/chat group = ${stringifySafe({...user, rootMenu: null})}`);
           }
           menuMenuDraw(user, itemPos, {clearBefore: true, clearUserMessage: false, isSilent: true, noDraw});
         }
       } else if (!isBotMessageOld24OrNotExists) {
         warns(
-          `For user/chat group = ${JSON.stringify({
+          `For user/chat group = ${stringifySafe({
             ...user,
             rootMenu: null,
           })} menu is updated(by new message) less the 24 hours ago. Menu refresh is not required.`,
         );
       } else {
         warns(
-          `For user/chat group = ${JSON.stringify({
+          `For user/chat group = ${stringifySafe({
             ...user,
             rootMenu: null,
           })} menu is closed(${!isCachedMenuOn}) or unaccessible(${isBotMessageOld48OrNotExists}). Can't refresh.`,
@@ -12218,7 +12282,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             setState(stateId, currentStateType === 'number' ? Number(stateValue) : stateValue, setStateCallback);
           } else {
             warns(
-              `Value '${stateValue}' not in the acceptable list ${JSON.stringify(
+              `Value '${stateValue}' not in the acceptable list ${stringifySafe(
                 Object.keys(currentStatePossibleValues),
               )}`,
             );
@@ -12229,9 +12293,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           if (checkNumberStateValue(stateId, possibleNumber, currentObject)) {
             setState(stateId, possibleNumber, setStateCallback);
           } else {
-            warns(
-              `Unacceptable value '${possibleNumber}' for object conditions ${JSON.stringify(currentObjectCommon)}`,
-            );
+            warns(`Unacceptable value '${possibleNumber}' for object conditions ${stringifySafe(currentObjectCommon)}`);
             setStateCallback(translationsItemTextGet(user, 'MsgValueUnacceptable'));
           }
         } else {
@@ -12239,7 +12301,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           setStateCallback(translationsItemTextGet(user, 'MsgUnsupportedObjectType'));
         }
       } else {
-        warns(`Unacceptable value '${stateValue}' for state conditions ${JSON.stringify(currentObject.common)}`);
+        warns(`Unacceptable value '${stateValue}' for state conditions ${stringifySafe(currentObject.common)}`);
         setStateCallback(translationsItemTextGet(user, 'MsgValueUnacceptable'));
       }
     }
@@ -12251,7 +12313,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   let currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
   logs(
-    `userInput.start:\n- isWaitForInput = ${isWaitForInput},\n- userInputToProcess = ${userInputToProcess},\n- currentCommand= ${currentCommand},\n- commandOptions = ${JSON.stringify(
+    `userInput.start:\n- isWaitForInput = ${isWaitForInput},\n- userInputToProcess = ${userInputToProcess},\n- currentCommand= ${currentCommand},\n- commandOptions = ${stringifySafe(
       commandOptions,
     )}`,
   );
@@ -12788,7 +12850,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               index = commandOptions.index,
                               subItem = commandOptions.subItem;
                             logs(
-                              `conditions = ${typeOf(conditions)}: '${JSON.stringify(conditions)}', index = ${index}`,
+                              `conditions = ${typeOf(conditions)}: '${stringifySafe(conditions)}', index = ${index}`,
                             );
                             if (isDefined(conditions) && isDefined(index) && subItem) {
                               const length = conditions.length;
@@ -13224,7 +13286,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdExternalCommand: {
-        logs(`otherCommands.external:\n- currentCommand = ${JSON.stringify(commandOptions)}`);
+        logs(`otherCommands.external:\n- currentCommand = ${stringifySafe(commandOptions)}`);
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
@@ -13507,8 +13569,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                         case triggersTimeRangeId: {
                           backStepsForCacheDelete -= 2;
-                          const subItem = commandOptions.subItem;
-                          if (!isDefined(trigger?.[item]?.[subItem])) {
+                          const subItem = commandOptions.subItem,
+                            subItemIsAny = !isDefined(trigger?.[item]?.[subItem]);
+                          if (subItemIsAny) {
                             if (!isDefined(trigger?.[item])) trigger[item] = {};
                             trigger[item][subItem] = triggersTimeRangeAttributesGenerateDefaults(subItem);
                           }
@@ -13524,18 +13587,20 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             case triggersTimeRangeDaysOfWeek: {
                               if (attributeValue.includes(value)) {
                                 triggerTimeRange[subItem] = attributeValue.filter((element) => element !== value);
-                                let attributePosition = currentMenuPosition.pop();
-                                switch (subItem) {
-                                  case triggersTimeRangeQuarters: {
-                                    attributePosition -= 1;
-                                    break;
-                                  }
-                                  case triggersTimeRangeSeasons: {
-                                    attributePosition -= 2;
-                                    break;
-                                  }
-                                  default: {
-                                    break;
+                                let attributePosition = Number(currentMenuPosition.pop());
+                                if (subItemIsAny) {
+                                  switch (subItem) {
+                                    case triggersTimeRangeQuarters: {
+                                      attributePosition -= 1;
+                                      break;
+                                    }
+                                    case triggersTimeRangeSeasons: {
+                                      attributePosition -= 2;
+                                      break;
+                                    }
+                                    default: {
+                                      break;
+                                    }
                                   }
                                 }
                                 currentMenuPosition.push(attributePosition);
@@ -13545,7 +13610,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                   attributeValue.length === triggersTimeRangeAttributesGenerateDefaults(subItem).length
                                 ) {
                                   delete triggerTimeRange[subItem];
-                                  let attributePosition = currentMenuPosition.pop();
+                                  let attributePosition = Number(currentMenuPosition.pop());
                                   switch (subItem) {
                                     case triggersTimeRangeQuarters: {
                                       attributePosition += 1;
@@ -13587,7 +13652,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             index = commandOptions.index,
                             subItem = commandOptions.subItem;
                           logs(
-                            `conditions = ${typeOf(conditions)}: '${JSON.stringify(
+                            `conditions = ${typeOf(conditions)}: '${stringifySafe(
                               conditions,
                             )}', index = ${index}, length = ${length}`,
                           );
@@ -13717,7 +13782,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdItemDownload: {
         nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
           if (err) {
-            warns(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
+            warns(`Can't create temporary directory! Error: '${stringifySafe(err)}'.`);
           } else {
             const languageId = configOptions.getOption(cfgMenuLanguage),
               tmpFileName = nodePath.join(tmpDirectory, `menuTranslation_${languageId}.json`),
@@ -13736,7 +13801,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ),
               (err) => {
                 if (err) {
-                  warns(`Can't create temporary file '${tmpFileName}'! Error: '${JSON.stringify(err)}'.`);
+                  warns(`Can't create temporary file '${tmpFileName}'! Error: '${stringifySafe(err)}'.`);
                 } else {
                   telegramFileSend(user, tmpFileName);
                 }
@@ -14253,7 +14318,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               ? alerts[stateId].chatIds.get(user.chatId)
                               : undefined,
                           isDifferentAlertDetails =
-                            JSON.stringify(currentStateAlertDetails) !== JSON.stringify(alertStateAlertDetails);
+                            stringifySafe(currentStateAlertDetails) !== stringifySafe(alertStateAlertDetails);
                         if (isDifferentAlertDetails) {
                           if (
                             (currentStateAlertDetails && propagateMode === 'alertPropagateOverwrite') ||
@@ -14486,7 +14551,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   } else {
                     nodeFS.mkdtemp(nodePath.join(nodeOS.tmpdir(), temporaryFolderPrefix), (err, tmpDirectory) => {
                       if (err) {
-                        warns(`Can't create temporary directory! Error: '${JSON.stringify(err)}'.`);
+                        warns(`Can't create temporary directory! Error: '${stringifySafe(err)}'.`);
                       } else {
                         const tmpGraphFileName = nodePath.join(tmpDirectory, 'graph.png'),
                           scaleSize = configOptions.getOption(cfgGraphsScale, user);
@@ -14503,7 +14568,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           },
                           (result) => {
                             if (result.error) {
-                              errs(`error: JSON.stringify(result.error)`);
+                              errs(`error: stringifySafe(result.error)`);
                             } else if (result.data) {
                               telegramImageSend(user, tmpGraphFileName);
                               deleteObject(newTemplateId);
@@ -14770,7 +14835,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           await setObjectAsync(newReportId, obj);
           menuMenuItemsAndRowsClearCached(user);
         } catch (error) {
-          errs(`Object can not be created - setObject don't enabled. Error is ${JSON.stringify(error)}`);
+          errs(`Object can not be created - setObject don't enabled. Error is ${stringifySafe(error)}`);
           currentMenuPosition.splice(-1);
         }
         if (Object.keys(enumerationsList[dataTypeReport].enums).length > 1) currentMenuPosition.splice(-1);
@@ -14904,7 +14969,7 @@ const cachedTelegramMessagesQueue = 'messagesQueue';
 function telegramFileSend(user, fileFullPath, callback) {
   nodeFS.access(fileFullPath, nodeFS.constants.R_OK, (error) => {
     if (error) {
-      const errorMessage = `Can't read file ${fileFullPath}! Error is ${JSON.stringify(error)}`;
+      const errorMessage = `Can't read file ${fileFullPath}! Error is ${stringifySafe(error)}`;
       warns(errorMessage);
       if (callback) callback({success: false, error: errorMessage});
     } else {
@@ -14933,7 +14998,7 @@ function telegramFileSend(user, fileFullPath, callback) {
 function telegramImageSend(user, imageFullPath, callback) {
   nodeFS.access(imageFullPath, nodeFS.constants.R_OK, (error) => {
     if (error) {
-      const errorMessage = `Can't read file ${imageFullPath}! Error is ${JSON.stringify(error)}`;
+      const errorMessage = `Can't read file ${imageFullPath}! Error is ${stringifySafe(error)}`;
       warns(errorMessage);
       if (callback) callback({success: false, error: errorMessage});
     } else {
@@ -14963,7 +15028,7 @@ function telegramActionOnFileSendCommand(data, callback) {
   if (user && fileFullPath) {
     telegramFileSend(user, fileFullPath, callback);
   } else {
-    const error = `Wrong data provided! ${JSON.stringify(data)}`;
+    const error = `Wrong data provided! ${stringifySafe(data)}`;
     warns(error);
     callback({success: false, error});
   }
@@ -14979,7 +15044,7 @@ function telegramActionOnImageSendCommand(data, callback) {
   if (user && imageFullPath) {
     telegramImageSend(user, imageFullPath, callback);
   } else {
-    const error = `Wrong data provided! ${JSON.stringify(data)}`;
+    const error = `Wrong data provided! ${stringifySafe(data)}`;
     warns(error);
     callback({success: false, error});
   }
@@ -14997,7 +15062,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
   if (isMenuOn || createNewMessage) {
     const timeStamp = '<i>' + formatDate(new Date(), configOptions.getOption(cfgDateTimeTemplate, user)) + '</i> ',
       lastMessagePlainText = cachedValueExists(user, cachedLastMessage) ? cachedValueGet(user, cachedLastMessage) : '',
-      currentMessagePlainText = JSON.stringify(messageObject);
+      currentMessagePlainText = stringifySafe(messageObject);
     if (lastMessagePlainText !== currentMessagePlainText || createNewMessage || clearBefore) {
       cachedValueSet(user, cachedLastMessage, currentMessagePlainText);
       const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
@@ -15069,7 +15134,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
  * @param {object|object[]} telegramObject - The Telegram message object (or an array of "linked" objects) to push to the queue.
  */
 function telegramObjectPushToQueue(user, telegramObject) {
-  logs(`DebugMessages: Push telegramObject = ${JSON.stringify(telegramObject, null, 1)}`, _l);
+  logs(`DebugMessages: Push telegramObject = ${stringifySafe(telegramObject, null, 1)}`, _l);
   let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
   if (!userMessagesQueue) {
     userMessagesQueue = [];
@@ -15115,8 +15180,8 @@ function telegramQueueProcess(user, messageId) {
       telegramError;
     const currentTS = Date.now(),
       resultObject = telegramSendToAdapterResponse(result, telegramObject);
-    logs(`SendToTelegram: result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
-    logs(`Converted result: ${JSON.stringify(resultObject, null, 1)}`, _l);
+    logs(`SendToTelegram: result (${typeOf(result)}) = ${stringifySafe(result, null, 1)}`, _l);
+    logs(`Converted result: ${stringifySafe(resultObject, null, 1)}`, _l);
     if (!resultObject.success) {
       logs(`check = waitForLog = ${waitForLog}, total = ${waitForLog && !resultObject.error.level}`, _l);
       if (waitForLog && !isDefined(resultObject.error.level)) {
@@ -15124,7 +15189,7 @@ function telegramQueueProcess(user, messageId) {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false);
         }, telegramDelayToCatchLog);
       } else {
-        logs(`errors = ${JSON.stringify(telegramLastErrors, null, 1)}`, _l);
+        logs(`errors = ${stringifySafe(telegramLastErrors, null, 1)}`, _l);
         if (telegramLastErrors?.size) {
           if (user.chatId > 0 && telegramLastErrors.has(user.chatId)) {
             telegramError = telegramLastErrors.get(user.chatId);
@@ -15148,12 +15213,12 @@ function telegramQueueProcess(user, messageId) {
           resultObject.error = telegramError.error;
         }
         if (resultObject.error?.level) {
-          logs(`error = ${JSON.stringify(resultObject.error, null, 1)}`, _l);
+          logs(`error = ${stringifySafe(resultObject.error, null, 1)}`, _l);
           warns(
-            `Can't send message (${JSON.stringify(telegramObject)}) to (${JSON.stringify({
+            `Can't send message (${stringifySafe(telegramObject)}) to (${stringifySafe({
               ...user,
               rootMenu: null,
-            })})!\nResult = ${JSON.stringify(resultObject)}.\nError details = ${JSON.stringify(
+            })})!\nResult = ${stringifySafe(resultObject)}.\nError details = ${stringifySafe(
               resultObject.error,
               null,
               2,
@@ -15232,7 +15297,7 @@ function telegramQueueProcess(user, messageId) {
           nodeFS.rm(nodePath.dirname(telegramObject.text), {recursive: true, force: true}, (err) => {
             if (err)
               warns(
-                `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${JSON.stringify(err)}'.`,
+                `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${stringifySafe(err)}'.`,
               );
           });
       }
@@ -15284,7 +15349,7 @@ function telegramQueueProcess(user, messageId) {
       // will send a last message, to prevent spamming the telegram with flipping some states in ioBroker. In case of user input - we will not lost any message
       do {
         telegramObjects = objectDeepClone(userMessagesQueue[currentPos]);
-        logs(`DebugMessages: prepare telegramObjects = ${JSON.stringify(telegramObjects, null, 1)}`, _l);
+        logs(`DebugMessages: prepare telegramObjects = ${stringifySafe(telegramObjects, null, 1)}`, _l);
         if (!isDefined(telegramObjects)) {
           if (currentPos < userMessagesQueue.length - 1) {
             currentPos = userMessagesQueue.length - 1;
@@ -15303,7 +15368,7 @@ function telegramQueueProcess(user, messageId) {
         ) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
           if (!isDefined(telegramObjects[0][telegramCommandDeleteMessage].options.message_id)) {
-            warns(`No message for Delete! Going to skip command ${JSON.stringify(telegramObjects[0])}.`);
+            warns(`No message for Delete! Going to skip command ${stringifySafe(telegramObjects[0])}.`);
             telegramObjects.shift();
           }
           if (telegramObjects && telegramObjects.length === 0) {
@@ -15325,7 +15390,7 @@ function telegramQueueProcess(user, messageId) {
         }
         const telegramObject = telegramObjects.shift(),
           sentToTimeStamp = Date.now();
-        logs(`DebugMessages: send telegramObject = ${JSON.stringify(telegramObject, null, 1)}`, _l);
+        logs(`DebugMessages: send telegramObject = ${stringifySafe(telegramObject, null, 1)}`, _l);
         sendTo(telegramAdapter, telegramObject, (result) => {
           telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentPos + 1, sentToTimeStamp, true);
         });
@@ -15404,13 +15469,13 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
     if (user.userId == user.chatId) {
       if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       sendTo(telegramAdapter, telegramObject, (result) => {
-        logs(`SendToTelegram: pop-up result (${typeOf(result)}) = ${JSON.stringify(result, null, 1)}`, _l);
-        logs(`Converted result: ${JSON.stringify(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
+        logs(`SendToTelegram: pop-up result (${typeOf(result)}) = ${stringifySafe(result, null, 1)}`, _l);
+        logs(`Converted result: ${stringifySafe(telegramSendToAdapterResponse(result, telegramObject), null, 1)}`, _l);
         if (!result) {
           warns(
-            `Can't send pop-up message (${JSON.stringify(telegramObject)}) to (${JSON.stringify(
+            `Can't send pop-up message (${stringifySafe(telegramObject)}) to (${stringifySafe(
               user,
-            )})!\nResult = ${JSON.stringify(result)}.`,
+            )})!\nResult = ${stringifySafe(result)}.`,
           );
         }
       });
@@ -15546,10 +15611,10 @@ function telegramGenerateUserObjectFromId(userId) {
  */
 function telegramActionOnLogError(logRecord) {
   if (typeOf(logRecord, 'object') && logRecord.hasOwnProperty('from') && logRecord.from === telegramAdapter) {
-    logs(`errorlog : ${JSON.stringify(logRecord, null, 1)}`, _l);
+    logs(`errorlog : ${stringifySafe(logRecord, null, 1)}`, _l);
     try {
       const telegramErrorParsed = telegramErrorParseRegExp.exec(logRecord.message);
-      logs(`telegramErrorParsed : ${JSON.stringify(telegramErrorParsed, null, 1)}`, _l);
+      logs(`telegramErrorParsed : ${stringifySafe(telegramErrorParsed, null, 1)}`, _l);
       if (telegramErrorParsed && telegramErrorParsed.length === 8) {
         const // @ts-ignore
           chatId = isNaN(telegramErrorParsed[3]) ? 0 : Number(telegramErrorParsed[3]),
@@ -15574,7 +15639,7 @@ function telegramActionOnLogError(logRecord) {
         }
       }
     } catch (error) {
-      warns(`Can't parse log record: ${JSON.stringify(logRecord, null, 1)}`);
+      warns(`Can't parse log record: ${stringifySafe(logRecord, null, 1)}`);
     }
   }
 }
@@ -15589,7 +15654,7 @@ function telegramActionOnUserRequestRaw(obj) {
   try {
     userRequest = JSON.parse(obj.state.val);
   } catch (err) {
-    warns(`userRequest: JSON parse error: ${JSON.stringify(err)}`);
+    warns(`userRequest: JSON parse error: ${stringifySafe(err)}`);
   }
   if (typeOf(userRequest, 'object') && userRequest.hasOwnProperty('from') && userRequest.from.hasOwnProperty('id')) {
     const userId = userRequest.from.id,
@@ -15633,7 +15698,7 @@ function telegramActionOnUserRequestRaw(obj) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
               if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
                 warns(
-                  `Some output is in cache:\n${JSON.stringify(
+                  `Some output is in cache:\n${stringifySafe(
                     cachedValueGet(user, cachedTelegramMessagesQueue),
                   )}.\nGoing to delete it!`,
                 );
@@ -15681,9 +15746,9 @@ function telegramActionOnUserRequestRaw(obj) {
       }
     } else {
       warns(
-        `Access denied. User ${JSON.stringify(userRequest.from.first_name)} ${JSON.stringify(
+        `Access denied. User ${stringifySafe(userRequest.from.first_name)} ${stringifySafe(
           userRequest.from.last_name,
-        )} (${JSON.stringify(userRequest.from.username)}) with id = ${userId} not in the list!`,
+        )} (${stringifySafe(userRequest.from.username)}) with id = ${userId} not in the list!`,
       );
     }
   }
@@ -15699,7 +15764,7 @@ function telegramActionOnSendToUserRaw(obj) {
   try {
     botMessage = JSON.parse(obj.state.val);
   } catch (err) {
-    warns(`sendToUser: JSON parse error: ${JSON.stringify(err)}`);
+    warns(`sendToUser: JSON parse error: ${stringifySafe(err)}`);
   }
   if (
     typeOf(botMessage, 'object') &&
