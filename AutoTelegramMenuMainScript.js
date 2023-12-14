@@ -7257,14 +7257,14 @@ function alertsActionOnSubscribedState(object) {
                 };
                 if (isDefined(timeRange)) {
                   timeRangeIsOk = triggerTimeRangeCheck(alertTimeStamp, timeRange);
-                  logs(
+                  /* logs(
                     `threshold timeRange check timeRangeIsOk: ${timeRangeIsOk},  alertTimeStamp: ${alertTimeStamp.toString()}, stateValue: ${stateValue}, threshold: ${stringifySafe(
                       threshold,
                       null,
                       1,
                     )}`,
                     _l,
-                  );
+                  ); */
                 }
                 if (timeRangeIsOk) {
                   if (onTimeInterval) {
@@ -8745,22 +8745,24 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
           }
           break;
         }
-        case triggersTimeRangeQuarters:
+        case triggersTimeRangeQuarters: {
+          if (
+            !isDefined(triggerTimeRange[triggersTimeRangeMonths]) &&
+            !isDefined(triggerTimeRange[triggersTimeRangeSeasons])
+          ) {
+            Object.keys(triggersTimeRangeQuartersItems).forEach((quarter, index) => {
+              triggerTimeRangeAttributePossibleValues.set(index + 1, quarter);
+            });
+          }
+          break;
+        }
         case triggersTimeRangeSeasons: {
           if (
             !isDefined(triggerTimeRange[triggersTimeRangeMonths]) &&
-            ((triggersTimeRangeAttribute === triggersTimeRangeQuarters &&
-              !isDefined(triggerTimeRange[triggersTimeRangeSeasons])) ||
-              (triggersTimeRangeAttribute === triggersTimeRangeSeasons &&
-                !isDefined(triggerTimeRange[triggersTimeRangeQuarters])))
+            !isDefined(triggerTimeRange[triggersTimeRangeQuarters])
           ) {
-            const items =
-              triggersTimeRangeAttribute === triggersTimeRangeQuarters
-                ? triggersTimeRangeQuartersItems
-                : triggersTimeRangeSeasonsItems;
-            Object.keys(items).forEach((item, index) => {
-              if (triggersTimeRangeAttribute === triggersTimeRangeSeasons) item = translationsItemTextGet(user, item);
-              triggerTimeRangeAttributePossibleValues.set(index + 1, item);
+            Object.keys(triggersTimeRangeSeasonsItems).forEach((season, index) => {
+              triggerTimeRangeAttributePossibleValues.set(index + 1, translationsItemTextGet(user, season));
             });
           }
           break;
