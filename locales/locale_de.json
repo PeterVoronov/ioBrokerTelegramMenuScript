@@ -148,6 +148,8 @@
       "textAccessLevelSelective": "Selektiv",
       "textAccessLevelSilent": "Stumm",
       "textAddNewAttributeValue": "Neuen Wert für Attribut hinzufügen",
+      "textAutumn": "core.textAutumn",
+      "textAutumnShort": "core.textAutumnShort",
       "textCanBeDeleted": "Kann gelöscht werden",
       "textConditions": "Konditionen",
       "textCurrentValue": "Aktueller Wert",
@@ -226,7 +228,11 @@
       "textSetRoleId": "Rollen-ID setzen",
       "textSetShowAccessLevel": "Zugriffsebene zum Anzeigen festlegen",
       "textSource": "Quelle",
+      "textSpring": "core.textSpring",
+      "textSpringShort": "core.textSpringShort",
       "textState": "Attribut/Button",
+      "textSummer": "core.textSummer",
+      "textSummerShort": "core.textSummerShort",
       "textSwitchOff": "Ausschalten",
       "textSwitchOn": "Einschalten",
       "textTarget": "Ziel",
@@ -253,6 +259,8 @@
       "textUserUserId": "ID",
       "textUserUserName": "Spitzname",
       "textValue": "Wert",
+      "textWinter": "core.textWinter",
+      "textWinterShort": "core.textWinterShort",
       "textWrongValue": "Falscher Wert!"
     }
   }

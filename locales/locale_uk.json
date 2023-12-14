@@ -148,6 +148,8 @@
       "textAccessLevelSelective": "Вибірковий",
       "textAccessLevelSilent": "Тихий",
       "textAddNewAttributeValue": "Додати нове значення",
+      "textAutumn": "core.textAutumn",
+      "textAutumnShort": "core.textAutumnShort",
       "textCanBeDeleted": "Можна видалити",
       "textConditions": "Умови",
       "textCurrentValue": "Поточне значення",
@@ -226,7 +228,11 @@
       "textSetRoleId": "Задати ID ролі",
       "textSetShowAccessLevel": "Рівень доступу для відображення",
       "textSource": "Джерело",
+      "textSpring": "core.textSpring",
+      "textSpringShort": "core.textSpringShort",
       "textState": "Атрибут/Кнопка",
+      "textSummer": "core.textSummer",
+      "textSummerShort": "core.textSummerShort",
       "textSwitchOff": "Вимкнути",
       "textSwitchOn": "Увімкнути",
       "textTarget": "Ціль",
@@ -253,6 +259,8 @@
       "textUserUserId": "ID",
       "textUserUserName": "Нік",
       "textValue": "Значення",
+      "textWinter": "core.textWinter",
+      "textWinterShort": "core.textWinterShort",
       "textWrongValue": "Помилкове значення!"
     }
   }
