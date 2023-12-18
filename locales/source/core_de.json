@@ -144,6 +144,8 @@
     "textAccessLevelSelective": "Selektiv",
     "textAccessLevelSilent": "Stumm",
     "textAddNewAttributeValue": "Neuen Wert für Attribut hinzufügen",
+    "textAutumn": "Herbst",
+    "textAutumnShort": "He",
     "textCanBeDeleted": "Kann gelöscht werden",
     "textConditions": "Konditionen",
     "textCurrentValue": "Aktueller Wert",
@@ -222,7 +224,11 @@
     "textSetRoleId": "Rollen-ID setzen",
     "textSetShowAccessLevel": "Zugriffsebene zum Anzeigen festlegen",
     "textSource": "Quelle",
+    "textSpring": "Frühling",
+    "textSpringShort": "Fr",
     "textState": "Attribut/Button",
+    "textSummer": "Sommer",
+    "textSummerShort": "So",
     "textSwitchOff": "Ausschalten",
     "textSwitchOn": "Einschalten",
     "textTarget": "Ziel",
@@ -249,6 +255,8 @@
     "textUserUserId": "ID",
     "textUserUserName": "Spitzname",
     "textValue": "Wert",
+    "textWinter": "Winterlich",
+    "textWinterShort": "W",
     "textWrongValue": "Falscher Wert!"
   }
 }

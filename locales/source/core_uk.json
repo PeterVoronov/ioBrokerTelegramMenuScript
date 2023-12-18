@@ -144,6 +144,8 @@
     "textAccessLevelSelective": "Вибірковий",
     "textAccessLevelSilent": "Тихий",
     "textAddNewAttributeValue": "Додати нове значення",
+    "textAutumn": "Осінь",
+    "textAutumnShort": "О",
     "textCanBeDeleted": "Можна видалити",
     "textConditions": "Умови",
     "textCurrentValue": "Поточне значення",
@@ -222,7 +224,11 @@
     "textSetRoleId": "Задати ID ролі",
     "textSetShowAccessLevel": "Рівень доступу для відображення",
     "textSource": "Джерело",
+    "textSpring": "Весна",
+    "textSpringShort": "В",
     "textState": "Атрибут/Кнопка",
+    "textSummer": "Літо",
+    "textSummerShort": "Л",
     "textSwitchOff": "Вимкнути",
     "textSwitchOn": "Увімкнути",
     "textTarget": "Ціль",
@@ -249,6 +255,8 @@
     "textUserUserId": "ID",
     "textUserUserName": "Нік",
     "textValue": "Значення",
+    "textWinter": "Зима",
+    "textWinterShort": "З",
     "textWrongValue": "Помилкове значення!"
   }
 }

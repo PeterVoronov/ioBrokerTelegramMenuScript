@@ -148,6 +148,8 @@
       "textAccessLevelSelective": "Выборочный",
       "textAccessLevelSilent": "Тихий",
       "textAddNewAttributeValue": "Добавить новое значение",
+      "textAutumn": "Осень",
+      "textAutumnShort": "О",
       "textCanBeDeleted": "Можно удалить",
       "textConditions": "Условия",
       "textCurrentValue": "Текущее значение",
@@ -226,7 +228,11 @@
       "textSetRoleId": "Задать ID роли",
       "textSetShowAccessLevel": "Уровень доступа для отображения",
       "textSource": "Источник",
+      "textSpring": "Весна",
+      "textSpringShort": "В",
       "textState": "Атрибут/Кнопка",
+      "textSummer": "Лето",
+      "textSummerShort": "Л",
       "textSwitchOff": "Выключить",
       "textSwitchOn": "Включить",
       "textTarget": "Цель",
@@ -253,6 +259,8 @@
       "textUserUserId": "ID",
       "textUserUserName": "Ник",
       "textValue": "Значение",
+      "textWinter": "Зима",
+      "textWinterShort": "З",
       "textWrongValue": "Ошибочное значение!"
     }
   }
