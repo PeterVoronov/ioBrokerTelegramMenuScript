@@ -277,7 +277,7 @@ const cfgPrefix = 'cfg',
   cfgUpdateMessagesOnStart = `${cfgPrefix}UpdateMessagesOnStart`,
   cfgDebugMode = `${cfgPrefix}DebugMode`;
 const alertMessageTemplateDefault =
-  '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}';// NOSONAR
+  '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}'; // NOSONAR
 
 const configDefaultOptions = {
     [cfgMenuUsers]: {},
@@ -3623,7 +3623,7 @@ function translationsCheckAndCacheUploadedFile(
             translationFileIsOk = true;
             warns(
               `Translation '${translationFileName}' for language '${inputTranslation.language}' is uploaded!` +
-              'And can be processed!',
+                'And can be processed!',
             );
           } else {
             warns(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
@@ -7287,13 +7287,11 @@ function alertsActionOnSubscribedState(object) {
                     if (threshold.log)
                       warns(
                         `State ${targetState} will be set to ${targetValue} due to ` +
-                        `trigger of state ${stateId} on value ${thresholdValue}!`,
+                          `trigger of state ${stateId} on value ${thresholdValue}!`,
                       );
                     logs(
                       `State ${targetState} will be set to ${targetValue} due to ' +
-                      'trigger of state ${stateId} on value ${thresholdValue}! = ${stringifySafe(
-                        threshold,
-                      )}`,
+                      'trigger of state ${stateId} on value ${thresholdValue}! = ${stringifySafe(threshold)}`,
                     );
                     setState(targetState, targetValue, (error) => {
                       if (error) {
@@ -9950,7 +9948,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             `${translationsItemMenuGet(user, 'ReportNewStatesDefineState')} (${queryState})`,
             '',
             {dataType: dataTypeReportMember, item: 'queryState'},
-          )
+          ),
         );
         subMenuIndex = subMenu.push(
           menuMenuItemGenerateEditItem(
@@ -9960,7 +9958,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
             `${translationsItemMenuGet(user, 'ReportNewStatesDefineRole')} (${queryRole})`,
             '',
             {dataType: dataTypeReportMember, item: 'queryRole'},
-          )
+          ),
         );
         if (queryRole || queryState) {
           subMenu.push({
@@ -10088,7 +10086,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
           menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemMenuGet(user, 'cmdFixId'), '', {
             dataType: dataTypeReport,
             mode: 'fixId',
-          })
+          }),
         );
       } else {
         newMenu.push({
@@ -10106,7 +10104,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
         menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemCoreGet(user, 'cmdSetId'), '', {
           dataType: dataTypeReport,
           mode: 'setId',
-        })
+        }),
       );
     }
   }
@@ -11729,7 +11727,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             if (typeof newMenuItem === 'object' && newMenuItem.hasOwnProperty('error')) {
               warns(
                 `Can't update subMenu from extensionMenuId ${extensionMenuId}!` +
-                ` No result. Error is ${newMenuItem.error}`,
+                  ` No result. Error is ${newMenuItem.error}`,
               );
             }
             targetMenuPos = [];
@@ -12552,14 +12550,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   let currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
   logs(
-    `userInput.start:\n
-    - isWaitForInput = ${isWaitForInput},\n
-    - userInputToProcess = ${userInputToProcess},\n
-    - currentCommand = ${currentCommand},\n
-    - currentMenuPosition = ${currentMenuPosition},\n
-    - commandOptions = ${stringifySafe(
-      commandOptions,
-    )}`,
+    `userInput.start:
+    - isWaitForInput = ${isWaitForInput},
+    - userInputToProcess = ${userInputToProcess},
+    - currentCommand = ${currentCommand},
+    - currentMenuPosition = ${currentMenuPosition},
+    - commandOptions = ${stringifySafe(commandOptions)}`,
     _l,
   );
   if (commandOptions?.backOnPress) currentMenuPosition.splice(-1, 1);
@@ -12702,7 +12698,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   } else {
                     warns(
                       `Unacceptable value '${userInputToProcess}' code conversion of attribute ` +
-                      `${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
+                        `${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
                     );
                     telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                   }
@@ -13592,7 +13588,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(
           `External command ${commandOptions.item} for function ${commandOptions.function}, ` +
-          `with params ${commandOptions.attribute}`,
+            `with params ${commandOptions.attribute}`,
         );
         menuMenuDraw(user);
         messageTo(
@@ -15406,7 +15402,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
       }
     } else {
       logs(
-        `lastMessage is equal to preparedMessageObject, sendTo Telegram skipped.\n
+        `lastMessage is equal to preparedMessageObject, sendTo Telegram skipped.
         Message is ${currentMessagePlainText}.`,
       );
     }
