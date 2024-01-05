@@ -277,37 +277,62 @@ const cfgPrefix = 'cfg',
   cfgUpdateMessagesOnStart = `${cfgPrefix}UpdateMessagesOnStart`,
   cfgDebugMode = `${cfgPrefix}DebugMode`;
 const alertMessageTemplateDefault =
-  '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}';
+  '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}';// NOSONAR
 
 const configDefaultOptions = {
     [cfgMenuUsers]: {},
     [cfgMenuRoles]: {},
-    [cfgMaxButtonsOnScreen]: 24, // maximum buttons on one screen except alerts and global menu related
-    [cfgMessagesForMenuCall]: ['/menu'], // List of commands to show the menu
-    [cfgMenuRefreshInterval]: 0, // Interval to refresh current menu screen(forcibly from script for all users, disabled if '0')
-    [cfgExternalMenuTimeout]: 500, // Timeout to wait an answer from extensions
-    [cfgHistoryAdapter]: '', // History adapter for eCharts
-    [cfgGraphsTemplates]: '', // Folder with e-charts templates
-    [cfgUseAliasOriginForCommonAttrs]: true, // Get object 'common' description from alias "source".
-    [cfgSkipAttributesWithNullValue]: true, //Don't show device attributes with `null` value. Not applicable on buttons and PrimaryState
-    [cfgAllowToDeleteEmptyEnums]: true, // Allow to delete an empty enums (functions, destinations, reports)
-    [cfgConfigBackupCopiesCount]: 7, // Max backup copies of config to be stored. If 0 - automatic backup will not work
+    // maximum buttons on one screen except alerts and global menu related
+    [cfgMaxButtonsOnScreen]: 24,
+    // List of commands to show the menu
+    [cfgMessagesForMenuCall]: ['/menu'],
+    // Interval to refresh current menu screen(disabled if '0')
+    [cfgMenuRefreshInterval]: 0,
+    // Timeout to wait an answer from extensions
+    [cfgExternalMenuTimeout]: 500,
+    // History adapter for eCharts
+    [cfgHistoryAdapter]: '',
+    // Folder with e-charts templates
+    [cfgGraphsTemplates]: '',
+    // Get object 'common' description from alias "source".
+    [cfgUseAliasOriginForCommonAttrs]: true,
+    //Don't show device attributes with `null` value. Except Buttons and PrimaryState
+    [cfgSkipAttributesWithNullValue]: true,
+    // Allow to delete an empty enums (functions, destinations, reports)
+    [cfgAllowToDeleteEmptyEnums]: true,
+    // Max backup copies of config to be stored. If 0 - automatic backup will not work
+    [cfgConfigBackupCopiesCount]: 7,
     [cfgAlertMessageTemplateMain]: alertMessageTemplateDefault,
     [cfgAlertMessageTemplateThreshold]: alertMessageTemplateDefault + ' [${alertThresholdIcon}${alertThresholdValue}]',
-    [cfgCheckAlertStatesOnStartUp]: false, // Check stored states values on the start of script, to raise an alert
-    [cfgThresholdsForNumericString]: false, // Make possible to set thresholds for states of string type, which is really numeric
-    [cfgDebugMode]: false, // Enable debug mode - huge amount of logs
-    [cfgMenuLanguage]: 'ru', // Menu display language
-    [cfgMenuFunctionsFirst]: true, // Menu display functions on top (or destinations)
-    [cfgMenuFastGeneration]: true, // Menu generation buster - less checks, possible empty submenus
-    [cfgSummaryTextLengthMax]: 30, // Maximum numbers of symbols per line (approximate, for )
-    [cfgTextLengthModifierForGChats]: -4, // Modifier for the max of symbols per line for a group chats
-    [cfgClearMenuCall]: true, // Delete command, after menu is shown
-    [cfgHierarchicalCaption]: 0, // show caption of the current menu hierarchically
-    [cfgShowHomeButton]: true, // Always show 'Home' button
-    [cfgShowHorizontalNavigation]: false, // Always show "Horizontal" navigation buttons,
-    [cfgShowResultMessages]: true, // Show alert messages, as reactions on some input
-    [cfgGraphsScale]: 1, // Scale for e-charts graphs
+    // Check stored states values on the start of script, to raise an alert
+    [cfgCheckAlertStatesOnStartUp]: false,
+    // Make possible to set thresholds for states of string type, which is really numeric
+    [cfgThresholdsForNumericString]: false,
+    // Enable debug mode - huge amount of logs
+    [cfgDebugMode]: false,
+    // Menu display language
+    [cfgMenuLanguage]: 'ru',
+    // Menu display functions on top (or destinations)
+    [cfgMenuFunctionsFirst]: true,
+    // Menu generation buster - less checks, possible empty submenus
+    [cfgMenuFastGeneration]: true,
+    // Maximum numbers of symbols per line (approximate, for )
+    [cfgSummaryTextLengthMax]: 30,
+    // Modifier for the max of symbols per line for a group chats
+    [cfgTextLengthModifierForGChats]: -4,
+    // Delete command, after menu is shown
+    [cfgClearMenuCall]: true,
+    // show caption of the current menu hierarchically
+    [cfgHierarchicalCaption]: 0,
+    // Always show 'Home' button
+    [cfgShowHomeButton]: true,
+    // Always show "Horizontal" navigation buttons,
+    [cfgShowHorizontalNavigation]: false,
+    // Show alert messages, as reactions on some input
+    [cfgShowResultMessages]: true,
+    // Scale for e-charts graphs
+    [cfgGraphsScale]: 1,
+    // Time ranges back from now, in minutes
     [cfgGraphsIntervals]: [
       {id: '2h', minutes: timeIntervalsInMinutes.h * 2},
       {id: '6h', minutes: timeIntervalsInMinutes.h * 6},
@@ -320,13 +345,16 @@ const configDefaultOptions = {
       {id: '3M', minutes: timeIntervalsInMinutes.M * 3},
       {id: '6M', minutes: timeIntervalsInMinutes.M * 6},
       {id: '1Y', minutes: timeIntervalsInMinutes.Y},
-    ], // Time ranges back from now, in minutes
+    ],
     [cfgDefaultIconOn]: iconItemOn,
     [cfgDefaultIconOff]: iconItemOff,
-    [cfgAlertMessagesHistoryDepth]: 48, // Alert messages history depth in hours
+    // Alert messages history depth in hours
+    [cfgAlertMessagesHistoryDepth]: 48,
     [cfgUpdateMessageTime]: '12:05',
-    [cfgUpdateMessagesOnStart]: 5, // Refresh menu messages after script start. If 0 - will not refresh.
-    [cfgDateTimeTemplate]: 'DD.MM hh:mm:ss', // Template for date and time in Menu
+    // Refresh menu messages after script start. If 0 - will not refresh.
+    [cfgUpdateMessagesOnStart]: 5,
+    // Template for date and time in Menu
+    [cfgDateTimeTemplate]: 'DD.MM hh:mm:ss',
   },
   configDefaultOptionMasks = {
     [cfgUpdateMessageTime]: {text: 'hh:mm', rule: /^([0-1]?\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/},
@@ -430,7 +458,8 @@ class ConfigOptions {
   }
 
   /**
-   * This method checks, if the config item has own separate value for current user then return it, otherwise return the global value
+   * This method checks, if the config item has own separate value for current user then return it,
+   * otherwise return the global value
    * @param {string} cfgItem - The id of the configuration item.
    * @param {object=} user - The user object.
    * @returns {any} A copy of the value of the configuration item.
@@ -572,7 +601,8 @@ class ConfigOptions {
   }
 
   /**
-   * This method takes a preliminary value of the config item, and convert it to the type, equal to the type of current(default) value the item.
+   * This method takes a preliminary value of the config item, and convert it to the type,
+   * equal to the type of current(default) value the item.
    * @param {string} cfgItem - The id of the config item.
    * @param {any} value - the value to be parsed
    * @returns {any} The result of the parseOption function.
@@ -721,7 +751,8 @@ class ConfigOptions {
               if (typeOf(functionToProcess)) {
                 functionToProcess(cfgItem);
                 logs(
-                  `External function ${functionToProcess} is executed on configOptions[${cfgItem}, ${cfgItemPrefix}] = ${stringifySafe(
+                  `External function ${functionToProcess} is executed on ` +
+                  `configOptions[${cfgItem}, ${cfgItemPrefix}] = ${stringifySafe(
                     actualValue,
                   )}`,
                 );
@@ -896,7 +927,8 @@ class ConfigOptions {
   }
 
   /**
-   * This method generates a configuration options submenu for global and user-level parameters based on the user's access level.
+   * This method generates a configuration options submenu for global and user-level parameters
+   * based on the user's access level.
    * @param {object} user - The user object.
    * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
    * @returns {object[]} An array of objects (menu items).
@@ -1564,7 +1596,8 @@ class MenuRoles {
   }
 
   /**
-   * This method parse a text definitions of rules for the rule with Id = `itemId` and compile it to the appropriate set of RegExp objects.
+   * This method parse a text definitions of rules for the rule with Id = `itemId` and
+   * compile it to the appropriate set of RegExp objects.
    * @param {string} itemId - role Id to process.
    */
   compileRules(itemId) {
@@ -1901,7 +1934,8 @@ class MenuRoles {
   }
 
   /**
-   * This method generates a submenu to show and process the access level an appropriate rule (existing or newly created).
+   * This method generates a submenu to show and process the access level an appropriate rule
+   * (existing or newly created).
    * @param {object} user - user - The user object.
    * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
    * @returns {object[]} Newly generated submenu.
@@ -1959,7 +1993,8 @@ class MenuRoles {
   }
 
   /**
-   * This method takes a rule object, and returns a string containing formatted rule's details/properties (mask and accessLevel).
+   * This method takes a rule object, and returns a string containing formatted rule's details/properties
+   * (mask and accessLevel).
    * @param {object} user The user object.
    * @param {object} rule The rule object.
    * @returns {string} A formatted string.
@@ -2144,7 +2179,8 @@ class MenuRoles {
   }
 
   /**
-   * This method generates a menu for a `role`, which has a list of `rules`, each rule having a `mask` and an `access level`.
+   * This method generates a menu for a `role`, which has a list of `rules`, each rule having a `mask`
+   * and an `access level`.
    * @param {object} user - The user object.
    * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
    * @returns {object[]} Newly generated submenu.
@@ -2441,7 +2477,8 @@ class MenuUsers extends MenuRoles {
   }
 
   /**
-   * If the user with itemId exists and is enabled, return the string contained an itemId, otherwise return an empty string.
+   * If the user with itemId exists and is enabled, return the string contained an itemId,
+   * otherwise return an empty string.
    * @param {number|string} itemId - The user's ID.
    * @returns {string} string.
    */
@@ -2566,7 +2603,8 @@ class MenuUsers extends MenuRoles {
   }
 
   /**
-   * This method returns an array of userIds for all users that associated with a roleId that matches the roleId passed in as
+   * This method returns an array of userIds for all users that associated with a
+   * roleId that matches the roleId passed in as
    * an argument.
    *
    * If no roleId is passed in, it returns an array of userIds for all existing users.
@@ -2582,7 +2620,8 @@ class MenuUsers extends MenuRoles {
   }
 
   /**
-   * This method returns a list(`Object`) of rules objects the user with Id = `itemId` which merged from an associated roles rules lists(Arrays).
+   * This method returns a list(`Object`) of rules objects the user with Id = `itemId`
+   * which merged from an associated roles rules lists(Arrays).
    * @param {number|string} itemId - The Id of the user to process.
    * @param {boolean=} compiled - The boolean selector to define a return format of the roles rules.
    * @returns {object[]} An array of rules.
@@ -2604,7 +2643,8 @@ class MenuUsers extends MenuRoles {
   }
 
   /**
-   *  This method parse a text definitions of rules of an associated roles with user with Id = `itemId` and compile it to the appropriate sets of RegExp objects.
+   *  This method parse a text definitions of rules of an associated roles with user with Id = `itemId`
+   * and compile it to the appropriate sets of RegExp objects.
    * @param {number|string} itemId
    */
   compileRules(itemId) {
@@ -2845,17 +2885,20 @@ function translationsLoad() {
  * This functions downloads locales from the repo and returns the translations object into the `callback` function.
  * @param {string} languageId - The language Id, like 'en', 'de', 'uk', ..., or 'all', to download all of them.
  * @param {string} extensionId - The extension id, to download specific translations.
- * @param {function(object=, string|object=):void} callback - The callback function in format `callback(translation, error)`.
+ * @param {function(object=, string|object=):void} callback - The callback function
+ * in format `callback(translation, error)`.
  */
 function translationsLoadLocalesFromRepository(languageId, extensionId, callback) {
   /**
-   * This functions process the list of locales links iterative way, and returns the translations object into the `callback` function.
+   * This functions process the list of locales links iterative way, and returns the translations object into
+   * the `callback` function.
    * @param {object} repo - The axios object, initiated to the repo main link.
    * @param {string[]} languageIds - The array of language Ids, like ['en', 'de', 'uk', ...]
    * @param {object} localesUrls - The object, with languageId's as properties , with values - parsed urls objects
    * to the 'locale_xx.json' files in repo.
    * @param {object} translations - The object, with languageId's as properties , with values - downloaded translations.
-   * @param {function(object=, string|object=):void} callback - The callback function in format `callback(translation, error)`.
+   * @param {function(object=, string|object=):void} callback - The callback function
+   * in format `callback(translation, error)`.
    */
   function translationsDownloadFromRepo(repo, languageIds, localesUrls, translations, callback) {
     const languageId = languageIds.shift();
@@ -3446,7 +3489,8 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
  * @param {object} user - The user object.
  * @param {string} enumerationType  - The string defines the enumerationItem type.
  * @param {string=} enumId - The string contained an enum Id.
- * @param {string=} enumNameDeclinationKey - The "declination" key for the Name (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
+ * @param {string=} enumNameDeclinationKey - The "declination" key for the Name
+ * (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
  * @returns {string} The translation id string for the enum.
  */
 function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinationKey) {
@@ -3483,7 +3527,8 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
  * @param {object} user - The user object.
  * @param {string} enumerationType  - The string defines the enumerationItem type.
  * @param {string=} enumId - The string contained an enum Id.
- * @param {string=} enumNameDeclinationKey - The "declination" key for the Name (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
+ * @param {string=} enumNameDeclinationKey - The "declination" key for the Name
+ * (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
  * @returns {string} The translation id string for the enum.
  */
 function translationsGetEnumName(user, enumerationType, enumId, enumNameDeclinationKey) {
@@ -3577,7 +3622,8 @@ function translationsCheckAndCacheUploadedFile(
             cachedValueSet(user, cachedTranslationsToUpload, inputTranslation);
             translationFileIsOk = true;
             warns(
-              `Translation '${translationFileName}' for language '${inputTranslation.language}' is uploaded and can be processed!`,
+              `Translation '${translationFileName}' for language '${inputTranslation.language}' is uploaded!` +
+              'And can be processed!',
             );
           } else {
             warns(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
@@ -3767,7 +3813,8 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
 }
 
 /**
- * This function generates a submenu to manage the functions related Translation items (i.e. buttons, attributes and common attributes).
+ * This function generates a submenu to manage the functions related Translation items
+ * (i.e. buttons, attributes and common attributes).
  * The selector is an `Id` property of `menuItemToProcess` object.
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
@@ -4688,7 +4735,8 @@ function enumerationsInit(enumerationType, withExtensions = false) {
  * @param {string} enumerationItemId - The Id of the current enumerationItem, i.e. ioBroker enum Id.
  * @param {object} enumerationItem - The current enumerationItem object.
  * @param {string} newName - The new Name value.
- * @param {string=} nameDeclinationKey - The "declination" key for the Name (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
+ * @param {string=} nameDeclinationKey - The "declination" key for the Name
+ * (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
  */
 function enumerationsUpdateItemName(
   user,
@@ -5407,7 +5455,8 @@ function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
  * @param {string} enumerationType  - The string defines the enumerationItem type.
  * @param {string} enumerationItemId - The Id of the current enumerationItem, i.e. ioBroker enum Id.
  * @param {boolean=} withEnum - The selector of deletion check.
- * @returns {string} The string containing the appropriate enum Id in case of `withEnum`, or 'can be deleted' in case of deletion is possible and empty string  - if not.
+ * @returns {string} The string containing the appropriate enum Id in case of `withEnum`,
+ * or 'can be deleted' in case of deletion is possible and empty string  - if not.
  */
 function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, withEnum = false) {
   const currentEnumeration = enumerationsList[enumerationType],
@@ -5995,7 +6044,8 @@ function enumerationsExtractPossibleValueStates(inputStates) {
 }
 
 /**
- * This function used to evaluate the code, associated with the attribute, to convert the ioBroker state value to new one.
+ * This function used to evaluate the code, associated with the attribute,
+ * to convert the ioBroker state value to new one.
  * @param {object} user - The user object.
  * @param {any} inputValue - The input value.
  * @param {string} convertValueCode - The string, contained converting code.
@@ -6953,9 +7003,6 @@ function alertsStoreMessagesToCache(user, alertMessages) {
  * @returns {string} The result of interpretation of the template.
  */
 function alertsProcessMessageTemplate(user, template, variables) {
-  // alertMessageTemplateDefaultPrefix= '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"',
-  // alertMessageTemplateDefault = alertMessageTemplateDefaultPrefix + " ${alertStatus}",
-  // alertMessageTemplateDefaultThreshold = alertMessageTemplateDefaultPrefix + " ${alertStatus} [${alertThresholdIcon}${alertThresholdValue}]",
   return template.replace(/\${(.+?)}/g, (_matchedString, stringToProcess) => {
     let result = '',
       postProcess = '';
@@ -7239,10 +7286,12 @@ function alertsActionOnSubscribedState(object) {
                   if (chatId === triggersInAlertsId) {
                     if (threshold.log)
                       warns(
-                        `State ${targetState} will be set to ${targetValue} due to trigger of state ${stateId} on value ${thresholdValue}!`,
+                        `State ${targetState} will be set to ${targetValue} due to ` +
+                        `trigger of state ${stateId} on value ${thresholdValue}!`,
                       );
                     logs(
-                      `State ${targetState} will be set to ${targetValue} due to trigger of state ${stateId} on value ${thresholdValue}! = ${stringifySafe(
+                      `State ${targetState} will be set to ${targetValue} due to ' +
+                      'trigger of state ${stateId} on value ${thresholdValue}! = ${stringifySafe(
                         threshold,
                       )}`,
                     );
@@ -10580,7 +10629,8 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
    * @param {string} enumerationType - The string defines the enumerationItem type.
    * @param {object} currentEnumeration - The list of menu items for the appropriate enumerationType.
    * @param {string} itemId - The Id of the menu item.
-   * @param {string} nameDeclinationKey - The "declination" key for the Name (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
+   * @param {string} nameDeclinationKey - The "declination" key for the Name
+   * (`Main`, `Basic`, `Many`, `Inside`, `EnterTo`, `ExitFrom`).
    * @param {boolean=} isSubordinated - The indicator, if this menu item has a holder one.
    * @returns {object} Newly generated root menu item.
    */
@@ -11284,16 +11334,19 @@ function menuMenuItemGenerateEditItemTimeInterval(user, upperItemIndex, itemInde
 }
 
 /**
- * Generates two menu items to move an item `up` and `down` in it's holder collection(array), which will be processed by `cmdItemMoveUp`/`cmdItemMoveDown`
+ * Generates two menu items to move an item `up` and `down` in it's holder
+ * collection(array), which will be processed by `cmdItemMoveUp`/`cmdItemMoveDown`
  * @param {object} _user - The user object.
  * @param {object[]} subMenu - The current level menu items array.
  * @param {string} upperItemIndex - The upper level item menu index.
  * @param {number} itemIndex - The index of an item to be created.
  * @param {number} itemIndexInArray - The index of an item in the appropriate collection (array).
- * @param {number} lastItemInArrayIndex - The current max index in the appropriate collection (array) which holds an item.
+ * @param {number} lastItemInArrayIndex - The current max index in the appropriate collection (array)
+ * which holds an item.
  * @param {object} options - The options, are required for  `cmdItemMoveUp`/`cmdItemMoveDown` to identify an item.
  * @param {string=} groupId - The group Id for menu.
- * @returns {[object[], number]} The array with an updated `subMenu` with new menu items to move an item `up` and `down`, and updated `subMenuItemIndex`.
+ * @returns {[object[], number]} The array with an updated `subMenu` with new menu items to
+ * move an item `up` and `down`, and updated `subMenuItemIndex`.
  */
 function menuMenuPartGenerateMoveItemUpAndDown(
   _user,
@@ -11372,8 +11425,10 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     /**
      * ! This way to find an objects only by function and then filter by destination,
      * ! is a ten times faster than include destination in search pattern,
-     * ! like $(`state[id=*.${currentFunction.state}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`)
-     * ! And more strange - if I remove check of id in query, to filter it later in code - it additionally five times faster!
+     * ! like
+     * !$(`state[id=*.${functionState}](${currentFunction.enum}=${currentFuncId})(${destsList[destId].enum}=${destId})`)
+     * ! And more strange - if I remove check of id in query, to filter it later in code -
+     * ! it works additionally five times faster!
      */
     $(`state(${primaryMenuItem.enum}=${primaryLevelMenuItemId})`).each((stateId) => {
       if (existsObject(stateId)) {
@@ -11584,13 +11639,17 @@ function menuMenuItemsAndRowsClearCached(user) {
 }
 
 /**
- * This function go from the root level down to the target menu item (by `targetMenuPos`) iterative way, filling on each turn the appropriate information, as to the
- * text part of Telegram message, as for the buttons part, to prepare it for "draw" to user.
+ * This function go from the root level down to the target menu item (by `targetMenuPos`) iterative way,
+ * filling on each turn the appropriate information, as to the text part of Telegram message,
+ * as for the buttons part, to prepare it for "draw" to user.
  * @param {object} user - The user object.
- * @param {string[]=} targetMenuPos - The position of the menu item in the menu tree, each item of array describes the position of item on each level of hierarchy of menu.
+ * @param {string[]=} targetMenuPos - The position of the menu item in the menu tree, each item of array describes
+ * the position of item on each level of hierarchy of menu.
  * @param {object=} messageOptions - The options to draw the menu.
- * @param {object=} menuItemToProcess - The menu item, which have to be processed, to reach the final destination item by `targetMenuPos`.
- * @param {object=} messageObject - The prepared for "draw" the Telegram message object related to the the `targetMenuPos`. Will be filled additionally on each iteration.
+ * @param {object=} menuItemToProcess - The menu item, which have to be processed, to reach the final destination
+ * item by `targetMenuPos`.
+ * @param {object=} messageObject - The prepared for "draw" the Telegram message object related to
+ * the `targetMenuPos`. Will be filled additionally on each iteration.
  * @param {string=} currentIndent - The current indent on this step of iteration for the text part of Telegram message.
  */
 function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent = '') {
@@ -11669,7 +11728,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           } else {
             if (typeof newMenuItem === 'object' && newMenuItem.hasOwnProperty('error')) {
               warns(
-                `Can't update subMenu from extensionMenuId ${extensionMenuId}! No result. Error is ${newMenuItem.error}`,
+                `Can't update subMenu from extensionMenuId ${extensionMenuId}!` +
+                ` No result. Error is ${newMenuItem.error}`,
               );
             }
             targetMenuPos = [];
@@ -12008,11 +12068,13 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId) {
 }
 
 /**
- * This function checks if the menu item has an `icons` property that is an object, then use the on or off icon depending
- * on the state value. In case if `icons` property that is a function, then call the function and use the return value.
+ * This function checks if the menu item has an `icons` property that is an object, then use the on or off icon
+ * depending on the state value. In case if `icons` property that is a function, then call the function and use
+ * the return value.
  * Otherwise, use the `icon` property.
  * @param {object} user - The user object.
- * @param {object} menuItemToProcess - The menu item, which have to be processed, to reach the final destination item by `targetMenuPos`.
+ * @param {object} menuItemToProcess - The menu item, which have to be processed, to reach the final destination
+ * item by `targetMenuPos`.
  * @returns {string} The icon of the menu item.
  */
 function menuMenuItemGetIcon(user, menuItemToProcess) {
@@ -12076,7 +12138,8 @@ function menuMenuItemExtractPosition(menuItemPositionString) {
 }
 
 /**
- * This function clear Telegram message with Auto Telegram Menu, stores it's status as closed and clears appropriate cache values.
+ * This function clear Telegram message with Auto Telegram Menu, then stores it's status as closed and
+ * clears appropriate cache values.
  * @param {object} user - The user object.
  */
 function menuMenuClose(user) {
@@ -12086,7 +12149,8 @@ function menuMenuClose(user) {
 }
 
 /**
- * This function, in case of the schedule for menu update is enabled in configuration, go thru all users, and checks the current open by user menu item for updates.
+ * This function, in case of the schedule for menu update is enabled in configuration, go thru all users,
+ * and checks the current open by user menu item for updates.
  * In case of it consists new information - it will be "redrawn".
  */
 function menuMenuUpdateBySchedule() {
@@ -12108,7 +12172,8 @@ function menuMenuUpdateBySchedule() {
 }
 
 /**
- * This function schedule a renew of the Telegram message, which consists a Auto Telegram Menu, to avoid the time limitation for the bots to edit their own messages.
+ * This function schedule a renew of the Telegram message, which consists a Auto Telegram Menu,
+ * to avoid the time limitation for the bots to edit their own messages.
  * @param {string} atTime - The time of the day as string in the format of 'hh:mm'.
  * @param {number=} idOfUser - The user's id.
  */
@@ -12149,7 +12214,8 @@ function menuMessageRenewSchedule(atTime, idOfUser) {
  * This function refreshes the Telegram message for a particular user or for all, who have no personal
  * config item value `cfgUpdateMessageTime` set, including group chats.
  * @param {number} idOfUser - The user ID of the user to refresh the menu for. Can be empty, for all.
- * @param {boolean=} forceNow - The selector, to force the refresh for all users now, independently from configured value.
+ * @param {boolean=} forceNow - The selector, to force the refresh for all users now, independently from
+ * configured value.
  * @param {boolean=} noDraw - The selector, to do only preparation work (i.e. some cached values).
  */
 function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
@@ -12207,8 +12273,8 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
 }
 
 /**
- * This function splits the input `buttonsArray` to the `buttonsRowsArray`, based on configured `cfgSummaryTextLengthMax`
- * and the buttons groups assignment.
+ * This function splits the input `buttonsArray` to the `buttonsRowsArray`, based on configured
+ * `cfgSummaryTextLengthMax` and the buttons groups assignment.
  * @param {object} user - The user object.
  * @param {object[]} buttonsArray - The plain array with buttons objects.
  * @returns {array[]} The Array of Arrays of buttons objects, represented the rows.
@@ -12346,7 +12412,8 @@ function commandsParamsPack(...inputParams) {
 
 /**
  * This function prepares command with option to be fit into `callbackData` field of telegramMenu button object.
- * If length of callbackData is more then 64, then all options data will be stored in separate map `callbackDataToCache`.
+ * If length of callbackData is more then 64, then all options data will be stored in separate
+ * map `callbackDataToCache`.
  * @param {string} command - The current menu item command ID.
  * @param {object} options - The command options object.
  * @param {string} index - The index of current menu item.
@@ -12485,7 +12552,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
   let currentMenuPosition = cachedValueGet(user, cachedMenuItem);
   const {command: currentCommand, options: commandOptions} = commandsExtractCommandWithOptions(user, userInput);
   logs(
-    `userInput.start:\n- isWaitForInput = ${isWaitForInput},\n- userInputToProcess = ${userInputToProcess},\n- currentCommand = ${currentCommand},\n- currentMenuPosition = ${currentMenuPosition},\n- commandOptions = ${stringifySafe(
+    `userInput.start:\n
+    - isWaitForInput = ${isWaitForInput},\n
+    - userInputToProcess = ${userInputToProcess},\n
+    - currentCommand = ${currentCommand},\n
+    - currentMenuPosition = ${currentMenuPosition},\n
+    - commandOptions = ${stringifySafe(
       commandOptions,
     )}`,
     _l,
@@ -12629,7 +12701,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
                   } else {
                     warns(
-                      `Unacceptable value '${userInputToProcess}' code conversion of attribute ${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
+                      `Unacceptable value '${userInputToProcess}' code conversion of attribute ` +
+                      `${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
                     );
                     telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                   }
@@ -13518,7 +13591,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           );
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(
-          `External command ${commandOptions.item} for function ${commandOptions.function}, with params ${commandOptions.attribute}`,
+          `External command ${commandOptions.item} for function ${commandOptions.function}, ` +
+          `with params ${commandOptions.attribute}`,
         );
         menuMenuDraw(user);
         messageTo(
@@ -15133,7 +15207,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
 /**
  * This functions collects a list of the group chats by looking thru the tree of the its cache states.
- * @param {boolean} activeOnly - Boolean selector to filter only active group chats, i.e. with last message from the bot not older the 48 hours
+ * @param {boolean} activeOnly - Boolean selector to filter only active group chats,
+ * i.e. with last message from the bot not older the 48 hours
  * @returns {number[]} Array of group chats Ids
  */
 function telegramGetGroupChats(activeOnly) {
@@ -15259,7 +15334,8 @@ function telegramActionOnImageSendCommand(data, callback) {
 }
 
 /**
- * This function finalize preparation of Telegram message object, to send or edit Telegram bot message, and push it to the sending queue.
+ * This function finalize preparation of Telegram message object, to send or edit Telegram bot message,
+ * and push it to the sending queue.
  * @param {object} user - The user object.
  * @param {object} messageObject - The prepared for "draw" the Telegram message object.
  * @param {object} messageOptions - The message options.
@@ -15330,7 +15406,8 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
       }
     } else {
       logs(
-        'lastMessage is equal to preparedMessageObject, sendTo Telegram skipped.\nMessage is ${currentMessagePlainText}.',
+        `lastMessage is equal to preparedMessageObject, sendTo Telegram skipped.\n
+        Message is ${currentMessagePlainText}.`,
       );
     }
   }
@@ -15339,7 +15416,8 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
 /**
  * This function pushes current Telegram message object to the queue/
  * @param {object} user - The user object.
- * @param {object|object[]} telegramObject - The Telegram message object (or an array of "linked" objects) to push to the queue.
+ * @param {object|object[]} telegramObject - The Telegram message object (or an array of "linked" objects)
+ * to push to the queue.
  */
 function telegramObjectPushToQueue(user, telegramObject) {
   logs(`DebugMessages: Push telegramObject = ${stringifySafe(telegramObject, null, 1)}`, _l);
@@ -15366,11 +15444,13 @@ function telegramObjectPushToQueue(user, telegramObject) {
  */
 function telegramQueueProcess(user, messageId) {
   /**
-   * The function to process the result of sending the message to the Telegram adapter, and take and process a "linked" one, if it exists(for example delete and new one).
+   * The function to process the result of sending the message to the Telegram adapter, and take and process a "linked"
+   * one, if it exists(for example delete and new one).
    * @param {number|array|object} result - The result of sending the message by Telegram adapter.
    * @param {object} user - The user object.
    * @param {object} telegramObject - The Telegram message object, result of sending is processing.
-   * @param {object[]} telegramObjects - The arrays of Telegram objects, which can contain one message, or two, "linked" together.
+   * @param {object[]} telegramObjects - The arrays of Telegram objects, which can contain one message, or two,
+   * "linked" together.
    * @param {number} currentLength - The current length of queue.
    * @param {boolean=} waitForLog - The selector to identify is needed to wait for log for error details.
    */
@@ -15554,7 +15634,8 @@ function telegramQueueProcess(user, messageId) {
          */
         currentPos = userMessagesQueue.length > 2 ? userMessagesQueue.length - 1 : 0,
         telegramObjects;
-      // will send a last message, to prevent spamming the telegram with flipping some states in ioBroker. In case of user input - we will not lost any message
+      // will send a last message, to prevent spamming the telegram with flipping some states in ioBroker.
+      // In case of user input - we will not lost any message
       do {
         telegramObjects = objectDeepClone(userMessagesQueue[currentPos]);
         logs(`DebugMessages: prepare telegramObjects = ${stringifySafe(telegramObjects, null, 1)}`, _l);
@@ -15610,7 +15691,8 @@ function telegramQueueProcess(user, messageId) {
 }
 
 /**
- * This function generates a Telegram message object with a command to delete Telegram message (from bot or user), and return it or push to the queue.
+ * This function generates a Telegram message object with a command to delete Telegram message (from bot or user),
+ * and return it or push to the queue.
  * @param {object} user - The user object.
  * @param {boolean} isUserMessageToDelete - The selector to delete a user message.
  * @param {boolean=} createTelegramObjectOnly - The selector to create and return message, instead of deletion.
@@ -15699,7 +15781,7 @@ let telegramIsConnected = false;
 const telegramQueuesIsWaitingConnection = [],
   telegramLastErrors = new Map(),
   telegramErrorParseRegExp =
-    /^telegram.\d\s+\(\d+\)\s+(Cannot\s+send|Failed)\s+(\w+)\s+\[(chatId|user)\s-\s(-?\d+|\w+)\]:\s+Error:\s(\w+?):\s(.+?):\s(.+)$/,
+    /^telegram.\d\s+\(\d+\)\s+(Cannot\s+send|Failed)\s+(\w+)\s+\[(chatId|user)\s-\s(-?\d+|\w+)\]:\s+Error:\s(\w+?):\s(.+?):\s(.+)$/, // NOSONAR
   telegramCommandSendNewMessage = 'sendMessage',
   telegramCommandEditMessage = 'editMessageText',
   telegramCommandDeleteMessage = 'deleteMessage',
@@ -15713,7 +15795,8 @@ const telegramQueuesIsWaitingConnection = [],
 
 /**
  * This function processes the reponce of the iobroker Telegram adapter on SendTo command.
- * @param {number|array} response - The response itself. Old versions returned number value. From version ... it has to return the arrays of strings.
+ * @param {number|array} response - The response itself. Old versions returned number value.
+ * From version ... it has to return the arrays of strings.
  * @param {object=} telegramObject - The sent message as object.
  * @returns {object} The response as object, enriched by result attribute and error details
  *

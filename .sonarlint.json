@@ -1,5 +1,12 @@
 {
     "sonarlint.rules": {
+        "javascript:S103": {
+            "level": "on",
+            "parameters": {
+                "maximumLineLength": "120"
+            },
+            "name": "Lines should not be too long"
+        },
         "javascript:S3776": {
             "level": "off",
             "name": "Cognitive Complexity of functions should not be too high"
