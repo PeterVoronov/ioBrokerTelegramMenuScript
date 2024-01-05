@@ -8516,6 +8516,11 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           label: ` ${translationsItemTextGet(user, 'function')}`,
           value: enumerationsItemName(user, dataTypeFunction, functionId),
         },
+
+        {
+          label: ` ${translationsItemTextGet(user, 'destination')}`,
+          value: enumerationsItemName(user, dataTypeDestination, destinationId),
+        },
         {
           label: ` ${translationsItemTextGet(user, 'device')}`,
           value: enumerationsGetDeviceName(user, options.state, functionId, destinationId),
@@ -14046,12 +14051,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
               case doUploadFromRepo: {
                 const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
-                logs(`currentLanguageId: ${currentLanguageId}, translationPart: ${commandOptions.translationPart}`, _l);
                 translationsLoadLocalesFromRepository(
                   currentLanguageId,
                   commandOptions.translationPart,
-                  (locales, _error) => {
-                    logs(`locales, _error: ${locales} , ${_error}`, _l);
+                  (locales, error) => {
                     if (
                       locales &&
                       typeOf(locales, 'object') &&
@@ -14066,17 +14069,19 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         locales[currentLanguageId],
                       );
                       if (isTranslationFileOk) {
-                        currentMenuPosition.push(
+                        const menuPosition = cachedValueGet(user, cachedMenuItem);
+                        menuPosition.push(
                           // @ts-ignore
                           isNaN(commandOptions.uploadMode)
                             ? commandOptions.uploadMode
                             : Number(commandOptions.uploadMode),
                         );
-                        menuMenuDraw(user, currentMenuPosition);
+                        menuMenuDraw(user, menuPosition);
                       } else {
                         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
                       }
                     } else {
+                      warns(`Can't load locales from repository! Error is ${stringifySafe(error)}.`);
                       telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgWrongFileOrFormat'));
                     }
                   },
