@@ -752,9 +752,7 @@ class ConfigOptions {
                 functionToProcess(cfgItem);
                 logs(
                   `External function ${functionToProcess} is executed on ` +
-                  `configOptions[${cfgItem}, ${cfgItemPrefix}] = ${stringifySafe(
-                    actualValue,
-                  )}`,
+                    `configOptions[${cfgItem}, ${cfgItemPrefix}] = ${stringifySafe(actualValue)}`,
                 );
               }
             }
@@ -7900,13 +7898,13 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
       submenu: [],
     });
     subMenuIndex = subMenu.push(
-      menuMenuItemGenerateEditItem(
+      menuMenuItemGenerateEditTime(
         user,
         currentIndex,
         subMenuIndex,
         `${translationsItemTextGet(user, onTimeIntervalId)} (${onTimeInterval})`,
         'thresholdOn',
-        {...thresholdOptions, item: onTimeIntervalId, value: onTimeInterval},
+        {...thresholdOptions, item: onTimeIntervalId, value: threshold[onTimeIntervalId], timeIntervalUnits: 'sm'},
       ),
     );
     const templateOptions = {...thresholdOptions, item: alertMessageTemplateId, value: currentThresholdMessageTemplate},
@@ -8427,13 +8425,13 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
       submenu: triggersMenuGenerateManageTimeRange,
     });
     subMenuIndex = subMenu.push(
-      menuMenuItemGenerateEditItem(
+      menuMenuItemGenerateEditTime(
         user,
-        `${currentIndex}.${subMenuIndex}`,
+        currentIndex,
         subMenuIndex,
         `${translationsItemTextGet(user, onTimeIntervalId)} (${onTimeInterval})`,
         'thresholdOn',
-        {...triggerOptions, item: onTimeIntervalId, value: onTimeInterval},
+        {...triggerOptions, item: onTimeIntervalId, value: trigger[onTimeIntervalId], timeIntervalUnits: 'sm'},
       ),
     );
     const templateOptions = {...triggerOptions, item: alertMessageTemplateId, value: messageTemplate},
@@ -10940,7 +10938,8 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
       currentValues = options.values,
       showCurrent = options.showCurrent && isDefined(currentValue) && !isDefined(options.showValueInName),
       currentCommand = options?.replaceCommand ? options.replaceCommand : cmdItemPress,
-      itemCommand = applyMode ? cmdItemSetInterimValue : currentCommand;
+      itemCommand = applyMode ? cmdItemSetInterimValue : currentCommand,
+      noMarkCurrent = options?.noMarkCurrent;
     itemValuesGroups.forEach((itemValuesGroup, groupIndex) => {
       itemValuesGroup.forEach((subItemName, subItemValue) => {
         subMenuIndex = menuItem.submenu.push({
@@ -10948,8 +10947,9 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           name: subItemName,
           group: `line${groupIndex}`,
           icon:
-            (isDefined(currentValue) && currentValue === subItemValue) ||
-            (isDefined(currentValues) && currentValues.includes(subItemValue))
+            !noMarkCurrent &&
+            ((isDefined(currentValue) && currentValue === subItemValue) ||
+              (isDefined(currentValues) && currentValues.includes(subItemValue)))
               ? iconItemCheckMark
               : '',
           command: itemCommand,
@@ -10965,12 +10965,16 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     });
     if (applyMode) {
       const previousValue = options.value;
-      if (previousValue !== currentValue)
+      if (previousValue !== currentValue) {
+        let valueToApply;
+        if (isDefined(options.valueOptions?.valueToApply)) {
+          valueToApply = options.valueOptions.valueToApply;
+        } else {
+          valueToApply = `${currentValue}${options?.valueOptions?.unit ? ' ' + options.valueOptions.unit : ''}`;
+        }
         menuItem.submenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
-          name: `${translationsItemMenuGet(user, 'apply')} [${currentValue}${
-            options?.valueOptions?.unit ? ' ' + options.valueOptions.unit : ''
-          }]`,
+          name: `${translationsItemMenuGet(user, 'apply')} [${valueToApply}]`,
           group: `apply`,
           icon: iconItemOk,
           command: currentCommand,
@@ -10980,6 +10984,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
             backOnPress: !isDefined(options.backOnPress) || options.backOnPress,
           },
         });
+      }
     }
   }
   if (groupId) menuItem.group = groupId;
@@ -11037,7 +11042,6 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
     } else if (valueType === 'number') {
       const valueMin = valueOptions.hasOwnProperty('min') ? valueOptions['min'] : undefined,
         valueMax = valueOptions.hasOwnProperty('max') ? valueOptions['max'] : undefined,
-        valuesMap = new Map(),
         valuesMapArray = new Array();
       let step = valueOptions.hasOwnProperty('step') ? valueOptions['step'] : undefined;
       const baseValue = isDefined(valueCurrent) ? valueCurrent : options.referenceValue;
@@ -11067,6 +11071,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
       let stepDecimalsCount =
         Math.trunc(step) !== step && step.toString().split('.').length > 1 ? step.toString().split('.')[1].length : 0;
       if ((mode === 'add' || options?.includeCurrent) && isDefined(valueCurrent)) {
+        const valuesMap = new Map();
         valuesMap.set(
           valueCurrent.toFixed(stepDecimalsCount),
           `${valueCurrent.toFixed(stepDecimalsCount)}${
@@ -11208,18 +11213,18 @@ function menuMenuItemGenerateEditItemStateValue(user, upperItemIndex, itemIndex,
   return menuItem;
 }
 
-const timeIntervalValuesSeconds = 's',
-  timeIntervalValuesMinutes = 'm',
-  timeIntervalValuesHours = 'h',
-  timeIntervalValuesDays = 'd',
-  timeIntervalValuesWeeks = 'w',
-  timeIntervalValuesDefault = timeIntervalValuesSeconds + timeIntervalValuesMinutes,
-  timeIntervalValuesFull =
-    timeIntervalValuesSeconds +
-    timeIntervalValuesMinutes +
-    timeIntervalValuesHours +
-    timeIntervalValuesDays +
-    timeIntervalValuesWeeks;
+const timeIntervalUnitsSeconds = 's',
+  timeIntervalUnitsMinutes = 'm',
+  timeIntervalUnitsHours = 'h',
+  timeIntervalUnitsDays = 'd',
+  timeIntervalUnitsWeeks = 'w',
+  timeIntervalUnitsDefault = timeIntervalUnitsSeconds + timeIntervalUnitsMinutes,
+  timeIntervalUnitsFull =
+    timeIntervalUnitsSeconds +
+    timeIntervalUnitsMinutes +
+    timeIntervalUnitsHours +
+    timeIntervalUnitsDays +
+    timeIntervalUnitsWeeks;
 /**
  * Generates menu item which can process editing of the value related to the State.
  * Or direct State value change or, for example, trigger value related to State.
@@ -11231,103 +11236,147 @@ const timeIntervalValuesSeconds = 's',
  * @param {object} options - The options to be processed by appropriate command backend.
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
-function menuMenuItemGenerateEditItemTimeInterval(user, upperItemIndex, itemIndex, itemName, groupId, options) {
-  let menuItem;
-  const timeIntervalValues = options?.timeIntervalValues ? options.timeIntervalValues : timeIntervalValuesDefault,
-    valueOptions = {};
-  let valueText = '',
-    timeIntervalUnits = options?.timeIntervalUnits ? options.timeIntervalUnits : '';
-  timeIntervalValuesFull.split('').forEach((timeIntervalValuesId) => {
-    const currentOptions = {min: 0};
-    if (timeIntervalValues.includes(timeIntervalValuesId)) {
-      if (timeIntervalUnits === '') timeIntervalUnits = timeIntervalValuesId;
+function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName, groupId, options) {
+  let menuItem,
+    valueToApply = '';
+  const timeIntervalUnits = options?.timeIntervalUnits ? options.timeIntervalUnits : timeIntervalUnitsDefault,
+    valuesMapArray = [],
+    valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
+    valueInterimIsDefined = isDefined(valueInterim?.[`${upperItemIndex}.${itemIndex}`]),
+    valueToProcess = valueInterimIsDefined ? valueInterim[`${upperItemIndex}.${itemIndex}`] : options?.value,
+    timeMode = options.timeMode ? options.timeMode : 'interval',
+    timeUnitsFull = timeMode === 'interval' ? timeIntervalUnitsFull : timeIntervalUnitsFull.slice(0, 3);
+  if (timeIntervalUnits.length) {
+    const timeIntervalUnitsMinimal = timeIntervalUnits[0];
+    timeUnitsFull.split('').forEach((timeIntervalUnitsCurrent) => {
+      if (timeIntervalUnits.includes(timeIntervalUnitsCurrent)) {
+        const currentOptions = {min: 0};
+        switch (timeIntervalUnitsCurrent) {
+          case 's': {
+            currentOptions['max'] = 60;
+            currentOptions['values'] = [1, 2, 5, 10, 20, 40];
+            currentOptions['coefficient'] = 1;
+            break;
+          }
+          case 'm': {
+            currentOptions['max'] = 60;
+            currentOptions['values'] = [1, 2, 5, 10, 20, 40];
+            currentOptions['coefficient'] = timeIntervalUnitsMinimal === timeIntervalUnitsSeconds ? 60 : 1;
+            break;
+          }
+          case 'h': {
+            currentOptions['max'] = 24;
+            currentOptions['values'] = [1, 4, 6, 8, 12, 16];
+            switch (timeIntervalUnitsMinimal) {
+              case timeIntervalUnitsSeconds: {
+                currentOptions['coefficient'] = 3600;
+                break;
+              }
+              case timeIntervalUnitsMinutes: {
+                currentOptions['coefficient'] = 60;
+                break;
+              }
+              default: {
+                currentOptions['coefficient'] = 1;
+                break;
+              }
+            }
+            break;
+          }
+          case 'd': {
+            currentOptions['max'] = 365;
+            currentOptions['values'] = [1, 5, 10, 20, 50, 100];
+            switch (timeIntervalUnitsMinimal) {
+              case timeIntervalUnitsSeconds: {
+                currentOptions['coefficient'] = 86400;
+                break;
+              }
+              case timeIntervalUnitsMinutes: {
+                currentOptions['coefficient'] = 1440;
+                break;
+              }
+              case timeIntervalUnitsHours: {
+                currentOptions['coefficient'] = 24;
+                break;
+              }
+              default: {
+                currentOptions['coefficient'] = 1;
+                break;
+              }
+            }
+            break;
+          }
+          case 'w': {
+            currentOptions['max'] = 52;
+            currentOptions['values'] = [1, 2, 5, 10, 20, 40];
+            switch (timeIntervalUnitsMinimal) {
+              case timeIntervalUnitsSeconds: {
+                currentOptions['coefficient'] = 604800;
+                break;
+              }
+              case timeIntervalUnitsMinutes: {
+                currentOptions['coefficient'] = 10800;
+                break;
+              }
+              case timeIntervalUnitsHours: {
+                currentOptions['coefficient'] = 168;
+                break;
+              }
+              case timeIntervalUnitsDays: {
+                currentOptions['coefficient'] = 7;
+                break;
+              }
+              default: {
+                currentOptions['coefficient'] = 1;
+                break;
+              }
+            }
+            break;
+          }
+          default:
+            break;
+        }
+        const coefficient = currentOptions['coefficient'],
+          valueInCurrentUnits = isDefined(valueToProcess) ? Math.trunc(valueToProcess / coefficient) : 0,
+          max = currentOptions['max'],
+          valueCurrent = valueInCurrentUnits % max,
+          valuesMapPlus = new Map(),
+          valuesMapMinus = new Map();
+        if (timeMode === 'interval') {
+          valueToApply = `${valueCurrent}${timeIntervalUnitsCurrent}${valueToApply}`;
+        } else {
+          valueToApply = `${zeroPad(valueCurrent, 2)}${
+            timeIntervalUnitsCurrent === timeIntervalUnitsMinimal ? '' : ':'
+          }${valueToApply}`;
+        }
+        currentOptions['values'].forEach((value) => {
+          if (value <= valueCurrent) {
+            valuesMapMinus.set(-value * coefficient, `-${value}${timeIntervalUnitsCurrent}`);
+          }
+        });
+        if (valuesMapMinus.size) valuesMapArray.push(valuesMapMinus);
+        currentOptions['values'].forEach((value) => {
+          if (max - valueCurrent >= value)
+            valuesMapPlus.set(value * coefficient, `+${value}${timeIntervalUnitsCurrent}`);
+        });
+        if (valuesMapPlus.size) valuesMapArray.push(valuesMapPlus);
+      }
+    });
+    if (valuesMapArray.length) {
+      menuItem = menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, itemIndex, itemName, groupId, {
+        ...options,
+        valueType: 'number',
+        backOnPress: true,
+        applyMode: true,
+        noMarkCurrent: true,
+        interimMode: 'add',
+        valueOptions: {
+          valueToApply: valueToApply,
+          states: valuesMapArray,
+        },
+      });
     }
-    switch (timeIntervalValuesId) {
-      case 's': {
-        currentOptions['max'] = 60;
-        currentOptions['steps'] = [1, 10, 20];
-        currentOptions['coefficient'] = 1;
-        break;
-      }
-      case 'm': {
-        currentOptions['max'] = 60;
-        currentOptions['steps'] = [1, 10, 20];
-        currentOptions['coefficient'] = timeIntervalUnits === timeIntervalValuesSeconds ? 60 : 1;
-        break;
-      }
-      case 'h': {
-        currentOptions['max'] = 24;
-        currentOptions['steps'] = [1, 4, 6];
-        switch (timeIntervalUnits) {
-          case timeIntervalValuesSeconds: {
-            currentOptions['coefficient'] = 3600;
-            break;
-          }
-          case timeIntervalValuesMinutes: {
-            currentOptions['coefficient'] = 60;
-            break;
-          }
-          default: {
-            currentOptions['coefficient'] = 1;
-            break;
-          }
-        }
-        break;
-      }
-      case 'd': {
-        currentOptions['max'] = 365;
-        currentOptions['steps'] = [1, 10, 100];
-        switch (timeIntervalUnits) {
-          case timeIntervalValuesSeconds: {
-            currentOptions['coefficient'] = 86400;
-            break;
-          }
-          case timeIntervalValuesMinutes: {
-            currentOptions['coefficient'] = 1440;
-            break;
-          }
-          case timeIntervalValuesHours: {
-            currentOptions['coefficient'] = 24;
-            break;
-          }
-          default: {
-            currentOptions['coefficient'] = 1;
-            break;
-          }
-        }
-        break;
-      }
-      case 'w': {
-        currentOptions['max'] = 52;
-        currentOptions['steps'] = [1, 5, 10];
-        switch (timeIntervalUnits) {
-          case timeIntervalValuesSeconds: {
-            currentOptions['coefficient'] = 604800;
-            break;
-          }
-          case timeIntervalValuesMinutes: {
-            currentOptions['coefficient'] = 10800;
-            break;
-          }
-          case timeIntervalValuesHours: {
-            currentOptions['coefficient'] = 168;
-            break;
-          }
-          case timeIntervalValuesDays: {
-            currentOptions['coefficient'] = 7;
-            break;
-          }
-          default: {
-            currentOptions['coefficient'] = 1;
-            break;
-          }
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  });
+  }
   return menuItem;
 }
 
@@ -13627,11 +13676,21 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemSetInterimValue: {
-        if (isDefined(commandOptions.currentIndex))
-          cachedValueSet(user, cachedInterimValue, {
-            [commandOptions.currentIndex]:
-              commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value,
-          });
+        if (isDefined(commandOptions.currentIndex)) {
+          const currentIndex = commandOptions.currentIndex;
+          if (commandOptions.valueType === 'number' && commandOptions.interimMode === 'add') {
+            cachedValueSet(user, cachedInterimValue, {
+              [currentIndex]:
+                (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
+                (isDefined(commandOptions.currentValue) ? Number(commandOptions.currentValue) : 0),
+            });
+          } else {
+            cachedValueSet(user, cachedInterimValue, {
+              [currentIndex]:
+                commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value,
+            });
+          }
+        }
         menuMenuItemsAndRowsClearCached(user);
         break;
       }
@@ -16283,6 +16342,16 @@ function stringCapitalize(string) {
     return string[0].toUpperCase() + string.slice(1);
   }
   return '';
+}
+
+/**
+ * This function converts integer to string with leading zeros.
+ * @param {number} value - The input integer.
+ * @param {number} places - The total count of symbols for the result.
+ * @returns {string} The result string.
+ */
+function zeroPad(value, places) {
+  return String(Math.trunc(value)).padStart(places, '0');
 }
 
 /**
