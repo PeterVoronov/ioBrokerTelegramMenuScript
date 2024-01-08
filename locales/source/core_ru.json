@@ -53,7 +53,7 @@
     "cmdItemsLoad": "Обновить данные",
     "cmdSetId": "Задать Id",
     "cmdUseCTransl": "Использовать общее описание",
-    "menuApply": "",
+    "menuApply": "Применить",
     "menuAlertPropagate": "Распространить настройки уведомления",
     "menuAlertPropagateFuncAndDest": "Для текущей Функции и Расположения",
     "menuAlertPropagateDestination": "Для текущего Расположения",

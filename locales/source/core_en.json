@@ -53,7 +53,7 @@
     "cmdItemsLoad": "Reread data",
     "cmdSetId": "Set ID",
     "cmdUseCTransl": "Use \"common\" translations",
-    "menuApply": "",
+    "menuApply": "Apply",
     "menuAlertPropagate": "Propagate alert",
     "menuAlertPropagateFuncAndDest": "To current Function and Destination",
     "menuAlertPropagateDestination": "To current Destination",

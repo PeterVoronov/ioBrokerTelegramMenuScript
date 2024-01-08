@@ -53,7 +53,7 @@
     "cmdItemsLoad": "Daten neu einlesen",
     "cmdSetId": "ID setzen",
     "cmdUseCTransl": "\"Gemeinsame\" Übersetzungen verwenden",
-    "menuApply": "",
+    "menuApply": "Übernehmen",
     "menuAlertPropagate": "Verteilung der Alarmparameter",
     "menuAlertPropagateFuncAndDest": "Zur aktuellen Funktion und zum Ziel",
     "menuAlertPropagateDestination": "Zum aktuellen Ziel",
