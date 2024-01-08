@@ -10083,7 +10083,7 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
     if (simpleReportId) {
       if (/[^a-zA-Z0-9]/.test(simpleReportId)) {
         newMenu.push(
-          menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemMenuGet(user, 'cmdFixId'), '', {
+          menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemCoreGet(user, 'cmdFixId'), '', {
             dataType: dataTypeReport,
             mode: 'fixId',
           }),
