@@ -53,6 +53,7 @@
     "cmdItemsLoad": "Оновити дані",
     "cmdSetId": "Задати ID",
     "cmdUseCTransl": "Використати \"загальний\" переклад",
+    "menuApply": "",
     "menuAlertPropagate": "Розповсюдити налаштування повідомлення",
     "menuAlertPropagateFuncAndDest": "До поточної Функції та Розташування",
     "menuAlertPropagateDestination": "До поточного Розташування",
