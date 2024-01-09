@@ -10986,7 +10986,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           currentIndex: currentIndex,
           backOnPress: !(applyMode || !options.backOnPress),
         };
-        if (isDefined(itemOptions?.valueOptions?.states) ) {
+        if (isDefined(itemOptions?.valueOptions?.states)) {
           delete itemOptions.valueOptions['states'];
         }
         subMenuIndex = menuItem.submenu.push({
@@ -11255,76 +11255,89 @@ function menuMenuItemGenerateEditItemStateValue(user, upperItemIndex, itemIndex,
   return menuItem;
 }
 
-const timeIntervalUnitsSeconds = 's',
-  timeIntervalUnitsMinutes = 'm',
-  timeIntervalUnitsHours = 'h',
-  timeIntervalUnitsDays = 'd',
-  timeIntervalUnitsWeeks = 'w',
-  timeIntervalUnitsDefault = timeIntervalUnitsSeconds + timeIntervalUnitsMinutes,
-  timeIntervalUnitsFull =
-    timeIntervalUnitsSeconds +
-    timeIntervalUnitsMinutes +
-    timeIntervalUnitsHours +
-    timeIntervalUnitsDays +
-    timeIntervalUnitsWeeks,
-  timeIntervalPerUnitMaxValues = {
-    's': 60,
-    'm' : 60,
-    'h' : 60,
-    'd' : 365,
-    'w' : 52,
+const timeInternalUnitsSeconds = 's',
+  timeInternalUnitsMinutes = 'm',
+  timeInternalUnitsHours = 'h',
+  timeInternalUnitsDays = 'd',
+  timeInternalUnitsWeeks = 'w',
+  timeInternalUnitsDefault = timeInternalUnitsSeconds + timeInternalUnitsMinutes,
+  timeInternalUnitsFull =
+    timeInternalUnitsSeconds +
+    timeInternalUnitsMinutes +
+    timeInternalUnitsHours +
+    timeInternalUnitsDays +
+    timeInternalUnitsWeeks,
+  timeInternalPerUnitMaxValues = {
+    s: 60,
+    m: 60,
+    h: 60,
+    d: 365,
+    w: 52,
   },
-  timeIntervalPerUnitValues = {
-    's': [1, 2, 5, 10, 20, 40],
-    'm' : [1, 2, 5, 10, 20, 40],
-    'h' : [1, 4, 6, 8, 12, 16],
-    'd' : [1, 5, 10, 20, 50, 100],
-    'w' : [1, 2, 5, 10, 20, 40],
+  timeInternalPerUnitValues = {
+    s: [1, 2, 5, 10, 20, 40],
+    m: [1, 2, 5, 10, 20, 40],
+    h: [1, 4, 6, 8, 12, 16],
+    d: [1, 5, 10, 20, 50, 100],
+    w: [1, 2, 5, 10, 20, 40],
   },
-  timeIntervalPerUnitMultipliers = {
-    's': {'s' : 1},
-    'm' : {'s' : 60, 'm': 1},
-    'h' : {'s': 3600, 'm': 60, 'h' : 1},
-    'd' : {'s': 86400, 'm': 1440, 'h' : 24, 'd' : 1},
-    'w' : {'s': 604800, 'm': 10800, 'h' : 168, 'd' : 7, 'w' : 1},
+  timeInternalPerUnitMultipliers = {
+    s: {s: 1},
+    m: {s: 60, m: 1},
+    h: {s: 3600, m: 60, h: 1},
+    d: {s: 86400, m: 1440, h: 24, d: 1},
+    w: {s: 604800, m: 10800, h: 168, d: 7, w: 1},
   },
-
-  timeParseRegExps = {
-    'sm' : /^([0-5]\d)(:[0-5]\d)$/,
-    'mh' : /^([0-1]?\d|2[0-3]):([0-5]\d)$/,
-    'smh' : /^([0-1]?\d|2[0-3]):([0-5]\d):([0-5]\d)$/,
+  timeInternalParseRegExps = {
+    sm: /^([0-5]\d)(:[0-5]\d)$/,
+    mh: /^([0-1]?\d|2[0-3]):([0-5]\d)$/,
+    smh: /^([0-1]?\d|2[0-3]):([0-5]\d):([0-5]\d)$/,
   };
 
+/**
+ * Converts internal time data to string.
+ * @param {number} value - The integer value of time in smallest units (i.e. seconds, minutes, hours).
+ * @param {string} units - The string with units id's fom smallest to highest ('smh' for example).
+ * @returns {string} The string representation of internal time (10:45:03 for example).
+ */
 function timeInternalToString(value, units) {
   let result = '';
   if (isDefined(value) && units?.length) {
     const unitMinimal = units[0];
-    units.split('').forEach(unit => {
-      const multiplier = timeIntervalPerUnitMultipliers[unit][unitMinimal],
-        max = timeIntervalPerUnitMaxValues[unit];
-        result = `${zeroPad(Math.trunc(value / multiplier) % max, 2)}${result.length ? ':' : ''}${result}`;
+    units.split('').forEach((unit) => {
+      const multiplier = timeInternalPerUnitMultipliers[unit][unitMinimal],
+        max = timeInternalPerUnitMaxValues[unit];
+      result = `${zeroPad(Math.trunc(value / multiplier) % max, 2)}${result.length ? ':' : ''}${result}`;
     });
   }
   return result;
 }
 
+/**
+ * Converts string time to the internal time data format.
+ * @param {string} value - The string representation of the time (10:45:03 for example).
+ * @param {string} units - The string with units id's fom smallest to highest ('smh' for example).
+ * @returns {number} The integer value of time in smallest units (i.e. seconds, minutes, hours).
+ * If units not comply with value - will return 0.
+ */
 function stringToTimeInternal(value, units) {
   let result = 0;
-  if (isDefined(value) && units?.length && isDefined(timeParseRegExps[units])) {
-    const timeParseRegExp = timeParseRegExps[units],
-      valueParsed = timeParseRegExp.exec(value),
+  if (isDefined(value) && units?.length && isDefined(timeInternalParseRegExps[units])) {
+    const timeInternalParseRegExp = timeInternalParseRegExps[units],
+      valueParsed = timeInternalParseRegExp.exec(value),
       unitsLength = units.length;
     if (isDefined(valueParsed)) {
       // @ts-ignore
       valueParsed.shift();
       const valueParsedLength = valueParsed?.length;
       if (unitsLength === valueParsedLength) {
-        const unitMinimal = units[0];
-          // @ts-ignore
-        valueParsed.forEach((valueItem, index) => {
-          const unit = units.slice(-index - 1, index > 0 ? -index : undefined);
-          const             multiplier = timeIntervalPerUnitMultipliers[unit][unitMinimal];
-          result += (Number(valueItem) * multiplier);
+        const unitMinimal = units[0],
+          unitsArray = units.split('');
+        // @ts-ignore
+        valueParsed.forEach((valueItem) => {
+          const unit = unitsArray.pop(),
+            multiplier = timeInternalPerUnitMultipliers[unit][unitMinimal];
+          result += Number(valueItem) * multiplier;
         });
       }
     }
@@ -11346,41 +11359,36 @@ function stringToTimeInternal(value, units) {
 function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName, groupId, options) {
   let menuItem,
     valueToApply = '';
-  const timeUnits = options?.timeUnits ? options.timeUnits : timeIntervalUnitsDefault,
+  const timeUnits = options?.timeUnits ? options.timeUnits : timeInternalUnitsDefault,
     valuesMapArray = [],
     valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
     valueInterimIsDefined = isDefined(valueInterim?.[`${upperItemIndex}.${itemIndex}`]),
     valueCurrent = valueInterimIsDefined ? valueInterim[`${upperItemIndex}.${itemIndex}`] : options?.value,
     timeMode = options.timeMode ? options.timeMode : 'interval',
     valueToProcess = timeMode === 'interval' ? valueCurrent : stringToTimeInternal(valueCurrent, timeUnits),
-    timeUnitsFull = timeMode === 'interval' ? timeIntervalUnitsFull : timeIntervalUnitsFull.slice(0, 3);
+    timeUnitsFull = timeMode === 'interval' ? timeInternalUnitsFull : timeInternalUnitsFull.slice(0, 3);
   if (timeUnits.length) {
-    const timeIntervalUnitsMinimal = timeUnits[0];
-    timeUnitsFull.split('').forEach((timeIntervalUnitsCurrent) => {
-      if (timeUnits.includes(timeIntervalUnitsCurrent)) {
-        const multiplier = timeIntervalPerUnitMultipliers[timeIntervalUnitsCurrent][timeIntervalUnitsMinimal],
+    const timeInternalUnitsMinimal = timeUnits[0];
+    timeUnitsFull.split('').forEach((unit) => {
+      if (timeUnits.includes(unit)) {
+        const multiplier = timeInternalPerUnitMultipliers[unit][timeInternalUnitsMinimal],
           valueInCurrentUnits = isDefined(valueToProcess) ? Math.trunc(valueToProcess / multiplier) : 0,
-          max = timeIntervalPerUnitMaxValues[timeIntervalUnitsCurrent],
-          values = timeIntervalPerUnitValues[timeIntervalUnitsCurrent],
+          max = timeInternalPerUnitMaxValues[unit],
+          values = timeInternalPerUnitValues[unit],
           valueCurrent = valueInCurrentUnits % max,
           valuesMapPlus = new Map(),
           valuesMapMinus = new Map();
         if (timeMode === 'interval') {
-          valueToApply = `${valueCurrent}${timeIntervalUnitsCurrent}${valueToApply}`;
-        } else {
-          valueToApply = `${zeroPad(valueCurrent, 2)}${
-            timeIntervalUnitsCurrent === timeIntervalUnitsMinimal ? '' : ':'
-          }${valueToApply}`;
+          valueToApply = `${valueCurrent}${translationsItemTextGet(user, 'timeInternalUnit', unit)}${valueToApply}`;
         }
         values.forEach((value) => {
           if (value <= valueCurrent) {
-            valuesMapMinus.set(-value * multiplier, `-${value}${timeIntervalUnitsCurrent}`);
+            valuesMapMinus.set(-value * multiplier, `-${value}${unit}`);
           }
         });
         if (valuesMapMinus.size) valuesMapArray.push(valuesMapMinus);
         values.forEach((value) => {
-          if (max - valueCurrent > value)
-            valuesMapPlus.set(value * multiplier, `+${value}${timeIntervalUnitsCurrent}`);
+          if (max - valueCurrent > value) valuesMapPlus.set(value * multiplier, `+${value}${unit}`);
         });
         if (valuesMapPlus.size) valuesMapArray.push(valuesMapPlus);
       }
@@ -11392,13 +11400,13 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
         backOnPress: true,
         applyMode: true,
         noMarkCurrent: true,
-        interimMode: 'add',
         valueOptions: {
-          valueToApply: valueToApply,
+          valueToApply: valueToApply.length ? valueToApply : undefined,
           type: 'time',
           units: timeUnits,
           mode: timeMode,
           states: valuesMapArray,
+          interimCalculation: 'summarize',
         },
       });
     }
@@ -13704,8 +13712,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdItemSetInterimValue: {
         if (isDefined(commandOptions.currentIndex)) {
           const currentIndex = commandOptions.currentIndex;
-          if (commandOptions.valueType === 'number' && commandOptions.interimMode === 'add') {
-            let interimValue;
+          let interimValue;
+          if (commandOptions.valueOptions?.interimCalculation === 'summarize') {
             switch (commandOptions.valueOptions?.type) {
               case 'time': {
                 switch (commandOptions.valueOptions?.mode) {
@@ -13720,7 +13728,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   }
 
                   default: {
-                    interimValue = (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
+                    interimValue =
+                      (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
                       (isDefined(commandOptions.currentValue) ? Number(commandOptions.currentValue) : 0);
                     break;
                   }
@@ -13730,18 +13739,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
 
               default: {
-                interimValue = (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
-                  (isDefined(commandOptions.currentValue) ? Number(commandOptions.currentValue) : 0);
                 break;
               }
             }
-            cachedValueSet(user, cachedInterimValue, {[currentIndex]:interimValue});
           } else {
-            cachedValueSet(user, cachedInterimValue, {
-              [currentIndex]:
-                commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value,
-            });
+            interimValue = commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value;
           }
+          if (isDefined(interimValue)) cachedValueSet(user, cachedInterimValue, {[currentIndex]: interimValue});
         }
         menuMenuItemsAndRowsClearCached(user);
         break;
