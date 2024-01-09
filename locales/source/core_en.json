@@ -58,7 +58,6 @@
     "menuAlertPropagateFuncAndDest": "To current Function and Destination",
     "menuAlertPropagateDestination": "To current Destination",
     "menuAlertPropagateFunction": "To current Function",
-    "menuAlertPropagateGlobal": "Globally",
     "menuAlertPropagateOverwrite": "Overwrite, if already defined",
     "menuAlertPropagateSkip": "Skip, if already defined",
     "menuAlerts": "Alerts",

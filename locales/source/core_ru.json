@@ -58,7 +58,6 @@
     "menuAlertPropagateFuncAndDest": "Для текущей Функции и Расположения",
     "menuAlertPropagateDestination": "Для текущего Расположения",
     "menuAlertPropagateFunction": "Для текущей Функции",
-    "menuAlertPropagateGlobal": "Глобально",
     "menuAlertPropagateOverwrite": "Заменить, если уже определено",
     "menuAlertPropagateSkip": "Пропустить, если уже определено",
     "menuAlerts": "Уведомления",
