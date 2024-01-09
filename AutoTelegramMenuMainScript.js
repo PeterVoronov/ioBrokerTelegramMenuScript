@@ -12900,7 +12900,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         'WrongValue',
                       )}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(
                         user,
-                        'ForConfig',
+                        'for',
+                        commandOptions.dataType,
                       )} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(
                         user,
                         'CurrentValue',
@@ -12927,7 +12928,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       'WrongValue',
                     )}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(
                       user,
-                      'ForConfig',
+                      'for',
+                      commandOptions.dataType,
                     )} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(
                       user,
                       'CurrentValue',
@@ -13501,13 +13503,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             const queryParams = cachedValueGet(user, cachedSimpleReportNewQuery),
               attributeValue = queryParams?.hasOwnProperty(commandOptions.item)
                 ? `= ${queryParams[commandOptions.item]}`
-                : '';
+                : '',
+              queryItem = commandOptions.item;
             menuMessageObject.message = `${translationsItemTextGet(
               user,
               'SetNewAttributeValue',
             )} ${translationsItemTextGet(user, 'ForReportQuery')} ${translationsItemTextGet(
               user,
-              commandOptions.item,
+              queryItem,
             )} ${attributeValue}`;
             break;
           }
@@ -13574,7 +13577,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   languageIdPart = newLanguageId ? `(${newLanguageId})` : '';
                 menuMessageObject.message = `${translationsItemTextGet(user, actionText)} ${translationsItemTextGet(
                   user,
-                  'ForConfig',
+                  'for',
+                  commandOptions.dataType,
                 )} ${translationsItemCoreGet(user, commandOptions.item)}'${languageIdPart}:`;
               } else {
                 const currentValueText = translationsItemTextGet(user, 'CurrentValue'),
@@ -13587,7 +13591,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   'SetNewAttributeValue',
                 )} ${translationsItemTextGet(
                   user,
-                  'ForConfig',
+                  'for',
+                  commandOptions.dataType,
                 )} '${itemText}' (${configItemText})${configItemMaskText}:`;
               }
             }
