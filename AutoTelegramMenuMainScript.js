@@ -11270,14 +11270,14 @@ const timeInternalUnitsSeconds = 's',
   timeInternalPerUnitMaxValues = {
     s: 60,
     m: 60,
-    h: 60,
+    h: 24,
     d: 365,
     w: 52,
   },
   timeInternalPerUnitValues = {
-    s: [1, 2, 5, 10, 20, 40],
-    m: [1, 2, 5, 10, 20, 40],
-    h: [1, 4, 6, 8, 12, 16],
+    s: [1, 2, 5, 10, 30, 50],
+    m: [1, 2, 5, 10, 30, 50],
+    h: [1, 2, 4, 8, 12, 16],
     d: [1, 5, 10, 20, 50, 100],
     w: [1, 2, 5, 10, 20, 40],
   },
@@ -11383,12 +11383,19 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
         }
         values.forEach((value) => {
           if (value <= valueCurrent) {
-            valuesMapMinus.set(-value * multiplier, `-${value}${unit}`);
+            valuesMapMinus.set(
+              -value * multiplier,
+              `-${value}${translationsItemTextGet(user, 'timeInternalUnit', unit)}`,
+            );
           }
         });
         if (valuesMapMinus.size) valuesMapArray.push(valuesMapMinus);
         values.forEach((value) => {
-          if (max - valueCurrent > value) valuesMapPlus.set(value * multiplier, `+${value}${unit}`);
+          if (max - valueCurrent > value)
+            valuesMapPlus.set(
+              value * multiplier,
+              `+${value}${translationsItemTextGet(user, 'timeInternalUnit', unit)}`,
+            );
         });
         if (valuesMapPlus.size) valuesMapArray.push(valuesMapPlus);
       }
