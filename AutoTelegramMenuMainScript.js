@@ -5443,7 +5443,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportEdit')}`,
           options: {item: currentItem},
-          submenu: simpleReportMenuGenerateReportEdit,
+          submenu: simpleReportMenuGenerateEditReportItems,
         });
         break;
       }
@@ -5666,6 +5666,23 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
 }
 
 /**
+ * This function returns holder id of current enumeration or it's id if it holds other enumerations;
+ * @param {object} enumerations - Te list of enumerations.
+ * @param {string} enumerationId - The current enumeration Id.
+ * @returns {string} The found Id or empty string;
+ */
+function enumerationsGetHolderIdOrIdWithIncludedItems(enumerations, enumerationId) {
+  let result = '';
+  if (
+    isDefined(enumerations[enumerationId].holder) ||
+    Object.keys(enumerations).findIndex((item) => enumerations[item].holder === enumerationId) >= 0
+  ) {
+    result = isDefined(enumerations[enumerationId].holder) ? enumerations[enumerationId].holder : enumerationId;
+  }
+  return result;
+}
+
+/**
  * This function generates a submenu with all enumerations items of appropriate enumerationType.
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
@@ -5722,7 +5739,7 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
     case dataTypeDestination:
     case dataTypeReport:
       switch (enumerationType) {
-        case dataTypeFunction:
+        case dataTypeFunction: {
           subMenuIndex = subMenu.push({
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'commonStatesTranslation')}`,
@@ -5732,34 +5749,41 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
             submenu: translationsMenuGenerateFunctionStatesItems,
           });
           break;
-        case dataTypeReport:
+        }
+        case dataTypeReport: {
           if (MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0) {
-            const subMenuItem = {
-              index: `${currentIndex}.${subMenuIndex}`,
-              name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
-              icon: iconItemPlus,
-              group: cmdItemAdd,
-            };
             const currentEnumsList = Object.keys(enumerationsList[enumerationType].enums);
-            if (currentEnumsList.length === 1) {
-              subMenuItem.options = {enumType: enumerationsList[enumerationType].enums[0], item: ''};
-              subMenuItem.submenu = simpleReportMenuGenerateReportEdit;
-            } else {
-              subMenuItem.submenu = new Array();
-              currentEnumsList.forEach((enumId, enumIndex) => {
-                subMenuItem.submenu.push({
-                  index: `${currentIndex}.${subMenuIndex}.${enumIndex}`,
-                  name: stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumId}`)),
-                  icon: iconItemPlus,
-                  accessLevel: currentAccessLevel,
-                  options: {enumType: enumId, item: ''},
-                  submenu: simpleReportMenuGenerateReportEdit,
+            if (currentEnumsList?.length > 0) {
+              const subMenuItem = {
+                index: `${currentIndex}.${subMenuIndex}`,
+                name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
+                icon: iconItemPlus,
+                group: cmdItemAdd,
+              };
+              if (currentEnumsList.length === 1) {
+                subMenuItem.options = {enumType: currentEnumsList[0], item: ''};
+                subMenuItem.submenu = simpleReportMenuGenerateCreateNewReport;
+              } else {
+                subMenuItem.submenu = new Array();
+                currentEnumsList.forEach((enumId, enumIndex) => {
+                  subMenuItem.submenu.push({
+                    index: `${currentIndex}.${subMenuIndex}.${enumIndex}`,
+                    name: stringCapitalize(translationsGetObjectName(user, `${prefixEnums}.${enumId}`)),
+                    icon: iconItemPlus,
+                    accessLevel: currentAccessLevel,
+                    options: {enumType: enumId, item: ''},
+                    submenu: simpleReportMenuGenerateCreateNewReport,
+                  });
                 });
-              });
+              }
+              subMenuIndex = subMenu.push(subMenuItem);
             }
-            subMenuIndex = subMenu.push(subMenuItem);
           }
           break;
+        }
+        default: {
+          break;
+        }
       }
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
@@ -9895,15 +9919,333 @@ const cachedSimpleReportIdToCreate = 'simpleReportIdToCreate',
   };
 
 /**
- * This function generates a submenu to manage (create or edit) the SimpleReports.
+ * This function generates a submenu to create an ID of the new SimpleReports.
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]} - The array of menuItem objects.
  */
-function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
+function simpleReportMenuGenerateCreateNewReport(user, menuItemToProcess) {
   let newMenu = [];
   const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
-    {enumType: enumId, item: reportId} = menuItemToProcess.options;
+    {enumType: enumId} = menuItemToProcess.options;
+  if (enumId) {
+    cachedValueDelete(user, cachedSimpleReportNewQuery);
+    const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate);
+    if (simpleReportId) {
+      if (/[^a-zA-Z0-9]/.test(simpleReportId)) {
+        newMenu.push(
+          menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemCoreGet(user, 'cmdFixId'), '', {
+            dataType: dataTypeReport,
+            mode: 'fixId',
+          }),
+        );
+      } else {
+        newMenu.push({
+          index: `${currentIndex}.0`,
+          name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${simpleReportId}'`,
+          icon: enumerationsList[dataTypeReport].icon,
+          command: cmdCreateReportEnum,
+          options: {dataType: dataTypeReport, item: simpleReportId, enum: enumId},
+          submenu: [],
+        });
+        cachedValueDelete(user, cachedSimpleReportIdToCreate);
+      }
+    } else {
+      newMenu.push(
+        menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemCoreGet(user, 'cmdSetId'), '', {
+          dataType: dataTypeReport,
+          mode: 'setId',
+        }),
+      );
+    }
+  }
+  return newMenu;
+}
+
+/**
+ * This function function for selecting states from a query result and assigning them to report.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProcess) {
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
+    {item: reportId} = menuItemToProcess.options,
+    destinations = enumerationsList[dataTypeDestination].list,
+    functions = enumerationsList[dataTypeFunction].list;
+  let {queryDests, queryState, queryRole, queryStates, queryPossibleStates} = cachedValueGet(
+      user,
+      cachedSimpleReportNewQuery,
+    ),
+    subMenu = [],
+    subMenuIndex = 0,
+    destsList = queryDests,
+    itemsMarked = 0;
+  if (!destsList.length) {
+    destsList = isDefined(destinations)
+      ? Object.keys(destinations).filter((key) => destinations[key]?.isAvailable && destinations[key]?.isEnabled)
+      : [];
+  }
+  if (!queryStates?.length) queryStates = [];
+  if (!queryPossibleStates?.length) {
+    queryPossibleStates = [];
+    const getStateQuery = (state) => (state ? `[id=*.${state}]` : '[id=*]'),
+      getRoleQuery = (role) => (role ? `[role=${role}]` : ''),
+      getDestinationQuerySegment = (enumerations, dataType, id) => {
+        if (id && enumerations[dataType] && enumerations[dataType].list[id]) {
+          const currentDestination = enumerations[dataType].list[id];
+          return `(${currentDestination.enum}=${id})`;
+        }
+        return '';
+      },
+      query = `state${getStateQuery(queryState)}${getRoleQuery(queryRole)}`,
+      functionsIds = Object.keys(functions).filter((key) => functions[key]?.isAvailable && functions[key]?.isEnabled),
+      functionsFullIds = functionsIds.map((item) => `${prefixEnums}.${functions[item].enum}.${item}`);
+    destsList.forEach((destinationId) => {
+      $(`${query}${getDestinationQuerySegment(enumerationsList, dataTypeDestination, destinationId)}`).each(
+        (stateId) => {
+          const currentObject = getObjectEnriched(stateId, '*');
+          let functionId = '';
+          if (currentObject['enumIds']?.length) {
+            currentObject.enumIds.forEach((enumId) => {
+              if (!functionId && functionsFullIds.includes(enumId))
+                functionId = functionsIds[functionsFullIds.indexOf(enumId)];
+            });
+            if (functionId)
+              queryPossibleStates.push({stateId: stateId, destinationId: destinationId, functionId: functionId});
+          }
+        },
+      );
+    });
+  }
+  if (queryPossibleStates?.length) {
+    let destIdCurrent = '',
+      subSubMenuIndex = 0,
+      subMenuItem = {},
+      destinationName = '';
+    const labelDestination = translationsItemTextGet(user, 'destination'),
+      labelFunction = translationsItemTextGet(user, 'function'),
+      labelDevice = translationsItemTextGet(user, 'device'),
+      labelState = translationsItemTextGet(user, 'state');
+    queryPossibleStates.forEach(({stateId, destinationId, functionId}, index) => {
+      if (destIdCurrent !== destinationId) {
+        const holderPrefix = isDefined(destinations[destinationId].holder)
+            ? `${translationsGetEnumName(user, dataTypeDestination, destinations[destinationId].holder)} > `
+            : '',
+          group = enumerationsGetHolderIdOrIdWithIncludedItems(destinations, destinationId);
+        destinationName = `${holderPrefix}${translationsGetEnumName(user, dataTypeDestination, destinationId)}`;
+        if (destIdCurrent) {
+          subMenuItem.name += ` (${subMenuItem.submenu.length}, ${itemsMarked})`;
+          subMenuIndex = subMenu.push(subMenuItem);
+        }
+        itemsMarked = 0;
+        subSubMenuIndex = 0;
+        destIdCurrent = destinationId;
+        subMenuItem = {
+          index: `${currentIndex}.${subMenuIndex}`,
+          name: destinationName,
+          icon: destinations[destinationId].icon,
+          text: `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
+            {
+              label: labelDestination,
+              value: destinationName,
+            },
+          ])}</code>`,
+          submenu: [],
+        };
+        if (group) subMenuItem.group = group;
+      }
+      const statesSectionsCount = functions[functionId].statesSectionsCount,
+        deviceId = stateId.split('.').slice(0, -statesSectionsCount).join('.'),
+        deviceName = translationsGetObjectName(user, deviceId, functionId, destinationId),
+        stateShortId = stateId.replace(`${deviceId}.`, ''),
+        iconSelected =
+          isDefined(queryStates) && queryStates?.includes(stateId)
+            ? configOptions.getOption(cfgDefaultIconOn, user)
+            : '',
+        deviceIcon = `${iconSelected}${functions[functionId].icon}`,
+        itemDetailsArray = [
+          {
+            label: labelDestination,
+            value: destinationName,
+          },
+          {
+            label: labelFunction,
+            value: enumerationsItemName(user, dataTypeFunction, functionId),
+          },
+          {
+            label: labelDevice,
+            value: deviceName,
+          },
+          {
+            label: labelState,
+            value: translationsGetObjectName(user, stateId, functionId),
+          },
+        ];
+      subSubMenuIndex = subMenuItem.submenu.push({
+        index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+        name: `${deviceName} (${stateShortId})`,
+        icon: deviceIcon,
+        text: `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, itemDetailsArray)}</code>`,
+        submenu: [
+          {
+            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}.0`,
+            name: `${translationsItemMenuGet(user, 'ItemMarkUnMark')}`,
+            icon: iconSelected,
+            command: cmdItemMark,
+            options: {
+              dataType: dataTypeReportMember,
+              itemType: 'states',
+              item: index,
+            },
+            submenu: [],
+          },
+        ],
+      });
+      if (isDefined(queryStates) && queryStates?.includes(stateId)) itemsMarked++;
+    });
+    if (destIdCurrent) {
+      subMenuItem.name += ` (${subMenuItem.submenu.length}, ${itemsMarked})`;
+      subMenuIndex = subMenu.push(subMenuItem);
+    }
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: `${translationsItemMenuGet(user, 'ItemsProcessMarked')}`,
+      icon: configOptions.getOption(cfgDefaultIconOn, user),
+      group: cmdItemsProcess,
+      command: cmdItemsProcess,
+      options: {dataType: dataTypeReportMember, item: reportId, mode: 'marked'},
+      submenu: [],
+    });
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: `${translationsItemMenuGet(user, 'ItemsProcessAll')}`,
+      icon: enumerationsList[dataTypeReport].icon,
+      command: cmdItemsProcess,
+      options: {dataType: dataTypeReportMember, item: reportId, mode: doAll},
+      submenu: [],
+    });
+  }
+  cachedValueSet(user, cachedSimpleReportNewQuery, {
+    queryDests,
+    queryState,
+    queryRole,
+    queryStates,
+    queryPossibleStates,
+  });
+  return subMenu;
+}
+
+/**
+ * This function function for dests selection to search new report items.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function simpleReportMenuGenerateReportItemsNewSelectDestination(user, menuItemToProcess) {
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
+    destinations = enumerationsList[dataTypeDestination]?.list;
+  let subMenu = [],
+    subMenuIndex = 0;
+  const {queryDests, queryState, queryRole} = cachedValueExists(user, cachedSimpleReportNewQuery)
+    ? cachedValueGet(user, cachedSimpleReportNewQuery)
+    : simpleReportQueryParamsTemplate();
+  if (!cachedValueExists(user, cachedSimpleReportNewQuery))
+    cachedValueSet(user, cachedSimpleReportNewQuery, {queryDests, queryState, queryRole});
+  if (isDefined(destinations)) {
+    const destinationIds = Object.keys(destinations).filter((key) => destinations[key]?.isEnabled);
+    destinationIds.forEach((destinationId) => {
+      const holderPrefix = isDefined(destinations[destinationId].holder)
+          ? `${translationsGetEnumName(user, dataTypeDestination, destinations[destinationId].holder)} > `
+          : '',
+        group = enumerationsGetHolderIdOrIdWithIncludedItems(destinations, destinationId),
+        subMenuItem = {
+          index: `${currentIndex}.${subMenuIndex}`,
+          name: `${holderPrefix}${translationsGetEnumName(user, dataTypeDestination, destinationId)}`,
+          icon: queryDests.includes(destinationId)
+            ? configOptions.getOption(cfgDefaultIconOn, user)
+            : destinations[destinationId].icon,
+          command: cmdItemMark,
+          options: {dataType: dataTypeReportMember, itemType: dataTypeDestination, item: destinationId},
+          submenu: [],
+        };
+      if (group) {
+        subMenuItem.group = group;
+      }
+      subMenuIndex = subMenu.push(subMenuItem);
+    });
+  }
+  return subMenu;
+}
+
+/**
+ * This function function for collecting query params (dests, states, roles) to add new items.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function simpleReportMenuGenerateReportItemsAddNewItems(user, menuItemToProcess) {
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
+    {item: reportId} = menuItemToProcess.options;
+  let subMenuIndex = 0,
+    subMenu = [];
+  const {queryDests, queryState, queryRole} = cachedValueExists(user, cachedSimpleReportNewQuery)
+    ? cachedValueGet(user, cachedSimpleReportNewQuery)
+    : simpleReportQueryParamsTemplate();
+  if (!cachedValueExists(user, cachedSimpleReportNewQuery))
+    cachedValueSet(user, cachedSimpleReportNewQuery, {queryDests, queryState, queryRole});
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+    name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineDest')} (${queryDests.length}, ${
+      Object.keys(enumerationsList[dataTypeDestination].list).filter(
+        (key) => enumerationsList[dataTypeDestination].list[key].isEnabled,
+      ).length
+    })`,
+    icon: enumerationsList[dataTypeReport].icon,
+    submenu: simpleReportMenuGenerateReportItemsNewSelectDestination,
+  });
+  subMenuIndex = subMenu.push(
+    menuMenuItemGenerateEditItem(
+      user,
+      currentIndex,
+      subMenuIndex,
+      `${translationsItemMenuGet(user, 'ReportNewStatesDefineState')} (${queryState})`,
+      '',
+      {dataType: dataTypeReportMember, item: 'queryState'},
+    ),
+  );
+  subMenuIndex = subMenu.push(
+    menuMenuItemGenerateEditItem(
+      user,
+      currentIndex,
+      subMenuIndex,
+      `${translationsItemMenuGet(user, 'ReportNewStatesDefineRole')} (${queryRole})`,
+      '',
+      {dataType: dataTypeReportMember, item: 'queryRole'},
+    ),
+  );
+  if (queryRole || queryState) {
+    subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: `${translationsItemMenuGet(user, 'ReportNewStatesStartSearch')}`,
+      icon: enumerationsList[dataTypeReport].icon,
+      options: {item: reportId},
+      submenu: simpleReportMenuGenerateReportItemsNewSelectStates,
+    });
+  }
+  return subMenu;
+}
+
+/**
+ * This function generates a submenu to manage items of the SimpleReports.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]} - The array of menuItem objects.
+ */
+function simpleReportMenuGenerateEditReportItems(user, menuItemToProcess) {
+  let newMenu = [];
+  const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
+    {item: reportId} = menuItemToProcess.options;
   if (reportId) {
     const reportObjectId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[reportId].enum}.${reportId}`,
       reportObject = getObject(reportObjectId);
@@ -9934,215 +10276,8 @@ function simpleReportMenuGenerateReportEdit(user, menuItemToProcess) {
       name: `${translationsItemMenuGet(user, 'ReportMarkNewStates')}`,
       icon: enumerationsList[dataTypeReport].icon,
       options: {item: reportId},
-      /** submenu function for collecting query params (dests, states, roles) */
-      submenu: (user, menuItemToProcess) => {
-        const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
-          {item: reportId} = menuItemToProcess.options;
-        let subMenuIndex = 0,
-          subMenu = [];
-        const {queryDests, queryState, queryRole} = cachedValueExists(user, cachedSimpleReportNewQuery)
-          ? cachedValueGet(user, cachedSimpleReportNewQuery)
-          : simpleReportQueryParamsTemplate();
-        if (!cachedValueExists(user, cachedSimpleReportNewQuery))
-          cachedValueSet(user, cachedSimpleReportNewQuery, {queryDests, queryState, queryRole});
-        subMenuIndex = subMenu.push({
-          index: `${currentIndex}.${subMenuIndex}`,
-          name: `${translationsItemMenuGet(user, 'ReportNewStatesDefineDest')} (${queryDests.length}, ${
-            Object.keys(enumerationsList[dataTypeDestination].list).filter(
-              (key) => enumerationsList[dataTypeDestination].list[key].isEnabled,
-            ).length
-          })`,
-          icon: enumerationsList[dataTypeReport].icon,
-          /** submenu function for dests selection */
-          submenu: (user, menuItemToProcess) => {
-            const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '';
-            let subMenu = [],
-              subMenuIndex = 0;
-            Object.keys(enumerationsList[dataTypeDestination].list)
-              .filter((key) => enumerationsList[dataTypeDestination].list[key].isEnabled)
-              .forEach((key) => {
-                const _isSelected = queryDests.includes(key) ? '|' : ''; // NOSONAR
-                subMenuIndex = subMenu.push({
-                  index: `${currentIndex}.${subMenuIndex}`,
-                  name: `${translationsGetEnumName(user, dataTypeDestination, key)}`,
-                  icon: queryDests.includes(key)
-                    ? configOptions.getOption(cfgDefaultIconOn, user)
-                    : enumerationsList[dataTypeDestination].list[key].icon,
-                  command: cmdItemMark,
-                  options: {dataType: dataTypeReportMember, itemType: dataTypeDestination, item: key},
-                  submenu: [],
-                });
-              });
-            return subMenu;
-          },
-        });
-        subMenuIndex = subMenu.push(
-          menuMenuItemGenerateEditItem(
-            user,
-            currentIndex,
-            subMenuIndex,
-            `${translationsItemMenuGet(user, 'ReportNewStatesDefineState')} (${queryState})`,
-            '',
-            {dataType: dataTypeReportMember, item: 'queryState'},
-          ),
-        );
-        subMenuIndex = subMenu.push(
-          menuMenuItemGenerateEditItem(
-            user,
-            currentIndex,
-            subMenuIndex,
-            `${translationsItemMenuGet(user, 'ReportNewStatesDefineRole')} (${queryRole})`,
-            '',
-            {dataType: dataTypeReportMember, item: 'queryRole'},
-          ),
-        );
-        if (queryRole || queryState) {
-          subMenu.push({
-            index: `${currentIndex}.${subMenuIndex}`,
-            name: `${translationsItemMenuGet(user, 'ReportNewStatesStartSearch')}`,
-            icon: enumerationsList[dataTypeReport].icon,
-            options: {item: reportId},
-            /** submenu function for selecting states from a query result and assigning them to report */
-            submenu: (user, menuItemToProcess) => {
-              const currentIndex = isDefined(menuItemToProcess.index) ? menuItemToProcess.index : '',
-                {item: reportId} = menuItemToProcess.options;
-              let {queryDests, queryState, queryRole, queryStates, queryPossibleStates} = cachedValueGet(
-                  user,
-                  cachedSimpleReportNewQuery,
-                ),
-                subMenu = [],
-                subMenuIndex = 0,
-                destsList = queryDests,
-                currentDestId = '',
-                destIndex = 0,
-                itemsMarked = 0;
-              if (!destsList.length) {
-                destsList = Object.keys(enumerationsList[dataTypeDestination].list);
-              }
-              const getStateQuery = (state) => (state ? `[id=*.${state}]` : '[id=*]'),
-                getRoleQuery = (role) => (role ? `[role=${role}]` : ''),
-                getDestinationQuerySegment = (enumerations, dataType, id) => {
-                  if (id && enumerations[dataType] && enumerations[dataType].list[id]) {
-                    const currentDestination = enumerations[dataType].list[id];
-                    return `(${currentDestination.enum}=${id})`;
-                  }
-                  return '';
-                },
-                query = `state${getStateQuery(queryState)}${getRoleQuery(queryRole)}`;
-              destsList.forEach((destinationId) => {
-                $(`${query}${getDestinationQuerySegment(enumerationsList, dataTypeDestination, destinationId)}`).each(
-                  (id, index) => {
-                    if (currentDestId !== destinationId) {
-                      if (currentDestId) {
-                        destIndex++;
-                        subMenu[subMenuIndex - 1].name = `${subMenu[subMenuIndex - 1].name} (${
-                          subMenu[subMenuIndex - 1].submenu.length
-                        }, ${itemsMarked})`;
-                      }
-                      currentDestId = destinationId;
-                      subMenuIndex = subMenu.push({
-                        index: `${currentIndex}.${subMenuIndex}`,
-                        name: `${translationsGetEnumName(user, dataTypeDestination, destinationId)}`,
-                        icon: enumerationsList[dataTypeReport].icon,
-                        submenu: [],
-                      });
-                      itemsMarked = 0;
-                    }
-                    const stateTopObjectName = translationsGetObjectName(user, id.split('.').slice(0, -1).join('.'));
-                    subMenu[destIndex].submenu.push({
-                      index: `${currentIndex}.${subMenuIndex - 1}.${index}`,
-                      name: `${stateTopObjectName} (${id.split('.').pop()})`,
-                      icon: queryStates.includes(id)
-                        ? configOptions.getOption(cfgDefaultIconOn, user)
-                        : enumerationsList[dataTypeDestination].icon,
-                      text: (_user, _menuItemToProcess) => `${stateTopObjectName} (${id})`,
-                      submenu: [
-                        {
-                          index: `${currentIndex}.${subMenuIndex - 1}.${index}`,
-                          name: `${translationsItemMenuGet(user, 'ItemMarkUnMark')}`,
-                          icon: queryStates.includes(id)
-                            ? configOptions.getOption(cfgDefaultIconOn, user)
-                            : enumerationsList[dataTypeDestination].icon,
-                          command: cmdItemMark,
-                          options: {
-                            dataType: dataTypeReportMember,
-                            itemType: 'states',
-                            item: queryPossibleStates.length,
-                          },
-                          submenu: [],
-                        },
-                      ],
-                    });
-                    if (queryStates.includes(id)) itemsMarked++;
-                    queryPossibleStates.push(id);
-                  },
-                );
-              });
-              if (subMenuIndex)
-                subMenu[subMenuIndex - 1].name = `${subMenu[subMenuIndex - 1].name} (${
-                  subMenu[subMenuIndex - 1].submenu.length
-                }, ${itemsMarked})`;
-              subMenuIndex = subMenu.push({
-                index: `${currentIndex}.${subMenuIndex}`,
-                name: `${translationsItemMenuGet(user, 'ItemsProcessMarked')}`,
-                icon: configOptions.getOption(cfgDefaultIconOn, user),
-                group: cmdItemsProcess,
-                command: cmdItemsProcess,
-                options: {dataType: dataTypeReportMember, item: reportId, mode: 'marked'},
-                submenu: [],
-              });
-              subMenuIndex = subMenu.push({
-                index: `${currentIndex}.${subMenuIndex}`,
-                name: `${translationsItemMenuGet(user, 'ItemsProcessAll')}`,
-                icon: enumerationsList[dataTypeReport].icon,
-                command: cmdItemsProcess,
-                options: {dataType: dataTypeReportMember, item: reportId, mode: doAll},
-                submenu: [],
-              });
-              cachedValueSet(user, cachedSimpleReportNewQuery, {
-                queryDests,
-                queryState,
-                queryRole,
-                queryStates,
-                queryPossibleStates,
-              });
-              return subMenu;
-            },
-          });
-        }
-        return subMenu;
-      },
+      submenu: simpleReportMenuGenerateReportItemsAddNewItems,
     });
-  } else if (enumId) {
-    cachedValueDelete(user, cachedSimpleReportNewQuery);
-    const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate);
-    if (simpleReportId) {
-      if (/[^a-zA-Z0-9]/.test(simpleReportId)) {
-        newMenu.push(
-          menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemCoreGet(user, 'cmdFixId'), '', {
-            dataType: dataTypeReport,
-            mode: 'fixId',
-          }),
-        );
-      } else {
-        newMenu.push({
-          index: `${currentIndex}.0`,
-          name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${simpleReportId}'`,
-          icon: enumerationsList[dataTypeReport].icon,
-          command: cmdCreateReportEnum,
-          options: {dataType: dataTypeReport, item: simpleReportId, enum: enumId},
-          submenu: [],
-        });
-        cachedValueDelete(user, cachedSimpleReportIdToCreate);
-      }
-    } else {
-      newMenu.push(
-        menuMenuItemGenerateEditItem(user, currentIndex, 0, translationsItemCoreGet(user, 'cmdSetId'), '', {
-          dataType: dataTypeReport,
-          mode: 'setId',
-        }),
-      );
-    }
   }
   return newMenu;
 }
@@ -12757,12 +12892,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   break;
                 }
 
-                case 'setId':
-                case 'fixId': {
-                  cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
-                  break;
-                }
-
                 case 'names': {
                   enumerationsUpdateItemName(
                     user,
@@ -12796,23 +12925,37 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
 
                 default: {
-                  const oldIcon =
-                    commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon'
-                      ? currentEnumerationsList[commandOptions.item][attribute]
-                      : '';
-                  currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
-                  if (commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon') {
-                    const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
-                    Object.keys(workList).forEach((currentListItem) => {
-                      if (
-                        workList[currentListItem].enum === commandOptions.dataType &&
-                        currentEnumerationsList[currentListItem].icon === oldIcon
-                      ) {
-                        currentEnumerationsList[currentListItem].icon = userInputToProcess;
+                  switch (commandOptions.mode) {
+                    case 'setId':
+                    case 'fixId': {
+                      cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
+                      break;
+                    }
+
+                    default: {
+                      const oldIcon =
+                        commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon'
+                          ? currentEnumerationsList[commandOptions.item][attribute]
+                          : '';
+                      if (isDefined(currentEnumerationsList[commandOptions.item])) {
+                        currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
+                        if (commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon') {
+                          const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
+                          Object.keys(workList).forEach((currentListItem) => {
+                            if (
+                              workList[currentListItem].enum === commandOptions.dataType &&
+                              currentEnumerationsList[currentListItem].icon === oldIcon
+                            ) {
+                              currentEnumerationsList[currentListItem].icon = userInputToProcess;
+                            }
+                          });
+                          enumerationsInit(commandOptions.dataTypeExtraId);
+                        }
                       }
-                    });
-                    enumerationsInit(commandOptions.dataTypeExtraId);
+                      break;
+                    }
                   }
+
                   break;
                 }
               }
@@ -12855,7 +12998,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
               queryParams = queryParams || simpleReportQueryParamsTemplate();
               queryParams[commandOptions.item] = userInputToProcess;
+              queryParams.queryStates = [];
+              queryParams.queryPossibleStates = [];
               cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
+              cachedAddToDelCachedOnBack(user, currentMenuPosition.slice(0, -1).join('.'), cachedSimpleReportNewQuery);
               break;
             }
 
@@ -13431,20 +13577,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               commandOptions.dataTypeExtraId,
             );
             switch (commandOptions.attribute) {
-              case 'setId':
-              case 'fixId': {
-                const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate),
-                  dataTypeText = translationsItemTextGet(user, 'for', commandOptions.dataType),
-                  setAction = simpleReportId ? 'fix' : 'set',
-                  reportIdPart = simpleReportId ? `= ${simpleReportId}` : '';
-                menuMessageObject.message = `${translationsItemTextGet(
-                  user,
-                  'SetNewAttributeValue',
-                )} ${dataTypeText} ${translationsItemTextGet(user, setAction, 'reportId')} ${reportIdPart}`;
-                cachedValueDelete(user, cachedSimpleReportIdToCreate);
-                break;
-              }
-
               case 'names': {
                 menuMessageObject.message = `${translationsItemTextGet(
                   user,
@@ -13462,13 +13594,33 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
 
               default: {
-                menuMessageObject.message = `${translationsItemTextGet(
-                  user,
-                  'SetNewAttributeValue',
-                )} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemMenuGet(
-                  user,
-                  commandOptions.attribute,
-                )}" = ${currentEnumerationsList[commandOptions.item][commandOptions.attribute]}:`;
+                switch (commandOptions.mode) {
+                  case 'setId':
+                  case 'fixId': {
+                    const simpleReportId = cachedValueGet(user, cachedSimpleReportIdToCreate),
+                      dataTypeText = translationsItemTextGet(user, 'for', commandOptions.dataType),
+                      setAction = simpleReportId ? 'fix' : 'set',
+                      reportIdPart = simpleReportId ? `= ${simpleReportId}` : '';
+                    menuMessageObject.message = `${translationsItemTextGet(
+                      user,
+                      'SetNewAttributeValue',
+                    )} ${dataTypeText} ${translationsItemTextGet(user, setAction, 'reportId')} ${reportIdPart}`;
+                    cachedValueDelete(user, cachedSimpleReportIdToCreate);
+                    break;
+                  }
+
+                  default: {
+                    menuMessageObject.message = `${translationsItemTextGet(
+                      user,
+                      'SetNewAttributeValue',
+                    )} ${translationsItemTextGet(user, 'for', commandOptions.dataType)} "${translationsItemMenuGet(
+                      user,
+                      commandOptions.attribute,
+                    )}" = ${currentEnumerationsList?.[commandOptions.item]?.[commandOptions.attribute]}:`;
+                    break;
+                  }
+                }
+
                 break;
               }
             }
@@ -14557,15 +14709,25 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
                 queryParams.queryStates = [];
                 queryParams.queryPossibleStates = [];
+                cachedAddToDelCachedOnBack(
+                  user,
+                  currentMenuPosition.slice(0, -2).join('.'),
+                  cachedSimpleReportNewQuery,
+                );
                 break;
 
               case 'states':
-                if (queryParams.queryStates.includes(queryParams.queryPossibleStates[commandOptions.item])) {
-                  delete queryParams.queryStates[
-                    queryParams.queryStates.indexOf(queryParams.queryPossibleStates[commandOptions.item])
-                  ];
-                } else {
-                  queryParams.queryStates.push(queryParams.queryPossibleStates[commandOptions.item]);
+                if (
+                  isDefined(queryParams.queryStates) &&
+                  isDefined(queryParams.queryPossibleStates?.[commandOptions.item]?.stateId)
+                ) {
+                  if (queryParams.queryStates.includes(queryParams.queryPossibleStates[commandOptions.item]?.stateId)) {
+                    delete queryParams.queryStates[
+                      queryParams.queryStates.indexOf(queryParams.queryPossibleStates[commandOptions.item].stateId)
+                    ];
+                  } else {
+                    queryParams.queryStates.push(queryParams.queryPossibleStates[commandOptions.item].stateId);
+                  }
                 }
                 currentMenuPosition.splice(-1);
                 break;
@@ -14757,7 +14919,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeReportMember: {
             const queryParams = cachedValueGet(user, cachedSimpleReportNewQuery),
-              queryStates = commandOptions.mode === doAll ? queryParams.queryPossibleStates : queryParams.queryStates;
+              queryStates =
+                commandOptions.mode === doAll
+                  ? queryParams.queryPossibleStates.maps((item) => item.stateId)
+                  : queryParams.queryStates;
             if (queryStates.length) {
               const currentReportId = `${prefixEnums}.${
                 enumerationsList[dataTypeReport].list[commandOptions.item].enum
