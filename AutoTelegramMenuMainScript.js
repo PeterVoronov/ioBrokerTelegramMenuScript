@@ -8720,6 +8720,12 @@ function triggersTimeRangeAttributesGenerateDefaults(triggerTimeRangeAttributeId
       triggerTimeRangeAttribute.shift();
       break;
     }
+    case triggersTimeRangeHoursWithMinutes:
+    case triggersTimeRangeMonthsWithDays: {
+      triggerTimeRangeAttribute = [];
+      break;
+    }
+
     default: {
       break;
     }
@@ -8803,12 +8809,14 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
       }
       if (triggerTimeRangeAttributePossibleValues.size > 0) {
         const attributeValues = triggerHasTimeRangeAttribute
-          ? ` (${triggerTimeRangeShortDescription(
-              user,
-              {[triggersTimeRangeAttribute]: triggerTimeRange[triggersTimeRangeAttribute]},
-              true,
-            )})`
-          : '';
+            ? ` (${triggerTimeRangeShortDescription(
+                user,
+                {[triggersTimeRangeAttribute]: triggerTimeRange[triggersTimeRangeAttribute]},
+                true,
+              )})`
+            : '',
+          interimValue = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
+          valuesCurrent = interimValue?.[`${currentIndex}.${subMenuIndex}`];
         subMenuIndex = subMenu.push(
           menuMenuItemGenerateSelectItem(
             user,
@@ -8819,8 +8827,16 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
             triggersTimeRangeAttribute,
             {
               ...options,
+              applyMode: true,
+              values: isDefined(valuesCurrent) ? valuesCurrent : triggerTimeRangeAttributeValues,
               subItem: triggersTimeRangeAttribute,
-              values: triggerTimeRangeAttributeValues,
+              valuesPrevious: triggerTimeRangeAttributeValues,
+              valueOptions: {
+                valueToApply: isDefined(valuesCurrent)
+                  ? `${triggerTimeRangeShortDescription(user, {[triggersTimeRangeAttribute]: valuesCurrent}, true)}`
+                  : attributeValues,
+                interimCalculation: interimCalculationSelectMultiple,
+              },
             },
           ),
         );
@@ -8922,7 +8938,7 @@ function triggerTimeRangeShortDescription(user, timeRange, withoutShortNames = f
             }
             case triggersTimeRangeSeasons: {
               Object.keys(triggersTimeRangeSeasonsItemsShort).forEach((seasonShort) => {
-                valuesLocalNames.push(translationsItemTextGet(user, seasonShort));
+                valuesLocalNames.push(translationsItemTextGet(user, triggersTimeRangeSeasonsItemsShort[seasonShort]));
               });
               break;
             }
@@ -11141,8 +11157,13 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
       });
     });
     if (applyMode) {
-      const previousValue = options.value;
-      if (previousValue !== currentValue) {
+      const previousValue = options.value,
+        previousValues = options.valuesPrevious;
+      if (
+        ((isDefined(previousValues) || isDefined(currentValues)) &&
+          stringifySafe(previousValues) !== stringifySafe(currentValues)) ||
+        (!isDefined(previousValues) && !isDefined(currentValues) && previousValue !== currentValue)
+      ) {
         let valueToApply;
         if (isDefined(options.valueOptions?.valueToApply)) {
           valueToApply = options.valueOptions.valueToApply;
@@ -11158,6 +11179,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           options: {
             ...options,
             value: currentValue,
+            values: currentValues,
             backOnPress: !isDefined(options.backOnPress) || options.backOnPress,
           },
         });
@@ -11168,7 +11190,10 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
   return menuItem;
 }
 
-const cachedInterimValue = 'interimValue';
+const cachedInterimValue = 'interimValue',
+  interimCalculationReplace = 'replace',
+  interimCalculationSummarize = 'summarize',
+  interimCalculationSelectMultiple = 'selectMultiple';
 
 /**
  * Generates menu item which can process editing of the value depending on it's type.
@@ -11548,7 +11573,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
           units: timeUnits,
           mode: timeMode,
           states: valuesMapArray,
-          interimCalculation: 'summarize',
+          interimCalculation: interimCalculationSummarize,
         },
       });
     }
@@ -13877,37 +13902,57 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         if (isDefined(commandOptions.currentIndex)) {
           const currentIndex = commandOptions.currentIndex;
           let interimValue;
-          if (commandOptions.valueOptions?.interimCalculation === 'summarize') {
-            switch (commandOptions.valueOptions?.type) {
-              case 'time': {
-                switch (commandOptions.valueOptions?.mode) {
-                  case 'time': {
-                    if (isDefined(commandOptions.valueOptions?.units)) {
-                      const units = commandOptions.valueOptions.units,
-                        currentValue = stringToTimeInternal(commandOptions.currentValue, units),
-                        modificator = isDefined(commandOptions.value) ? Number(commandOptions.value) : 0;
-                      interimValue = timeInternalToString(modificator + currentValue, units);
+          switch (commandOptions.valueOptions?.interimCalculation) {
+            case interimCalculationSummarize: {
+              switch (commandOptions.valueOptions?.type) {
+                case 'time': {
+                  switch (commandOptions.valueOptions?.mode) {
+                    case 'time': {
+                      if (isDefined(commandOptions.valueOptions?.units)) {
+                        const units = commandOptions.valueOptions.units,
+                          currentValue = stringToTimeInternal(commandOptions.currentValue, units),
+                          modificator = isDefined(commandOptions.value) ? Number(commandOptions.value) : 0;
+                        interimValue = timeInternalToString(modificator + currentValue, units);
+                      }
+                      break;
                     }
-                    break;
+
+                    default: {
+                      interimValue =
+                        (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
+                        (isDefined(commandOptions.currentValue) ? Number(commandOptions.currentValue) : 0);
+                      break;
+                    }
                   }
 
-                  default: {
-                    interimValue =
-                      (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
-                      (isDefined(commandOptions.currentValue) ? Number(commandOptions.currentValue) : 0);
-                    break;
-                  }
+                  break;
                 }
 
-                break;
+                default: {
+                  break;
+                }
               }
-
-              default: {
-                break;
-              }
+              break;
             }
-          } else {
-            interimValue = commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value;
+            case interimCalculationSelectMultiple: {
+              if (isDefined(commandOptions.values) && isDefined(commandOptions.value)) {
+                const value = commandOptions.value;
+                interimValue = [...commandOptions.values];
+                if (interimValue.includes(value)) {
+                  interimValue = interimValue.filter((item) => item !== value);
+                } else {
+                  interimValue.push(value);
+                  if (typeOf(value) === 'number') interimValue = interimValue.sort((a, b) => a - b);
+                }
+              }
+              break;
+            }
+            case interimCalculationReplace:
+            default: {
+              interimValue =
+                commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value;
+              break;
+            }
           }
           if (isDefined(interimValue)) cachedValueSet(user, cachedInterimValue, {[currentIndex]: interimValue});
         }
@@ -14134,67 +14179,20 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         }
 
                         case triggersTimeRangeId: {
-                          backStepsForCacheDelete -= 2;
-                          const subItem = commandOptions.subItem,
-                            subItemIsAny = !isDefined(trigger?.[item]?.[subItem]);
-                          if (subItemIsAny) {
-                            if (!isDefined(trigger?.[item])) trigger[item] = {};
-                            trigger[item][subItem] = triggersTimeRangeAttributesGenerateDefaults(subItem);
-                          }
+                          const subItem = commandOptions.subItem;
+                          backStepsForCacheDelete--;
+                          if (!isDefined(trigger?.[item])) trigger[item] = {};
+                          trigger[item][subItem] = commandOptions.values;
                           const triggerTimeRange = trigger[item],
-                            attributeValue = triggerTimeRange[subItem],
-                            value = commandOptions.value;
-                          delete triggerTimeRange[triggerTimeRangeStartTimes];
+                            attributeValue = triggerTimeRange[subItem];
                           switch (subItem) {
                             case triggersTimeRangeHours:
                             case triggersTimeRangeMonths:
                             case triggersTimeRangeQuarters:
                             case triggersTimeRangeSeasons:
                             case triggersTimeRangeDaysOfWeek: {
-                              if (attributeValue.includes(value)) {
-                                triggerTimeRange[subItem] = attributeValue.filter((element) => element !== value);
-                                let attributePosition = Number(currentMenuPosition.pop());
-                                if (subItemIsAny) {
-                                  switch (subItem) {
-                                    case triggersTimeRangeQuarters: {
-                                      attributePosition -= 1;
-                                      break;
-                                    }
-                                    case triggersTimeRangeSeasons: {
-                                      attributePosition -= 2;
-                                      break;
-                                    }
-                                    default: {
-                                      break;
-                                    }
-                                  }
-                                }
-                                currentMenuPosition.push(attributePosition);
-                              } else {
-                                attributeValue.push(value);
-                                if (
-                                  attributeValue.length === triggersTimeRangeAttributesGenerateDefaults(subItem).length
-                                ) {
-                                  delete triggerTimeRange[subItem];
-                                  let attributePosition = Number(currentMenuPosition.pop());
-                                  switch (subItem) {
-                                    case triggersTimeRangeQuarters: {
-                                      attributePosition += 1;
-                                      break;
-                                    }
-                                    case triggersTimeRangeSeasons: {
-                                      attributePosition += 2;
-                                      break;
-                                    }
-                                    default: {
-                                      break;
-                                    }
-                                  }
-                                  currentMenuPosition.push(attributePosition);
-                                } else {
-                                  triggerTimeRange[subItem].sort((a, b) => a - b);
-                                }
-                              }
+                              if (attributeValue.length === triggersTimeRangeAttributesGenerateDefaults(subItem).length)
+                                delete triggerTimeRange[subItem];
                               break;
                             }
                             default: {
