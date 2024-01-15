@@ -8855,11 +8855,9 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
         (timeRangeAttribute === triggersTimeRangeHoursWithMinutes &&
           !isDefined(triggerTimeRange[triggersTimeRangeHours])) ||
         (timeRangeAttribute === triggersTimeRangeMonthsWithDays &&
-          !isDefined(
-            triggerTimeRange[triggersTimeRangeMonths] &&
-              !isDefined(triggerTimeRange[triggersTimeRangeQuarters]) &&
-              !isDefined(triggerTimeRange[triggersTimeRangeSeasons]),
-          ))
+          !isDefined(triggerTimeRange[triggersTimeRangeMonths]) &&
+          !isDefined(triggerTimeRange[triggersTimeRangeQuarters]) &&
+          !isDefined(triggerTimeRange[triggersTimeRangeSeasons]))
       ) {
         subMenuIndex = subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
@@ -9195,76 +9193,77 @@ function triggerTimeRangeShortDescription(user, timeRange, withoutShortNames = f
  * @returns {string[]} - The result array of the start times.
  */
 function triggerTimeRangeGenerateStartTimes(timeRange) {
-  let scheduleString = '';
-  const result = [];
+  const scheduleArray = [];
+  let result = [];
   if (isDefined(timeRange)) {
     triggersTimeRangeAttributes.forEach((attribute) => {
       if (isDefined(timeRange[attribute])) {
-        let allowedValues = timeRange[attribute];
-        if ([triggersTimeRangeQuarters, triggersTimeRangeSeasons].includes(attribute)) {
-          const allowedValuesNew = [];
-          allowedValues.forEach((value) => {
-            const subValues =
-              attribute === triggersTimeRangeQuarters
-                ? Object.values(triggersTimeRangeQuartersItems)[value - 1]
-                : Object.values(triggersTimeRangeSeasonsItems)[value - 1];
-            subValues.forEach((subValue) => {
-              allowedValuesNew.push(subValue);
-            });
-          });
-          allowedValuesNew.sort((a, b) => a - b);
-          allowedValues = allowedValuesNew;
-        }
-        const valueFirst = allowedValues[0],
-          isItFirstAttribute = scheduleString.length === 0;
-        if (isItFirstAttribute) {
-          switch (attribute) {
-            case triggersTimeRangeHours: {
-              scheduleString += '0 0';
-              break;
+        let timeRangeValues = timeRange[attribute];
+        switch (attribute) {
+          case triggersTimeRangeHours:
+          case triggersTimeRangeMonths:
+          case triggersTimeRangeDaysOfWeek:
+          case triggersTimeRangeQuarters:
+          case triggersTimeRangeSeasons: {
+            if ([triggersTimeRangeQuarters, triggersTimeRangeSeasons].includes(attribute)) {
+              const allowedValuesNew = [];
+              timeRangeValues.forEach((value) => {
+                const subValues =
+                  attribute === triggersTimeRangeQuarters
+                    ? Object.values(triggersTimeRangeQuartersItems)[value - 1]
+                    : Object.values(triggersTimeRangeSeasonsItems)[value - 1];
+                subValues.forEach((subValue) => {
+                  allowedValuesNew.push(subValue);
+                });
+              });
+              allowedValuesNew.sort((a, b) => a - b);
+              timeRangeValues = allowedValuesNew;
             }
-            case triggersTimeRangeMonths:
-            case triggersTimeRangeQuarters:
-            case triggersTimeRangeSeasons: {
-              scheduleString += `0 0 0 ${isDefined(timeRange[triggersTimeRangeDaysOfWeek]) ? '*' : '1'}`;
-              break;
-            }
-            case triggersTimeRangeDaysOfWeek: {
-              scheduleString += '0 0 0 * *';
-              break;
-            }
-            default: {
-              break;
-            }
-          }
-        } else {
-          switch (attribute) {
-            case triggersTimeRangeMonths:
-            case triggersTimeRangeQuarters:
-            case triggersTimeRangeSeasons: {
-              scheduleString += ' *';
-              break;
-            }
-            case triggersTimeRangeDaysOfWeek: {
-              if (scheduleString.split(' ').length === 3) {
-                scheduleString += ' * *';
+            const valueFirst = timeRangeValues[0],
+              isItFirstAttribute = scheduleArray.length === 0;
+            if (isItFirstAttribute) {
+              switch (attribute) {
+                case triggersTimeRangeHours: {
+                  scheduleArray.push('0', '0');
+                  break;
+                }
+                case triggersTimeRangeMonths:
+                case triggersTimeRangeQuarters:
+                case triggersTimeRangeSeasons: {
+                  scheduleArray.push('0', '0', '0');
+                  scheduleArray.push(isDefined(timeRange[triggersTimeRangeDaysOfWeek]) ? '*' : '1');
+                  break;
+                }
+                case triggersTimeRangeDaysOfWeek: {
+                  scheduleArray.push('0', '0', '0', '*', '*');
+                  break;
+                }
+                default: {
+                  break;
+                }
               }
-              break;
+            } else {
+              switch (attribute) {
+                case triggersTimeRangeMonths:
+                case triggersTimeRangeQuarters:
+                case triggersTimeRangeSeasons: {
+                  scheduleArray.push('*');
+                  break;
+                }
+                case triggersTimeRangeDaysOfWeek: {
+                  if (scheduleArray.length === 3) {
+                    scheduleArray.push('*', '*');
+                  }
+                  break;
+                }
+                default: {
+                  break;
+                }
+              }
             }
-            default: {
-              break;
-            }
-          }
-        }
-        let attributeMask = '',
-          lastValue = valueFirst;
-        for (const value of allowedValues) {
-          switch (attribute) {
-            case triggersTimeRangeHours:
-            case triggersTimeRangeMonths:
-            case triggersTimeRangeDaysOfWeek:
-            case triggersTimeRangeQuarters:
-            case triggersTimeRangeSeasons: {
+            let attributeMask = '',
+              lastValue = valueFirst;
+            for (const value of timeRangeValues) {
               if (value - lastValue > 1 || value === valueFirst) {
                 if (attributeMask.endsWith('-')) attributeMask += `${lastValue}`;
                 attributeMask += `${attributeMask.length > 0 ? ',' : ''}${value}`;
@@ -9272,36 +9271,109 @@ function triggerTimeRangeGenerateStartTimes(timeRange) {
                 attributeMask += '-';
               }
               lastValue = value;
-              break;
             }
-            default: {
-              break;
-            }
-          }
-        }
-        if (attributeMask.endsWith('-')) attributeMask += `${lastValue}`;
-        if (attributeMask.length === 0) attributeMask = '*';
-        switch (attribute) {
-          case triggersTimeRangeHours:
-          case triggersTimeRangeMonths:
-          case triggersTimeRangeDaysOfWeek:
-          case triggersTimeRangeQuarters:
-          case triggersTimeRangeSeasons: {
-            scheduleString += ` ${attributeMask}`;
+            if (attributeMask.endsWith('-')) attributeMask += `${lastValue}`;
+            if (attributeMask.length === 0) attributeMask = '*';
+            scheduleArray.push(attributeMask);
             break;
           }
-          default:
+          default: {
             break;
+          }
         }
       }
     });
-    const itemsCount = scheduleString.split(' ').length;
+    const itemsCount = scheduleArray.length;
     for (let i = itemsCount; i < 6; i++) {
-      scheduleString += ' *';
+      scheduleArray.push('*');
     }
-    result.push(scheduleString);
+    result.push(scheduleArray);
+    [triggersTimeRangeHoursWithMinutes, triggersTimeRangeMonthsWithDays].forEach((attribute) => {
+      if (isDefined(timeRange[attribute])) {
+        const timeRangeDeltas = timeRange[attribute],
+          resultCopy = [...result],
+          schedulePosition = attribute === triggersTimeRangeHoursWithMinutes ? 1 : 3,
+          deltaValueBorderFirst = attribute === triggersTimeRangeHoursWithMinutes ? [0, 0] : [1, 1],
+          deltaValueBorderLast = attribute === triggersTimeRangeHoursWithMinutes ? [23, 59] : [12, 31];
+        result = [];
+        resultCopy.forEach((scheduleArray) => {
+          const scheduleArrayCopy = scheduleArray.map((item, index) =>
+            index < schedulePosition && item === '*' ? '0' : item,
+          );
+          timeRangeDeltas.forEach((deltaValue) => {
+            const scheduleArrayCopyFirst = [...scheduleArrayCopy],
+              deltaValueFirst = deltaValue[0],
+              previousScheduleItems = scheduleArrayCopy.slice(0, schedulePosition),
+              isPreviousScheduleZero = previousScheduleItems.every((item) => item === '0');
+            if (attribute === triggersTimeRangeHoursWithMinutes || isPreviousScheduleZero) {
+              scheduleArrayCopy.splice(schedulePosition, 2, deltaValueFirst[1], deltaValueFirst[0]);
+              result.push(scheduleArrayCopy);
+            } else {
+              const currentDeltas =
+                deltaValue[0][0] < deltaValue[1][0] ||
+                (deltaValue[0][0] === deltaValue[1][0] && deltaValue[0][1] <= deltaValue[1][1])
+                  ? [deltaValue]
+                  : [
+                      [deltaValue[0], deltaValueBorderLast],
+                      [deltaValueBorderFirst, deltaValue[1]],
+                    ];
+              currentDeltas.forEach((currentDelta) => {
+                const currentDeltaFirst = currentDelta[0],
+                  currentDeltaLast = currentDelta[1],
+                  currentMin = attribute === triggersTimeRangeHoursWithMinutes ? 0 : 1,
+                  currentMax =
+                    attribute === triggersTimeRangeHoursWithMinutes
+                      ? 59
+                      : timeInternalDaysInMothsArray[currentDeltaFirst[0]];
+                if (currentDeltaFirst[0] === currentDeltaLast[0]) {
+                  scheduleArrayCopy.splice(
+                    schedulePosition,
+                    2,
+                    currentDeltaFirst[1] === currentDeltaLast[1]
+                      ? currentDeltaFirst[1]
+                      : `${currentDeltaFirst[1]}-${currentDeltaLast[1]}`,
+                    currentDeltaFirst[0],
+                  );
+                  result.push(scheduleArrayCopy);
+                } else {
+                  const scheduleArrayCopyMiddle = [...scheduleArrayCopyFirst],
+                    scheduleArrayCopyLast = [...scheduleArrayCopyFirst];
+                  scheduleArrayCopyFirst.splice(
+                    schedulePosition,
+                    2,
+                    currentDeltaFirst[1] === currentMax
+                      ? currentDeltaFirst[1]
+                      : `${currentDeltaFirst[1]}-${currentMax}`,
+                    currentDeltaFirst[0],
+                  );
+                  result.push(scheduleArrayCopyFirst);
+                  if (currentDeltaLast[0] - currentDeltaFirst[0] > 1) {
+                    scheduleArrayCopyMiddle.splice(
+                      schedulePosition,
+                      2,
+                      '*',
+                      currentDeltaLast[0] - currentDeltaFirst[0] > 2
+                        ? `${currentDeltaFirst[0] + 1}-${currentDeltaLast[0] - 1}`
+                        : currentDeltaFirst[0] + 1,
+                    );
+                    result.push(scheduleArrayCopyMiddle);
+                  }
+                  scheduleArrayCopyLast.splice(
+                    schedulePosition,
+                    2,
+                    currentMin === currentDeltaLast[1] ? currentMin : `${currentMin}-${currentDeltaLast[1]}`,
+                    currentDeltaLast[0],
+                  );
+                  result.push(scheduleArrayCopyLast);
+                }
+              });
+            }
+          });
+        });
+      }
+    });
   }
-  return result;
+  return result.map((item) => item.join(' '));
 }
 
 /**
