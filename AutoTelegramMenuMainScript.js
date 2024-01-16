@@ -6831,12 +6831,11 @@ function alertsGet() {
  */
 function alertsStore(alerts) {
   if (typeOf(alerts, 'object') && Object.keys(alerts).length > 0) {
-    alertsRules = objectDeepClone(alerts);
-    const stringValue = JSON.stringify(alerts, JSONReplacerWithMap);
+    const alertsJSON = JSON.stringify(alerts, JSONReplacerWithMap);
     if (existsState(alertsStateFullId)) {
-      setState(alertsStateFullId, stringValue, true);
+      setState(alertsStateFullId, alertsJSON, true);
     } else {
-      createState(alertsStateFullId, stringValue, cachedValuesStatesCommonAttributes[idAlerts]);
+      createState(alertsStateFullId, alertsJSON, cachedValuesStatesCommonAttributes[idAlerts]);
     }
   }
 }
@@ -8259,33 +8258,45 @@ function triggersGetIndex(triggers, triggerId) {
 }
 
 /**
- * This function returns sorted array of Thresholds or Triggers definitions. Sorting rules depend on a type of its.
- * @param {object[]} triggers - The array of Thresholds or Triggers definitions.
+ * This function returns sorted array of Alert Thresholds or Triggers definitions.
+ * Sorting rules depend on a type of items.
+ * @param {object[]} thresholds - The array of Thresholds or Triggers definitions.
  * @param {any[]=} preSorted - The pre-sorted array as pattern for sorting.
  * @returns {object[]} The result sorted array of Thresholds or Triggers definitions.
  */
-function triggersSort(triggers, preSorted) {
-  if (triggers && typeOf(triggers, 'array')) {
-    triggers = triggers.sort((triggerA, triggerB) => {
-      if (triggerA.type === 'number') {
-        const valueCompare = triggerA.value - triggerB.value;
-        if (valueCompare) {
-          return valueCompare;
-        } else {
-          return triggerA.onAbove ? -1 : 1;
+function triggersSort(thresholds, preSorted) {
+  if (thresholds && typeOf(thresholds, 'array')) {
+    thresholds = thresholds.sort((thresholdA, thresholdB) => {
+      let result = 0;
+      if (thresholdA.type === 'number') {
+        result = thresholdA.value - thresholdB.value;
+        if (result === 0) {
+          if (thresholdA.onAbove) {
+            result = thresholdB.onAbove ? 0 : -1;
+          } else {
+            result = thresholdB.onAbove ? 1 : 0;
+          }
         }
-      } else if (triggerA.type === 'boolean') {
-        return triggerA.value ? -1 : 1;
+      } else if (thresholdA.type === 'boolean') {
+        if (thresholdA.value) {
+          result = thresholdB.value ? 0 : -1;
+        } else {
+          result = thresholdB.value ? 1 : 0;
+        }
       } else if (preSorted) {
-        return preSorted.indexOf(triggerA.value) - preSorted.indexOf(triggerB.value);
-      } else if (typeOf(triggerA.value, 'number')) {
-        return triggerA.value - triggerB.value;
+        result = preSorted.indexOf(thresholdA.value) - preSorted.indexOf(thresholdB.value);
+      } else if (typeOf(thresholdA.value, 'number')) {
+        result = thresholdA.value - thresholdB.value;
       } else {
-        return triggerA.value.localeCompare(triggerB.value);
+        result = thresholdA.value.localeCompare(thresholdB.value);
       }
+      if (result === 0) {
+        result = (thresholdA.index ? thresholdA.index : 0) - (thresholdB.index ? thresholdB.index : 0);
+      }
+      return result;
     });
   }
-  return triggers;
+  return thresholds;
 }
 
 /**
@@ -13624,7 +13635,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         if (!typeOf(detailsOrThresholds, 'array')) detailsOrThresholds = new Array();
                         detailsOrThresholds.push({
                           isEnabled: true,
-                          id: thresholdValue,
+                          id: `${thresholdValue}`,
+                          index: 0,
                           type: 'number',
                           value: thresholdValue,
                           onAbove: true,
@@ -13743,13 +13755,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       triggerValue = userInputToProcess;
                     }
                     let trigger,
-                      triggerId = triggerValue;
+                      triggerId = `${triggerValue}`;
                     if (
                       triggerType === 'boolean' ||
                       (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(triggerType))
                     ) {
                       trigger = {
-                        id: triggerValue,
+                        id: triggerId,
+                        index: 0,
                         isEnabled: false,
                         type: triggerType,
                         value: triggerValue,
@@ -13770,6 +13783,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       } else {
                         trigger = {
                           id: triggerId,
+                          index: 0,
                           isEnabled: false,
                           type: triggerType,
                           value: triggerValue,
@@ -13785,6 +13799,15 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     }
                     if (isDefined(trigger)) {
                       backStepsForCacheDelete--;
+                      let triggerIndex = 0;
+                      triggers
+                        .filter((currentTrigger) => !currentTrigger.id.beginWith(triggerId))
+                        .forEach((currentTrigger) => {
+                          if (currentTrigger.index && currentTrigger.index > triggerIndex)
+                            triggerIndex = currentTrigger.index;
+                        });
+                      // @ts-ignore
+                      trigger.index = triggerIndex + 1;
                       triggers.push(trigger);
                       triggers = triggersSort(triggers);
                       currentMenuPosition.splice(-1, 1, triggersGetIndex(triggers, triggerId));
