@@ -3037,7 +3037,7 @@ async function translationsInitialLoadLocalesFromRepository() {
   return new Promise((resolve, reject) => {
     translationsLoadLocalesFromRepository(doAll, translationsCoreId, (locales, error) => {
       if (error) {
-        warns(`Can't make an initial load of locales from repo! Error is '${error}'.`);
+        warns(`Can't make an initial load of locales from repo! Error is '${stringifySafe(error)}'.`);
         reject(error);
       } else {
         Object.keys(locales).forEach((languageId) => {
@@ -5941,7 +5941,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               function: functionId,
               state: stateIdFull,
               stateType: currentStateType,
-              stateObject: stateObject,
+              stateObject: objectInfoDeplete(stateObject),
               valueType: currentStateType,
               device: devicePrefix,
               replaceCommand: cmdSetState,
@@ -7674,7 +7674,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
                     icons: triggersGetIcon,
                     options: {
                       ...stateOptions,
-                      stateObject: stateObject,
+                      stateObject: objectInfoDeplete(stateObject),
                       dataType: dataTypeTrigger,
                       convertValueCode: stateDetails.convertValueCode,
                     },
@@ -8207,7 +8207,7 @@ function triggersMenuGenerate(user, menuItemToProcess) {
               function: functionId,
               destination: destinationId,
               state: stateIdFull,
-              stateObject: stateObject,
+              stateObject: objectInfoDeplete(stateObject),
               triggerType: stateObject.common?.type,
               convertValueCode: stateDetails.convertValueCode,
               [menuOptionHorizontalNavigation]: horizontalNavigation,
@@ -8564,7 +8564,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
             ...triggerOptions,
             triggerState: stateId,
             state: targetStateId,
-            stateObject: targetObject,
+            stateObject: objectInfoDeplete(targetObject),
             booleanSelect: true,
             includeCurrent: true,
             item: 'targetValue',
@@ -8757,9 +8757,10 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
     triggersTimeRangeAttributes.forEach((timeRangeAttribute) => {
       const timeRangeAttributePossibleValues = new Map(),
         triggerHasTimeRangeAttribute = isDefined(triggerTimeRange[timeRangeAttribute]),
+        timeRangeAttributeDefaultValues = triggersTimeRangeAttributesGenerateDefaults(timeRangeAttribute),
         timeRangeAttributeValues = triggerHasTimeRangeAttribute
           ? triggerTimeRange[timeRangeAttribute]
-          : triggersTimeRangeAttributesGenerateDefaults(timeRangeAttribute);
+          : timeRangeAttributeDefaultValues;
       switch (timeRangeAttribute) {
         case triggersTimeRangeHours: {
           if (!isDefined(triggerTimeRange[triggersTimeRangeHoursWithMinutes])) {
@@ -8824,10 +8825,10 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
           )})`
         : '';
       if (timeRangeAttributePossibleValues.size > 0) {
-        const interimValue = cachedValueExists(user, cachedInterimValue)
-            ? cachedValueGet(user, cachedInterimValue)
-            : null,
-          valuesCurrent = interimValue?.[`${currentIndex}.${subMenuIndex}`];
+        const interimItemId = `${currentIndex}.${subMenuIndex}`,
+          interimValue = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
+          valuesFromInterim = interimValue?.[interimItemId],
+          valuesCurrent = isDefined(valuesFromInterim) ? valuesFromInterim : timeRangeAttributeValues;
         subMenuIndex = subMenu.push(
           menuMenuItemGenerateSelectItem(
             user,
@@ -8839,7 +8840,7 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
             {
               ...options,
               applyMode: true,
-              values: isDefined(valuesCurrent) ? valuesCurrent : timeRangeAttributeValues,
+              values: valuesCurrent,
               subItem: timeRangeAttribute,
               valuesPrevious: timeRangeAttributeValues,
               valueOptions: {
@@ -8847,6 +8848,8 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
                   ? `${triggerTimeRangeShortDescription(user, {[timeRangeAttribute]: valuesCurrent}, true)}`
                   : attributeValues,
                 interimCalculation: interimCalculationSelectMultiple,
+                valuesDefault: timeRangeAttributeDefaultValues,
+                interimItemId: interimItemId,
               },
             },
           ),
@@ -9710,7 +9713,7 @@ function triggersMenuGenerateManageCondition(user, menuItemToProcess) {
             ...options,
             triggerState: targetStateId,
             state: stateId,
-            stateObject: stateObject,
+            stateObject: objectInfoDeplete(stateObject),
             booleanSelect: true,
             includeCurrent: true,
             subItem: 'value',
@@ -11439,29 +11442,32 @@ function menuMenuItemGenerateBooleanItem(_user, upperItemIndex, itemIndex, itemN
  */
 function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, itemValues, groupId, options) {
   const currentIndex = `${upperItemIndex}.${itemIndex}`,
+    inputOptions = {...objectDeepClone(options)},
     menuItem = {
       index: currentIndex,
       name: itemName,
-      icon: isDefined(options?.icon) ? options.icon : iconItemEdit,
-      options: options,
+      icon: isDefined(inputOptions?.icon) ? inputOptions.icon : iconItemEdit,
+      options: inputOptions,
       submenu: new Array(),
     };
   if (itemValues && (typeOf(itemValues, 'map') || typeOf(itemValues, 'array'))) {
     const itemValuesGroups = typeOf(itemValues, 'map') ? [itemValues] : itemValues,
-      applyMode = options.applyMode,
-      currentValue = applyMode ? options.currentValue : options.value,
-      currentValues = options.values,
-      showCurrent = options.showCurrent && isDefined(currentValue) && !isDefined(options.showValueInName),
-      currentCommand = options?.replaceCommand ? options.replaceCommand : cmdItemPress,
+      applyMode = inputOptions.applyMode,
+      valuesDefault = inputOptions.valueOptions?.valuesDefault,
+      isValuesDefaultAvailable = isDefined(valuesDefault),
+      currentValue = applyMode ? inputOptions.currentValue : inputOptions.value,
+      currentValues = inputOptions.values,
+      showCurrent = inputOptions.showCurrent && isDefined(currentValue) && !isDefined(inputOptions.showValueInName),
+      currentCommand = inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemPress,
       itemCommand = applyMode ? cmdItemSetInterimValue : currentCommand,
-      noMarkCurrent = options?.noMarkCurrent,
-      isValueApplicable = isDefined(options?.isValueApplicable) ? options.isValueApplicable : true;
+      noMarkCurrent = inputOptions?.noMarkCurrent,
+      isValueApplicable = isDefined(inputOptions?.isValueApplicable) ? inputOptions.isValueApplicable : true;
     let subMenuIndex = 0,
       valueToDisplay = '';
-    if (isDefined(options.valueOptions?.valueToApply)) {
-      valueToDisplay = options.valueOptions.valueToApply;
+    if (isDefined(inputOptions.valueOptions?.valueToApply)) {
+      valueToDisplay = inputOptions.valueOptions.valueToApply;
     } else {
-      valueToDisplay = `${currentValue}${options?.valueOptions?.unit ? ' ' + options.valueOptions.unit : ''}`;
+      valueToDisplay = `${currentValue}${inputOptions?.valueOptions?.unit ? ' ' + inputOptions.valueOptions.unit : ''}`;
     }
     menuItem.text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
       {
@@ -11469,17 +11475,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         value: valueToDisplay,
       },
     ])}</code>`;
+    const itemOptions = {
+      ...objectDeepClone(inputOptions, {valueOptions: {states: true, valuesDefault: true}}),
+      backOnPress: !(applyMode || !inputOptions.backOnPress),
+    };
     itemValuesGroups.forEach((itemValuesGroup, groupIndex) => {
       itemValuesGroup.forEach((subItemName, subItemValue) => {
-        const itemOptions = {
-          ...options,
-          value: subItemValue,
-          currentIndex: currentIndex,
-          backOnPress: !(applyMode || !options.backOnPress),
-        };
-        if (isDefined(itemOptions?.valueOptions?.states)) {
-          delete itemOptions.valueOptions['states'];
-        }
         subMenuIndex = menuItem.submenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
           name: subItemName,
@@ -11491,31 +11492,52 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
               ? iconItemCheckMark
               : '',
           command: itemCommand,
-          options: itemOptions,
+          options: {
+            ...itemOptions,
+            value: subItemValue,
+          },
         });
         if (showCurrent && subItemValue === currentValue) menuItem.name += ` [${subItemName}]`;
       });
     });
-    if (applyMode && isValueApplicable) {
-      const previousValue = options.value,
-        previousValues = options.valuesPrevious;
-      if (
-        ((isDefined(previousValues) || isDefined(currentValues)) &&
-          stringifySafe(previousValues) !== stringifySafe(currentValues)) ||
-        (!isDefined(previousValues) && !isDefined(currentValues) && previousValue !== currentValue)
-      ) {
-        menuItem.submenu.push({
-          index: `${currentIndex}.${subMenuIndex}`,
-          name: `${translationsItemMenuGet(user, 'apply')} [${valueToDisplay}]`,
-          group: `apply`,
-          icon: iconItemOk,
-          command: currentCommand,
-          options: {
-            ...options,
+    if (applyMode) {
+      if (isValueApplicable) {
+        const previousValue = inputOptions.value,
+          previousValues = inputOptions.valuesPrevious;
+        if (
+          ((isDefined(previousValues) || isDefined(currentValues)) &&
+            stringifySafe(previousValues) !== stringifySafe(currentValues)) ||
+          (!isDefined(previousValues) && !isDefined(currentValues) && previousValue !== currentValue)
+        ) {
+          const applyOptions = {
+            ...objectDeepClone(inputOptions, {valueOptions: {valuesDefault: true}}),
             value: currentValue,
             values: currentValues,
-            backOnPress: !isDefined(options.backOnPress) || options.backOnPress,
-          },
+            backOnPress: !isDefined(inputOptions.backOnPress) || inputOptions.backOnPress,
+          };
+          subMenuIndex = menuItem.submenu.push({
+            index: `${currentIndex}.${subMenuIndex}`,
+            name: `${translationsItemMenuGet(user, 'apply')} [${valueToDisplay}]`,
+            group: `apply`,
+            icon: iconItemOk,
+            command: currentCommand,
+            options: applyOptions,
+          });
+        }
+      }
+      if (
+        isValuesDefaultAvailable &&
+        isDefined(currentValues) &&
+        stringifySafe(valuesDefault) !== stringifySafe(currentValues)
+      ) {
+        inputOptions.valueOptions['resetValue'] = true;
+        menuItem.submenu.push({
+          index: `${currentIndex}.${subMenuIndex}`,
+          name: translationsItemCoreGet(user, cmdItemReset),
+          group: `reset`,
+          icon: iconItemReset,
+          command: itemCommand,
+          options: inputOptions,
         });
       }
     }
@@ -11542,20 +11564,26 @@ const cachedInterimValue = 'interimValue',
 function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, itemIndex, itemName, groupId, options) {
   let menuItem;
   if (isDefined(options?.valueType)) {
-    const valueOptions = options?.valueOptions ? options.valueOptions : {},
-      valueType = options.valueType,
+    const inputOptions = objectDeepClone(options),
+      valueOptions = inputOptions?.valueOptions ? inputOptions.valueOptions : {},
+      valueType = inputOptions.valueType,
+      interimItemId = `${upperItemIndex}.${itemIndex}`,
       interimValue = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
-      valueCurrent = isDefined(interimValue?.[`${upperItemIndex}.${itemIndex}`])
+      valueCurrent = isDefined(interimValue?.[interimItemId])
         ? interimValue[`${upperItemIndex}.${itemIndex}`]
-        : options?.value,
-      booleanSelect = options?.booleanSelect,
-      applyMode = options?.applyMode,
-      mode = options?.mode,
-      backOnPress = mode !== 'add' || options?.backOnPress;
+        : inputOptions?.value,
+      booleanSelect = inputOptions?.booleanSelect,
+      applyMode = inputOptions?.applyMode,
+      mode = inputOptions?.mode,
+      backOnPress = mode !== 'add' || inputOptions?.backOnPress;
+    if (!isDefined(inputOptions?.valueOptions?.interimItemId)) {
+      if (!isDefined(inputOptions?.valueOptions)) inputOptions.valueOptions = {};
+      inputOptions.valueOptions.interimItemId = interimItemId;
+    }
     if (valueType === 'boolean' && !booleanSelect && !applyMode) {
       menuItem = menuMenuItemGenerateBooleanItem(user, upperItemIndex, itemIndex, itemName, groupId, {
-        ...options,
-        replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
+        ...inputOptions,
+        replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
       });
     } else if (
       (valueOptions.hasOwnProperty('states') && ['string', 'number'].includes(valueType)) ||
@@ -11569,8 +11597,8 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         valueOptions['states'],
         groupId,
         {
-          ...options,
-          replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
+          ...inputOptions,
+          replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
           currentValue: valueCurrent,
           backOnPress: backOnPress,
         },
@@ -11580,7 +11608,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         valueMax = valueOptions.hasOwnProperty('max') ? valueOptions['max'] : undefined,
         valuesMapArray = new Array();
       let step = valueOptions.hasOwnProperty('step') ? valueOptions['step'] : undefined;
-      const baseValue = isDefined(valueCurrent) ? valueCurrent : options.referenceValue;
+      const baseValue = isDefined(valueCurrent) ? valueCurrent : inputOptions.referenceValue;
       let valueDelta = baseValue;
       if (isDefined(valueMax)) {
         if (isDefined(valueMin)) {
@@ -11606,7 +11634,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
       }
       let stepDecimalsCount =
         Math.trunc(step) !== step && step.toString().split('.').length > 1 ? step.toString().split('.')[1].length : 0;
-      if ((mode === 'add' || options?.includeCurrent) && isDefined(valueCurrent)) {
+      if ((mode === 'add' || inputOptions?.includeCurrent) && isDefined(valueCurrent)) {
         const valuesMap = new Map();
         valuesMap.set(
           valueCurrent.toFixed(stepDecimalsCount),
@@ -11645,15 +11673,15 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         }
       });
       menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, valuesMapArray, groupId, {
-        ...options,
-        replaceCommand: options?.replaceCommand ? options.replaceCommand : cmdItemSetValue,
+        ...inputOptions,
+        replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
         currentValue: valueCurrent,
         directInput: true,
         backOnPress: backOnPress,
         applyMode: true,
       });
     } else {
-      menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, options);
+      menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, inputOptions);
     }
     if (menuItem?.options?.directInput) {
       menuItem.submenu.push(
@@ -11665,7 +11693,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
             valueOptions.hasOwnProperty('unit') ? ' ' + valueOptions['unit'] : ''
           })`,
           groupId,
-          {...options, backOnPress: mode !== 'add'},
+          {...inputOptions, backOnPress: mode !== 'add'},
         ),
       );
     }
@@ -11910,8 +11938,9 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
     timeUnits,
     timeUnitsFull = timeInternalUnitsFull;
   const valuesMapArray = [],
+    interimItemId = `${upperItemIndex}.${itemIndex}`,
     valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
-    valueInterimIsDefined = isDefined(valueInterim?.[`${upperItemIndex}.${itemIndex}`]),
+    valueInterimIsDefined = isDefined(valueInterim?.[interimItemId]),
     valueCurrent = valueInterimIsDefined ? valueInterim[`${upperItemIndex}.${itemIndex}`] : options?.value,
     timeMode = options.timeMode ? options.timeMode : timeInternalModeInterval;
   switch (timeMode) {
@@ -12017,6 +12046,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
           mode: timeMode,
           states: valuesMapArray,
           interimCalculation: interimCalculationSummarize,
+          interimItemId: interimItemId,
         },
       });
     }
@@ -14342,8 +14372,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemSetInterimValue: {
-        if (isDefined(commandOptions.currentIndex)) {
-          const currentIndex = commandOptions.currentIndex;
+        if (isDefined(commandOptions.valueOptions?.interimItemId)) {
+          const interimItemId = commandOptions.valueOptions.interimItemId;
           let interimValue;
           switch (commandOptions.valueOptions?.interimCalculation) {
             case interimCalculationSummarize: {
@@ -14387,6 +14417,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   interimValue.push(value);
                   if (typeOf(value) === 'number') interimValue = interimValue.sort((a, b) => a - b);
                 }
+              } else if (
+                isDefined(commandOptions.valueOptions?.resetValue) &&
+                commandOptions.valueOptions?.resetValue &&
+                isDefined(commandOptions.valueOptions?.valuesDefault)
+              ) {
+                interimValue = commandOptions.valueOptions.valuesDefault;
               }
               break;
             }
@@ -14397,7 +14433,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               break;
             }
           }
-          if (isDefined(interimValue)) cachedValueSet(user, cachedInterimValue, {[currentIndex]: interimValue});
+          if (isDefined(interimValue)) cachedValueSet(user, cachedInterimValue, {[interimItemId]: interimValue});
         }
         menuMenuItemsAndRowsClearCached(user);
         break;
@@ -17189,6 +17225,27 @@ function getObjectEnriched(id, enumId) {
   }
 }
 
+const attributesToExclude = {
+  acl: true,
+  from: true,
+  user: true,
+  ts: true,
+  common: {
+    custom: true,
+  },
+  enumNames: true,
+  native: true,
+};
+
+/**
+ * This function deplete the object from attributes, that doesn't needed to be processed.
+ * @param {object} object - The object to deplete.
+ * @returns {object}  The result object.
+ */
+function objectInfoDeplete(object) {
+  return objectDeepClone(object, attributesToExclude);
+}
+
 /**
  * This functions checks, if the provided value acceptable by ioBroker State.
  * @param {string} stateId - The ID of appropriate ioBroker State.
@@ -17214,40 +17271,45 @@ function checkNumberStateValue(stateId, value, stateObject) {
 
 /**
  * This function is doing a full clone of any object with all levels of hierarchy.
- * @param {any} obj
+ * @param {any} source - The source to clone.
+ * @param {object=} filter - The filter object, to filter the source attributes, if source is object.
  * @returns
  */
-function objectDeepClone(obj) {
+function objectDeepClone(source, filter = {}) {
   // If the object is `null` or not an object, return the object itself
-  if (obj === null || typeof obj !== 'object') return obj;
+  if (source === null || typeof source !== 'object') return source;
 
   // If the object is an array, clone each element in the array
-  if (Array.isArray(obj)) {
-    return obj.map(objectDeepClone);
+  if (Array.isArray(source)) {
+    return source.map(objectDeepClone);
   }
 
   // If the object is a Date, return a new Date object with the same value
-  if (obj instanceof Date) {
-    return new Date(obj);
+  if (source instanceof Date) {
+    return new Date(source);
   }
 
   // If the object is a RegExp, return a new RegExp object with the same value
-  if (obj instanceof RegExp) {
-    return new RegExp(obj);
+  if (source instanceof RegExp) {
+    return new RegExp(source);
   }
 
   // If the object is a Map, clone each key-value pair in the Map
-  if (obj instanceof Map) {
+  if (source instanceof Map) {
     const clonedMap = new Map();
-    obj.forEach((value, key) => clonedMap.set(key, objectDeepClone(value)));
+    source.forEach((value, key) => {
+      if (!filter.hasOwnProperty(key) || typeof filter[key] === 'object') {
+        clonedMap.set(key, objectDeepClone(value, filter?.[key]));
+      }
+    });
     return clonedMap;
   }
 
   // If the object is a regular object, clone each property in the object
   const clonedObject = {};
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      clonedObject[key] = objectDeepClone(obj[key]);
+  for (const key in source) {
+    if (source.hasOwnProperty(key) && (!filter.hasOwnProperty(key) || typeof filter[key] === 'object')) {
+      clonedObject[key] = objectDeepClone(source[key], filter?.[key]);
     }
   }
 
