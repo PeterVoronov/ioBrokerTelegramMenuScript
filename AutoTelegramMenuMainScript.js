@@ -9052,6 +9052,10 @@ function triggerTimeRangeCheck(time, timeRange) {
               valueToCheck = time.getHours();
               break;
             }
+            case triggersTimeRangeHoursWithMinutes: {
+              valueToCheck = time.getHours() * 60 + time.getMinutes();
+              break;
+            }
             case triggersTimeRangeDaysOfWeek: {
               valueToCheck = time.getDay();
               if (valueToCheck === 0) valueToCheck = 7;
@@ -9073,10 +9077,47 @@ function triggerTimeRangeCheck(time, timeRange) {
               });
               break;
             }
+            case triggersTimeRangeMonthsWithDays: {
+              valueToCheck = (time.getMonth() + 1) * 50 + time.getDate();
+              break;
+            }
             default:
               break;
           }
-          if (isDefined(valueToCheck)) result = allowedValues.includes(valueToCheck);
+          if (isDefined(valueToCheck))
+            switch (timeRangeAttribute) {
+              case triggersTimeRangeHours:
+              case triggersTimeRangeDaysOfWeek:
+              case triggersTimeRangeMonths:
+              case triggersTimeRangeQuarters:
+              case triggersTimeRangeSeasons: {
+                result = allowedValues.includes(valueToCheck);
+                break;
+              }
+              case triggersTimeRangeHoursWithMinutes:
+              case triggersTimeRangeMonthsWithDays: {
+                const multiplier = timeRangeAttribute === triggersTimeRangeHoursWithMinutes ? 60 : 50;
+                result = allowedValues
+                  .map((deltaValues) => {
+                    return deltaValues.map((deltaValue) =>
+                      deltaValue.reduce((a, item, index) => a + Number(item) * (index ? 1 : multiplier), 0),
+                    );
+                  })
+                  .every((deltaValue) => {
+                    let checkResult = false;
+                    if (deltaValue[0] <= deltaValue[1]) {
+                      checkResult = valueToCheck >= deltaValue[0] && valueToCheck <= deltaValue[1];
+                    } else {
+                      checkResult = valueToCheck >= deltaValue[0] || valueToCheck <= deltaValue[1];
+                    }
+                    return checkResult;
+                  });
+                break;
+              }
+              default: {
+                break;
+              }
+            }
         }
       }
     });
@@ -11781,7 +11822,7 @@ const timeInternalUnitsSeconds = 's',
       [timeInternalUnitsDaysInMonth]: 1,
     },
     [timeInternalUnitsMonths]: {
-      [timeInternalUnitsDaysInMonth]: 100,
+      [timeInternalUnitsDaysInMonth]: 50,
       [timeInternalUnitsMonths]: 1,
     },
   },
