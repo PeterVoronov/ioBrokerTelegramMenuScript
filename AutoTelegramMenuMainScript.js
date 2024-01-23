@@ -7976,7 +7976,16 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
         subMenuIndex,
         `${translationsItemTextGet(user, onTimeIntervalId)} (${onTimeInterval})`,
         'thresholdOn',
-        {...thresholdOptions, item: onTimeIntervalId, value: threshold[onTimeIntervalId], timeUnits: 'ms'},
+        {
+          ...thresholdOptions,
+          item: onTimeIntervalId,
+          value: threshold[onTimeIntervalId],
+          timeUnits: 'ms',
+          valueOptions: {
+            ...thresholdOptions.valueOptions,
+            valueToDisplay: onTimeInterval,
+          }
+        },
       ),
     );
     const templateOptions = {...thresholdOptions, item: alertMessageTemplateId, value: currentThresholdMessageTemplate},
@@ -8546,7 +8555,16 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         subMenuIndex,
         `${translationsItemTextGet(user, onTimeIntervalId)} (${onTimeInterval})`,
         'thresholdOn',
-        {...triggerOptions, item: onTimeIntervalId, value: trigger[onTimeIntervalId], timeUnits: 'ms'},
+        {
+          ...triggerOptions,
+          item: onTimeIntervalId,
+          value: trigger[onTimeIntervalId],
+          timeUnits: 'ms',
+          valueOptions: {
+            ...triggerOptions.valueOptions,
+            valueToDisplay: onTimeInterval,
+          },
+        },
       ),
     );
     const templateOptions = {...triggerOptions, item: alertMessageTemplateId, value: messageTemplate},
@@ -8900,6 +8918,7 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
               values: timeRangeAttributeValues,
               subItem: timeRangeAttribute,
               valueOptions: {
+                ...options.valueOptions,
                 showInApply: (value) => triggerTimeRangeShortDescription(user, {[timeRangeAttribute]: value}, true),
                 interimCalculation: interimCalculationSelectMultiple,
                 valuesDefault: timeRangeAttributeDefaultValues,
@@ -9040,34 +9059,45 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
         : triggersTimeRangeAttributesGenerateDefaults(timeRangeAttribute),
       isValueNew = deltaIndex >= timeRangeAttributeValues.length,
       deltaValue = isValueNew ? [[], []] : timeRangeAttributeValues[deltaIndex];
-    const cachedDeltaValue = cachedValueExists(user, cachedTriggersTimeRangeDelta)
+    const deltaValueCurrent = cachedValueExists(user, cachedTriggersTimeRangeDelta)
         ? cachedValueGet(user, cachedTriggersTimeRangeDelta)
         : deltaValue,
       timeUnits = timeRangeAttribute === triggersTimeRangeHoursWithMinutes ? 'hm' : 'MD',
       multiplier = timeInternalPerUnitMultipliers[timeUnits[0]][timeUnits[1]];
-    cachedDeltaValue.forEach((deltaValueItem, deltaValueIndex) => {
+    deltaValueCurrent.forEach((deltaValueItem, deltaValueIndex) => {
       const deltaValueItemDetails = timeRangeDeltaItemToString(user, deltaValueItem, timeRangeAttribute);
       subMenuIndex = subMenu.push(
-        menuMenuItemGenerateEditTime(user, currentIndex, subMenuIndex, deltaValueItemDetails, timeRangeAttribute, {
-          ...options,
-          replaceCommand: cmdItemPress,
-          value: deltaValueItem.reduce((a, item, index) => a + item * (index ? 1 : multiplier), 0),
-          subIndex: deltaValueIndex,
-          timeMode:
-            timeRangeAttribute === triggersTimeRangeHoursWithMinutes
-              ? timeInternalModeInterval
-              : timeInternalModeMonthAndDay,
-          timeUnits: timeUnits,
-        }),
+        menuMenuItemGenerateEditTime(
+          user,
+          currentIndex,
+          subMenuIndex,
+          deltaValueItemDetails,
+          timeRangeAttribute,
+          {
+            ...options,
+            replaceCommand: cmdItemPress,
+            value: deltaValueItem.reduce((a, item, index) => a + item * (index ? 1 : multiplier), 0),
+            subIndex: deltaValueIndex,
+            timeMode:
+              timeRangeAttribute === triggersTimeRangeHoursWithMinutes
+                ? timeInternalModeInterval
+                : timeInternalModeMonthAndDay,
+            timeUnits: timeUnits,
+            valueOptions: {
+              ...options.valueOptions,
+              valueToDisplay: deltaValueItemDetails,
+            },
+          },
+        ),
       );
     });
     if (
-      stringifySafe(cachedDeltaValue) !== stringifySafe(deltaValue) &&
-      cachedDeltaValue.reduce((a, item) => a + item.length, 0) === 4
+      stringifySafe(deltaValueCurrent) !== stringifySafe(deltaValue) &&
+      deltaValueCurrent.reduce((a, item) => a + item.length, 0) === 4
     ) {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: triggerTimeRangeShortDescription(user, {[timeRangeAttribute]: [cachedDeltaValue]}, true).replace(
+        name: triggerTimeRangeShortDescription(user, {[timeRangeAttribute]: [deltaValueCurrent]}, true).replace(
           /[[\]]/g,
           '',
         ),
@@ -9076,7 +9106,7 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
         command: cmdItemPress,
         options: {
           ...options,
-          value: cachedDeltaValue,
+          value: deltaValueCurrent,
           backOnPress: !typeOf(options.backOnPress, 'boolean') || options.backOnPress,
           timeUnits: timeUnits,
         },
@@ -11572,24 +11602,6 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     }
     let subMenuIndex = 0,
       valueToDisplayInApply = '';
-    switch (typeOf(showInApply)) {
-      case 'string': {
-        valueToDisplayInApply = showInApply;
-        break;
-      }
-      case 'function': {
-        if (interimCalculation === interimCalculationSelectMultiple) {
-          valueToDisplayInApply = showInApply(valuesCurrent);
-        } else {
-          valueToDisplayInApply = showInApply(valueCurrent);
-        }
-
-        break;
-      }
-      default: {
-        break;
-      }
-    }
 
     itemValuesGroups.forEach((itemValuesGroup, groupIndex) => {
       itemValuesGroup.forEach((subItemName, subItemValue) => {
@@ -11619,20 +11631,40 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         }
       });
     });
-    if (isDefined(valuePrevious) && valueText === iconItemNotFound) {
+    if (valueText === iconItemNotFound) {
       if (typeOf(showInApply, 'function')) {
         if (interimCalculation === interimCalculationSelectMultiple) {
-          valueToDisplayInApply = showInApply(valuesPrevious);
-        } else {
-          valueToDisplayInApply = showInApply(valuePrevious);
-        }
-      } else  {
-      valueText = `${valuePrevious}`;
+          if (typeOf(valuesPrevious, 'array')) valueText = showInApply(valuesPrevious);
+        } else if (isDefined(valuePrevious)) valueText = showInApply(valuePrevious);
+      } else if (typeOf(inputOptions?.valueOptions?.valueToDisplay, 'string')) {
+        valueText = inputOptions.valueOptions.valueToDisplay;
+      } else {
+        valueText = `${valuePrevious}`;
       }
-    };
+    }
+    if (valueToDisplayInApply === '') {
+      switch (typeOf(showInApply)) {
+        case 'string': {
+          valueToDisplayInApply = showInApply;
+          break;
+        }
+        case 'function': {
+          if (interimCalculation === interimCalculationSelectMultiple) {
+            valueToDisplayInApply = showInApply(valuesCurrent);
+          } else {
+            valueToDisplayInApply = showInApply(valueCurrent);
+          }
+
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    }
     if (typeOf(inputOptions?.valueOptions?.unit, 'string')) valueText += inputOptions.valueOptions.unit;
     if (showValueInName) menuItem.name += ` [${valueText}]`;
-    menuItem.text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
+    if (!isDefined(menuItem.text)) menuItem.text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
       {
         label: translationsItemTextGet(user, 'CurrentValue'),
         value: valueText,
@@ -11713,7 +11745,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
   let menuItem;
   if (typeOf(options?.valueType, 'string')) {
     const inputOptions = objectDeepClone(options),
-      valueOptions = inputOptions?.valueOptions ? inputOptions.valueOptions : {},
+      valueOptions = typeOf(inputOptions?.valueOptions, 'object') ? inputOptions.valueOptions : {},
       valueType = inputOptions.valueType,
       valueCurrent = inputOptions?.value,
       booleanSelect = inputOptions?.booleanSelect,
@@ -11811,14 +11843,6 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
           valuesMapArray.push(valuesMap);
         }
       });
-      const selectOption = {
-        ...inputOptions,
-        replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
-        currentValue: valueCurrent,
-        backOnPress: backOnPress,
-        applyMode: true,
-      };
-      selectOption.valueOptions = {...selectOption.valueOptions, directInput: true};
       menuItem = menuMenuItemGenerateSelectItem(
         user,
         upperItemIndex,
@@ -11826,7 +11850,17 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         itemName,
         valuesMapArray,
         groupId,
-        selectOption,
+        {
+          ...inputOptions,
+          replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
+          currentValue: valueCurrent,
+          backOnPress: backOnPress,
+          applyMode: true,
+          valueOption: {
+            ...inputOptions.valueOption,
+            directInput: true,
+          }
+        },
       );
     } else {
       menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, inputOptions);
@@ -11855,7 +11889,7 @@ function menuMenuItemGenerateEditItemStateValue(user, upperItemIndex, itemIndex,
       stateObjectCommon = stateObject?.common,
       stateType = options?.stateType ? options.stateType : stateObjectCommon['type'],
       stateValue = options?.value ? options.value : getState(options.state)?.val,
-      valueOptions = {};
+      valueOptions = typeOf(options.valueOptions, 'object') ? options.valueOptions : {};
     if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(stateType)) {
       const states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
       if (typeOf(states, 'object') && Object.keys(states).length > 0) {
@@ -12162,6 +12196,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
         noMarkCurrent: true,
         isValueApplicable: isValueApplicable,
         valueOptions: {
+          ...options.valueOptions,
           showInApply: showInApply.length ? showInApply : undefined,
           type: timeInternalModeTime,
           units: timeUnits,
@@ -14841,7 +14876,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                     cachedValueSet(user, cachedTriggersTimeRangeDelta, currentTimeRangeDelta);
                                     cachedAddToDelCachedOnBack(
                                       user,
-                                      currentMenuPosition.slice(0, -1),
+                                      currentMenuPosition.slice(0, -1).join('.'),
                                       cachedTriggersTimeRangeDelta,
                                     );
                                     triggers = undefined;
