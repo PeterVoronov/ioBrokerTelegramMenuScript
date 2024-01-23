@@ -11638,7 +11638,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         } else if (isDefined(valuePrevious)) valueText = showInApply(valuePrevious);
       } else if (typeOf(inputOptions?.valueOptions?.valueToDisplay, 'string')) {
         valueText = inputOptions.valueOptions.valueToDisplay;
-      } else {
+      } else if (isDefined(valuePrevious)){
         valueText = `${valuePrevious}`;
       }
     }
@@ -11677,7 +11677,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           `${upperItemIndex}.${itemIndex}`,
           menuItem.submenu.length,
           `${translationsItemMenuGet(user, 'SetValue')} [${valueText}]`,
-          groupId,
+          'directInput',
           {...inputOptions, backOnPress: inputOptions?.mode !== 'add'},
         ),
       );
@@ -11856,8 +11856,8 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
           currentValue: valueCurrent,
           backOnPress: backOnPress,
           applyMode: true,
-          valueOption: {
-            ...inputOptions.valueOption,
+          valueOptions: {
+            ...inputOptions.valueOptions,
             directInput: true,
           }
         },
