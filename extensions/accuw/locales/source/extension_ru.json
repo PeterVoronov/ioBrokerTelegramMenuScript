@@ -10,7 +10,7 @@
           "ForecastLong": "Долгосрочный",
           "Day": "День",
           "Night": "Ночь",
-          "Wind": "Ветер",
+          "Wind": "Ветер ",
           "metersPerSecondShort": "м/с.",
           "windGust": "порывы",
           "windNorth": "С",
@@ -40,7 +40,8 @@
           "RelativeHumidity": "Относительная влажность",
           "dewPoint": "точка росы",
           "pressure": "давление",
-          "mmHg": "мм рт.ст."        }
+          "mmHg": "мм рт.ст."
+        }
       }
     }
   }

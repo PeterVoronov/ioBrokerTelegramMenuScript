@@ -10,20 +10,20 @@
           "ForecastLong": "Langfristig",
           "Day": "Tag",
           "Night": "Nacht",
-          "Wind": "Wind",
-          "metersPerSecondShort": "m/s.",
+          "Wind": "",
+          "metersPerSecondShort": "",
           "windGust": "windböen",
-          "windNorth": "N",
+          "windNorth": "",
           "windNorthEast": "NO",
           "windEast": "O",
           "windSouthEast": "SO",
-          "windSouth": "S",
-          "windSouthWest": "SW",
-          "windWest": "W",
-          "windNorthWest": "NW",
+          "windSouth": "",
+          "windSouthWest": "",
+          "windWest": "",
+          "windNorthWest": "",
           "Precipitations": "Niederschlag",
           "NoPrecipitation": "Kein Niederschlag",
-          "millimetersShort": "mm.",
+          "millimetersShort": "",
           "PossiblePrecipitationHours": "Mögliche Niederschlagszeiten",
           "thunderstormProbability": "Gewitterwahrscheinlichkeit",
           "total": "insgesamt",
@@ -40,7 +40,8 @@
           "RelativeHumidity": "Relative Luftfeuchtigkeit",
           "dewPoint": "Taupunkt",
           "pressure": "Druck",
-          "mmHg": "mmHg."        }
+          "mmHg": ""
+        }
       }
     }
   }
