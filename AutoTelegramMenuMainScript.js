@@ -947,7 +947,49 @@ class ConfigOptions {
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
       isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
-      optionTypes = ['systemLevelOptions', 'userLevelOptions'];
+      optionTypes = ['systemLevelOptions', 'userLevelOptions'],
+      maxStringLength =  this.getOptionWithModifier(cfgSummaryTextLengthMax, user),
+      iconOn = this.getOption(cfgDefaultIconOn, user),
+      iconOff = this.getOption(cfgDefaultIconOff, user),
+      formatItemName = (itemName, itemValue, itemType) => {
+        let itemValueText = '',
+        itemNameLength = getStringLength(itemName),
+          itemValueLength = 0,
+          otherElementsLength = getStringLength(currentIcon);
+        if (itemType === 'string') {
+          itemValueText = itemValue;
+          otherElementsLength += 3;
+        } else if (itemType === 'number') {
+          itemValueText = `${itemValue}`;
+          otherElementsLength += 2;
+        } else if (itemType === 'boolean') {
+          itemValueText = itemValue ? iconOn : iconOff;
+          otherElementsLength += 1;
+        }
+        itemValueLength = getStringLength(itemValueText);
+        if (itemNameLength + itemValueLength + otherElementsLength > maxStringLength) {
+          if (itemValueLength > 0) {
+            const maxValueLength = Math.trunc(maxStringLength / 2) - otherElementsLength;
+            if (itemValueLength > maxValueLength) {
+              itemValueText = '...' + itemValueText.slice(- maxValueLength + 2);
+              itemValueLength = maxValueLength;
+            }
+          }
+          if (itemNameLength + itemValueLength + otherElementsLength > maxStringLength) {
+            itemName = itemName.substring(0, maxStringLength - itemValueLength - otherElementsLength - 2) + '...';
+          }
+        }
+        if (itemValueLength > 0) {
+          if (itemType === 'string') {
+            itemValueText = `['${itemValueText}']`;
+          } else if (itemType === 'number') {
+            itemValueText = `[${itemValueText}]`;
+          }
+          return `${itemName} ${itemValueText}`;
+        } else {
+          return itemName;
+        }
+      };
     let subMenu = [],
       subMenuIndex = 0;
     optionTypes.forEach((optionType) => {
@@ -973,7 +1015,7 @@ class ConfigOptions {
               index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
               name: `${currentItemName}`,
               icon: currentIcon,
-              // text: ` [${this.cfg[cfgItem]}] `,
+              text: `${currentItemName}`,
             };
           if (isThisLevelAllowModify) currentItem.submenu = new Array();
           let subSubMenuIndex = 0;
@@ -992,7 +1034,9 @@ class ConfigOptions {
             optionScopes = [configOptionScopeGlobal, configOptionScopeUser];
           }
           optionScopes.forEach((optionScope) => {
-            const currentSubMenuItemName = translationsItemMenuGet(
+            const currentOptionValue =
+            optionScope === configOptionScopeGlobal ? this.globalConfig[cfgItem] : this.getOption(cfgItem, user),
+              currentSubMenuItemName = translationsItemMenuGet(
                 user,
                 'SetValue',
                 optionScope === configOptionScopeGlobal ? configOptionScopeGlobal : '',
@@ -1000,12 +1044,12 @@ class ConfigOptions {
               subSubMenuIndexPrefix = `${currentIndex}.${subMenuIndex}.${itemOrder}`,
               subMenuItem = {
                 index: `${subSubMenuIndexPrefix}.${subSubMenuIndex}`,
-                name: `${currentSubMenuItemName}`,
+                name: formatItemName(currentSubMenuItemName, currentOptionValue, itemType),
                 icon: iconItemEdit,
                 accessLevel: currentAccessLevel,
               };
-            const currentOptionValue =
-              optionScope === configOptionScopeGlobal ? this.globalConfig[cfgItem] : this.getOption(cfgItem, user);
+            if (isSystemLevelOption || optionScope === configOptionScopeUser)
+              currentItem.name = formatItemName(currentItem.name, currentOptionValue, itemType);
             switch (cfgItem) {
               case cfgMenuLanguage:
                 subMenuItem.options = {scope: optionScope, value: currentOptionValue};
@@ -1222,36 +1266,13 @@ class ConfigOptions {
                     break;
                   }
 
-                  case 'number': {
-                    if (isSystemLevelOption || optionScope === configOptionScopeUser)
-                      currentItem.name = `${currentItem.name} [${currentOptionValue}]`;
-                    subMenuItem.name += `[${currentOptionValue}]`;
-                    subMenuItem.command = cmdGetInput;
-                    break;
-                  }
-
+                  case 'number':
                   case 'string': {
-                    let maxTextLength = this.globalConfig[cfgSummaryTextLengthMax] - 5 - currentItemName.length;
-                    if (isSystemLevelOption || optionScope === configOptionScopeUser)
-                      currentItem.name += ` ['${
-                        currentOptionValue.length > maxTextLength ? '...' : ''
-                      }${currentOptionValue.slice(-maxTextLength)}']`;
-                    maxTextLength = this.globalConfig[cfgSummaryTextLengthMax] - 5 - currentSubMenuItemName.length;
-                    subMenuItem.name += ` ['${
-                      currentOptionValue.length > maxTextLength ? '...' : ''
-                    }${currentOptionValue.slice(-maxTextLength)}']`;
                     subMenuItem.command = cmdGetInput;
                     break;
                   }
 
                   case 'boolean': {
-                    if (isSystemLevelOption || optionScope === configOptionScopeUser)
-                      currentItem.name += ` ${
-                        currentOptionValue ? this.globalConfig[cfgDefaultIconOn] : this.globalConfig[cfgDefaultIconOff]
-                      }`;
-                    subMenuItem.name += ` ${
-                      currentOptionValue ? this.globalConfig[cfgDefaultIconOn] : this.globalConfig[cfgDefaultIconOff]
-                    }`;
                     subMenuItem.command = cmdItemPress;
                     break;
                   }
@@ -1261,8 +1282,8 @@ class ConfigOptions {
                 }
                 break;
               }
-            }
 
+            }
             if (isThisLevelAllowModify) {
               if (isDefined(configOptionSubType[cfgItem])) {
                 const itemSubType = configOptionSubType[cfgItem];
@@ -1280,6 +1301,7 @@ class ConfigOptions {
                         timeMode: itemSubType.mode,
                         timeUnits: itemSubType.units,
                         value: currentOptionValue,
+                        valueToDisplay: `${currentOptionValue}`,
                       },
                     );
                     break;
@@ -1293,6 +1315,7 @@ class ConfigOptions {
                   subMenuItem.options = interimItem.options;
                   subMenuItem.submenu = interimItem.submenu;
                   subMenuItem.command = interimItem.command;
+                  subMenuItem.text = interimItem.text;
                 }
               }
               subSubMenuIndex = currentItem.submenu.push(subMenuItem);
@@ -2041,10 +2064,10 @@ class MenuRoles {
    */
   static #ruleDetails(user, rule) {
     return rule
-      ? `\n<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
+      ? `${menuMenuItemDetailsPrintFixedLengthLines(user, [
           {label: translationsItemTextGet(user, 'RuleMask'), value: rule.mask},
           {label: translationsItemTextGet(user, 'RuleAccessLevel'), value: rule.accessLevel},
-        ])}</code>`
+        ])}`
       : '';
   }
 
@@ -2354,7 +2377,7 @@ class MenuRoles {
         },
       ];
     return currentRoleDetailsList.length
-      ? `\n<code>${menuMenuItemDetailsPrintFixedLengthLines(user, currentRoleDetailsList)}</code>`
+      ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentRoleDetailsList)}`
       : '';
   }
 
@@ -2761,7 +2784,7 @@ class MenuUsers extends MenuRoles {
         name: `${currentFullName}${currentUser.userName ? ' [' + currentUser.userName + ']' : ''}`,
         icon: currentItemIcon,
         text: currentUserDetailsList.length
-          ? `\n<code>${menuMenuItemDetailsPrintFixedLengthLines(user, currentUserDetailsList)}</code>`
+          ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentUserDetailsList)}`
           : '',
         submenu: new Array(),
       };
@@ -3787,7 +3810,7 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
       });
   }
   return currentItemDetailsList.length
-    ? `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}</code>`
+    ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}`
     : '';
 }
 
@@ -5619,7 +5642,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
     });
   }
   return currentItemDetailsList.length
-    ? `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}</code>`
+    ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}`
     : '';
 }
 
@@ -6345,7 +6368,7 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
     };
   enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsForAttributes, deviceAttributesToDraw);
   if (deviceAttributesArray.length) {
-    return `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}</code>`;
+    return `${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}`;
   } else {
     return '';
   }
@@ -8769,7 +8792,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           });
         });
       }
-      text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, triggerAttributesArray)}</code>`;
+      text = `${menuMenuItemDetailsPrintFixedLengthLines(user, triggerAttributesArray)}`;
     }
   }
   return text;
@@ -9889,7 +9912,7 @@ function triggersMenuItemDetailsCondition(user, menuItemToProcess) {
               value: isDefined(value) ? enumerationsStateValueDetails(user, stateId, functionId, {val: value}) : '',
             },
           ];
-        text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, conditionAttributesArray)}</code>`;
+        text = `${menuMenuItemDetailsPrintFixedLengthLines(user, conditionAttributesArray)}`;
       }
     }
   }
@@ -10502,12 +10525,12 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
           index: `${currentIndex}.${subMenuIndex}`,
           name: destinationName,
           icon: destinations[destinationId].icon,
-          text: `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
+          text: `${menuMenuItemDetailsPrintFixedLengthLines(user, [
             {
               label: labelDestination,
               value: destinationName,
             },
-          ])}</code>`,
+          ])}`,
           submenu: [],
         };
         if (group) subMenuItem.group = group;
@@ -10543,7 +10566,7 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
         index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
         name: `${deviceName} (${stateShortId})`,
         icon: deviceIcon,
-        text: `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, itemDetailsArray)}</code>`,
+        text: `${menuMenuItemDetailsPrintFixedLengthLines(user, itemDetailsArray)}`,
         submenu: [
           {
             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}.0`,
@@ -10878,7 +10901,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
             });
           });
         });
-      reportText = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, reportLines)}</code>`;
+      reportText = `${menuMenuItemDetailsPrintFixedLengthLines(user, reportLines)}`;
     }
   }
   return reportText;
@@ -11664,12 +11687,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     }
     if (typeOf(inputOptions?.valueOptions?.unit, 'string')) valueText += inputOptions.valueOptions.unit;
     if (showValueInName) menuItem.name += ` [${valueText}]`;
-    if (!isDefined(menuItem.text)) menuItem.text = `<code>${menuMenuItemDetailsPrintFixedLengthLines(user, [
+    if (!isDefined(menuItem.text)) menuItem.text = `${menuMenuItemDetailsPrintFixedLengthLines(user, [
       {
         label: translationsItemTextGet(user, 'CurrentValue'),
         value: valueText,
       },
-    ])}</code>`;
+    ])}`;
     if (inputOptions?.valueOptions?.directInput) {
       subMenuIndex = menuItem.submenu.push(
         menuMenuItemGenerateEditItem(
@@ -12724,7 +12747,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
           let menuText = menuItemToProcess.text;
           if (typeOf(menuText, 'function')) menuText = menuText(user, menuItemToProcess);
-          if (typeOf(menuText, 'string') && menuText) messageObject.message += `\n${menuText}`;
+          if (typeOf(menuText, 'string') && menuText) messageObject.message += `\n<code>${menuText}</code>`;
         }
         messageObject.buttons = [];
         let currentIndex = typeOf(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
