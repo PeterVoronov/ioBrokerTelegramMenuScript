@@ -1,6 +1,6 @@
 {
   "functions": {
-    "external": {
+    "extensions": {
       "accuw": {
         "translations": {
           "WeatherForecast": "Wettervorhersage",
