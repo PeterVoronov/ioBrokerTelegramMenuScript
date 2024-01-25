@@ -40,7 +40,8 @@
           "RelativeHumidity": "Relative Luftfeuchtigkeit",
           "dewPoint": "Taupunkt",
           "pressure": "Druck",
-          "mmHg": "mmHg."        }
+          "mmHg": "mmHg."
+        }
       }
     }
   }
