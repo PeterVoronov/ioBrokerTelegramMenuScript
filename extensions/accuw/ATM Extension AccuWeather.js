@@ -228,26 +228,26 @@ function autoTelegramMenuExtensionAccuWeather() {
 
   function convertDirection(degrees, translations) {
     if (degrees >= 338 || degrees <= 22) {
-      return `${translations['windNorth']} ⇓`;
+      return `⇓(${translations['windNorth']})`;
     } else if (degrees > 22 && degrees < 67) {
-      return `${translations['windNorthEast']} ⇙`;
+      return `⇙(${translations['windNorthEast']})`;
     } else if (degrees >= 68 && degrees <= 112) {
-      return `${translations['windEast']} ⇐`;
+      return `⇐(${translations['windEast']})`;
     } else if (degrees >= 112 && degrees <= 157) {
-      return `${translations['windSouthEast']} ⇖`;
+      return `⇖(${translations['windSouthEast']})`;
     } else if (degrees >= 158 && degrees <= 202) {
-      return `${translations['windSouth']} ⇑`;
+      return `⇑(${translations['windSouth']})`;
     } else if (degrees > 202 && degrees < 247) {
-      return `${translations['windSouthWest']} ⇗`;
+      return `⇗(${translations['windSouthWest']})`;
     } else if (degrees >= 247 && degrees <= 292) {
-      return `${translations['windWest']} ⇒`;
+      return `⇒(${translations['windWest']})`;
     } else {
-      return `${translations['windNorthWest']} ⇘`;
+      return `⇘(${translations['windNorthWest']})`;
     }
   }
 
-  function getForecastDate(inputDate) {
-    return inputDate.toLocaleDateString('ru-Ru', {
+  function getForecastDate(inputDate, languageId) {
+    return inputDate.toLocaleDateString(languageId, {
       weekday: 'short',
       year: 'numeric',
       month: 'long',
@@ -255,24 +255,25 @@ function autoTelegramMenuExtensionAccuWeather() {
     });
   }
 
-  function getForecastTime(inputDate) {
-    return inputDate.toLocaleTimeString('ru-Ru', {
+  function getForecastTime(inputDate, languageId) {
+    return inputDate.toLocaleTimeString(languageId, {
       hour: '2-digit',
       minute: '2-digit',
     });
   }
 
   function getDetailedForecast(day, translations) {
-    const currentDate = new Date(getState(`accuweather.0.Daily.Day${day}.Date`).val);
-    const amountPrecipitation = getState(`accuweather.0.Summary.TotalLiquidVolume_d${day}`).val;
-    const precipitation =
-      amountPrecipitation > 0
-        ? `\r\n * ${translations['Precipitations']}: ${amountPrecipitation} ${translations['millimetersShort']} ${
-            translations['withProbability']
-          } ${getState(`accuweather.0.Summary.PrecipitationProbability_d${day}`).val}%`
-        : `. ${translations['NoPrecipitation']}`;
-    const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
-    let text = ` ${getForecastDate(currentDate)} :`;
+    const currentDate = new Date(getState(`accuweather.0.Daily.Day${day}.Date`).val),
+      amountPrecipitation = getState(`accuweather.0.Summary.TotalLiquidVolume_d${day}`).val,
+      precipitation =
+        amountPrecipitation > 0
+          ? `\r\n * ${translations['Precipitations']}: ${amountPrecipitation} ${translations['millimetersShort']} ${
+              translations['withProbability']
+            } ${getState(`accuweather.0.Summary.PrecipitationProbability_d${day}`).val}%`
+          : `. ${translations['NoPrecipitation']}`,
+      degrees = getObject(`accuweather.0.Current.Temperature`).common.unit,
+      languageId = translations['currentLanguage'] ? translations['currentLanguage'] : 'en';
+    let text = ` ${getForecastDate(currentDate, languageId)} :`;
     text += `\r\n * ${getState(`accuweather.0.Summary.WeatherText_d${day}`).val}${precipitation}${
       day === 1 ? possiblePrecipitationHours(translations) : ''
     }`;
@@ -288,7 +289,7 @@ function autoTelegramMenuExtensionAccuWeather() {
       const hasDayNightPrecipitation = getState(`accuweather.0.Daily.Day${day}.${dayNight}.HasPrecipitation`).val;
       let dayNightPrecipitation = `. ${translations['NoPrecipitation']}`;
       if (hasDayNightPrecipitation) {
-        dayNightPrecipitation = `\r\n * : ${translations['Precipitations']}`;
+        dayNightPrecipitation = `\r\n * ${translations['Precipitations']}:`;
         for (const precipitationType of ['Rain', 'Snow', 'Ice']) {
           const typeProbability = Number.parseInt(
             getState(`accuweather.0.Daily.Day${day}.${dayNight}.${precipitationType}Probability`).val,
@@ -306,7 +307,9 @@ function autoTelegramMenuExtensionAccuWeather() {
           getState(`accuweather.0.Daily.Day${day}.${dayNight}.TotalLiquidVolume`).val,
         );
         if (totalLiquidVolume > 0)
-          dayNightPrecipitation += `\r\n    * ${translations['total']} ${translations['upTo']} ${totalLiquidVolume} ${translations['millimetersShort']}`;
+          dayNightPrecipitation +=
+          `\r\n    * ${translations['total']} ${translations['upTo']
+        } ${totalLiquidVolume} ${translations['millimetersShort']}`;
         const thunderstormProbability = Number.parseInt(
           getState(`accuweather.0.Daily.Day${day}.${dayNight}.ThunderstormProbability`).val,
         );
@@ -330,9 +333,10 @@ function autoTelegramMenuExtensionAccuWeather() {
   }
 
   function getHourlyForecast(hour, translations) {
-    const currentDate = new Date(getState(`accuweather.0.Hourly.h${hour}.DateTime`).val);
-    const degrees = getObject(`accuweather.0.Hourly.h${hour}.Temperature`).common.unit;
-    let text = ` ${getForecastDate(currentDate)} ${getForecastTime(currentDate)}`;
+    const currentDate = new Date(getState(`accuweather.0.Hourly.h${hour}.DateTime`).val),
+      degrees = getObject(`accuweather.0.Hourly.h${hour}.Temperature`).common.unit,
+      languageId = translations['currentLanguage'] ? translations['currentLanguage'] : 'en';
+    let text = ` ${getForecastDate(currentDate, languageId)} ${getForecastTime(currentDate, languageId)}`;
     const hasPrecipitation = getState(`accuweather.0.Hourly.h${hour}.HasPrecipitation`).val;
     let precipitation = `. ${translations['NoPrecipitation']}`;
     if (hasPrecipitation) {
@@ -402,13 +406,14 @@ function autoTelegramMenuExtensionAccuWeather() {
   }
 
   function getTodaysForecast(translations) {
-    const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val);
-    const hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val;
+    const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val),
+      hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val,
+      languageId = translations['currentLanguage'] ? translations['currentLanguage'] : 'en';
     let precipitation = hasPrecipitation
       ? `\r\n * ${translations['Precipitations']}: ${getState(`accuweather.0.Current.PrecipitationType`).val}`
       : translations['NoPrecipitation'];
     const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
-    let text = ` ${getForecastDate(currentDate)} на ${getForecastTime(currentDate)}:`;
+    let text = ` ${getForecastDate(currentDate, languageId)} на ${getForecastTime(currentDate, languageId)}:`;
     text += `\r\n * ${getState(`accuweather.0.Current.WeatherText`).val}. ${precipitation}${possiblePrecipitationHours(
       translations,
     )}`;
@@ -485,7 +490,7 @@ function autoTelegramMenuExtensionAccuWeather() {
           }
           break;
         }
-        default:{
+        default: {
           data.icon = accuWeatherIcons[getState('accuweather.0.Current.WeatherIcon').val].icon;
           const degrees = getObject(`accuweather.0.Current.RealFeelTemperature`).common.unit;
           const currentHour = new Date().getHours();

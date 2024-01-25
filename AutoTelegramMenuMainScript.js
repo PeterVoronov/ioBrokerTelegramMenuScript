@@ -3618,7 +3618,7 @@ function translationsGetPartName(user, translationPartId) {
  * @returns {object} The object, consists a translations, as a properties.
  */
 function translationsGetForExtension(user, extensionId) {
-  let translations = {};
+  let translations = {currentLanguage: configOptions.getOption(cfgMenuLanguage, user)};
   if (extensionId) {
     let extensionFunctionId = extensionId;
     if (extensionFunctionId.startsWith(prefixExtensionId)) {
