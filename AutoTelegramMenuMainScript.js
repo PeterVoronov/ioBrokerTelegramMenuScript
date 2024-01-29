@@ -364,7 +364,14 @@ const configDefaultOptions = {
     [cfgUpdateMessageTime]: {text: 'hh:mm', rule: /^([0-1]?\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/},
     [cfgGraphsIntervals]: {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)},
   },
-  configOptionSubType = {
+  configOptionParameters = {
+    [cfgMaxButtonsOnScreen]: {type: 'number', min: 10, max: 50, step: 1},
+    [cfgSummaryTextLengthMax]: {type: 'number', min: 20, max: 60, step: 1},
+    [cfgTextLengthModifierForGChats]: {type: 'number', min: -10, max: 10, step: 1},
+    [cfgExternalMenuTimeout]: {type: 'number', min: 100, max: 10000, step: 100, units: 'ms'},
+    [cfgConfigBackupCopiesCount]: {type: 'number', min: 0, max: 50, step: 1},
+    [cfgHierarchicalCaption]: {type: 'number', min: 0, max: 10, step: 1},
+    [cfgGraphsScale]: {type: 'number', min: 0.1, max: 10, step: 0.1},
     [cfgUpdateMessageTime]: {type: 'time', mode: timeInternalModeTime, units: 'hm'},
     [cfgMenuRefreshInterval]: {type: 'time', mode: timeInternalModeInterval, units: 'ms'},
     [cfgAlertMessagesHistoryDepth]: {type: 'time', mode: timeInternalModeInterval, units: 'dh'},
@@ -948,12 +955,12 @@ class ConfigOptions {
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
       isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
       optionTypes = ['systemLevelOptions', 'userLevelOptions'],
-      maxStringLength =  this.getOptionWithModifier(cfgSummaryTextLengthMax, user),
+      maxStringLength = this.getOptionWithModifier(cfgSummaryTextLengthMax, user),
       iconOn = this.getOption(cfgDefaultIconOn, user),
       iconOff = this.getOption(cfgDefaultIconOff, user),
       formatItemName = (itemName, itemValue, itemType) => {
         let itemValueText = '',
-        itemNameLength = getStringLength(itemName),
+          itemNameLength = getStringLength(itemName),
           itemValueLength = 0,
           otherElementsLength = getStringLength(currentIcon);
         if (itemType === 'string') {
@@ -971,7 +978,7 @@ class ConfigOptions {
           if (itemValueLength > 0) {
             const maxValueLength = Math.trunc(maxStringLength / 2) - otherElementsLength;
             if (itemValueLength > maxValueLength) {
-              itemValueText = '...' + itemValueText.slice(- maxValueLength + 2);
+              itemValueText = '...' + itemValueText.slice(-maxValueLength + 2);
               itemValueLength = maxValueLength;
             }
           }
@@ -1035,7 +1042,7 @@ class ConfigOptions {
           }
           optionScopes.forEach((optionScope) => {
             const currentOptionValue =
-            optionScope === configOptionScopeGlobal ? this.globalConfig[cfgItem] : this.getOption(cfgItem, user),
+                optionScope === configOptionScopeGlobal ? this.globalConfig[cfgItem] : this.getOption(cfgItem, user),
               currentSubMenuItemName = translationsItemMenuGet(
                 user,
                 'SetValue',
@@ -1282,11 +1289,10 @@ class ConfigOptions {
                 }
                 break;
               }
-
             }
             if (isThisLevelAllowModify) {
-              if (isDefined(configOptionSubType[cfgItem])) {
-                const itemSubType = configOptionSubType[cfgItem];
+              if (isDefined(configOptionParameters[cfgItem])) {
+                const itemSubType = configOptionParameters[cfgItem];
                 let interimItem;
                 switch (itemSubType.type) {
                   case 'time': {
@@ -1306,7 +1312,30 @@ class ConfigOptions {
                     );
                     break;
                   }
-
+                  case 'number': {
+                    const interimItemOptions = {
+                      ...subMenuItem.options,
+                      value: currentOptionValue,
+                      valueToDisplay: `${currentOptionValue}`,
+                      valueType: itemSubType.type,
+                      valueOptions: {
+                        ...subMenuItem.options.valueOptions,
+                      },
+                    };
+                    if (itemSubType.hasOwnProperty('min')) interimItemOptions.valueOptions.min = itemSubType.min;
+                    if (itemSubType.hasOwnProperty('max')) interimItemOptions.valueOptions.max = itemSubType.max;
+                    if (itemSubType.hasOwnProperty('step')) interimItemOptions.valueOptions.step = itemSubType.step;
+                    if (itemSubType.hasOwnProperty('unit')) interimItemOptions.valueOptions.step = itemSubType.unit;
+                    interimItem = menuMenuItemGenerateEditItemBasedOnValueType(
+                      user,
+                      subSubMenuIndexPrefix,
+                      subSubMenuIndex,
+                      subMenuItem.name,
+                      '',
+                      interimItemOptions,
+                    );
+                    break;
+                  }
                   default: {
                     break;
                   }
@@ -8007,7 +8036,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
           valueOptions: {
             ...thresholdOptions.valueOptions,
             valueToDisplay: onTimeInterval,
-          }
+          },
         },
       ),
     );
@@ -8943,7 +8972,7 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
               valueOptions: {
                 ...options.valueOptions,
                 showInApply: (value) => triggerTimeRangeShortDescription(user, {[timeRangeAttribute]: value}, true),
-                interimCalculation: interimCalculationSelectMultiple,
+                interimCalculationMode: interimCalculationSelectMultiple,
                 valuesDefault: timeRangeAttributeDefaultValues,
               },
             },
@@ -9090,28 +9119,21 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
     deltaValueCurrent.forEach((deltaValueItem, deltaValueIndex) => {
       const deltaValueItemDetails = timeRangeDeltaItemToString(user, deltaValueItem, timeRangeAttribute);
       subMenuIndex = subMenu.push(
-        menuMenuItemGenerateEditTime(
-          user,
-          currentIndex,
-          subMenuIndex,
-          deltaValueItemDetails,
-          timeRangeAttribute,
-          {
-            ...options,
-            replaceCommand: cmdItemPress,
-            value: deltaValueItem.reduce((a, item, index) => a + item * (index ? 1 : multiplier), 0),
-            subIndex: deltaValueIndex,
-            timeMode:
-              timeRangeAttribute === triggersTimeRangeHoursWithMinutes
-                ? timeInternalModeInterval
-                : timeInternalModeMonthAndDay,
-            timeUnits: timeUnits,
-            valueOptions: {
-              ...options.valueOptions,
-              valueToDisplay: deltaValueItemDetails,
-            },
+        menuMenuItemGenerateEditTime(user, currentIndex, subMenuIndex, deltaValueItemDetails, timeRangeAttribute, {
+          ...options,
+          replaceCommand: cmdItemPress,
+          value: deltaValueItem.reduce((a, item, index) => a + item * (index ? 1 : multiplier), 0),
+          subIndex: deltaValueIndex,
+          timeMode:
+            timeRangeAttribute === triggersTimeRangeHoursWithMinutes
+              ? timeInternalModeInterval
+              : timeInternalModeMonthAndDay,
+          timeUnits: timeUnits,
+          valueOptions: {
+            ...options.valueOptions,
+            valueToDisplay: deltaValueItemDetails,
           },
-        ),
+        }),
       );
     });
     if (
@@ -11594,9 +11616,9 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
       showValueInName = inputOptions.showValueInName,
       currentCommand = inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemPress,
       itemCommand = applyMode ? cmdItemSetInterimValue : currentCommand,
-      noMarkCurrent = inputOptions?.noMarkCurrent,
       isValueApplicable = typeOf(inputOptions?.isValueApplicable, 'boolean') ? inputOptions.isValueApplicable : true,
-      interimCalculation = inputOptions.valueOptions?.interimCalculation,
+      interimCalculationMode = inputOptions.valueOptions?.interimCalculationMode,
+      noMarkCurrent = inputOptions?.noMarkCurrent || interimCalculationMode === interimCalculationSummarize,
       showInApply = inputOptions?.valueOptions?.showInApply;
     if (applyMode) {
       if (!typeOf(inputOptions.valueOptions?.interimItemId, 'string')) {
@@ -11613,13 +11635,13 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     if (applyMode) {
       const interimValue = cachedValueGet(user, cachedInterimValue);
       if (isDefined(interimValue?.[currentIndex])) {
-        if (interimCalculation === interimCalculationSelectMultiple) {
+        if (interimCalculationMode === interimCalculationSelectMultiple) {
           valuesCurrent = interimValue[currentIndex];
         } else {
           valueCurrent = interimValue[currentIndex];
         }
       }
-      if (interimCalculation == interimCalculationSummarize) {
+      if (interimCalculationMode == interimCalculationSummarize) {
         itemOptions.valueOptions = {...itemOptions.valueOptions, valueCurrent: valueCurrent};
       }
     }
@@ -11656,12 +11678,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     });
     if (valueText === iconItemNotFound) {
       if (typeOf(showInApply, 'function')) {
-        if (interimCalculation === interimCalculationSelectMultiple) {
+        if (interimCalculationMode === interimCalculationSelectMultiple) {
           if (typeOf(valuesPrevious, 'array')) valueText = showInApply(valuesPrevious);
         } else if (isDefined(valuePrevious)) valueText = showInApply(valuePrevious);
       } else if (typeOf(inputOptions?.valueOptions?.valueToDisplay, 'string')) {
         valueText = inputOptions.valueOptions.valueToDisplay;
-      } else if (isDefined(valuePrevious)){
+      } else if (isDefined(valuePrevious)) {
         valueText = `${valuePrevious}`;
       }
     }
@@ -11672,7 +11694,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           break;
         }
         case 'function': {
-          if (interimCalculation === interimCalculationSelectMultiple) {
+          if (interimCalculationMode === interimCalculationSelectMultiple) {
             valueToDisplayInApply = showInApply(valuesCurrent);
           } else {
             valueToDisplayInApply = showInApply(valueCurrent);
@@ -11687,12 +11709,21 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     }
     if (typeOf(inputOptions?.valueOptions?.unit, 'string')) valueText += inputOptions.valueOptions.unit;
     if (showValueInName) menuItem.name += ` [${valueText}]`;
-    if (!isDefined(menuItem.text)) menuItem.text = `${menuMenuItemDetailsPrintFixedLengthLines(user, [
-      {
-        label: translationsItemTextGet(user, 'CurrentValue'),
-        value: valueText,
-      },
-    ])}`;
+    if (!isDefined(menuItem.text)) {
+      const textLines = [
+        {
+          label: translationsItemTextGet(user, 'CurrentValue'),
+          value: valueText,
+        },
+      ];
+      if (isDefined(inputOptions.valueOptions?.min))
+        textLines.push({label: ' ' + translationsItemTextGet(user, 'Min'), value: inputOptions.valueOptions.min});
+      if (isDefined(inputOptions.valueOptions?.max))
+        textLines.push({label: ' ' + translationsItemTextGet(user, 'Max'), value: inputOptions.valueOptions.max});
+      if (isDefined(inputOptions.valueOptions?.step))
+        textLines.push({label: ' ' + translationsItemTextGet(user, 'Step'), value: inputOptions.valueOptions.step});
+      menuItem.text = `${menuMenuItemDetailsPrintFixedLengthLines(user, textLines)}`;
+    }
     if (inputOptions?.valueOptions?.directInput) {
       subMenuIndex = menuItem.submenu.push(
         menuMenuItemGenerateEditItem(
@@ -11798,93 +11829,68 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         },
       );
     } else if (valueType === 'number') {
-      const valueMin = valueOptions.hasOwnProperty('min') ? valueOptions['min'] : undefined,
+      let valueMin = valueOptions.hasOwnProperty('min') ? valueOptions['min'] : undefined,
         valueMax = valueOptions.hasOwnProperty('max') ? valueOptions['max'] : undefined,
-        valuesMapArray = new Array();
-      let step = valueOptions.hasOwnProperty('step') ? valueOptions['step'] : undefined;
-      const baseValue = isDefined(valueCurrent) ? valueCurrent : inputOptions.referenceValue;
-      let valueDelta = baseValue;
-      if (typeOf(valueMax, 'number')) {
-        if (typeOf(valueMin, 'number')) {
-          valueDelta = valueMax - valueMin;
-        } else {
-          valueDelta = valueMax - baseValue;
+        valueStep = valueOptions.hasOwnProperty('step') ? valueOptions['step'] : undefined;
+      const valuesMapArray = new Array(),
+        valuesArray = [1, 2, 5],
+        baseValue = isDefined(valueCurrent) ? valueCurrent : inputOptions.referenceValue,
+        interimItemId = `${upperItemIndex}.${itemIndex}`,
+        valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
+        valueInterimIsDefined = isDefined(valueInterim?.[interimItemId]),
+        valueToWork = valueInterimIsDefined ? valueInterim[interimItemId] : baseValue;
+      if (!typeOf(valueStep, 'number')) {
+        const digitsNumberBase = Math.trunc(baseValue).toString.length || 0,
+          digitsNumberMax = typeOf(valueMax, 'number') ? Math.trunc(valueMax).toString.length : digitsNumberBase + 1;
+        for (let positionIndex = digitsNumberMax - 3; positionIndex <= digitsNumberMax; positionIndex++) {
+          const multiplier = Math.pow(10, positionIndex);
+          [-1, 1].forEach((sign) => {
+            const valuesMap = new Map();
+            valuesArray.forEach((value) => {
+              const valueToSet = value * multiplier * sign;
+              if (
+                (!typeOf(valueMin, 'number') || valueToWork + valueToSet >= valueMin) &&
+                (!typeOf(valueMax, 'number') || valueToWork + valueToSet <= valueMax)
+              ) {
+                valuesMap.set(valueToSet, `${valueToSet}`);
+              }
+            });
+            valuesMapArray.push(valuesMap);
+          });
         }
-      } else if (typeOf(valueMin, 'number')) {
-        valueDelta = Math.abs(baseValue - valueMin);
-      }
-      if (!typeOf(step, 'number')) {
-        if (valueDelta < 0.1) {
-          step = 0.01;
-        } else if (valueDelta < 1) {
-          step = 0.05;
-        } else if (valueDelta < 5) {
-          step = 0.2;
-        } else if (valueDelta < 40) {
-          step = 0.5;
-        } else {
-          step = Math.round(valueDelta / 20);
+      } else {
+        let stepMultiplier = 1;
+        if (!typeOf(valueMax, 'number')) valueMax = 10 ** (Math.trunc(valueMax).toString.length + 1);
+        if (!typeOf(valueMin, 'number')) valueMin = 0;
+        while (valueStep * stepMultiplier < valueMax - valueMin) {
+          [-1, 1].forEach((sign) => {
+            const valuesMap = new Map();
+            valuesArray.forEach((value) => {
+              const valueToSet = value * valueStep * stepMultiplier * sign;
+              if (valueToWork + valueToSet >= valueMin && valueToWork + valueToSet <= valueMax) {
+                valuesMap.set(valueToSet, `${valueToSet}`);
+              }
+            });
+            valuesMapArray.push(valuesMap);
+          });
+          stepMultiplier = stepMultiplier * 10;
         }
       }
-      let stepDecimalsCount =
-        Math.trunc(step) !== step && step.toString().split('.').length > 1 ? step.toString().split('.')[1].length : 0;
-      if ((mode === 'add' || inputOptions?.includeCurrent) && isDefined(valueCurrent)) {
-        const valuesMap = new Map();
-        valuesMap.set(
-          valueCurrent.toFixed(stepDecimalsCount),
-          `${valueCurrent.toFixed(stepDecimalsCount)}${
-            valueOptions.hasOwnProperty('unit') ? ` ${valueOptions['unit']}` : ''
+      menuItem = menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, valuesMapArray, groupId, {
+        ...inputOptions,
+        replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
+        currentValue: valueCurrent,
+        backOnPress: backOnPress,
+        applyMode: true,
+        valueOptions: {
+          ...inputOptions.valueOptions,
+          interimCalculationMode: interimCalculationSummarize,
+          showInApply: `${valueToWork}${
+            inputOptions.valueOptions.hasOwnProperty('unit') ? ` ${inputOptions.valueOptions['unit']}` : ''
           }`,
-        );
-        valuesMapArray.push(valuesMap);
-      }
-      [1, 2, 4].forEach((stepModifier) => {
-        const currentStep = step * stepModifier;
-        stepDecimalsCount =
-          Math.trunc(currentStep) !== currentStep && currentStep.toString().split('.').length > 1
-            ? currentStep.toString().split('.')[1].length
-            : 0;
-        if (
-          (!typeOf(valueMin, 'number') || valueMin <= baseValue - currentStep) &&
-          (!typeOf(valueMax, 'number') || valueMax >= baseValue + currentStep)
-        ) {
-          const valuesMap = new Map();
-          for (let value = baseValue - 2 * currentStep; value <= baseValue + 2 * currentStep; value += currentStep) {
-            if (
-              (!typeOf(valueMin, 'number') || value >= valueMin) &&
-              (!typeOf(valueMax, 'number') || value <= valueMax) &&
-              value !== valueCurrent
-            ) {
-              valuesMap.set(
-                value.toFixed(stepDecimalsCount),
-                `${value.toFixed(stepDecimalsCount)}${
-                  valueOptions.hasOwnProperty('unit') ? ` ${valueOptions['unit']}` : ''
-                }`,
-              );
-            }
-          }
-          valuesMapArray.push(valuesMap);
-        }
-      });
-      menuItem = menuMenuItemGenerateSelectItem(
-        user,
-        upperItemIndex,
-        itemIndex,
-        itemName,
-        valuesMapArray,
-        groupId,
-        {
-          ...inputOptions,
-          replaceCommand: inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemSetValue,
-          currentValue: valueCurrent,
-          backOnPress: backOnPress,
-          applyMode: true,
-          valueOptions: {
-            ...inputOptions.valueOptions,
-            directInput: true,
-          }
+          directInput: true,
         },
-      );
+      });
     } else {
       menuItem = menuMenuItemGenerateEditItem(user, upperItemIndex, itemIndex, itemName, groupId, inputOptions);
     }
@@ -12225,7 +12231,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
           units: timeUnits,
           mode: timeMode,
           states: valuesMapArray,
-          interimCalculation: interimCalculationSummarize,
+          interimCalculationMode: interimCalculationSummarize,
           interimItemId: interimItemId,
         },
       });
@@ -14564,9 +14570,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdItemSetInterimValue: {
         if (typeOf(commandOptions.valueOptions?.interimItemId, 'string')) {
           const interimItemId = commandOptions.valueOptions.interimItemId,
-            interimCalculation = commandOptions.valueOptions?.interimCalculation;
+            interimCalculationMode = commandOptions.valueOptions?.interimCalculationMode;
           let interimValue;
-          switch (interimCalculation) {
+          switch (interimCalculationMode) {
             case interimCalculationSummarize: {
               const valueCurrent = commandOptions.valueOptions?.valueCurrent,
                 modificator = isDefined(commandOptions.value) ? Number(commandOptions.value) : 0;
@@ -14596,6 +14602,13 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
 
                 default: {
+                  const valueBase = typeOf(valueCurrent, 'number') ? valueCurrent : 0,
+                    valueBaseDecimals = countDecimals(valueBase),
+                    valueModifier = typeOf(commandOptions.value, 'number') ? commandOptions.value : 0,
+                    valueModifierDecimals = countDecimals(valueModifier),
+                    maxDecimals = valueBaseDecimals > valueModifierDecimals ? valueBaseDecimals : valueModifierDecimals;
+                  interimValue = valueBase + valueModifier;
+                  if (maxDecimals > 0) interimValue = Math.round(interimValue * 10 ** maxDecimals) / 10 ** maxDecimals;
                   break;
                 }
               }
@@ -17409,6 +17422,17 @@ function stringCapitalize(string) {
  */
 function zeroPad(value, places) {
   return String(Math.trunc(value)).padStart(places, '0');
+}
+
+/**
+ * The `countDecimals` function is used to count the number of decimal places in a given number.
+ * @param {number} value - The number for which the decimal places are to be counted.
+ * @returns {number} The number of decimal places in the given number.  If the input is not a number or an integer,
+ * the function returns 0.
+ */
+function countDecimals(value) {
+  if (typeOf(value, 'number')) return value % 1 ? value.toString().split('.')[1].length : 0;
+  return 0;
 }
 
 /**
