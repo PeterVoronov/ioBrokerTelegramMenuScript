@@ -11845,14 +11845,15 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         for (let positionIndex = digitsNumberMax - 3; positionIndex <= digitsNumberMax; positionIndex++) {
           const multiplier = Math.pow(10, positionIndex);
           [-1, 1].forEach((sign) => {
-            const valuesMap = new Map();
+            const valuesMap = new Map(),
+            signSymbol = sign > 0 ? '+' : '';
             valuesArray.forEach((value) => {
               const valueToSet = value * multiplier * sign;
               if (
                 (!typeOf(valueMin, 'number') || valueToWork + valueToSet >= valueMin) &&
                 (!typeOf(valueMax, 'number') || valueToWork + valueToSet <= valueMax)
               ) {
-                valuesMap.set(valueToSet, `${valueToSet}`);
+                valuesMap.set(valueToSet, `${signSymbol}${valueToSet}`);
               }
             });
             valuesMapArray.push(valuesMap);
@@ -11864,11 +11865,12 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         if (!typeOf(valueMin, 'number')) valueMin = 0;
         while (valueStep * stepMultiplier < valueMax - valueMin) {
           [-1, 1].forEach((sign) => {
-            const valuesMap = new Map();
+            const valuesMap = new Map(),
+            signSymbol = sign > 0 ? '+' : '';
             valuesArray.forEach((value) => {
               const valueToSet = value * valueStep * stepMultiplier * sign;
               if (valueToWork + valueToSet >= valueMin && valueToWork + valueToSet <= valueMax) {
-                valuesMap.set(valueToSet, `${valueToSet}`);
+                valuesMap.set(valueToSet, `${signSymbol}${valueToSet}`);
               }
             });
             valuesMapArray.push(valuesMap);
