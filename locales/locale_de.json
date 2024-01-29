@@ -234,6 +234,7 @@
       "textSpring": "Frühling",
       "textSpringShort": "Fr",
       "textState": "Attribut/Button",
+      "textStep": "core.textStep",
       "textSummer": "Sommer",
       "textSummerShort": "So",
       "textSwitchOff": "Ausschalten",

@@ -234,6 +234,7 @@
       "textSpring": "Весна",
       "textSpringShort": "В",
       "textState": "Атрибут/Кнопка",
+      "textStep": "core.textStep",
       "textSummer": "Лето",
       "textSummerShort": "Л",
       "textSwitchOff": "Выключить",
