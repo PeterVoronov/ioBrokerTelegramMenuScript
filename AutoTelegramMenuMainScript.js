@@ -11701,7 +11701,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           menuItem.submenu.length,
           `${translationsItemMenuGet(user, 'SetValue')} [${valueText}]`,
           'directInput',
-          {...inputOptions, backOnPress: inputOptions?.mode !== 'add'},
+          itemOptions,
         ),
       );
     }
