@@ -30,7 +30,7 @@
           "rain": "regen",
           "snow": "schnee",
           "ice": "eis",
-          "mixed": "",
+          "mixed": "gemischt",
           "withProbability": "mit Wahrscheinlichkeit",
           "Temperature": "Temperatur",
           "from": "von",
