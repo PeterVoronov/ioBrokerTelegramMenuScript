@@ -368,7 +368,7 @@ const configDefaultOptions = {
     [cfgMaxButtonsOnScreen]: {type: 'number', min: 10, max: 50, step: 1},
     [cfgSummaryTextLengthMax]: {type: 'number', min: 20, max: 60, step: 1},
     [cfgTextLengthModifierForGChats]: {type: 'number', min: -10, max: 10, step: 1},
-    [cfgExternalMenuTimeout]: {type: 'number', min: 100, max: 10000, step: 100, units: 'ms'},
+    [cfgExternalMenuTimeout]: {type: 'number', min: 100, max: 10000, step: 10, units: 'ms'},
     [cfgConfigBackupCopiesCount]: {type: 'number', min: 0, max: 50, step: 1},
     [cfgHierarchicalCaption]: {type: 'number', min: 0, max: 10, step: 1},
     [cfgGraphsScale]: {type: 'number', min: 0.1, max: 10, step: 0.1},
