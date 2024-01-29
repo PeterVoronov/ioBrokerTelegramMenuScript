@@ -30,6 +30,7 @@
           "rain": "дождь",
           "snow": "снег",
           "ice": "лёд",
+          "mixed": "",
           "withProbability": "с вероятностью",
           "Temperature": "Температура",
           "from": "от",

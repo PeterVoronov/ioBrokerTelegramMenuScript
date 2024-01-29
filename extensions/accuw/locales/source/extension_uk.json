@@ -30,6 +30,7 @@
           "rain": "дощ",
           "snow": "сніг",
           "ice": "лід",
+          "mixed": "",
           "withProbability": "з ймовірністю",
           "Temperature": "Температура",
           "from": "від",

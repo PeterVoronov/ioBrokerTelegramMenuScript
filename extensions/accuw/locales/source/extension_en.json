@@ -30,6 +30,7 @@
           "rain": "rain",
           "snow": "snow",
           "ice": "ice",
+          "mixed": "",
           "withProbability": "with probability",
           "Temperature": "Temperature",
           "from": "from",
