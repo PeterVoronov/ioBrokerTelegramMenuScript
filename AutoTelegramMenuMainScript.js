@@ -283,117 +283,286 @@ const cfgPrefix = 'cfg',
 const alertMessageTemplateDefault =
   '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}'; // NOSONAR
 
-const configDefaultOptions = {
-    [cfgMenuUsers]: {},
-    [cfgMenuRoles]: {},
-    // maximum buttons on one screen except alerts and global menu related
-    [cfgMaxButtonsOnScreen]: 24,
-    // List of commands to show the menu
-    [cfgMessagesForMenuCall]: ['/menu'],
-    // Interval to refresh current menu screen(disabled if '0')
-    [cfgMenuRefreshInterval]: 0,
-    // Timeout to wait an answer from extensions
-    [cfgExternalMenuTimeout]: 500,
-    // History adapter for eCharts
-    [cfgHistoryAdapter]: '',
-    // Folder with e-charts templates
-    [cfgGraphsTemplates]: '',
-    // Get object 'common' description from alias "source".
-    [cfgUseAliasOriginForCommonAttrs]: true,
-    //Don't show device attributes with `null` value. Except Buttons and PrimaryState
-    [cfgSkipAttributesWithNullValue]: true,
-    // Allow to delete an empty enums (functions, destinations, reports)
-    [cfgAllowToDeleteEmptyEnums]: true,
-    // Max backup copies of config to be stored. If 0 - automatic backup will not work
-    [cfgConfigBackupCopiesCount]: 7,
-    [cfgAlertMessageTemplateMain]: alertMessageTemplateDefault,
-    [cfgAlertMessageTemplateThreshold]: alertMessageTemplateDefault + ' [${alertThresholdIcon}${alertThresholdValue}]',
-    // Check stored states values on the start of script, to raise an alert
-    [cfgCheckAlertStatesOnStartUp]: false,
-    // Make possible to set thresholds for states of string type, which is really numeric
-    [cfgThresholdsForNumericString]: false,
-    // Enable debug mode - huge amount of logs
-    [cfgDebugMode]: false,
-    // Menu display language
-    [cfgMenuLanguage]: 'ru',
-    // Menu display functions on top (or destinations)
-    [cfgMenuFunctionsFirst]: true,
-    // Menu generation buster - less checks, possible empty submenus
-    [cfgMenuFastGeneration]: true,
-    // Maximum numbers of symbols per line (approximate, for )
-    [cfgSummaryTextLengthMax]: 30,
-    // Modifier for the max of symbols per line for a group chats
-    [cfgTextLengthModifierForGChats]: -4,
-    // Delete command, after menu is shown
-    [cfgClearMenuCall]: true,
-    // show caption of the current menu hierarchically
-    [cfgHierarchicalCaption]: 0,
-    // Always show 'Home' button
-    [cfgShowHomeButton]: true,
-    // Always show "Horizontal" navigation buttons,
-    [cfgShowHorizontalNavigation]: false,
-    // Show alert messages, as reactions on some input
-    [cfgShowResultMessages]: true,
-    // Scale for e-charts graphs
-    [cfgGraphsScale]: 1,
-    // Time ranges back from now, in minutes
-    [cfgGraphsIntervals]: [
-      {id: '2h', minutes: timeIntervalsInMinutes.h * 2},
-      {id: '6h', minutes: timeIntervalsInMinutes.h * 6},
-      {id: '12h', minutes: timeIntervalsInMinutes.h * 12},
-      {id: '1D', minutes: timeIntervalsInMinutes.D},
-      {id: '3D', minutes: timeIntervalsInMinutes.D * 3},
-      {id: '1W', minutes: timeIntervalsInMinutes.W},
-      {id: '2W', minutes: timeIntervalsInMinutes.W * 2},
-      {id: '1M', minutes: timeIntervalsInMinutes.M},
-      {id: '3M', minutes: timeIntervalsInMinutes.M * 3},
-      {id: '6M', minutes: timeIntervalsInMinutes.M * 6},
-      {id: '1Y', minutes: timeIntervalsInMinutes.Y},
-    ],
-    [cfgDefaultIconOn]: iconItemOn,
-    [cfgDefaultIconOff]: iconItemOff,
-    // Alert messages history depth in hours
-    [cfgAlertMessagesHistoryDepth]: 48,
-    [cfgUpdateMessageTime]: '12:05',
-    // Refresh menu messages after script start. If 0 - will not refresh.
-    [cfgUpdateMessagesOnStart]: 5,
-    // Template for date and time in Menu
-    [cfgDateTimeTemplate]: 'DD.MM hh:mm:ss',
+const configOptionsParameters = {
+    [cfgMenuUsers]: {type: 'object', systemLevel: true, hidden: true, default: {}, description: 'Menu users'},
+    [cfgMenuRoles]: {type: 'object', systemLevel: true, hidden: true, default: {}, description: 'Menu roles'},
+    [cfgMessagesForMenuCall]: {
+      type: 'array',
+      subType: 'string',
+      systemLevel: true,
+      hidden: false,
+      default: ['/menu'],
+      description: 'List of commands to show the menu',
+    },
+    [cfgMaxButtonsOnScreen]: {
+      type: 'number',
+      min: 10,
+      max: 50,
+      step: 1,
+      systemLevel: true,
+      hidden: false,
+      default: 24,
+      description: 'Maximum buttons on one screen except alerts and global menu related',
+    },
+    [cfgMenuRefreshInterval]: {
+      type: 'time',
+      mode: timeInternalModeInterval,
+      template: 'ms',
+      systemLevel: true,
+      hidden: false,
+      default: 0,
+      description: 'Interval to refresh current menu screen(disabled if "0")',
+    },
+    [cfgExternalMenuTimeout]: {
+      type: 'number',
+      min: 100,
+      max: 10000,
+      step: 10,
+      unit: 'ms',
+      systemLevel: true,
+      hidden: false,
+      default: 500,
+      description: 'Timeout to wait an answer from extensions',
+    },
+    [cfgHistoryAdapter]: {
+      type: 'string',
+      systemLevel: true,
+      hidden: false,
+      default: '',
+      description: 'History adapter',
+    },
+    [cfgGraphsTemplates]: {
+      type: 'string',
+      systemLevel: true,
+      hidden: false,
+      default: '',
+      description: 'Folder with e-charts templates',
+    },
+    [cfgUseAliasOriginForCommonAttrs]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: true,
+      description: 'Get object "common" description from alias "source".',
+    },
+    [cfgSkipAttributesWithNullValue]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: true,
+      description: "Don't show device attributes with `null` value. Except Buttons and PrimaryState",
+    },
+    [cfgAllowToDeleteEmptyEnums]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: true,
+      description: 'Allow to delete an empty enums (functions, destinations, reports)',
+    },
+    [cfgConfigBackupCopiesCount]: {
+      type: 'number',
+      min: 0,
+      max: 50,
+      step: 1,
+      systemLevel: true,
+      hidden: false,
+      default: 7,
+      description: 'Max backup copies of config to be stored. If 0 - automatic backup will not work',
+    },
+    [cfgAlertMessageTemplateMain]: {
+      type: 'string',
+      systemLevel: false,
+      hidden: false,
+      default: alertMessageTemplateDefault,
+      description: 'Template for alert message',
+    },
+    [cfgAlertMessageTemplateThreshold]: {
+      type: 'string',
+      systemLevel: true,
+      hidden: false,
+      default: alertMessageTemplateDefault,
+      description: 'Template for alert message with threshold',
+    },
+    [cfgCheckAlertStatesOnStartUp]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: false,
+      description: 'Check stored states values on the start of script, to raise an alert',
+    },
+    [cfgThresholdsForNumericString]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: false,
+      description: 'Make possible to set thresholds for states of string type, which is really numeric',
+    },
+    [cfgDebugMode]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: false,
+      description: 'Enable debug mode - huge amount of logs',
+    },
+    [cfgMenuLanguage]: {
+      type: 'string',
+      systemLevel: true,
+      hidden: false,
+      default: 'ru',
+      description: 'Menu display language',
+    },
+    [cfgMenuFunctionsFirst]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: true,
+      description: 'Menu display functions on top (or destinations)',
+    },
+    [cfgMenuFastGeneration]: {
+      type: 'boolean',
+      systemLevel: true,
+      hidden: false,
+      default: true,
+      description: 'Menu generation buster - less checks, possible empty submenus',
+    },
+    [cfgSummaryTextLengthMax]: {
+      type: 'number',
+      min: 20,
+      max: 60,
+      step: 1,
+      systemLevel: false,
+      hidden: false,
+      default: 30,
+      description: 'Maximum numbers of symbols per line (approximate, for )',
+    },
+    [cfgTextLengthModifierForGChats]: {
+      type: 'number',
+      min: -10,
+      max: 10,
+      step: 1,
+      systemLevel: false,
+      hidden: false,
+      default: -4,
+      description: 'Modifier for the max of symbols per line for a group chats',
+    },
+    [cfgClearMenuCall]: {
+      type: 'boolean',
+      systemLevel: false,
+      hidden: false,
+      default: true,
+      description: 'Delete command, after menu is shown',
+    },
+    [cfgHierarchicalCaption]: {
+      type: 'number',
+      min: 0,
+      max: 10,
+      step: 1,
+      systemLevel: false,
+      hidden: false,
+      default: 0,
+      description: 'show caption of the current menu hierarchically',
+    },
+    [cfgShowHomeButton]: {
+      type: 'boolean',
+      systemLevel: false,
+      hidden: false,
+      default: true,
+      description: "Always show 'Home' button",
+    },
+    [cfgShowHorizontalNavigation]: {
+      type: 'boolean',
+      systemLevel: false,
+      hidden: false,
+      default: false,
+      description: 'Always show "Horizontal" navigation buttons,',
+    },
+    [cfgShowResultMessages]: {
+      type: 'boolean',
+      systemLevel: false,
+      hidden: false,
+      default: true,
+      description: 'Show alert messages, as reactions on some input',
+    },
+    [cfgGraphsScale]: {
+      type: 'number',
+      min: 0.1,
+      max: 10,
+      step: 0.1,
+      systemLevel: false,
+      hidden: false,
+      default: 1,
+      description: 'Scale for e-charts graphs',
+    },
+    [cfgGraphsIntervals]: {
+      type: 'array',
+      subType: 'object',
+      systemLevel: false,
+      hidden: false,
+      template: {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)},
+      default: [
+        {id: '2h', minutes: timeIntervalsInMinutes.h * 2},
+        {id: '6h', minutes: timeIntervalsInMinutes.h * 6},
+        {id: '12h', minutes: timeIntervalsInMinutes.h * 12},
+        {id: '1D', minutes: timeIntervalsInMinutes.D},
+        {id: '3D', minutes: timeIntervalsInMinutes.D * 3},
+        {id: '1W', minutes: timeIntervalsInMinutes.W},
+        {id: '2W', minutes: timeIntervalsInMinutes.W * 2},
+        {id: '1M', minutes: timeIntervalsInMinutes.M},
+        {id: '3M', minutes: timeIntervalsInMinutes.M * 3},
+        {id: '6M', minutes: timeIntervalsInMinutes.M * 6},
+        {id: '1Y', minutes: timeIntervalsInMinutes.Y},
+      ],
+      description: 'Time ranges back from now, in minutes',
+    },
+    [cfgDefaultIconOn]: {
+      type: 'string',
+      systemLevel: false,
+      hidden: false,
+      default: iconItemOn,
+      description: 'Default icon for ON state',
+    },
+    [cfgDefaultIconOff]: {
+      type: 'string',
+      systemLevel: false,
+      hidden: false,
+      default: iconItemOff,
+      description: 'Default icon for OFF state',
+    },
+    [cfgAlertMessagesHistoryDepth]: {
+      type: 'time',
+      mode: timeInternalModeInterval,
+      template: 'dh',
+      systemLevel: false,
+      hidden: false,
+      default: 48,
+      description: 'Alert messages history depth in hours',
+    },
+    [cfgUpdateMessageTime]: {
+      type: 'time',
+      mode: timeInternalModeTime,
+      template: 'hm',
+      systemLevel: false,
+      hidden: false,
+      default: '12:05',
+      description: 'Time to update menu messages',
+    },
+    [cfgUpdateMessagesOnStart]: {
+      type: 'time',
+      mode: timeInternalModeInterval,
+      template: 'm',
+      systemLevel: false,
+      hidden: false,
+      default: 5,
+      description: 'Refresh menu messages after script start. If 0 - will not refresh.',
+    },
+    [cfgDateTimeTemplate]: {
+      type: 'string',
+      systemLevel: false,
+      hidden: false,
+      default: 'DD.MM hh:mm:ss',
+      description: 'Template for date and time in Menu',
+    },
   },
-  configOptionMasks = {
-    [cfgUpdateMessageTime]: {text: 'hh:mm', rule: /^([0-1]?\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/},
-    [cfgGraphsIntervals]: {text: '#m|#h|#D|#W|#M|#Y', rule: new RegExp(`^(\\d+)([${timeIntervalsIndexList}])$`)},
-  },
-  configOptionParameters = {
-    [cfgMaxButtonsOnScreen]: {type: 'number', min: 10, max: 50, step: 1},
-    [cfgSummaryTextLengthMax]: {type: 'number', min: 20, max: 60, step: 1},
-    [cfgTextLengthModifierForGChats]: {type: 'number', min: -10, max: 10, step: 1},
-    [cfgExternalMenuTimeout]: {type: 'number', min: 100, max: 10000, step: 10, units: 'ms'},
-    [cfgConfigBackupCopiesCount]: {type: 'number', min: 0, max: 50, step: 1},
-    [cfgHierarchicalCaption]: {type: 'number', min: 0, max: 10, step: 1},
-    [cfgGraphsScale]: {type: 'number', min: 0.1, max: 10, step: 0.1},
-    [cfgUpdateMessageTime]: {type: 'time', mode: timeInternalModeTime, units: 'hm'},
-    [cfgMenuRefreshInterval]: {type: 'time', mode: timeInternalModeInterval, units: 'ms'},
-    [cfgAlertMessagesHistoryDepth]: {type: 'time', mode: timeInternalModeInterval, units: 'dh'},
-    [cfgUpdateMessagesOnStart]: {type: 'time', mode: timeInternalModeInterval, units: 'm'},
-  };
-const configGlobalOptions = [
-    cfgMenuUsers,
-    cfgMenuRoles,
-    cfgMessagesForMenuCall,
-    cfgMaxButtonsOnScreen,
-    cfgMenuRefreshInterval,
-    cfgExternalMenuTimeout,
-    cfgHistoryAdapter,
-    cfgGraphsTemplates,
-    cfgUseAliasOriginForCommonAttrs,
-    cfgAllowToDeleteEmptyEnums,
-    cfgConfigBackupCopiesCount,
-    cfgCheckAlertStatesOnStartUp,
-    cfgThresholdsForNumericString,
-    cfgDebugMode,
-  ],
-  configHiddenOptions = [cfgMenuUsers, cfgMenuRoles],
   configOptionScopeGlobal = 'global',
   configOptionScopeUser = 'user',
   cachedConfigNewLanguageId = 'newLanguageId';
@@ -406,15 +575,17 @@ class ConfigOptions {
    * Constructor function for the class
    *
    * @param {string} prefix - prefix for storing the configuration items
-   * @param {object} initialObject - default values for the configuration items
-   * @param {object} cfgItemMasks - validation mask (RegExp) for the configuration items
+   * @param {object} optionsDetails - the detailed descriptions of the configuration items with default values
    * @param {function} functionScheduleMenuMessageRenew - function, to refresh user menu, not rare, then 24 hours
    * @param {function} functionScheduleMenuUpdate - function to renew menu every `cfgMenuRefreshInterval)` seconds
    */
-  constructor(prefix, initialObject, cfgItemMasks, functionScheduleMenuMessageRenew, functionScheduleMenuUpdate) {
+  constructor(prefix, optionsDetails, functionScheduleMenuMessageRenew, functionScheduleMenuUpdate) {
     this.prefix = prefix;
-    this.globalConfig = {...initialObject};
-    this.configItemMasks = {...cfgItemMasks};
+    this.configOptions = {...optionsDetails};
+    this.globalConfig = {};
+    Object.keys(optionsDetails).forEach((key) => {
+      this.globalConfig[key] = optionsDetails[key].default;
+    });
     this.perUserConfig = new Map();
     this.externalSubscriptions = new Map();
     this.menuSchedule = undefined;
@@ -429,8 +600,8 @@ class ConfigOptions {
    * @param {object=} user - The user object.
    * @returns {boolean}
    */
-  #isUserConfigOption(cfgItem, user) {
-    return !configGlobalOptions.includes(cfgItem) && user && user.hasOwnProperty('userId') && user.userId;
+  isUserConfigOption(cfgItem, user) {
+    return !this.configOptions[cfgItem].systemLevel && user && user.hasOwnProperty('userId') && user.userId;
   }
 
   /**
@@ -442,7 +613,7 @@ class ConfigOptions {
    * @returns {string}
    */
   #getStateIdSubPrefix(cfgItem, user) {
-    return this.#isUserConfigOption(cfgItem, user) ? `${user.userId}` : configOptionScopeGlobal;
+    return this.isUserConfigOption(cfgItem, user) ? `${user.userId}` : configOptionScopeGlobal;
   }
 
   /**
@@ -463,7 +634,7 @@ class ConfigOptions {
    * @returns {boolean} A boolean value.
    */
   existsOption(cfgItem, user) {
-    if (this.#isUserConfigOption(cfgItem, user)) {
+    if (this.isUserConfigOption(cfgItem, user)) {
       if (this.perUserConfig.has(user.userId)) {
         const perUserConfig = this.perUserConfig.get(user.userId);
         return perUserConfig.hasOwnProperty(cfgItem) && isDefined(perUserConfig[cfgItem]);
@@ -482,7 +653,7 @@ class ConfigOptions {
    * @returns {any} A copy of the value of the configuration item.
    */
   getOption(cfgItem, user) {
-    if (this.#isUserConfigOption(cfgItem, user) && this.existsOption(cfgItem, user)) {
+    if (this.isUserConfigOption(cfgItem, user) && this.existsOption(cfgItem, user)) {
       return objectDeepClone(this.perUserConfig.get(user.userId)[cfgItem]);
     } else if (this.existsOption(cfgItem)) {
       return objectDeepClone(this.globalConfig[cfgItem]);
@@ -545,8 +716,8 @@ class ConfigOptions {
    * @returns {RegExp|undefined} The validation mask (RegExp) rule for the given configItem.
    */
   getMask(cfgItem) {
-    if (this.configItemMasks.hasOwnProperty(cfgItem) && this.configItemMasks[cfgItem]) {
-      return this.configItemMasks[cfgItem].rule;
+    if (this.configOptions.hasOwnProperty(cfgItem) && typeOf(this.configOptions[cfgItem].template, 'object')) {
+      return this.configOptions[cfgItem].template.rule;
     }
     return undefined;
   }
@@ -557,12 +728,14 @@ class ConfigOptions {
    * @returns {string|undefined} The validation mask description or type of the value of the config item.
    */
   getMaskDescription(cfgItem) {
-    if (this.configItemMasks.hasOwnProperty(cfgItem) && this.configItemMasks[cfgItem]) {
-      return this.configItemMasks[cfgItem].text;
-    } else {
-      const currentType = typeOf(this.globalConfig[cfgItem]);
-      // @ts-ignore
-      if (!['array', 'map', 'object'].includes(currentType)) return currentType;
+    if (this.configOptions.hasOwnProperty(cfgItem)) {
+      if (typeOf(this.configOptions[cfgItem].template, 'object')) {
+        return this.configOptions[cfgItem].template.text;
+      } else {
+        return typeOf(this.configOptions[cfgItem].subType, 'string')
+          ? this.configOptions[cfgItem].subType
+          : this.configOptions[cfgItem].type;
+      }
     }
     return undefined;
   }
@@ -575,7 +748,7 @@ class ConfigOptions {
    * @param {any} value - The value to set the config item to.
    */
   setOption(cfgItem, user, value) {
-    if (this.#isUserConfigOption(cfgItem, user)) {
+    if (this.isUserConfigOption(cfgItem, user)) {
       const perUserConfig = this.perUserConfig.has(user.userId) ? this.perUserConfig.get(user.userId) : {};
       if (
         stringifySafe(this.getOption(cfgItem, null), JSONReplacerWithMap) === stringifySafe(value, JSONReplacerWithMap)
@@ -601,7 +774,7 @@ class ConfigOptions {
    * @param {object} user - The user object.
    */
   deleteUserOption(cfgItem, user) {
-    if (this.#isUserConfigOption(cfgItem, user)) {
+    if (this.isUserConfigOption(cfgItem, user)) {
       const perUserConfig = this.perUserConfig.has(user.userId) ? this.perUserConfig.get(user.userId) : {};
       delete perUserConfig[cfgItem];
       this.perUserConfig.set(user.userId, perUserConfig);
@@ -625,10 +798,10 @@ class ConfigOptions {
    * @returns {any} The result of the parseOption function.
    */
   parseOption(cfgItem, value) {
-    const currentType = typeOf(this.globalConfig[cfgItem]);
+    const cfgItemType = this.configOptions[cfgItem].type;
     let result,
       valueToParseType = typeOf(value);
-    if (currentType === 'array') {
+    if (cfgItemType === 'array') {
       if (valueToParseType === 'string') {
         if (value.indexOf('[') === 0) {
           try {
@@ -639,40 +812,40 @@ class ConfigOptions {
         } else {
           result = value.split(',');
         }
-      } else if (typeOf(value) === 'array') {
+      } else if (valueToParseType === 'array') {
         this.globalConfig[cfgItem] = value;
       }
-    } else if (currentType === 'map') {
+    } else if (cfgItemType === 'map') {
       if (valueToParseType === 'string') {
         try {
           value = JSON.parse(value, JSONReviverWithMap);
         } catch (err) {
           errs(`Parse error on configOptions[${cfgItem}] - ${stringifySafe(err)}`);
         }
-        valueToParseType = typeof value;
+        valueToParseType = typeOf(value);
       }
       if (valueToParseType === 'map') {
         result = value;
       }
-    } else if (currentType === 'object') {
+    } else if (cfgItemType === 'object') {
       if (valueToParseType === 'string') {
         try {
           value = JSON.parse(value);
         } catch (err) {
           errs(`Parse error on configOptions[${cfgItem}] - ${stringifySafe(err)}`);
         }
-        valueToParseType = typeof value;
+        valueToParseType = typeOf(value);
       }
       if (valueToParseType === 'object') {
         result = value;
       }
-    } else if (currentType === 'number') {
+    } else if (cfgItemType === 'number') {
       if (valueToParseType === 'string') {
         if (!isNaN(value)) result = Number(value);
       } else if (valueToParseType === 'number') {
         result = value;
       }
-    } else if (currentType === 'boolean') {
+    } else if (cfgItemType === 'boolean') {
       if (valueToParseType === 'string') {
         if (['true', 'false'].includes(value)) result = value === 'true';
       } else if (valueToParseType === 'number') {
@@ -681,7 +854,7 @@ class ConfigOptions {
         result = value;
       }
     }
-    if (currentType === 'string') {
+    if (cfgItemType === 'string') {
       if (valueToParseType === 'string') {
         result = value;
       } else if (valueToParseType === 'number' || valueToParseType === 'boolean') {
@@ -709,7 +882,7 @@ class ConfigOptions {
     if (existsState(stateId)) {
       const actualValue = this.parseOption(cfgItem, getState(stateId).val);
       if (isDefined(actualValue)) this.setOption(cfgItem, user, actualValue);
-    } else if (!this.#isUserConfigOption(cfgItem, user)) {
+    } else if (!this.isUserConfigOption(cfgItem, user)) {
       this.saveOption(cfgItem, user);
     }
   }
@@ -720,7 +893,7 @@ class ConfigOptions {
    */
   loadOptions(user) {
     for (const cfgItem of Object.keys(this.globalConfig)) {
-      if (!user || (user && !configGlobalOptions.includes(cfgItem))) this.loadOption(cfgItem, user);
+      if (!user || this.isUserConfigOption(cfgItem, user)) this.loadOption(cfgItem, user);
     }
     if (!user) {
       /** it will check all possible states under 'this.prefix' ... **/
@@ -862,7 +1035,7 @@ class ConfigOptions {
         backupData.perUserConfig.forEach((userConfigData, userId) => {
           Object.keys(this.globalConfig).forEach((cfgItem) => {
             if (
-              !configGlobalOptions.includes(cfgItem) &&
+              !this.configOptions[cfgItem].systemLevel &&
               userConfigData.hasOwnProperty(cfgItem) &&
               isDefined(userConfigData[cfgItem])
             ) {
@@ -888,7 +1061,7 @@ class ConfigOptions {
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
       isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
-      isSystemLevelOption = configGlobalOptions.includes(cfgItem),
+      isSystemLevelOption = this.configOptions[cfgItem].systemLevel,
       isThisLevelAllowModify = isSystemLevelOption ? isCurrentAccessLevelFull : isCurrentAccessLevelAllowModify;
     let subMenuIndex = 0,
       subMenu = [];
@@ -1003,8 +1176,8 @@ class ConfigOptions {
       const isSystemLevelOption = optionType === 'systemLevelOptions',
         isThisLevelAllowModify = isSystemLevelOption ? isCurrentAccessLevelFull : isCurrentAccessLevelAllowModify,
         optionFilter = isSystemLevelOption
-          ? (optionId) => configGlobalOptions.includes(optionId)
-          : (optionId) => !configGlobalOptions.includes(optionId),
+          ? (optionId) => this.configOptions[optionId].systemLevel
+          : (optionId) => !this.configOptions[optionId].systemLevel,
         optionTypeItem = {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, optionType)}`,
@@ -1013,10 +1186,10 @@ class ConfigOptions {
           // text: ` [${this.cfg[cfgItem]}] `,
         };
       Object.keys(this.globalConfig)
-        .filter((optionId) => !configHiddenOptions.includes(optionId))
+        .filter((optionId) => !this.configOptions[optionId].hidden)
         .filter((optionId) => optionFilter(optionId))
         .forEach((cfgItem, itemOrder) => {
-          let itemType = typeOf(this.globalConfig[cfgItem]);
+          let itemType = this.configOptions[cfgItem].type;
           const currentItemName = translationsItemCoreGet(user, cfgItem),
             currentItem = {
               index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
@@ -1291,8 +1464,8 @@ class ConfigOptions {
               }
             }
             if (isThisLevelAllowModify) {
-              if (isDefined(configOptionParameters[cfgItem])) {
-                const itemSubType = configOptionParameters[cfgItem];
+              if (isDefined(configOptionsParameters[cfgItem])) {
+                const itemSubType = configOptionsParameters[cfgItem];
                 let interimItem;
                 switch (itemSubType.type) {
                   case 'time': {
@@ -1305,7 +1478,7 @@ class ConfigOptions {
                       {
                         ...subMenuItem.options,
                         timeMode: itemSubType.mode,
-                        timeUnits: itemSubType.units,
+                        timeTemplate: itemSubType.template,
                         value: currentOptionValue,
                         valueToDisplay: `${currentOptionValue}`,
                       },
@@ -1325,7 +1498,7 @@ class ConfigOptions {
                     if (itemSubType.hasOwnProperty('min')) interimItemOptions.valueOptions.min = itemSubType.min;
                     if (itemSubType.hasOwnProperty('max')) interimItemOptions.valueOptions.max = itemSubType.max;
                     if (itemSubType.hasOwnProperty('step')) interimItemOptions.valueOptions.step = itemSubType.step;
-                    if (itemSubType.hasOwnProperty('unit')) interimItemOptions.valueOptions.step = itemSubType.unit;
+                    if (itemSubType.hasOwnProperty('unit')) interimItemOptions.valueOptions.unit = itemSubType.unit;
                     interimItem = menuMenuItemGenerateEditItemBasedOnValueType(
                       user,
                       subSubMenuIndexPrefix,
@@ -1389,8 +1562,7 @@ class ConfigOptions {
  */
 const configOptions = new ConfigOptions(
   prefixConfigStates,
-  configDefaultOptions,
-  configOptionMasks,
+  configOptionsParameters,
   menuMessageRenewSchedule,
   menuMenuUpdateBySchedule,
 );
@@ -7908,7 +8080,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId} = options,
     currentStateObject = getObjectEnriched(stateId),
-    stateUnits = currentStateObject?.common?.unit ? ` ${currentStateObject.common.unit}` : '',
+    stateUnitId = currentStateObject?.common?.unit ? ` ${currentStateObject.common.unit}` : '',
     [thresholds, currentStateThresholds] = alertsGetStateAlertDetailsOrThresholds(user, stateId, true);
   let subMenu = [],
     subMenuIndex = 0;
@@ -7920,11 +8092,11 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
         } ${translationsItemTextGet(user, 'secondsShort')}`;
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${thresholdValue}${stateUnits} [${threshold.onAbove ? iconItemAbove : ''}${
+        name: `${thresholdValue}${stateUnitId} [${threshold.onAbove ? iconItemAbove : ''}${
           threshold.onLess ? iconItemLess : ''
         }](${onTimeInterval})`,
         icon: iconItemEdit,
-        options: {...options, id: threshold.id, units: stateUnits},
+        options: {...options, id: threshold.id, valueOption: {...options?.valueOptions, unit: stateUnitId}},
         submenu: alertsMenuGenerateManageThreshold,
       });
     });
@@ -7974,7 +8146,10 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
  */
 function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
   const currentIndex = typeOf(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
-    {state: stateId, id, units: stateUnits} = menuItemToProcess.options,
+    {state: stateId, id} = menuItemToProcess.options,
+    stateUnitId = typeOf(menuItemToProcess?.options?.valueOptions?.unit, 'string')
+      ? menuItemToProcess.options.valueOptions.unit
+      : '',
     thresholds = alertsGetStateAlertDetailsOrThresholds(user, stateId),
     thresholdIndex = thresholdsGetIndex(thresholds, id);
   let subMenu = [],
@@ -7994,7 +8169,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
         user,
         currentIndex,
         subMenuIndex,
-        `${thresholdValue}${stateUnits}`,
+        `${thresholdValue}${stateUnitId}`,
         'value',
         {
           ...thresholdOptions,
@@ -8005,7 +8180,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
     );
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
-      name: `${thresholdValue}${stateUnits} ${iconItemAbove}`,
+      name: `${thresholdValue}${stateUnitId} ${iconItemAbove}`,
       icon: menuIconGenerate(user, threshold.onAbove),
       group: 'borders',
       command: threshold.onAbove === threshold.onLess || !threshold.onAbove ? cmdItemPress : cmdNoOperation,
@@ -8014,7 +8189,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
     });
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
-      name: `${thresholdValue}${stateUnits} ${iconItemLess}`,
+      name: `${thresholdValue}${stateUnitId} ${iconItemLess}`,
       icon: menuIconGenerate(user, threshold.onLess),
       group: 'borders',
       command: threshold.onAbove === threshold.onLess || !threshold.onLess ? cmdItemPress : cmdNoOperation,
@@ -8032,7 +8207,7 @@ function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
           ...thresholdOptions,
           item: onTimeIntervalId,
           value: threshold[onTimeIntervalId],
-          timeUnits: 'ms',
+          timeTemplate: 'ms',
           valueOptions: {
             ...thresholdOptions.valueOptions,
             valueToDisplay: onTimeInterval,
@@ -8611,7 +8786,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
           ...triggerOptions,
           item: onTimeIntervalId,
           value: trigger[onTimeIntervalId],
-          timeUnits: 'ms',
+          timeTemplate: 'ms',
           valueOptions: {
             ...triggerOptions.valueOptions,
             valueToDisplay: onTimeInterval,
@@ -9114,8 +9289,8 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
     const deltaValueCurrent = cachedValueExists(user, cachedTriggersTimeRangeDelta)
         ? cachedValueGet(user, cachedTriggersTimeRangeDelta)
         : deltaValue,
-      timeUnits = timeRangeAttribute === triggersTimeRangeHoursWithMinutes ? 'hm' : 'MD',
-      multiplier = timeInternalPerUnitMultipliers[timeUnits[0]][timeUnits[1]];
+      timeTemplate = timeRangeAttribute === triggersTimeRangeHoursWithMinutes ? 'hm' : 'MD',
+      multiplier = timeInternalPerUnitMultipliers[timeTemplate[0]][timeTemplate[1]];
     deltaValueCurrent.forEach((deltaValueItem, deltaValueIndex) => {
       const deltaValueItemDetails = timeRangeDeltaItemToString(user, deltaValueItem, timeRangeAttribute);
       subMenuIndex = subMenu.push(
@@ -9128,7 +9303,7 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
             timeRangeAttribute === triggersTimeRangeHoursWithMinutes
               ? timeInternalModeInterval
               : timeInternalModeMonthAndDay,
-          timeUnits: timeUnits,
+          timeTemplate: timeTemplate,
           valueOptions: {
             ...options.valueOptions,
             valueToDisplay: deltaValueItemDetails,
@@ -9153,7 +9328,7 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
           ...options,
           value: deltaValueCurrent,
           backOnPress: !typeOf(options.backOnPress, 'boolean') || options.backOnPress,
-          timeUnits: timeUnits,
+          timeTemplate: timeTemplate,
         },
       });
     }
@@ -11846,7 +12021,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
           const multiplier = Math.pow(10, positionIndex);
           [-1, 1].forEach((sign) => {
             const valuesMap = new Map(),
-            signSymbol = sign > 0 ? '+' : '';
+              signSymbol = sign > 0 ? '+' : '';
             valuesArray.forEach((value) => {
               const valueToSet = value * multiplier * sign;
               if (
@@ -11866,7 +12041,7 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         while (valueStep * stepMultiplier < valueMax - valueMin) {
           [-1, 1].forEach((sign) => {
             const valuesMap = new Map(),
-            signSymbol = sign > 0 ? '+' : '';
+              signSymbol = sign > 0 ? '+' : '';
             valuesArray.forEach((value) => {
               const valueToSet = value * valueStep * stepMultiplier * sign;
               if (valueToWork + valueToSet >= valueMin && valueToWork + valueToSet <= valueMax) {
@@ -12058,15 +12233,15 @@ const timeInternalUnitsSeconds = 's',
 
 /**
  * Converts internal time data to string.
- * @param {number} value - The integer value of time in smallest units (i.e. seconds, minutes, hours).
- * @param {string} units - The string with units id's fom smallest to highest ('smh' for example).
+ * @param {number} value - The integer value of time in smallest template units (i.e. seconds, minutes, hours).
+ * @param {string} template - The template string with units id's fom smallest to highest ('smh' for example).
  * @returns {string} The string representation of internal time (10:45:03 for example).
  */
-function timeInternalToString(value, units) {
+function timeInternalToString(value, template) {
   let result = '';
-  if (typeOf(value, 'number') && units?.length) {
-    const unitMinimal = units.slice(-1);
-    units.split('').forEach((unit) => {
+  if (typeOf(value, 'number') && template?.length) {
+    const unitMinimal = template.slice(-1);
+    template.split('').forEach((unit) => {
       const multiplier = timeInternalPerUnitMultipliers[unit][unitMinimal],
         max = timeInternalPerUnitMaxValueNonGreat[unit];
       result += `${result.length ? ':' : ''}${zeroPad(Math.trunc(value / multiplier) % max, 2)}`;
@@ -12078,23 +12253,23 @@ function timeInternalToString(value, units) {
 /**
  * Converts string time to the internal time data format.
  * @param {string} value - The string representation of the time (10:45:03 for example).
- * @param {string} units - The string with units id's fom smallest to highest ('smh' for example).
+ * @param {string} template - The template string with units id's fom smallest to highest ('smh' for example).
  * @returns {number} The integer value of time in smallest units (i.e. seconds, minutes, hours).
  * If units not comply with value - will return 0.
  */
-function stringToTimeInternal(value, units) {
+function stringToTimeInternal(value, template) {
   let result = 0;
-  if (typeOf(value, 'string') && units?.length && isDefined(timeInternalParseRegExps[units])) {
-    const timeInternalParseRegExp = timeInternalParseRegExps[units],
+  if (typeOf(value, 'string') && template?.length && isDefined(timeInternalParseRegExps[template])) {
+    const timeInternalParseRegExp = timeInternalParseRegExps[template],
       valueParsed = timeInternalParseRegExp.exec(value),
-      unitsLength = units.length;
+      unitsLength = template.length;
     if (typeOf(valueParsed, 'array')) {
       // @ts-ignore
       valueParsed.shift();
       const valueParsedLength = valueParsed?.length;
       if (unitsLength === valueParsedLength) {
-        const unitMinimal = units.slice(-1),
-          unitsArray = units.split('');
+        const unitMinimal = template.slice(-1),
+          unitsArray = template.split('');
         // @ts-ignore
         valueParsed.forEach((valueItem, index) => {
           const unit = unitsArray[index],
@@ -12122,7 +12297,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
   let menuItem,
     showInApply = '',
     valueToProcess,
-    timeUnits,
+    timeTemplate,
     timeUnitsFull = timeInternalUnitsFull;
   const valuesMapArray = [],
     interimItemId = `${upperItemIndex}.${itemIndex}`,
@@ -12133,31 +12308,31 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
   switch (timeMode) {
     case timeInternalModeInterval: {
       timeUnitsFull = timeInternalUnitsFull.slice(2);
-      timeUnits = options?.timeUnits ? options.timeUnits : timeInternalUnitsDefault;
+      timeTemplate = options?.timeTemplate ? options.timeTemplate : timeInternalUnitsDefault;
       valueToProcess = valueCurrent;
       break;
     }
     case timeInternalModeTime: {
       timeUnitsFull = timeInternalUnitsFull.slice(-3);
-      timeUnits = options?.timeUnits ? options.timeUnits : timeInternalUnitsDefault;
-      valueToProcess = stringToTimeInternal(valueCurrent, timeUnits);
+      timeTemplate = options?.timeTemplate ? options.timeTemplate : timeInternalUnitsDefault;
+      valueToProcess = stringToTimeInternal(valueCurrent, timeTemplate);
       break;
     }
     case timeInternalModeMonthAndDay: {
       timeUnitsFull = timeInternalUnitsFull.slice(0, 2);
-      timeUnits = options?.timeUnits ? options.timeUnits : timeUnitsFull.join('');
+      timeTemplate = options?.timeTemplate ? options.timeTemplate : timeUnitsFull.join('');
       valueToProcess = valueCurrent;
       break;
     }
   }
-  if (timeUnits.length) {
-    const timeInternalUnitsMinimal = timeUnits.slice(-1);
+  if (timeTemplate.length) {
+    const timeInternalUnitsMinimal = timeTemplate.slice(-1);
     let previousUnit = '',
       valuePrevious = 0,
       multiplierPrevious = 0,
       isValueApplicable = true;
     timeUnitsFull.forEach((unit) => {
-      if (timeUnits.includes(unit)) {
+      if (timeTemplate.includes(unit)) {
         const multiplier = timeInternalPerUnitMultipliers[unit][timeInternalUnitsMinimal],
           min = timeInternalPerUnitValueMinimal[unit],
           valueInCurrentUnits = typeOf(valueToProcess, 'number') ? Math.trunc(valueToProcess / multiplier) : 0;
@@ -12174,7 +12349,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
           valuesMapMinus = new Map();
         switch (timeMode) {
           case timeInternalModeInterval: {
-            if (Object.keys(timeInternalParseRegExps).includes(timeUnits)) {
+            if (Object.keys(timeInternalParseRegExps).includes(timeTemplate)) {
               showInApply += `${showInApply.length ? ':' : ''}${zeroPad(valueCurrent, 2)}`;
             } else {
               showInApply += `${valueCurrent}${translationsItemTextGet(user, timeInternalTranslationId[unit])}`;
@@ -12230,7 +12405,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
           ...options.valueOptions,
           showInApply: showInApply.length ? showInApply : undefined,
           type: timeInternalModeTime,
-          units: timeUnits,
+          template: timeTemplate,
           mode: timeMode,
           states: valuesMapArray,
           interimCalculationMode: interimCalculationSummarize,
@@ -14582,11 +14757,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 case 'time': {
                   switch (commandOptions.valueOptions?.mode) {
                     case timeInternalModeTime: {
-                      if (typeOf(commandOptions.valueOptions?.units, 'string')) {
-                        const units = commandOptions.valueOptions.units;
+                      if (typeOf(commandOptions.valueOptions?.template, 'string')) {
+                        const template = commandOptions.valueOptions.template;
                         interimValue = timeInternalToString(
-                          modificator + stringToTimeInternal(valueCurrent, units),
-                          units,
+                          modificator + stringToTimeInternal(valueCurrent, template),
+                          template,
                         );
                       }
                       break;
@@ -14895,7 +15070,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               if (typeOf(commandOptions.index, 'number')) {
                                 if (typeOf(commandOptions.subIndex, 'number')) {
                                   let currentTimeRangeDelta = new Array(new Array(), new Array());
-                                  const timeUnits = commandOptions.timeUnits;
+                                  const timeTemplate = commandOptions.timeTemplate;
                                   if (cachedValueExists(user, cachedTriggersTimeRangeDelta)) {
                                     currentTimeRangeDelta = cachedValueGet(user, cachedTriggersTimeRangeDelta);
                                   } else if (
@@ -14905,8 +15080,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                     currentTimeRangeDelta =
                                       triggerTimeRange[triggerTimeRangeAttributeId][commandOptions.index];
                                   }
-                                  if (currentTimeRangeDelta && typeOf(timeUnits, 'string') && timeUnits.length === 2) {
-                                    const multiplier = timeInternalPerUnitMultipliers[timeUnits[0]][timeUnits[1]];
+                                  if (
+                                    currentTimeRangeDelta &&
+                                    typeOf(timeTemplate, 'string') &&
+                                    timeTemplate.length === 2
+                                  ) {
+                                    const multiplier = timeInternalPerUnitMultipliers[timeTemplate[0]][timeTemplate[1]];
                                     currentTimeRangeDelta[commandOptions.subIndex] = [
                                       Math.trunc(commandOptions.value / multiplier),
                                       commandOptions.value % multiplier,
@@ -16044,7 +16223,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       case cmdItemReset: {
         switch (commandOptions.dataType) {
           case dataTypeConfig: {
-            if (!configGlobalOptions.includes(commandOptions.item)) {
+            if (configOptions.isUserConfigOption(commandOptions.item, user)) {
               configOptions.deleteUserOption(commandOptions.item, user);
               menuMenuItemsAndRowsClearCached(user);
             }
