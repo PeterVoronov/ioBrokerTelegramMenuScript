@@ -601,7 +601,7 @@ class ConfigOptions {
    * @returns {boolean}
    */
   isUserConfigOption(cfgItem, user) {
-    return !this.configOptions[cfgItem].systemLevel && user && user.hasOwnProperty('userId') && user.userId;
+    return !this.configOptions[cfgItem].systemLevel && user?.userId;
   }
 
   /**
@@ -3773,8 +3773,7 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
       if (
         currentEnum.isExternal &&
         currentEnum.nameTranslationId &&
-        currentEnum.translationsKeys &&
-        currentEnum.translationsKeys.includes(currentEnum.nameTranslationId)
+        currentEnum.translationsKeys?.includes(currentEnum.nameTranslationId)
       ) {
         result = `${enumPrefix}.${translationsSubPrefix}.${currentEnum.nameTranslationId}`;
       } else {
@@ -4982,7 +4981,7 @@ function enumerationsInit(enumerationType, withExtensions = false) {
             enum: enumType,
             icon: enumerationsList[enumerationType].enums[enumType].icon,
           };
-          if (enumerationType === dataTypeFunction && newItem.deviceAttributes && newItem.deviceAttributes.state) {
+          if (enumerationType === dataTypeFunction && newItem?.deviceAttributes?.state) {
             newItem.deviceAttributes.state.nameTranslationId = translationsGetObjectId('state', currentItem, undefined);
           }
           currentEnumerationList[currentItem] = newItem;
@@ -7937,9 +7936,7 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth = fals
   const alerts = alertsGet(),
     currentStateAlert = alerts.hasOwnProperty(alertId) ? alerts[alertId] : undefined,
     currentStateAlertThresholds =
-      currentStateAlert?.hasOwnProperty('chatIds') &&
-      currentStateAlert.chatIds &&
-      currentStateAlert.chatIds.has(user.chatId)
+      currentStateAlert?.chatIds?.has(user.chatId)
         ? objectDeepClone(currentStateAlert.chatIds.get(user.chatId))
         : {},
     currentThresholds = cachedValueExists(user, cachedAlertThresholdSet)
@@ -8478,7 +8475,7 @@ function triggersGetStateTriggers(user, stateId, returnBoth = false) {
   const alerts = alertsGet(),
     currentStateAlert = alerts.hasOwnProperty(stateId) ? alerts[stateId] : undefined,
     currentStateTriggers =
-      currentStateAlert?.chatIds && currentStateAlert.chatIds.has(triggersInAlertsId)
+      currentStateAlert?.chatIds?.has(triggersInAlertsId)
         ? objectDeepClone(currentStateAlert.chatIds.get(triggersInAlertsId))
         : [],
     currentTriggers = cachedValueExists(user, cachedTriggersDetails)
@@ -10669,7 +10666,7 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
     const getStateQuery = (state) => (state ? `[id=*.${state}]` : '[id=*]'),
       getRoleQuery = (role) => (role ? `[role=${role}]` : ''),
       getDestinationQuerySegment = (enumerations, dataType, id) => {
-        if (id && enumerations[dataType] && enumerations[dataType].list[id]) {
+        if (id && enumerations[dataType]?.list[id]) {
           const currentDestination = enumerations[dataType].list[id];
           return `(${currentDestination.enum}=${id})`;
         }
@@ -13833,9 +13830,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               );
               if (
                 commandOptions.item &&
-                currentEnumerationsList &&
-                currentEnumerationsList.hasOwnProperty(commandOptions.item) &&
-                currentEnumerationsList[commandOptions.item]
+                currentEnumerationsList?.[commandOptions.item]
               ) {
                 currentEnumerationsList[commandOptions.item].group = userInputToProcess;
               }
@@ -14908,9 +14903,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             );
             if (
               commandOptions.item &&
-              currentEnumerationsList &&
-              currentEnumerationsList.hasOwnProperty(commandOptions.item) &&
-              currentEnumerationsList[commandOptions.item]
+              currentEnumerationsList?.[commandOptions.item]
             ) {
               currentEnumerationsList[commandOptions.item].group =
                 currentEnumerationsList[commandOptions.item].group === commandOptions.group ? '' : commandOptions.group;
@@ -16955,9 +16948,7 @@ function telegramQueueProcess(user, messageId) {
         }
         if (typeOf(telegramObjects, 'object')) telegramObjects = [telegramObjects];
         if (
-          telegramObjects?.length &&
-          telegramObjects[0][telegramCommandDeleteMessage] &&
-          telegramObjects[0][telegramCommandDeleteMessage].isBotMessage
+          telegramObjects?.[0]?.[telegramCommandDeleteMessage]?.isBotMessage
         ) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
           if (!typeOf(telegramObjects[0][telegramCommandDeleteMessage].options.message_id, 'number')) {
@@ -17699,7 +17690,7 @@ function objectInfoDeplete(object) {
  */
 function checkNumberStateValue(stateId, value, stateObject) {
   const currentObject = stateObject || getObjectEnriched(stateId);
-  if (typeOf(value, 'number') && currentObject && currentObject.common) {
+  if (typeOf(value, 'number') && currentObject?.common) {
     const currentObjectCommon = currentObject.common,
       currentType = currentObjectCommon['type'];
     if (currentType === 'number') {
