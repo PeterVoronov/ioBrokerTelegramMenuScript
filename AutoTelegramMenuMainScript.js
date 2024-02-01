@@ -4045,7 +4045,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
         if (isCurrentAccessLevelAllowModify) {
           const currentCommandOptions = {
             dataType: dataTypeTranslation,
-            translationId: translationsItemGenerateCoreId('', translationKey),
+            translationId: translationsItemGenerateCoreId(translationKey),
           };
           subSubMenuIndex = subMenuItem.submenu.push(
             menuMenuItemGenerateRenameItem(
@@ -12861,7 +12861,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       const currentSubMenuItem = subMenu[subMenuIndex],
         currentSubMenuItemSubmenu = currentSubMenuItem.submenu;
       if (typeOf(currentSubMenuItemSubmenu, 'array') && currentSubMenuItemSubmenu.length === 0) {
-        delete subMenu[subMenuIndex];
+        subMenu.splice(subMenuIndex, 1);
       }
     }
     subMenu = subMenu.filter((item) => item);
