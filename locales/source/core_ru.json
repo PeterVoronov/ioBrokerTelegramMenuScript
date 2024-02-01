@@ -207,6 +207,7 @@
     "textNames": "Склонения наименования",
     "textNumber": "Число",
     "textOnTimeInterval": "Минимальный тайм-аут для срабатывания",
+    "textOnTimeIntervalIndividual": "",
     "textOperator": "Оператор",
     "textQuarters": "Кварталы года",
     "textQuartersShort": "КГ",

@@ -211,6 +211,7 @@
       "textNames": "Benennungen Deklinationen",
       "textNumber": "Zahl",
       "textOnTimeInterval": "Minimaler Timeout zum Auslösen",
+      "textOnTimeIntervalIndividual": "core.textOnTimeIntervalIndividual",
       "textOperator": "Operator",
       "textQuarters": "Quartal des Jahres",
       "textQuartersShort": "QdJ",

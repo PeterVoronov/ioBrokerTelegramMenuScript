@@ -207,6 +207,7 @@
     "textNames": "Naming declensions",
     "textNumber": "Number",
     "textOnTimeInterval": "Minimal timeout to trigger",
+    "textOnTimeIntervalIndividual": "",
     "textOperator": "Operator",
     "textQuarters": "Quarters of Year",
     "textQuartersShort": "QoY",

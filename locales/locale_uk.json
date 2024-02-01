@@ -211,6 +211,7 @@
       "textNames": "Відмінювання найменувань",
       "textNumber": "Число",
       "textOnTimeInterval": "Мінімальна затримка до реагування",
+      "textOnTimeIntervalIndividual": "core.textOnTimeIntervalIndividual",
       "textOperator": "Оператор",
       "textQuarters": "Чверті року",
       "textQuartersShort": "ЧР",
