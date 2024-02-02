@@ -157,6 +157,7 @@ const cmdPrefix = 'cmd',
   idExternal = dataTypeExtension,
   idAlerts = 'alerts',
   idCachedAlertsStatesValues = 'alertsStatesPreviousValues',
+  idTriggersLogs = 'triggersLogs',
   //*** Items default delimiter ***//
   itemsDelimiter = '::',
   //*** Do commands ***//
@@ -7264,6 +7265,7 @@ function alertsInit(checkStates = false) {
     });
   }
   triggersTimeRangeStartTimesUpdate();
+  triggersLogsInit();
   // triggersTimeRangeStartTimeScheduled('0 0 9 * * *')
 }
 
@@ -7391,7 +7393,8 @@ function alertsActionOnSubscribedState(object) {
         alertsStoreToCacheStateValue(stateId, object.state.val);
       alerts[stateId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
-        const user = telegramGenerateUserObjectFromId(chatId);
+        const user = telegramGenerateUserObjectFromId(chatId),
+        isTrigger = chatId === triggersInAlertsId;
         if (chatId >= 0 || activeChatGroups.includes(chatId)) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           const stateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
@@ -7433,7 +7436,7 @@ function alertsActionOnSubscribedState(object) {
             );
           }
           if (
-            chatId !== triggersInAlertsId &&
+            !isTrigger &&
             !isEmulatedForTriggers &&
             (alertStateType === 'boolean' ||
               (alertObject.common.hasOwnProperty('states') && ['string', 'number'].includes(alertStateType))) &&
@@ -7482,7 +7485,7 @@ function alertsActionOnSubscribedState(object) {
               alertsMessagePush(user, stateId, alertMessageText, stateId === currentState);
             }
           } else if (
-            (chatId === triggersInAlertsId || (alertStateType === 'number' && !isEmulatedForTriggers)) &&
+            (isTrigger || (alertStateType === 'number' && !isEmulatedForTriggers)) &&
             detailsOrThresholds.length
           ) {
             const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
@@ -7505,7 +7508,13 @@ function alertsActionOnSubscribedState(object) {
                   timerOn = thresholdsVariables.has(idStoredTimer) ? thresholdsVariables.get(idStoredTimer) : undefined,
                   alertMessageTemplate = threshold.hasOwnProperty(alertMessageTemplateId)
                     ? threshold[alertMessageTemplateId]
-                    : alertDefaultTemplate;
+                    : alertDefaultTemplate,
+                  triggerLogItem = {
+                    date: alertTimeStamp,
+                    triggerState: stateId,
+                    triggerValue: stateValue,
+                    triggerId: id,
+                  };
                 let isBelow,
                   isAbove,
                   isTriggered,
@@ -7532,6 +7541,10 @@ function alertsActionOnSubscribedState(object) {
                       onTimeInterval = threshold[onTimeIntervalIndividualId].get(individualId);
                     }
                   }
+                  if (isTrigger) {
+                    if (isAbove) triggerLogItem['triggerAction'] = 'above';
+                    if (isBelow) triggerLogItem['triggerAction'] = 'below';
+                  }
                 } else {
                   if (thresholdsVariables.has(idStoredData)) {
                     [storedValue, storedValueOld] = thresholdsVariables.get(idStoredData);
@@ -7539,6 +7552,7 @@ function alertsActionOnSubscribedState(object) {
                   messageValues['alertThresholdIcon'] = '=';
                   isTriggered =
                     stateValue === thresholdValue && !(stateValueOld === storedValue && stateValue === storedValueOld);
+                    if (isTrigger) triggerLogItem['triggerAction'] = 'equal';
                 }
                 let thresholdUser = user;
                 if (!typeOf(thresholdUser, 'object') && isDefined(threshold.user)) {
@@ -7625,15 +7639,19 @@ function alertsActionOnSubscribedState(object) {
                   if (thresholdsVariables.has(idStoredData)) thresholdsVariables.delete(idStoredData);
                   if (thresholdUser)
                     alertsMessagePush(thresholdUser, stateId, alertMessageText, stateId === currentState);
-                  if (chatId === triggersInAlertsId) {
-                    if (threshold.log)
+                  if (isTrigger) {
+                    if (threshold.log) {
+                      triggerLogItem['targetState'] = targetState;
+                      triggerLogItem['targetValue'] = targetValue;
+                      triggersLogsPushTo(triggerLogItem);
                       warns(
-                        `Trigger ${id}. State ${targetState} will be set to ${targetValue} due to ` +
-                          `trigger of state ${stateId} on value ${thresholdValue}!`,
+                        `The state "${targetState}" is triggered by the trigger with id = "${id}" to ` +
+                        `"${targetValue}" because the value of state "${stateId}" has changed to "${thresholdValue}"!`,
                       );
+                    }
                     logs(
-                      `Trigger ${id}. State ${targetState} will be set to ${targetValue} due to ' +
-                      'trigger of state ${stateId} on value ${thresholdValue}! = ${jsonStringify(threshold)}`,
+                      `The state "${targetState}" is triggered by the trigger with id = "${id}" to ` +
+                      `"${targetValue}" because the value of state "${stateId}" has changed to "${thresholdValue}"!`,
                     );
                     setState(targetState, targetValue, (error) => {
                       if (error) {
@@ -8619,7 +8637,58 @@ const triggersInAlertsId = 0,
   triggersIconsArray = [iconItemTrigger, iconItemDisabled],
   triggersConditionIconsArray = [iconItemCondition, iconItemDisabled],
   triggersConditionOperators = ['==', '!=', '> ', '>=', '<', '<='],
-  triggersTimeRangeStartTimes = new Map();
+  triggersTimeRangeStartTimes = new Map(),
+  triggersLogsStateFullId = `${prefixCacheStatesCommon}.${idTriggersLogs}`;
+
+let triggersLogs = new Array();
+
+cachedValuesStatesCommonAttributes[idTriggersLogs] = {
+  name: 'List of previous(cached) values of states for alert subscription',
+  type: 'json',
+  read: true,
+  write: true,
+  role: 'list',
+};
+
+/**
+ * This function loads the triggers journal from the cache.
+ */
+function triggersLogsInit() {
+  if (existsState(triggersLogsStateFullId)) {
+    const triggersLogsString = getState(triggersLogsStateFullId).val;
+    if (typeOf(triggersLogsString, 'string')) {
+      try {
+        triggersLogs = jsonParse(triggersLogsString);
+      } catch (e) {
+        triggersLogs = new Array();
+      }
+    }
+  }
+}
+
+/**
+ * This function pushes the trigger log item to the cache.
+ * @param {object} triggerJournalItem - The trigger log item.
+ */
+function triggersLogsPushTo(triggerJournalItem) {
+  if (typeOf(triggerJournalItem, 'object')) {
+    triggersLogs.push(triggerJournalItem);
+    if (triggersLogs.length > 100) {
+      triggersLogs.shift();
+    }
+    const stringValue = jsonStringify(triggersLogs);
+    if (existsState(triggersLogsStateFullId)) {
+      setState(triggersLogsStateFullId, stringValue, true);
+    } else {
+      createState(
+        triggersLogsStateFullId,
+        stringValue,
+        cachedValuesStatesCommonAttributes[idTriggersLogs],
+      );
+    }
+  }
+}
+
 
 /**
  * This function returns a state type, described in 'common' section of State object.
@@ -14317,7 +14386,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             if (
                               threshold.hasOwnProperty(onTimeIntervalIndividualId) &&
                               (!typeOf(threshold[onTimeIntervalIndividualId], 'map') ||
-                              threshold[onTimeIntervalIndividualId].size === 0)
+                                threshold[onTimeIntervalIndividualId].size === 0)
                             ) {
                               delete threshold[onTimeIntervalIndividualId];
                             }
