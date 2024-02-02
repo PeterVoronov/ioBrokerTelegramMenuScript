@@ -6305,28 +6305,71 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
 
 /**
  * This function extracts the list(`object`) of possible value states for the appropriate ioBroker state.
- * @param {*} inputStates
- * @returns
+ * @param {object} user - The user object.
+ * @param {string|object} stateIdOrObject - The id of the state or the it's object representation.
+ * @param {string=} functionId - The appropriate `Function` ID.
+ * @returns {Map} The list of possible value states.
  */
-function enumerationsExtractPossibleValueStates(inputStates) {
-  let states = {};
-  if (typeof inputStates === 'string') {
-    let statesArray = [];
-    if (inputStates.includes(';')) {
-      statesArray = inputStates.split(';');
-    } else if (inputStates.includes(',')) {
-      statesArray = inputStates.split(',');
+function enumerationsExtractPossibleValueStates(user, stateIdOrObject, functionId = '') {
+  const stateObject =
+    typeOf(stateIdOrObject, 'string') && existsObject(stateIdOrObject)
+      ? getObjectEnriched(stateIdOrObject)
+      : stateIdOrObject;
+  let states = new Map(),
+    statesArray = [],
+    value,
+    namePossible = '',
+    valueName,
+    possibleValueTranslationId = '';
+  if (typeOf(stateObject['common'], 'object')) {
+    const objectCommon = stateObject['common'],
+      inputStates = objectCommon.states,
+      inputType = objectCommon.type,
+      stateId = typeOf(stateIdOrObject, 'string') ? stateIdOrObject : stateObject._id,
+      stateFunction = enumerationsList[dataTypeFunction].list[functionId],
+      stateAttributeId = typeOf(stateFunction, 'object')
+        ? stateId.split('.').slice(-stateFunction.statesSectionsCount).join('.')
+        : '',
+      stateTranslationIdPrefix = stateAttributeId.split('.').join('_');
+    if (['string', 'object'].includes(`${typeOf(objectCommon)}`)) {
+      if (typeOf(inputStates, 'string')) {
+        if (inputStates.includes(';')) {
+          statesArray = inputStates.split(';');
+        } else if (inputStates.includes(',')) {
+          statesArray = inputStates.split(',');
+        }
+      } else {
+        statesArray = Object.keys(inputStates);
+      }
+      for (let iState of statesArray.values()) {
+        if (typeOf(inputStates, 'string') && inputStates.includes(':')) {
+          [value, namePossible] = iState.split(':');
+          value = value.trim();
+          namePossible = namePossible.trim();
+        } else if (typeOf(inputStates, 'object')) {
+          value = iState;
+          namePossible = inputStates[iState];
+        } else {
+          value = undefined;
+        }
+        if (isDefined(value)) {
+          if (typeOf(value, 'string') && inputType !== 'string') {
+            value = getValueFromStringByType(value, inputType);
+          }
+        }
+        if (typeOf(stateFunction, 'object')) {
+          possibleValueTranslationId = `${stateTranslationIdPrefix}_${value}`;
+          valueName = translationsGetObjectName(user, possibleValueTranslationId, functionId);
+          if (valueName === 'Undefined' || valueName.includes(possibleValueTranslationId)) valueName = namePossible;
+          if (!typeOf(valueName, 'string')) valueName = `${value}`;
+        } else {
+          valueName = namePossible;
+        }
+        states.set(value, valueName);
+      }
     }
-    for (let iState of statesArray.values()) {
-      const [possibleValue, possibleName] = iState.split(':');
-      states[possibleValue.trim()] = possibleName.trim();
-    }
-    return states;
-  } else if (Array.isArray(inputStates)) {
-    return undefined;
-  } else if (typeof inputStates === 'object') {
-    return inputStates;
   }
+  return states;
 }
 
 /**
@@ -6418,13 +6461,13 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
  */
 function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState, skipCodeConversion = false) {
   const currObject =
-    typeof stateIdOrObject === 'string' && existsObject(stateIdOrObject)
+    typeOf(stateIdOrObject, 'string') && existsObject(stateIdOrObject)
       ? getObjectEnriched(stateIdOrObject)
       : stateIdOrObject;
   let text = '';
   if (
     currObject &&
-    typeof currObject === 'object' &&
+    typeOf(currObject, 'object') &&
     currObject.hasOwnProperty('_id') &&
     currObject.hasOwnProperty('common')
   ) {
@@ -6436,7 +6479,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
       convertValueCode = currentDeviceButtonsAndAttributes.hasOwnProperty(currentAttributeId)
         ? currentDeviceButtonsAndAttributes[currentAttributeId].convertValueCode
         : '',
-      stateTranslationIdSuffix = currentAttributeId.split('.').join('_'),
+      stateTranslationIdPrefix = currentAttributeId.split('.').join('_'),
       currentObjectType = currObject.common['type'],
       currObjectUnit = currObject.common.hasOwnProperty('unit') ? currObject.common['unit'] : '';
     let currentStateVal;
@@ -6449,7 +6492,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         ? currentStateVal
         : enumerationsEvaluateValueConversionCode(user, currentStateVal, convertValueCode),
       currentStateValueType = !isDefined(currentStateValue) ? currentObjectType : typeof currentStateValue,
-      currentStateValueId = `${stateTranslationIdSuffix}_${currentStateValue}`;
+      currentStateValueTranslationId = `${stateTranslationIdPrefix}_${currentStateValue}`;
     if (isDefined(currentStateValue)) {
       if (currentStateValueType === 'boolean') {
         const currentIconOn =
@@ -6461,8 +6504,8 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
               ? currentFunction.iconOff
               : configOptions.getOption(cfgDefaultIconOff, user);
         if (isDefined(currentStateValue)) {
-          text = translationsGetObjectName(user, currentStateValueId, functionId);
-          if (text === 'Undefined' || text.includes(currentStateValueId)) {
+          text = translationsGetObjectName(user, currentStateValueTranslationId, functionId);
+          if (text === 'Undefined' || text.includes(currentStateValueTranslationId)) {
             text = currentStateValue ? currentIconOn : currentIconOff;
           }
         }
@@ -6470,11 +6513,9 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         currObject.common.hasOwnProperty('states') &&
         ['string', 'number'].includes(currObject.common['type'])
       ) {
-        const states = enumerationsExtractPossibleValueStates(currObject.common['states']);
-        if (states.hasOwnProperty(currentStateValue)) {
-          text = translationsGetObjectName(user, currentStateValueId, functionId);
-          if (text === 'Undefined' || text.includes(currentStateValueId)) text = states[currentStateValue];
-          if (!isDefined(text)) text = currentStateValue;
+        const states = enumerationsExtractPossibleValueStates(user, currObject, functionId);
+        if (typeOf(states, 'map') && states.has(currentStateValue)) {
+          text = states.get(currentStateValue);
         } else {
           text = `${currentStateValue}`;
         }
@@ -7413,10 +7454,9 @@ function alertsActionOnSubscribedState(object) {
                   : [undefined, undefined],
               alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, messageValues);
             let onTimeInterval = typeOf(threshold?.onTimeIntervalId, 'number') ? threshold[onTimeIntervalId] : 0;
-            if (typeOf(threshold?.[onTimeIntervalIndividualId], 'object')) {
-              const individualId = `${stateValue}`;
-              if (typeOf(threshold[onTimeIntervalIndividualId]?.[individualId], 'number')) {
-                onTimeInterval = threshold[onTimeIntervalIndividualId][individualId];
+            if (typeOf(threshold?.[onTimeIntervalIndividualId], 'map')) {
+              if (threshold[onTimeIntervalIndividualId].has(stateValue)) {
+                onTimeInterval = threshold[onTimeIntervalIndividualId].get(stateValue);
               }
             }
             if (onTimeInterval) {
@@ -7481,15 +7521,15 @@ function alertsActionOnSubscribedState(object) {
                   isAbove =
                     stateValue >= thresholdValue && (stateValueOld < thresholdValue || (timerOn && storedValue < 0));
                   messageValues['alertThresholdIcon'] = isBelow ? iconItemBelow : iconItemAbove;
-                  if (typeOf(threshold?.[onTimeIntervalIndividualId], 'object')) {
+                  if (typeOf(threshold?.[onTimeIntervalIndividualId], 'map')) {
                     let individualId = '';
                     if (isBelow && onBelow) {
                       individualId = 'onBelow';
                     } else if (isAbove && onAbove) {
                       individualId = 'onAbove';
                     }
-                    if (typeOf(threshold[onTimeIntervalIndividualId]?.[individualId], 'number')) {
-                      onTimeInterval = threshold[onTimeIntervalIndividualId][individualId];
+                    if (threshold[onTimeIntervalIndividualId].has(individualId)) {
+                      onTimeInterval = threshold[onTimeIntervalIndividualId].get(individualId);
                     }
                   }
                 } else {
@@ -8010,6 +8050,7 @@ function alertsMenuItemGenerateSubscribedOn(user, itemIndex, itemName, options, 
         } else {
           menuItem['options']['mode'] = 'add';
           menuItem['command'] = cmdItemSetValue;
+          menuItem['options']['value'] = itemIndex;
         }
         menuItem['submenu'] = alertsMenuGenerateManageEnumerableStates;
         menuItem['text'] = alertsMenuItemThresholdDetails;
@@ -8031,8 +8072,6 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
   const options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId, id: thresholdId} = options,
     stateObject = typeOf(options.stateObject, 'object') ? options.stateObject : getObjectEnriched(stateId),
-    stateObjectCommon = stateObject?.common,
-    stateType = options?.stateType ? options.stateType : stateObjectCommon?.['type'],
     alertDetails = alertsGetStateAlertDetailsOrThresholds(user, stateId),
     thresholdIndex = typeOf(thresholdId, 'string') ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
     threshold = thresholdIndex >= 0 ? alertDetails[thresholdIndex] : {},
@@ -8066,11 +8105,12 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
         value: translationsGetObjectName(user, stateId, functionId),
       },
     ],
-  timeIntervalsIndividual = threshold[onTimeIntervalIndividualId];
+    timeIntervalsIndividual = threshold[onTimeIntervalIndividualId];
   if (thresholdId !== thresholdEnumerable) {
     thresholdAttributesArray.push({
       label: ` ${translationsItemTextGet(user, 'value')}`,
-      value: enumerationsStateValueDetails(user, stateObject, functionId, {val: threshold.value})+
+      value:
+        enumerationsStateValueDetails(user, stateObject, functionId, {val: threshold.value}) +
         '[' +
         itemAboveText +
         itemBelowText +
@@ -8081,16 +8121,15 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
     label: translationsItemTextGet(user, onTimeIntervalId),
     value: `${typeOf(threshold[onTimeIntervalId], 'number') ? threshold[onTimeIntervalId] : 0} ${secondsText}`,
   });
-  if (typeOf(timeIntervalsIndividual, 'object') && Object.keys(timeIntervalsIndividual).length > 0 ) {
+  if (typeOf(timeIntervalsIndividual, 'map') && timeIntervalsIndividual.size > 0) {
     thresholdAttributesArray.push({
       label: translationsItemTextGet(user, onTimeIntervalIndividualId),
       value: '',
     });
-    Object.keys(timeIntervalsIndividual).forEach((individualId) => {
+    timeIntervalsIndividual.forEach((individualInterval, individualId) => {
       let label = '';
       if (thresholdId === thresholdEnumerable) {
-        const valueOriginal = getValueFromStringByType(individualId, stateType);
-        label = enumerationsStateValueDetails(user, stateId, functionId, {val: valueOriginal});
+        label = enumerationsStateValueDetails(user, stateId, functionId, {val: individualId});
       } else if (individualId === 'onAbove') {
         label = iconItemAbove;
       } else {
@@ -8098,7 +8137,7 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
       }
       thresholdAttributesArray.push({
         label: ` ${label}`,
-        value: `${timeIntervalsIndividual[individualId]} ${secondsText}`,
+        value: `${individualInterval} ${secondsText}`,
       });
     });
   }
@@ -8210,25 +8249,28 @@ function alertsMenuGenerateManageTimeIndividual(user, menuItemToProcess) {
     stateObject = typeOf(options.stateObject, 'object') ? options.stateObject : getObjectEnriched(stateId),
     stateObjectCommon = stateObject?.common,
     stateType = options?.stateType ? options.stateType : stateObjectCommon?.['type'],
-    timeIntervals = threshold?.[item] || {},
+    timeIntervals = threshold?.[item] || new Map(),
     timeIntervalCommon = threshold?.[onTimeIntervalId] || 0,
     secondsText = translationsItemTextGet(user, 'secondsShort');
   let subMenu = [],
     subMenuIndex = 0,
-    possibleValues = {};
+    possibleValues;
   if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(stateType)) {
-    possibleValues = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
+    possibleValues = enumerationsExtractPossibleValueStates(user, stateObject, functionId);
   } else if (stateType === 'boolean') {
-    possibleValues = {true: true, false: false};
+    possibleValues = new Map([
+      [true, enumerationsStateValueDetails(user, stateId, functionId, {val: true})],
+      [false, enumerationsStateValueDetails(user, stateId, functionId, {val: false})],
+    ]);
   } else {
-    possibleValues = {onAbove: iconItemAbove, onBelow: iconItemBelow};
+    possibleValues = new Map([
+      ['onAbove', iconItemAbove],
+      ['onBelow', iconItemBelow],
+    ]);
   }
-  Object.keys(possibleValues).forEach((value) => {
-    const valueText =
-        threshold === thresholdEnumerable
-          ? enumerationsStateValueDetails(user, stateId, functionId, {val: getValueFromStringByType(value, stateType)})
-          : possibleValues[value],
-      timeInterval = timeIntervals[value] || timeIntervalCommon,
+  logs(`stateType = ${stateType}, possibleValues = ${jsonStringify(possibleValues)}`, _l);
+  possibleValues.forEach((valueText, value) => {
+    const timeInterval = timeIntervals.has(value) ? timeIntervals.get(value) : timeIntervalCommon,
       timeIntervalText = `${timeInterval} ${secondsText}`;
     subMenuIndex = subMenu.push(
       menuMenuItemGenerateEditTime(user, currentIndex, subMenuIndex, valueText, '', {
@@ -12288,18 +12330,12 @@ function menuMenuItemGenerateEditItemStateValue(user, upperItemIndex, itemIndex,
       stateObjectCommon = stateObject?.common,
       stateType = options?.stateType ? options.stateType : stateObjectCommon['type'],
       stateValue = options?.value ? options.value : getState(options.state)?.val,
+      finctionId = options?.function,
       valueOptions = typeOf(options.valueOptions, 'object') ? options.valueOptions : {};
     if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(stateType)) {
-      const states = enumerationsExtractPossibleValueStates(stateObjectCommon['states']);
-      if (typeOf(states, 'object') && Object.keys(states).length > 0) {
-        const valuesMap = new Map();
-        for (const [possibleValue, _possibleName] of Object.entries(states)) {
-          valuesMap.set(
-            possibleValue,
-            `${enumerationsStateValueDetails(user, stateObject, options?.function, {val: possibleValue})}`,
-          );
-        }
-        valueOptions['states'] = valuesMap;
+      const states = enumerationsExtractPossibleValueStates(user, stateObject, finctionId);
+      if (typeOf(states, 'map') && states.size > 0) {
+        valueOptions['states'] = states;
       }
     } else if (stateType === 'number') {
       if (stateObjectCommon.hasOwnProperty('min')) valueOptions['min'] = stateObjectCommon['min'];
@@ -13791,15 +13827,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             currentStateValue = !isDefined(currentState.val) ? false : currentState.val;
           setState(stateId, !currentStateValue, setStateCallback);
         } else if (currentObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(currentStateType)) {
-          const currentStatePossibleValues = enumerationsExtractPossibleValueStates(currentObjectCommon['states']);
-          if (Object.keys(currentStatePossibleValues).includes(stateValue)) {
-            setState(stateId, currentStateType === 'number' ? Number(stateValue) : stateValue, setStateCallback);
+          const statePossibleValues = enumerationsExtractPossibleValueStates(user, currentObject),
+            stateValueToSet = currentStateType === 'number' ? Number(stateValue) : stateValue;
+          if (statePossibleValues.has(stateValueToSet)) {
+            setState(stateId, stateValueToSet, setStateCallback);
           } else {
-            warns(
-              `Value '${stateValue}' not in the acceptable list ${jsonStringify(
-                Object.keys(currentStatePossibleValues),
-              )}`,
-            );
+            warns(`Value '${stateValue}' not in the acceptable list ${jsonStringify(statePossibleValues.keys())}`);
             setStateCallback(translationsItemTextGet(user, 'MsgValueNotInTheList'));
           }
         } else if (currentStateType === 'number') {
@@ -13870,7 +13903,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         }
 
         case cmdItemSetValue: {
-          userInputToProcess = commandOptions?.value;
+          if (isDefined(commandOptions?.value)) userInputToProcess = commandOptions?.value;
         }
         // eslint-disable-next-line no-fallthrough
         case cmdGetInput:
@@ -14159,7 +14192,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   item = commandOptions.item;
                 switch (mode) {
                   case 'add': {
-                    if(commandOptions.id === thresholdEnumerable) {
+                    if (commandOptions.id === thresholdEnumerable) {
                       if (typeOf(threshold, 'array') && threshold.length > 0) {
                         threshold = undefined;
                       } else {
@@ -14170,7 +14203,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           index: 0,
                           type: commandOptions.type,
                         });
-                        currentMenuPosition.push(0);
+                        threshold = detailsOrThresholds[0];
+                        if (typeOf(commandOptions.subItem, 'string')) {
+                          currentMenuPosition = userInputToProcess.split('.');
+                        } else {
+                          threshold = undefined;
+                        }
                       }
                     } else if (Number.isNaN(userInputToProcess)) {
                       warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
@@ -14253,11 +14291,35 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           } else {
                             const thresholdValue = Number(userInputToProcess);
                             if (item === onTimeIntervalId) {
+                              const intervalsIndividual = threshold[onTimeIntervalIndividualId];
                               threshold[item] = thresholdValue;
-                            } else if (commandOptions.subItem) {
+                              if (typeOf(intervalsIndividual, 'map') && intervalsIndividual.size > 0) {
+                                const intervalIndividualKeys = Array.from(intervalsIndividual.keys());
+                                intervalIndividualKeys.forEach((valueId) => {
+                                  if (intervalsIndividual.get(valueId) === thresholdValue) {
+                                    intervalsIndividual.delete(valueId);
+                                  }
+                                });
+                              }
+                            } else if (isDefined(commandOptions.subItem)) {
+                              const valueId = commandOptions.subItem,
+                                timeIntervalCommon = typeOf(threshold[onTimeIntervalId], 'number')
+                                  ? threshold[onTimeIntervalId]
+                                  : 0;
                               backStepsForCacheDelete--;
-                              if (!typeOf(threshold[item], 'object')) threshold[item] = {};
-                              threshold[item][commandOptions.subItem] = thresholdValue;
+                              if (thresholdValue !== timeIntervalCommon) {
+                                if (!typeOf(threshold[item], 'map')) threshold[item] = new Map();
+                                threshold[item].set(valueId, thresholdValue);
+                              } else if (threshold[item].has(valueId)) {
+                                threshold[item].delete(valueId);
+                              }
+                            }
+                            if (
+                              threshold.hasOwnProperty(onTimeIntervalIndividualId) &&
+                              (!typeOf(threshold[onTimeIntervalIndividualId], 'map') ||
+                              threshold[onTimeIntervalIndividualId].size === 0)
+                            ) {
+                              delete threshold[onTimeIntervalIndividualId];
                             }
                           }
                           break;
@@ -16660,6 +16722,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               {
                 isEnabled: true,
                 id: thresholdEnumerable,
+                index: 0,
                 type: commandOptions.type,
               },
             ]);
