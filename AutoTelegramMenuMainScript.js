@@ -10711,7 +10711,9 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
     triggersLogsItemArray = new Array(),
     iconOn = configOptions.getOption(cfgDefaultIconOn, user),
     iconOff = configOptions.getOption(cfgDefaultIconOff, user);
-  let text = '', functionText = '', destinationText = '',
+  let text = '',
+    functionText = '',
+    destinationText = '',
     attributeFunction = {},
     attributeDestination = {},
     trigger;
@@ -10733,7 +10735,7 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
       value: '',
     });
     if (isFunctionDefined) {
-      functionText  = enumerationsItemName(user, dataTypeFunction, functionId);
+      functionText = enumerationsItemName(user, dataTypeFunction, functionId);
       if (!isDestinationDefined) {
         attributeFunction = {
           label: ` ${translationsItemTextGet(user, 'function')}`,
@@ -10765,7 +10767,7 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
         label: ` ${translationsItemTextGet(user, 'device')}`,
         value: enumerationsGetDeviceName(user, triggerStateId, functionId, destinationId),
       });
-      if (!typeOf(triggerId, 'string')) {
+      if (!typeOf(triggerId, 'string') || typeOf(item, 'object')) {
         triggersLogsItemArray.push({
           label: ` ${translationsItemTextGet(user, 'state')}`,
           value: translationsGetObjectName(user, triggerStateId, functionId),
@@ -10783,6 +10785,14 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
         };
         if (typeOf(trigger.onAbove, 'boolean') && typeOf(trigger.onBelow, 'boolean')) {
           sourceStateDetails.value = `${trigger.onAbove ? '˃=' : '˂'} ${sourceStateDetails.value}`;
+        } else {
+          sourceStateDetails.value = `== ${sourceStateDetails.value}`;
+        }
+        if (typeOf(item, 'object')) {
+          sourceStateDetails.label = ` ${enumerationsStateValueDetails(user, triggerStateId, functionId, {
+            val: item.triggerValue,
+          })} ${sourceStateDetails.value}`;
+          sourceStateDetails.value = '';
         }
         triggersLogsItemArray.push(sourceStateDetails);
       }
@@ -10796,7 +10806,7 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
         conditionsChecked = conditions.checked;
       if (
         (typeOf(conditions.passed, 'boolean') && !conditions.passed) ||
-        typeOf(conditionsChecked, 'array') && conditionsChecked.length > 0
+        (typeOf(conditionsChecked, 'array') && conditionsChecked.length > 0)
       ) {
         triggersLogsItemArray.push({
           label: translationsItemTextGet(user, 'conditions'),
@@ -10805,41 +10815,41 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
       }
       if (typeOf(conditionsChecked, 'array') && conditionsChecked.length > 0) {
         conditionsChecked.forEach((condition, conditionIndex) => {
-            if (typeOf(condition, 'object')) {
-              const conditionStateId = condition.state,
-                conditionFunctionText = enumerationsItemName(user, dataTypeFunction, condition.function),
-                conditionDestinationText = enumerationsItemName(user, dataTypeDestination, condition.destination),
-                resultIcon = condition.result ? iconOn : iconOff;
-              triggersLogsItemArray.push({
-                label: ` ${conditionIndex}:`,
-                value: '',
-              });
-              triggersLogsItemArray.push({
-                label: functionsFirst
-                  ? `  ${conditionFunctionText}/${conditionDestinationText}`
-                  : `  ${conditionDestinationText}/${conditionFunctionText}`,
-                value: '',
-              });
-              triggersLogsItemArray.push({
-                label: `  ${translationsItemTextGet(user, 'device')}`,
-                value: enumerationsGetDeviceName(user, conditionStateId, condition.function, condition.destination),
-              });
-              triggersLogsItemArray.push({
-                label: `  ${translationsItemTextGet(user, 'state')}`,
-                value: translationsGetObjectName(user, conditionStateId, condition.function),
-              });
-              let conditionCheckText = `  ${enumerationsStateValueDetails(user, conditionStateId, condition.function, {
-                val: condition.valueCurrent,
-              })}`;
-              conditionCheckText += ` ${condition.operator} `;
-              conditionCheckText += enumerationsStateValueDetails(user, conditionStateId, condition.function, {
-                val: condition.value,
-              });
-              triggersLogsItemArray.push({
-                label: conditionCheckText,
-                value: resultIcon,
-              });
-            }
+          if (typeOf(condition, 'object')) {
+            const conditionStateId = condition.state,
+              conditionFunctionText = enumerationsItemName(user, dataTypeFunction, condition.function),
+              conditionDestinationText = enumerationsItemName(user, dataTypeDestination, condition.destination),
+              resultIcon = condition.result ? iconOn : iconOff;
+            triggersLogsItemArray.push({
+              label: ` ${conditionIndex}:`,
+              value: '',
+            });
+            triggersLogsItemArray.push({
+              label: functionsFirst
+                ? `  ${conditionFunctionText}/${conditionDestinationText}`
+                : `  ${conditionDestinationText}/${conditionFunctionText}`,
+              value: '',
+            });
+            triggersLogsItemArray.push({
+              label: `  ${translationsItemTextGet(user, 'device')}`,
+              value: enumerationsGetDeviceName(user, conditionStateId, condition.function, condition.destination),
+            });
+            triggersLogsItemArray.push({
+              label: `  ${translationsItemTextGet(user, 'state')}`,
+              value: translationsGetObjectName(user, conditionStateId, condition.function),
+            });
+            let conditionCheckText = `  ${enumerationsStateValueDetails(user, conditionStateId, condition.function, {
+              val: condition.valueCurrent,
+            })}`;
+            conditionCheckText += ` ${condition.operator} `;
+            conditionCheckText += enumerationsStateValueDetails(user, conditionStateId, condition.function, {
+              val: condition.value,
+            });
+            triggersLogsItemArray.push({
+              label: conditionCheckText,
+              value: resultIcon,
+            });
+          }
         });
       }
     }
