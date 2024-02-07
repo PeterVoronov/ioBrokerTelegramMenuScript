@@ -41,7 +41,6 @@ const jsonStringifySafe = require('json-stringify-safe');
 const _l = true;
 
 /*** Make functions to be printable in JSON.stringify with names ***/
-
 // prettier-ignore
 Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
   // eslint-disable-next-line space-before-function-paren
@@ -157,6 +156,7 @@ const cmdPrefix = 'cmd',
   idExternal = dataTypeExtension,
   idAlerts = 'alerts',
   idCachedAlertsStatesValues = 'alertsStatesPreviousValues',
+  idTriggersLogs = 'triggersLogs',
   //*** Items default delimiter ***//
   itemsDelimiter = '::',
   //*** Do commands ***//
@@ -279,7 +279,8 @@ const cfgPrefix = 'cfg',
   cfgAlertMessagesHistoryDepth = `${cfgPrefix}AlertMessagesHistoryDepth`,
   cfgUpdateMessageTime = `${cfgPrefix}UpdateMessageTime`,
   cfgUpdateMessagesOnStart = `${cfgPrefix}UpdateMessagesOnStart`,
-  cfgDebugMode = `${cfgPrefix}DebugMode`;
+  cfgDebugMode = `${cfgPrefix}DebugMode`,
+  cfgTriggersLogsMaxCountRecordsPerTrigger = `${cfgPrefix}TriggersLogsMaxCountRecordsPerTrigger`;
 const alertMessageTemplateDefault =
   '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}"${alertStateName? $value -:} ${alertStateValue}'; // NOSONAR
 
@@ -396,6 +397,13 @@ const configOptionsParameters = {
       hidden: false,
       default: false,
       description: 'Make possible to set thresholds for states of string type, which is really numeric',
+    },
+    [cfgTriggersLogsMaxCountRecordsPerTrigger]: {
+      type: 'numeric',
+      systemLevel: true,
+      hidden: false,
+      default: 50,
+      description: 'Maximum count of records per trigger in trigger logs',
     },
     [cfgDebugMode]: {
       type: 'boolean',
@@ -5893,6 +5901,25 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
 }
 
 /**
+ * This function returns a name of current enumerations item.
+ * @param {object} user - The user object.
+ * @param {string} enumerationType  - The string defines the enumerationItem type.
+ * @param {string} enumerationItemId - The Id of the current enumerationItem.
+ * @returns {string} The enumerations item name.
+ */
+function enumerationsItemIcon(user, enumerationType, enumerationItemId) {
+  let result = iconItemNotFound;
+  const enumerationList = enumerationsGetList(enumerationType);
+  if (isDefined(enumerationList)) {
+    const enumerationItem = enumerationList[enumerationItemId];
+    if (typeOf(enumerationItem, 'object') && typeof enumerationItem.icon === 'string') {
+      result = enumerationItem.icon;
+    }
+  }
+  return result;
+}
+
+/**
  * This function returns holder id of current enumeration or it's id if it holds other enumerations;
  * @param {object} enumerations - Te list of enumerations.
  * @param {string} enumerationId - The current enumeration Id.
@@ -7264,6 +7291,7 @@ function alertsInit(checkStates = false) {
     });
   }
   triggersTimeRangeStartTimesUpdate();
+  triggersLogsInit();
   // triggersTimeRangeStartTimeScheduled('0 0 9 * * *')
 }
 
@@ -7391,7 +7419,8 @@ function alertsActionOnSubscribedState(object) {
         alertsStoreToCacheStateValue(stateId, object.state.val);
       alerts[stateId].chatIds.forEach((detailsOrThresholds, chatId) => {
         chatId = Number(chatId);
-        const user = telegramGenerateUserObjectFromId(chatId);
+        const user = telegramGenerateUserObjectFromId(chatId),
+          isTrigger = chatId === triggersInAlertsId;
         if (chatId >= 0 || activeChatGroups.includes(chatId)) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           const stateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
@@ -7433,7 +7462,7 @@ function alertsActionOnSubscribedState(object) {
             );
           }
           if (
-            chatId !== triggersInAlertsId &&
+            !isTrigger &&
             !isEmulatedForTriggers &&
             (alertStateType === 'boolean' ||
               (alertObject.common.hasOwnProperty('states') && ['string', 'number'].includes(alertStateType))) &&
@@ -7482,7 +7511,7 @@ function alertsActionOnSubscribedState(object) {
               alertsMessagePush(user, stateId, alertMessageText, stateId === currentState);
             }
           } else if (
-            (chatId === triggersInAlertsId || (alertStateType === 'number' && !isEmulatedForTriggers)) &&
+            (isTrigger || (alertStateType === 'number' && !isEmulatedForTriggers)) &&
             detailsOrThresholds.length
           ) {
             const alertDefaultTemplate = configOptions.getOption(cfgAlertMessageTemplateThreshold, user);
@@ -7505,7 +7534,15 @@ function alertsActionOnSubscribedState(object) {
                   timerOn = thresholdsVariables.has(idStoredTimer) ? thresholdsVariables.get(idStoredTimer) : undefined,
                   alertMessageTemplate = threshold.hasOwnProperty(alertMessageTemplateId)
                     ? threshold[alertMessageTemplateId]
-                    : alertDefaultTemplate;
+                    : alertDefaultTemplate,
+                  triggerLogItem = {
+                    date: alertTimeStamp,
+                    triggerState: stateId,
+                    triggerFunction: alertFunctionId,
+                    triggerDestination: alertDestinationId,
+                    triggerValue: stateValue,
+                    triggerId: id,
+                  };
                 let isBelow,
                   isAbove,
                   isTriggered,
@@ -7532,6 +7569,10 @@ function alertsActionOnSubscribedState(object) {
                       onTimeInterval = threshold[onTimeIntervalIndividualId].get(individualId);
                     }
                   }
+                  if (isTrigger) {
+                    if (isAbove) triggerLogItem['triggerAction'] = 'above';
+                    if (isBelow) triggerLogItem['triggerAction'] = 'below';
+                  }
                 } else {
                   if (thresholdsVariables.has(idStoredData)) {
                     [storedValue, storedValueOld] = thresholdsVariables.get(idStoredData);
@@ -7539,6 +7580,7 @@ function alertsActionOnSubscribedState(object) {
                   messageValues['alertThresholdIcon'] = '=';
                   isTriggered =
                     stateValue === thresholdValue && !(stateValueOld === storedValue && stateValue === storedValueOld);
+                  if (isTrigger) triggerLogItem['triggerAction'] = 'equal';
                 }
                 let thresholdUser = user;
                 if (!typeOf(thresholdUser, 'object') && isDefined(threshold.user)) {
@@ -7625,18 +7667,27 @@ function alertsActionOnSubscribedState(object) {
                   if (thresholdsVariables.has(idStoredData)) thresholdsVariables.delete(idStoredData);
                   if (thresholdUser)
                     alertsMessagePush(thresholdUser, stateId, alertMessageText, stateId === currentState);
-                  if (chatId === triggersInAlertsId) {
-                    if (threshold.log)
+                  if (isTrigger) {
+                    if (threshold.log) {
+                      triggerLogItem['targetState'] = targetState;
+                      triggerLogItem['targetValue'] = targetValue;
                       warns(
-                        `Trigger ${id}. State ${targetState} will be set to ${targetValue} due to ` +
-                          `trigger of state ${stateId} on value ${thresholdValue}!`,
+                        `The state "${targetState}" is triggered by the trigger with id = "${id}" to ` +
+                          `"${targetValue}" because the value of state "${stateId}" has changed to ` +
+                          `"${thresholdValue}"!`,
                       );
+                    }
                     logs(
-                      `Trigger ${id}. State ${targetState} will be set to ${targetValue} due to ' +
-                      'trigger of state ${stateId} on value ${thresholdValue}! = ${jsonStringify(threshold)}`,
+                      `The state "${targetState}" is triggered by the trigger with id = "${id}" to ` +
+                        `"${targetValue}" because the value of state "${stateId}" has changed to "${thresholdValue}"!`,
                     );
                     setState(targetState, targetValue, (error) => {
-                      if (error) {
+                      if (threshold.log) {
+                        triggerLogItem['success'] = !isDefined(error);
+                        triggerLogItem['error'] = jsonStringify(error);
+                        triggersLogsPushTo(triggerLogItem);
+                      }
+                      if (isDefined(error)) {
                         warns(
                           `Can't set value ${targetValue} to state ${targetState}! Error is - ${jsonStringify(error)}.`,
                         );
@@ -7675,7 +7726,11 @@ function alertsActionOnSubscribedState(object) {
                         }
                       }
                       if (currentStatus !== 0 || isTriggered) {
-                        if (triggersCheckConditions(conditions)) {
+                        const conditionsCheck = triggersCheckConditions(conditions);
+                        if (threshold.log) {
+                          triggerLogItem['conditions'] = conditionsCheck;
+                        }
+                        if (conditionsCheck.passed) {
                           thresholdsVariables.set(
                             idStoredData,
                             isNumeric ? currentStatus : [stateValue, stateValueOld],
@@ -7688,7 +7743,11 @@ function alertsActionOnSubscribedState(object) {
                       }
                     }
                   } else if (isBelow || isAbove || isTriggered) {
-                    if (triggersCheckConditions(conditions)) pushAlertOrTriggerState();
+                    const conditionsCheck = triggersCheckConditions(conditions);
+                    if (threshold.log) {
+                      triggerLogItem['conditions'] = conditionsCheck;
+                    }
+                    if (conditionsCheck.passed) pushAlertOrTriggerState();
                   }
                 }
               }
@@ -8619,7 +8678,62 @@ const triggersInAlertsId = 0,
   triggersIconsArray = [iconItemTrigger, iconItemDisabled],
   triggersConditionIconsArray = [iconItemCondition, iconItemDisabled],
   triggersConditionOperators = ['==', '!=', '> ', '>=', '<', '<='],
-  triggersTimeRangeStartTimes = new Map();
+  triggersTimeRangeStartTimes = new Map(),
+  triggersLogsStateFullId = `${prefixCacheStatesCommon}.${idTriggersLogs}`;
+
+let triggersLogs = new Array();
+
+cachedValuesStatesCommonAttributes[idTriggersLogs] = {
+  name: 'List of previous(cached) values of states for alert subscription',
+  type: 'json',
+  read: true,
+  write: true,
+  role: 'list',
+};
+
+/**
+ * This function loads the triggers journal from the cache.
+ */
+function triggersLogsInit() {
+  if (existsState(triggersLogsStateFullId)) {
+    const triggersLogsString = getState(triggersLogsStateFullId).val;
+    if (typeOf(triggersLogsString, 'string')) {
+      try {
+        triggersLogs = jsonParse(triggersLogsString);
+      } catch (e) {
+        triggersLogs = new Array();
+      }
+    }
+  }
+}
+
+/**
+ * This function pushes the trigger log item to the cache.
+ * @param {object} triggerLogItem - The trigger log item.
+ */
+function triggersLogsPushTo(triggerLogItem) {
+  const maxLogsItems = configOptions.getOption(cfgTriggersLogsMaxCountRecordsPerTrigger);
+  if (typeOf(triggerLogItem, 'object')) {
+    triggersLogs.push(triggerLogItem);
+    if (
+      triggersLogs.filter((logItem) => {
+        return logItem.triggerState === triggerLogItem.triggerState && logItem.triggerId === triggerLogItem.triggerId;
+      }).length > maxLogsItems
+    ) {
+      const first = triggersLogs.findIndex(
+        (logItem) =>
+          logItem.triggerState === triggerLogItem.triggerState && logItem.triggerId === triggerLogItem.triggerId,
+      );
+      triggersLogs.splice(first, 1);
+    }
+    const stringValue = jsonStringify(triggersLogs);
+    if (existsState(triggersLogsStateFullId)) {
+      setState(triggersLogsStateFullId, stringValue, true);
+    } else {
+      createState(triggersLogsStateFullId, stringValue, cachedValuesStatesCommonAttributes[idTriggersLogs]);
+    }
+  }
+}
 
 /**
  * This function returns a state type, described in 'common' section of State object.
@@ -10406,12 +10520,16 @@ function triggersMenuGenerateSelectTargetState(user, menuItemToProcess) {
 /**
  * This function go thru the Trigger Conditions array, and made an appropriate checks.
  * @param {object[]} conditions - The array of conditions.
- * @returns {boolean} The result of all checks. If one will be false - result will be false.
+ * @returns {object} The object with all passed check details and one mandatory attribute `result` - the result of all
+ * checks. If one check will be false - result will be false too.
  */
 function triggersCheckConditions(conditions) {
-  let result = true;
+  let result = {
+    passed: true,
+    checked: new Array(),
+  };
   if (typeOf(conditions, 'array')) {
-    result = conditions.every((condition) => {
+    result['passed'] = conditions.every((condition) => {
       let check = true;
       if (condition?.isEnabled) {
         check = false;
@@ -10419,38 +10537,42 @@ function triggersCheckConditions(conditions) {
           const {state, operator, value} = condition,
             stateValue = getState(state);
           if (stateValue && isDefined(stateValue.val)) {
-            const currentValue = stateValue.val;
+            const valueCurrent = stateValue.val;
             switch (operator) {
               case '==': {
-                check = currentValue == value;
+                check = valueCurrent == value;
                 break;
               }
-
               case '!=': {
-                check = currentValue != value;
+                check = valueCurrent != value;
                 break;
               }
-
               case '>': {
-                check = currentValue > value;
+                check = valueCurrent > value;
                 break;
               }
-
               case '>=': {
-                check = currentValue >= value;
+                check = valueCurrent >= value;
                 break;
               }
-
               case '<': {
-                check = currentValue < value;
+                check = valueCurrent < value;
                 break;
               }
-
               case '<=': {
-                check = currentValue <= value;
+                check = valueCurrent <= value;
                 break;
               }
             }
+            result['checked'].push({
+              function: condition.function,
+              destination: condition.destination,
+              state: state,
+              valueCurrent: valueCurrent,
+              operator: operator,
+              value: value,
+              result: check,
+            });
           }
         }
       }
@@ -10458,6 +10580,310 @@ function triggersCheckConditions(conditions) {
     });
   }
   return result;
+}
+
+/**
+ * This function generates a submenus with appropriate inheritance levels for all Triggers Logs.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]}  Newly generated submenu.
+ */
+function triggersMenuGenerateTriggersLogs(user, menuItemToProcess) {
+  const currentIndex = typeOf(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    options = typeOf(menuItemToProcess.options, 'object') ? menuItemToProcess.options : {},
+    {state: triggerStateId, id: triggerId, function: functionId, destination: destinationId, item} = options,
+    functionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
+    isFunctionDefined = typeOf(functionId, 'string'),
+    isDestinationDefined = typeOf(destinationId, 'string');
+  let subMenu = [],
+    subMenuIndex = 0;
+  if (triggersLogs.length && !typeOf(item, 'object')) {
+    if (typeOf(triggerStateId, 'string') && typeOf(triggerId, 'string')) {
+      const triggerLogs = triggersLogs
+          .filter((logItem) => logItem.triggerState === triggerStateId && logItem.triggerId === triggerId)
+          .sort((a, b) => Date.parse(b.date) - Date.parse(a.date)),
+        template = configOptions.getOption(cfgDateTimeTemplate, user),
+        iconOn = configOptions.getOption(cfgDefaultIconOn, user),
+        iconOff = configOptions.getOption(cfgDefaultIconOff, user);
+      if (triggerLogs.length) {
+        triggerLogs.forEach((logItem) => {
+          subMenuIndex = subMenu.push({
+            index: `${currentIndex}.${subMenuIndex}`,
+            name: formatDate(logItem.date, template),
+            icon: logItem.success ? iconOn : iconOff,
+            text: triggersMenuTriggersLogsItemDetails,
+            options: {...options, item: logItem},
+            submenu: triggersMenuGenerateTriggersLogs,
+          });
+        });
+      }
+    } else if (typeOf(triggerStateId, 'string')) {
+      const triggerLogs = triggersLogs.filter((logItem) => logItem.triggerState === triggerStateId),
+        triggerLogsIds = new Set(triggerLogs.map((logItem) => logItem.triggerId)),
+        triggers = triggersGetStateTriggers(user, triggerStateId);
+      if (triggerLogsIds.size) {
+        triggerLogsIds.forEach((triggerId) => {
+          const triggerIndex = thresholdsGetIndex(triggers, triggerId),
+            trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
+          if (typeOf(trigger, 'object')) {
+            const triggerValue = enumerationsStateValueDetails(user, triggerStateId, functionId, {val: trigger.value});
+            let itemName = `${translationsGetObjectName(user, triggerStateId, functionId)}: `;
+            if (typeOf(trigger.onAbove, 'boolean') && typeOf(trigger.onBelow, 'boolean')) {
+              itemName += `${trigger.onAbove ? '˃=' : '˂'} ${triggerValue}`;
+            } else {
+              itemName += `${triggerValue}`;
+            }
+            subMenuIndex = subMenu.push({
+              index: `${currentIndex}.${subMenuIndex}`,
+              name: itemName,
+              icon: iconItemTrigger,
+              text: triggersMenuTriggersLogsItemDetails,
+              options: {...options, id: triggerId},
+              submenu: triggersMenuGenerateTriggersLogs,
+            });
+          }
+        });
+      }
+    } else {
+      let triggersLogsThisLevelItems,
+        thisLevelItemsId = '';
+      const triggersLogsFiltered = triggersLogs.filter(
+        (logItem) =>
+          ((isFunctionDefined && logItem.triggerFunction === functionId) || !isFunctionDefined) &&
+          ((isDestinationDefined && logItem.triggerDestination === destinationId) || !isDestinationDefined),
+      );
+      if (!isDestinationDefined && ((functionsFirst && isFunctionDefined) || !functionsFirst)) {
+        triggersLogsThisLevelItems = new Set(triggersLogsFiltered.map((logItem) => logItem.triggerDestination));
+        thisLevelItemsId = 'destination';
+      } else if (!isFunctionDefined) {
+        triggersLogsThisLevelItems = new Set(triggersLogsFiltered.map((logItem) => logItem.triggerFunction));
+        thisLevelItemsId = 'function';
+      } else {
+        triggersLogsThisLevelItems = new Set(triggersLogsFiltered.map((logItem) => logItem.triggerState));
+        thisLevelItemsId = 'state';
+      }
+      if (triggersLogsThisLevelItems.size) {
+        triggersLogsThisLevelItems.forEach((thisLevelItemId) => {
+          let itemName = '',
+            itemIcon = '';
+          if (thisLevelItemsId === 'function') {
+            itemName = enumerationsItemName(user, dataTypeFunction, thisLevelItemId);
+            itemIcon = enumerationsItemIcon(user, dataTypeFunction, thisLevelItemId);
+          } else if (thisLevelItemsId === 'destination') {
+            itemName = enumerationsItemName(user, dataTypeDestination, thisLevelItemId);
+            itemIcon = enumerationsItemIcon(user, dataTypeDestination, thisLevelItemId);
+          } else {
+            itemName = `${enumerationsGetDeviceName(
+              user,
+              thisLevelItemId,
+              functionId,
+              destinationId,
+            )}: ${translationsGetObjectName(user, thisLevelItemId, functionId)}`;
+            itemIcon = enumerationsItemIcon(user, dataTypeFunction, functionId);
+          }
+          subMenuIndex = subMenu.push({
+            index: `${currentIndex}.${subMenuIndex}`,
+            name: itemName,
+            icon: itemIcon,
+            text: triggersMenuTriggersLogsItemDetails,
+            options: {...options, [thisLevelItemsId]: thisLevelItemId},
+            submenu: triggersMenuGenerateTriggersLogs,
+          });
+        });
+      }
+    }
+  }
+  return subMenu;
+}
+
+/**
+ * This function generates the text description of the current Trigger Logs item.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will be described.
+ * @returns {string} - The description of the Trigger Logs item.
+ */
+function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
+  const options = typeOf(menuItemToProcess.options, 'object') ? menuItemToProcess.options : {},
+    {state: triggerStateId, id: triggerId, function: functionId, destination: destinationId, item} = options,
+    functionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
+    isFunctionDefined = typeOf(functionId, 'string'),
+    isDestinationDefined = typeOf(destinationId, 'string'),
+    triggersLogsItemArray = new Array(),
+    iconOn = configOptions.getOption(cfgDefaultIconOn, user),
+    iconOff = configOptions.getOption(cfgDefaultIconOff, user);
+  let text = '',
+    functionText = '',
+    destinationText = '',
+    attributeFunction = {},
+    attributeDestination = {},
+    trigger;
+  if (typeOf(item, 'object')) {
+    triggersLogsItemArray.push(
+      {
+        label: `${translationsItemTextGet(user, 'date', 'time')}`,
+        value: formatDate(item.date, configOptions.getOption(cfgDateTimeTemplate, user)),
+      },
+      {
+        label: `${translationsItemTextGet(user, 'success')}`,
+        value: item.success ? iconOn : iconOff,
+      },
+    );
+  }
+  if (isFunctionDefined || isDestinationDefined || typeOf(triggerStateId, 'string') || typeOf(triggerId, 'string')) {
+    triggersLogsItemArray.push({
+      label: `${translationsItemTextGet(user, 'source')}:`,
+      value: '',
+    });
+    if (isFunctionDefined) {
+      functionText = enumerationsItemName(user, dataTypeFunction, functionId);
+      if (!isDestinationDefined) {
+        attributeFunction = {
+          label: ` ${translationsItemTextGet(user, 'function')}`,
+          value: enumerationsItemName(user, dataTypeFunction, functionId),
+        };
+      }
+    }
+    if (isDestinationDefined) {
+      destinationText = enumerationsItemName(user, dataTypeDestination, destinationId);
+      if (!isFunctionDefined) {
+        attributeDestination = {
+          label: ` ${translationsItemTextGet(user, 'destination')}`,
+          value: enumerationsItemName(user, dataTypeDestination, destinationId),
+        };
+      }
+    }
+    if (functionsFirst && isFunctionDefined && !isDestinationDefined) {
+      triggersLogsItemArray.push(attributeFunction);
+    } else if (!functionsFirst && isDestinationDefined && !isFunctionDefined) {
+      triggersLogsItemArray.push(attributeDestination);
+    } else {
+      triggersLogsItemArray.push({
+        label: functionsFirst ? ` ${functionText}/${destinationText}` : ` ${destinationText}/${functionText}`,
+        value: '',
+      });
+    }
+    if (typeOf(triggerStateId, 'string')) {
+      triggersLogsItemArray.push({
+        label: ` ${translationsItemTextGet(user, 'device')}`,
+        value: enumerationsGetDeviceName(user, triggerStateId, functionId, destinationId),
+      });
+      if (!typeOf(triggerId, 'string') || typeOf(item, 'object')) {
+        triggersLogsItemArray.push({
+          label: ` ${translationsItemTextGet(user, 'state')}`,
+          value: translationsGetObjectName(user, triggerStateId, functionId),
+        });
+      }
+    }
+    if (typeOf(triggerId, 'string')) {
+      const triggers = triggersGetStateTriggers(user, triggerStateId),
+        triggerIndex = thresholdsGetIndex(triggers, triggerId);
+      trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
+      if (typeOf(trigger, 'object')) {
+        const sourceStateDetails = {
+          label: ` ${translationsGetObjectName(user, triggerStateId, functionId)}`,
+          value: enumerationsStateValueDetails(user, triggerStateId, functionId, {val: trigger.value}),
+        };
+        if (typeOf(trigger.onAbove, 'boolean') && typeOf(trigger.onBelow, 'boolean')) {
+          sourceStateDetails.value = `${trigger.onAbove ? '˃=' : '˂'} ${sourceStateDetails.value}`;
+        } else {
+          sourceStateDetails.value = `== ${sourceStateDetails.value}`;
+        }
+        if (typeOf(item, 'object')) {
+          sourceStateDetails.label = ` ${enumerationsStateValueDetails(user, triggerStateId, functionId, {
+            val: item.triggerValue,
+          })} ${sourceStateDetails.value}`;
+          sourceStateDetails.value = '';
+        }
+        triggersLogsItemArray.push(sourceStateDetails);
+      }
+    }
+  }
+  if (typeOf(item, 'object')) {
+    const targetFunctionText = enumerationsItemName(user, dataTypeFunction, trigger.targetFunction),
+      targetDestinationText = enumerationsItemName(user, dataTypeDestination, trigger.targetDestination);
+    if (typeOf(item.conditions, 'object')) {
+      const conditions = item.conditions,
+        conditionsChecked = conditions.checked;
+      if (
+        (typeOf(conditions.passed, 'boolean') && !conditions.passed) ||
+        (typeOf(conditionsChecked, 'array') && conditionsChecked.length > 0)
+      ) {
+        triggersLogsItemArray.push({
+          label: translationsItemTextGet(user, 'conditions'),
+          value: conditions.passed ? iconOn : iconOff,
+        });
+      }
+      if (typeOf(conditionsChecked, 'array') && conditionsChecked.length > 0) {
+        conditionsChecked.forEach((condition, conditionIndex) => {
+          if (typeOf(condition, 'object')) {
+            const conditionStateId = condition.state,
+              conditionFunctionText = enumerationsItemName(user, dataTypeFunction, condition.function),
+              conditionDestinationText = enumerationsItemName(user, dataTypeDestination, condition.destination),
+              resultIcon = condition.result ? iconOn : iconOff;
+            triggersLogsItemArray.push({
+              label: ` ${conditionIndex}:`,
+              value: '',
+            });
+            triggersLogsItemArray.push({
+              label: functionsFirst
+                ? `  ${conditionFunctionText}/${conditionDestinationText}`
+                : `  ${conditionDestinationText}/${conditionFunctionText}`,
+              value: '',
+            });
+            triggersLogsItemArray.push({
+              label: `  ${translationsItemTextGet(user, 'device')}`,
+              value: enumerationsGetDeviceName(user, conditionStateId, condition.function, condition.destination),
+            });
+            triggersLogsItemArray.push({
+              label: `  ${translationsItemTextGet(user, 'state')}`,
+              value: translationsGetObjectName(user, conditionStateId, condition.function),
+            });
+            let conditionCheckText = `  ${enumerationsStateValueDetails(user, conditionStateId, condition.function, {
+              val: condition.valueCurrent,
+            })}`;
+            conditionCheckText += ` ${condition.operator} `;
+            conditionCheckText += enumerationsStateValueDetails(user, conditionStateId, condition.function, {
+              val: condition.value,
+            });
+            triggersLogsItemArray.push({
+              label: conditionCheckText,
+              value: resultIcon,
+            });
+          }
+        });
+      }
+    }
+    triggersLogsItemArray.push({
+      label: `${translationsItemTextGet(user, 'target')}:`,
+      value: '',
+    });
+    triggersLogsItemArray.push({
+      label: functionsFirst
+        ? ` ${targetFunctionText}/${targetDestinationText}`
+        : ` ${targetDestinationText}/${targetFunctionText}`,
+      value: '',
+    });
+    triggersLogsItemArray.push({
+      label: ` ${translationsItemTextGet(user, 'device')}`,
+      value: enumerationsGetDeviceName(user, trigger.targetState, trigger.targetFunction, trigger.targetDestination),
+    });
+    triggersLogsItemArray.push({
+      label: ` ${translationsGetObjectName(user, trigger.targetState, trigger.targetFunction)}`,
+      value: enumerationsStateValueDetails(user, trigger.targetState, trigger.targetFunction, {
+        val: trigger.targetValue,
+      }),
+    });
+    if (typeOf(item.error, 'string')) {
+      triggersLogsItemArray.push({
+        label: `${translationsItemTextGet(user, 'error')}`,
+        value: item.error,
+      });
+    }
+  }
+  if (triggersLogsItemArray.length) {
+    text = `${menuMenuItemDetailsPrintFixedLengthLines(user, triggersLogsItemArray)}`;
+  }
+  return text;
 }
 
 //*** Triggers - end ***//
@@ -11557,8 +11983,22 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
           id: 'triggers',
           icon: iconItemTrigger,
           group: 'triggersAndAlerts',
-          options: {mode: 'triggers'},
-          submenu: alertsMenuGenerateSubscribed,
+          submenu: [
+            {
+              name: translationsItemMenuGet(user, 'TriggersLogs'),
+              id: 'triggersLogs',
+              icon: iconItemHistory,
+              submenu: triggersMenuGenerateTriggersLogs,
+            },
+            {
+              name: translationsItemMenuGet(user, 'TriggersConfigured'),
+              id: 'triggersConfigured',
+              icon: iconItemTrigger,
+              group: 'triggersAndAlerts',
+              options: {mode: 'triggers'},
+              submenu: alertsMenuGenerateSubscribed,
+            },
+          ],
         },
         {
           name: translationsItemMenuGet(user, 'Alerts'),
@@ -14317,7 +14757,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             if (
                               threshold.hasOwnProperty(onTimeIntervalIndividualId) &&
                               (!typeOf(threshold[onTimeIntervalIndividualId], 'map') ||
-                              threshold[onTimeIntervalIndividualId].size === 0)
+                                threshold[onTimeIntervalIndividualId].size === 0)
                             ) {
                               delete threshold[onTimeIntervalIndividualId];
                             }
@@ -18188,11 +18628,16 @@ function errs(txt) {
  * @param {any} value - The value of the object, to be replaced.
  * @returns {any} The result of replace.
  */
-function JSONReplacerWithMap(_key, value) {
+function JSONReplacer(_key, value) {
   if (value instanceof Map) {
     return {
       dataType: 'Map',
       value: [...value],
+    };
+  } else if (value instanceof Set) {
+    return {
+      dataType: 'Set',
+      value: Array.from(value),
     };
   } else {
     return value;
@@ -18205,10 +18650,18 @@ function JSONReplacerWithMap(_key, value) {
  * @param {any} value - The value of the object, to be revived.
  * @returns {any} The result of revive.
  */
-function JSONReviverWithMap(_key, value) {
+function JSONReviver(_key, value) {
   if (typeof value === 'object' && value !== null) {
-    if (value.dataType === 'Map') {
-      return new Map(value.value);
+    switch (value.dataType) {
+      case 'Map': {
+        return new Map(value.value);
+      }
+      case 'Set': {
+        return new Set(value.value);
+      }
+      default: {
+        return value;
+      }
     }
   }
   return value;
@@ -18223,7 +18676,7 @@ function JSONReviverWithMap(_key, value) {
  * @returns {string} The result of conversion.
  */
 function jsonStringify(value, space = 0) {
-  return jsonStringifySafe(value, JSONReplacerWithMap, space);
+  return jsonStringifySafe(value, JSONReplacer, space);
 }
 
 /**
@@ -18232,7 +18685,7 @@ function jsonStringify(value, space = 0) {
  * @returns {any} The result of conversion.
  */
 function jsonParse(text) {
-  return JSON.parse(text, JSONReviverWithMap);
+  return JSON.parse(text, JSONReviver);
 }
 
 //*** Utility functions - end ***//
