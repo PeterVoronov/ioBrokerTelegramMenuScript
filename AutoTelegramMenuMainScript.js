@@ -55,13 +55,6 @@ Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
   value: RegExp.prototype.toString,
 });
 
-/*** Make new method `format` to be available for the Date object ***/
-/*** Make RegExp to be printable in JSON.stringify with names ***/
-// prettier-ignore
-Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
-  value: RegExp.prototype.toString,
-});
-
 //*** Commands - begin ***//
 const cmdPrefix = 'cmd',
   cmdSetState = `${cmdPrefix}SetState`,
