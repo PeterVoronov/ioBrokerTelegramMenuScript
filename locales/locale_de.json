@@ -247,6 +247,7 @@
       "textSwitchOff": "Ausschalten",
       "textSwitchOn": "Einschalten",
       "textTarget": "Ziel",
+      "textTargetsAdditional": "core.textTargetsAdditional",
       "textTimeInternalUnitDays": "t",
       "textTimeInternalUnitHours": "st",
       "textTimeInternalUnitMinutes": "m",

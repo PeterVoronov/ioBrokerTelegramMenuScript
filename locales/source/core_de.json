@@ -243,6 +243,7 @@
     "textSwitchOff": "Ausschalten",
     "textSwitchOn": "Einschalten",
     "textTarget": "Ziel",
+    "textTargetsAdditional": "",
     "textTimeInternalUnitDays": "t",
     "textTimeInternalUnitHours": "st",
     "textTimeInternalUnitMinutes": "m",

@@ -247,6 +247,7 @@
       "textSwitchOff": "Выключить",
       "textSwitchOn": "Включить",
       "textTarget": "Цель",
+      "textTargetsAdditional": "core.textTargetsAdditional",
       "textTimeInternalUnitDays": "д",
       "textTimeInternalUnitHours": "ч",
       "textTimeInternalUnitMinutes": "м",

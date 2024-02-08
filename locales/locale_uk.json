@@ -247,6 +247,7 @@
       "textSwitchOff": "Вимкнути",
       "textSwitchOn": "Увімкнути",
       "textTarget": "Ціль",
+      "textTargetsAdditional": "core.textTargetsAdditional",
       "textTimeInternalUnitDays": "д",
       "textTimeInternalUnitHours": "г",
       "textTimeInternalUnitMinutes": "х",
