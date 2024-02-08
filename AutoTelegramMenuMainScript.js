@@ -1548,7 +1548,6 @@ class ConfigOptions {
           ? '/' + Math.trunc(this.globalConfig.cfgMenuRefreshInterval / 60)
           : '') +
         ' * * * *';
-      logs(`scheduleString = ${scheduleString}`);
       this.menuSchedule = schedule(scheduleString, () => {
         this.functionScheduleMenuUpdate();
       });
@@ -7664,16 +7663,12 @@ function alertsActionOnSubscribedState(object) {
                     if (threshold.log) {
                       triggerLogItem['targetState'] = targetState;
                       triggerLogItem['targetValue'] = targetValue;
-                      warns(
+                      console.log(
                         `The state "${targetState}" is triggered by the trigger with id = "${id}" to ` +
                           `"${targetValue}" because the value of state "${stateId}" has changed to ` +
                           `"${thresholdValue}"!`,
                       );
                     }
-                    logs(
-                      `The state "${targetState}" is triggered by the trigger with id = "${id}" to ` +
-                        `"${targetValue}" because the value of state "${stateId}" has changed to "${thresholdValue}"!`,
-                    );
                     setState(targetState, targetValue, (error) => {
                       if (threshold.log) {
                         triggerLogItem['success'] = !isDefined(error);
@@ -8320,7 +8315,6 @@ function alertsMenuGenerateManageTimeIndividual(user, menuItemToProcess) {
       ['onBelow', iconItemBelow],
     ]);
   }
-  logs(`stateType = ${stateType}, possibleValues = ${jsonStringify(possibleValues)}`, _l);
   possibleValues.forEach((valueText, value) => {
     const timeInterval = timeIntervals.has(value) ? timeIntervals.get(value) : timeIntervalCommon,
       timeIntervalText = `${timeInterval} ${secondsText}`;
@@ -10183,11 +10177,9 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
       });
     }
   });
-  logs(`startTimesDeleted = ${startTimesDeleted}, startTimesNew = ${startTimesNew}`, _l);
   startTimesDeleted.forEach((startTime) => {
     if (triggersTimeRangeStartTimes.has(startTime)) {
       const startTimeSchedule = triggersTimeRangeStartTimes.get(startTime);
-      logs(`schedule to delete: ${jsonStringify(startTimeSchedule)}`, _l);
       if (isDefined(startTimeSchedule.scheduleId)) clearSchedule(startTimeSchedule.scheduleId);
       triggersTimeRangeStartTimes.delete(startTime);
     }
@@ -10198,10 +10190,8 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
       startTimeSchedule.scheduleId = schedule(startTime, () => {
         triggersTimeRangeStartTimeScheduled(startTime);
       });
-      logs(`schedule created: ${jsonStringify(startTimeSchedule)}`, _l);
     }
   });
-  logs(`triggersTimeRangeStartTimes = ${/* JSON. */ jsonStringify(triggersTimeRangeStartTimes, 1)}`, _l);
 }
 
 /**
@@ -15091,10 +15081,6 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             const conditions = trigger.conditions,
                               index = commandOptions.index,
                               subItem = commandOptions.subItem;
-                            logs(
-                              `conditions = ${typeOf(conditions)}: '${jsonStringify(conditions)}', index = ${index}`,
-                              _l,
-                            );
                             if (typeOf(conditions, 'array') && typeOf(index, 'number') && subItem) {
                               const length = conditions.length;
                               if (index < length) {
@@ -16001,13 +15987,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             length = conditions.length,
                             index = commandOptions.index,
                             subItem = commandOptions.subItem;
-                          logs(
-                            `conditions = ${typeOf(conditions)}: '${jsonStringify(
-                              conditions,
-                            )}', index = ${index}, length = ${length}`,
-                            _l,
-                          );
-                          if (typeOf(index, 'number') && subItem && index <= length) {
+                          if (typeOf(index, 'number') && typeOf(subItem, 'string') && index <= length) {
                             if (!typeOf(trigger.conditions, 'array')) trigger.conditions = conditions;
                             backStepsForCacheDelete -= 2;
                             const subMode = index === length ? 'add' : 'edit';
@@ -16028,10 +16008,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                   const {state, value, operator} = condition;
                                   condition.isEnabled =
                                     typeOf(state, 'string') &&
-                                    state &&
+                                    state !== '' &&
                                     isDefined(value) &&
                                     typeOf(operator, 'string') &&
-                                    operator;
+                                    operator !== '';
                                 } else {
                                   condition.isEnabled = false;
                                 }
