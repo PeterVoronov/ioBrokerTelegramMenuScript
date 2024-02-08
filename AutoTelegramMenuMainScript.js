@@ -9265,18 +9265,6 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
       }
       const triggerAttributesArray = [
         {
-          label: translationsItemTextGet(user, 'isEnabled'),
-          value: triggersGetEnabledIcon(trigger),
-        },
-        {
-          label: translationsItemTextGet(user, triggersTimeRangeId),
-          value: triggerTimeRangeShortDescription(user, trigger[triggersTimeRangeId]),
-        },
-        {
-          label: translationsItemTextGet(user, onTimeIntervalId),
-          value: trigger[onTimeIntervalId],
-        },
-        {
           label: translationsItemTextGet(user, 'source'),
           value: '',
         },
@@ -9295,20 +9283,30 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         },
         sourceStateDetails,
         {
-          label: translationsItemTextGet(user, 'messageTo'),
-          value: '',
+          label: translationsItemTextGet(user, 'isEnabled'),
+          value: triggersGetEnabledIcon(trigger),
         },
         {
-          label: ` ${translationsItemTextGet(user, 'user')}`,
-          value: usersInMenu.getUserName(trigger.user),
+          label: translationsItemTextGet(user, onTimeIntervalId),
+          value: trigger[onTimeIntervalId],
         },
         {
-          label: ` ${translationsItemTextGet(user, 'log')}`,
-          value: trigger.log
-            ? configOptions.getOption(cfgDefaultIconOn, user)
-            : configOptions.getOption(cfgDefaultIconOff, user),
+          label: translationsItemTextGet(user, triggersTimeRangeId),
+          value: triggerTimeRangeShortDescription(user, trigger[triggersTimeRangeId]),
         },
       ];
+      if (typeOf(trigger.conditions, 'array') && trigger.conditions.length) {
+        triggerAttributesArray.push({
+          label: `${translationsItemTextGet(user, 'conditions')}`,
+          value: `${trigger.conditions.length}`,
+        });
+        trigger.conditions.forEach((condition) => {
+          triggerAttributesArray.push({
+            label: ` ${triggersGetConditionShortDescription(user, condition)}`,
+            value: menuIconGenerate(user, condition.isEnabled, triggersConditionIconsArray),
+          });
+        });
+      }
       if (targetStateId && targetFunctionId) {
         const targetStateDetails = {
           label: ` ${translationsGetObjectName(user, targetStateId, targetFunctionId)}`,
@@ -9332,18 +9330,25 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         });
         triggerAttributesArray.push(targetStateDetails);
       }
-      if (typeOf(trigger.conditions, 'array') && trigger.conditions.length) {
-        triggerAttributesArray.push({
-          label: `${translationsItemTextGet(user, 'conditions')}`,
-          value: `${trigger.conditions.length}`,
-        });
-        trigger.conditions.forEach((condition) => {
-          triggerAttributesArray.push({
-            label: ` ${triggersGetConditionShortDescription(user, condition)}`,
-            value: menuIconGenerate(user, condition.isEnabled, triggersConditionIconsArray),
-          });
-        });
-      }
+      triggerAttributesArray.push(
+        {
+          label: translationsItemTextGet(user, 'messageTo'),
+          value: '',
+        },
+        {
+          label: ` ${translationsItemTextGet(user, 'log')}`,
+          value: trigger.log
+            ? configOptions.getOption(cfgDefaultIconOn, user)
+            : configOptions.getOption(cfgDefaultIconOff, user),
+        },
+        {
+          label: ` ${translationsItemMenuGet(user, 'usersList')}`,
+          value:
+            typeOf(trigger.users, 'array') && trigger.users.length
+              ? `${trigger.users.map((userId) => usersInMenu.getUserName(userId))}`
+              : '',
+        },
+      );
       text = menuMenuItemDetailsPrintFixedLengthLines(user, triggerAttributesArray);
     }
   }
