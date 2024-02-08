@@ -9188,7 +9188,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
       );
       const activeUsersList = usersInMenu.getUsers(undefined, true),
         activeUsers = new Map(),
-        itemName = translationsItemTextGet(user, 'user');
+        itemName = translationsItemMenuGet(user, 'usersList');
       if (activeUsersList.length) {
         activeUsersList.forEach((userId) => {
           activeUsers.set(userId, usersInMenu.getUserName(userId));
