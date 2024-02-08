@@ -13417,27 +13417,45 @@ class CommandOptionsCache {
         result = `${prefix}${result}`;
       }
       if (result.length > CommandOptionsCache.maxCallbackDataLength) {
-        if (self instanceof CommandOptionsCache) self.#error = 'callBackDataTooLong';
+        if (self instanceof CommandOptionsCache) self.error = 'callBackDataTooLong';
         result = '';
       } else {
-        if (self instanceof CommandOptionsCache) self.#error = '';
+        if (self instanceof CommandOptionsCache) self.error = '';
         break;
       }
     }
     return result;
   }
 
-  toJson() {
-    return jsonStringify(this.#data);
+  /**
+   * This method gets the last error message.
+   * @returns {string} The last error message.
+   **/
+  get error() {
+    return this.#error;
   }
 
   /**
-   * This method returns the last error message.
-   * @returns {string} The last error message.
+   * This method sets the error message.
+   * @param {string} value - The error message.
    **/
-  error() {
-    return this.#error;
+  set error(value) {
+    this.#error = value;
   }
+
+  /**
+   * This method prepares the class item to serialization into JSON.
+   * @returns {object} The object with the class data.
+   * The method is used by `JSON.stringify` to serialize the class instance.
+   **/
+  toJSON() {
+    return {
+      prefix: this.prefix,
+      data : this.#data,
+      error: this.#error,
+    };
+  }
+
 
   /**
    * This method resets all stored data related to the appropriate `user`.
@@ -13786,9 +13804,9 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
               commandOptionsCache,
             );
           }
-          if (commandOptionsCache.error()) {
+          if (commandOptionsCache.error) {
             warns(
-              `Can't set command options for ${subIndexCurrent}!, error is ${commandOptionsCache.error()}.` +
+              `Can't set command options for ${subIndexCurrent}!, error is ${commandOptionsCache.error}.` +
                 `SubMenuItem = ${jsonStringify(subMenuItem, 1)}`,
             );
           } else {
@@ -13808,11 +13826,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             cmdSetOffset,
             {index: indexCurrent, offset: buttonsOffset - buttonsCountMax},
           );
-          if (commandOptionsCache.error()) {
+          if (commandOptionsCache.error) {
             warns(
               `Can't set command options for ${[indexCurrent, 'prev'].join(
                 '.',
-              )}!, error is ${commandOptionsCache.error()}.`,
+              )}!, error is ${commandOptionsCache.error}.`,
             );
           } else {
             messageObject.buttons.push({
@@ -13830,11 +13848,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             cmdSetOffset,
             {index: indexCurrent, offset: buttonsOffset + buttonsCountMax},
           );
-          if (commandOptionsCache.error()) {
+          if (commandOptionsCache.error) {
             warns(
               `Can't set command options for ${[indexCurrent, 'next'].join(
                 '.',
-              )}!, error is ${commandOptionsCache.error()}.`,
+              )}!, error is ${commandOptionsCache.error}.`,
             );
           } else {
             messageObject.buttons.push({
@@ -13854,11 +13872,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             cmdItemJumpTo,
             {jumpToArray: [jumpToUp, messageObject.navigationLeft]},
           );
-          if (commandOptionsCache.error()) {
+          if (commandOptionsCache.error) {
             warns(
               `Can't set command options for ${[indexCurrent, 'left'].join(
                 '.',
-              )}!, error is ${commandOptionsCache.error()}.`,
+              )}!, error is ${commandOptionsCache.error}.`,
             );
           } else {
             messageObject.buttons.push({
@@ -13876,11 +13894,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             cmdItemJumpTo,
             {jumpToArray: [jumpToUp, messageObject.navigationRight]},
           );
-          if (commandOptionsCache.error()) {
+          if (commandOptionsCache.error) {
             warns(
               `Can't set command options for ${[indexCurrent, 'prev'].join(
                 '.',
-              )}!, error is ${commandOptionsCache.error()}.`,
+              )}!, error is ${commandOptionsCache.error}.`,
             );
           } else {
             messageObject.buttons.push({
@@ -13910,8 +13928,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             cmdBack,
             commandOptionsCache,
           );
-          if (commandOptionsCache.error()) {
-            warns(`Can't set command options for ${cmdBack}!, error is ${commandOptionsCache.error()}.`);
+          if (commandOptionsCache.error) {
+            warns(`Can't set command options for ${cmdBack}!, error is ${commandOptionsCache.error}.`);
           } else {
             lastRow.unshift({
               text: translationsItemCoreGet(user, cmdBack),
