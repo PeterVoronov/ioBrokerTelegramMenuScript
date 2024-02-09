@@ -387,10 +387,11 @@ const configOptionsParameters = {
       hidden: false,
       default:
         '${targetFunctionName} "${targetDeviceName} ${translations(In).toLowerCase} ${targetDestinationName}"' +
-        ' ${targetStateName} ${translations(IsTriggeredBy).toLowerCase} ${translations(TriggerWithId).toLowerCase}  ' +
-        '"${triggerId}" ${translations(To).toLowerCase} "${targetStateValue}" ${translations(Because).toLowerCase} ' +
-        '${alertFunctionName} "${alertDeviceName} ${translations(In).toLowerCase} ${alertDestinationName}" ' +
-        '${alertStateName} ${translations(HasChangedTo).toLowerCase} "${alertStateValue}"',
+        ' ${targetStateName} ${translations(HasChangedTo).toLowerCase} "${targetStateValue}" ' +
+        '${translations(IsTriggeredBy).toLowerCase} ${translations(TriggerWithId).toLowerCase} "${triggerId}"' +
+        ' ${translations(Because).toLowerCase} ${alertFunctionName} "${alertDeviceName} ' +
+        '${translations(In).toLowerCase} ${alertDestinationName}" ${alertStateName} ' +
+        '${translations(HasChangedTo).toLowerCase} "${alertStateValue}"',
       description: 'Template for triggers',
     },
     [cfgCheckAlertStatesOnStartUp]: {
