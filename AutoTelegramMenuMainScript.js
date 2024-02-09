@@ -40,20 +40,56 @@ const jsonStringifySafe = require('json-stringify-safe');
 
 const _l = true;
 
-/*** Make functions to be printable in JSON.stringify with names ***/
+/**
+ * Add to the function prototype the method toJSON, if it's not exists.
+ **/
 // prettier-ignore
-Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
-  // eslint-disable-next-line space-before-function-paren
-  value: function () {
-    return `function ${this.name}`;
-  },
-});
+// @ts-ignore
+if(!Object.hasOwn(Function.prototype, 'toJSON')) {
+  Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
+    // eslint-disable-next-line space-before-function-paren
+    value: function () {
+      return `function ${this.name}`;
+    },
+  });
+}
 
-/*** Make RegExp to be printable in JSON.stringify with names ***/
+/**
+ * Add to the RegExp prototype the method toJSON, if it's not exists.
+ **/
 // prettier-ignore
-Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
-  value: RegExp.prototype.toString,
-});
+// @ts-ignore
+if(!Object.hasOwn(RegExp.prototype, 'toJSON')) {
+  Object.defineProperty(RegExp.prototype, 'toJSON', { // NOSONAR
+    value: RegExp.prototype.toString,
+  });
+}
+
+/**
+ * Add to the Array prototype the method toSorted, if it's not exists.
+ */
+// @ts-ignore
+if(!Object.hasOwn(Array.prototype, 'toSorted')) {
+  Object.defineProperty(Array.prototype, 'toSorted', { // NOSONAR
+      // eslint-disable-next-line space-before-function-paren
+      value: function () {
+          return this.slice().sort(...arguments);
+      },
+  });
+}
+
+/**
+ * Add to the Array prototype the method toReversed, if it's not exists.
+ **/
+// @ts-ignore
+if(!Object.hasOwn(Array.prototype, 'toReversed')) {
+  Object.defineProperty(Array.prototype, 'toReversed', { // NOSONAR
+      // eslint-disable-next-line space-before-function-paren
+      value: function () {
+          return this.slice().reverse(...arguments);
+      },
+  });
+}
 
 //*** Commands - begin ***//
 const cmdPrefix = 'cmd',
@@ -275,7 +311,7 @@ const cfgPrefix = 'cfg',
   cfgUpdateMessageTime = `${cfgPrefix}UpdateMessageTime`,
   cfgUpdateMessagesOnStart = `${cfgPrefix}UpdateMessagesOnStart`,
   cfgDebugMode = `${cfgPrefix}DebugMode`,
-  cfgTriggersLogsMaxCountRecordsPerTrigger = `${cfgPrefix}TriggersLogsMaxCountRecordsPerTrigger`; // NOSONAR
+  cfgTriggersLogsMaxCountRecordsPerTrigger = `${cfgPrefix}TriggersLogsMaxCountRecordsPerTrigger`;
 
 const configOptionsParameters = {
     [cfgMenuUsers]: {type: 'object', systemLevel: true, hidden: true, default: {}, description: 'Menu users'},
@@ -4046,7 +4082,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
     subMenu = [];
   Object.keys(currentTranslation)
     .filter((key) => key.startsWith(translationType))
-    .sort() // NOSONAR
+    .sort((a, b) => a.localeCompare(b))
     .forEach((translationKey) => {
       if (!translationKey.includes('.') && translationKey.startsWith(translationType)) {
         let subSubMenuIndex = 0,
@@ -8010,7 +8046,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
         const objectsIdList = alertsListPrepared[levelFirstId][levelSecondId];
         if (objectsIdList)
           Object.keys(objectsIdList)
-            .sort() // NOSONAR
+            .sort((a, b) => a.localeCompare(b))
             .forEach((objectId) => {
               levelMenuIndex = subMenu.push({
                 index: `${currentIndex}.${levelMenuIndex}`,
@@ -11052,7 +11088,7 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
             : {command: cmdNoOperation};
       backupFiles.forEach((fileName, fileIndex) => {
         const backupFileDetails = RegExp(backupFileMask).exec(fileName),
-          [_fullName, backupDate, backupTime, backupMode] = // NOSONAR
+          [_fullName, backupDate, backupTime, backupMode] =
             backupFileDetails && backupFileDetails.length === 4 ? backupFileDetails : [];
         if (backupDate && backupTime && backupMode) {
           restoreSubMenu.submenu.push({
@@ -11324,7 +11360,7 @@ function backupGetFolderList() {
       currentDir.replace(adapterSubPath, nodePath.join('iobroker-data', 'files', '0_userdata.0', backupFolder)),
     );
     const listOfBackups = nodeFS.readdirSync(backupDir);
-    result = listOfBackups.filter((fileName) => backupFileMask.test(fileName)).sort(); // NOSONAR
+    result = listOfBackups.filter((fileName) => backupFileMask.test(fileName)).sort((a, b) => a.localeCompare(b));
   }
   return result;
 }
@@ -11807,7 +11843,8 @@ function simpleReportGenerate(user, menuItemToProcess) {
       Array.isArray(reportObject.common['members']) &&
       reportObject.common['members'].length
     ) {
-      const reportStatesList = reportObject.common['members'].sort(), // NOSONAR
+      // @ts-ignore
+      const reportStatesList = reportObject.common['members'].toSorted((a, b) => a.localeCompare(b)),
         isAlwaysExpanded = reportsList.list[reportId].alwaysExpanded;
       let reportStatesStructure = simpleReportPrepareStructure(reportStatesList);
       const reportLines = new Array();
@@ -11880,7 +11917,8 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
       Array.isArray(reportObject.common['members']) &&
       reportObject.common['members'].length
     ) {
-      const reportStatesList = reportObject.common['members'].sort(); // NOSONAR
+      // @ts-ignore
+      const reportStatesList = reportObject.common['members'].toSorted((a, b) => a.localeCompare(b));
       let shortStates = reportStatesList
         .map((state) => state.split('.').pop())
         .reduce((previousState, currentState) => {
@@ -13317,7 +13355,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order)
       .forEach((currentLevelMenuItemId) => {
         if (currentLevelMenuItemId?.includes('.')) {
-          const [holderId, _subordinatedId] = currentLevelMenuItemId.split('.'); // NOSONAR
+          const [holderId, _subordinatedId] = currentLevelMenuItemId.split('.');
           if (!Object.keys(deviceList).includes(holderId)) {
             deviceList[holderId] = [];
           }
@@ -17040,7 +17078,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     Array.isArray(reportObject.common['members']) &&
                     reportObject.common['members'].length
                   ) {
-                    const reportStatesList = reportObject.common['members'].sort(), // NOSONAR
+                    // @ts-ignore
+                    const reportStatesList = reportObject.common['members'].toSorted((a, b) => a.localeCompare(b)),
                       reportStatesStructure = simpleReportPrepareStructure(reportStatesList),
                       graphLines = graphTemplate.native.data.lines,
                       templateLine = graphLines.pop();
@@ -18783,7 +18822,7 @@ function objectKeysSort(inputObject) {
   let sortedObject = {};
   // Check for type of inputObject and sort by alphabetical order
   if (typeOf(inputObject) === 'object') {
-    const keys = Object.keys(inputObject).sort(); // NOSONAR
+    const keys = Object.keys(inputObject).sort((a, b) => a.localeCompare(b));
     // Iterate through each key and copy values to sortedObject
     keys.forEach((id) => {
       // Recursive call of function when encountering object value
