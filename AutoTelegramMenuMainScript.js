@@ -65,32 +65,6 @@ if(!Object.hasOwn(RegExp.prototype, 'toJSON')) {
   });
 }
 
-/**
- * Add to the Array prototype the method toSorted, if it's not exists.
- */
-// @ts-ignore
-if(!Object.hasOwn(Array.prototype, 'toSorted')) {
-  Object.defineProperty(Array.prototype, 'toSorted', { // NOSONAR
-      // eslint-disable-next-line space-before-function-paren
-      value: function () {
-          return this.slice().sort(...arguments);
-      },
-  });
-}
-
-/**
- * Add to the Array prototype the method toReversed, if it's not exists.
- **/
-// @ts-ignore
-if(!Object.hasOwn(Array.prototype, 'toReversed')) {
-  Object.defineProperty(Array.prototype, 'toReversed', { // NOSONAR
-      // eslint-disable-next-line space-before-function-paren
-      value: function () {
-          return this.slice().reverse(...arguments);
-      },
-  });
-}
-
 //*** Commands - begin ***//
 const cmdPrefix = 'cmd',
   cmdSetState = `${cmdPrefix}SetState`,
@@ -11844,8 +11818,9 @@ function simpleReportGenerate(user, menuItemToProcess) {
       reportObject.common['members'].length
     ) {
       // @ts-ignore
-      const reportStatesList = reportObject.common['members'].toSorted((a, b) => a.localeCompare(b)),
+      const reportStatesList = reportObject.common['members'],
         isAlwaysExpanded = reportsList.list[reportId].alwaysExpanded;
+      reportStatesList.sort((a, b) => a.localeCompare(b));
       let reportStatesStructure = simpleReportPrepareStructure(reportStatesList);
       const reportLines = new Array();
       const currentSort = (a, b) => enumerationsCompareOrderOfItems(a, b, dataTypeFunction);
@@ -11917,8 +11892,8 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
       Array.isArray(reportObject.common['members']) &&
       reportObject.common['members'].length
     ) {
-      // @ts-ignore
-      const reportStatesList = reportObject.common['members'].toSorted((a, b) => a.localeCompare(b));
+      const reportStatesList = reportObject.common['members'];
+      reportStatesList.sort((a, b) => a.localeCompare(b));
       let shortStates = reportStatesList
         .map((state) => state.split('.').pop())
         .reduce((previousState, currentState) => {
@@ -17079,8 +17054,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     reportObject.common['members'].length
                   ) {
                     // @ts-ignore
-                    const reportStatesList = reportObject.common['members'].toSorted((a, b) => a.localeCompare(b)),
-                      reportStatesStructure = simpleReportPrepareStructure(reportStatesList),
+                    const reportStatesList = reportObject.common['members'];
+                    reportStatesList.sort((a, b) => a.localeCompare(b));
+                    const reportStatesStructure = simpleReportPrepareStructure(reportStatesList),
                       graphLines = graphTemplate.native.data.lines,
                       templateLine = graphLines.pop();
                     templateLine.instance = historyAdapter;
