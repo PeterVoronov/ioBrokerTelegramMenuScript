@@ -1,5 +1,5 @@
 // import all modules that are available in the sandbox
-// this has the nice side effect that we may augment the global scope
+// this has a nice side effect that we may augment the global scope
 import * as child_process from "child_process";
 import * as os from "os";
 
@@ -7,6 +7,7 @@ type EmptyCallback = () => void | Promise<void>;
 type ErrorCallback = (err?: string) => void | Promise<void>;
 type GenericCallback<T> = (err?: string | null, result?: T) => void | Promise<void>;
 type SimpleCallback<T> = (result?: T) => void | Promise<void>;
+type MessageCallback<T> = (data: T, callback: iobJS.MessageCallback) => void | Promise<void>;
 type LogCallback = (msg: any) => void | Promise<void>;
 
 type SecondParameterOf<T extends (...args: any[]) => any> = T extends (
@@ -21,7 +22,7 @@ type NonNullCallbackReturnTypeOf<T extends (...args: any[]) => any> = Exclude<
 	SecondParameterOf<T>,
 	null | undefined
 >;
-/** Infers the return type from a callback-style API and and leaves null and undefined in */
+/** Infers the return type from a callback-style API and leaves null and undefined in */
 type CallbackReturnTypeOf<T extends (...args: any[]) => any> = SecondParameterOf<T>;
 
 /** Returns a type that requires at least one of the properties from the given type */
@@ -32,7 +33,7 @@ type AllKeys<T> = T extends any ? keyof T : never;
 /** Simplifies mapped types to their basic forms */
 type Simplify<U> = U extends infer O ? { [K in keyof O]: O[K] } : never;
 
-/** Takes an object type and adds all missing properties from the Keys union with type never */
+/** Takes an object type and adds all missing properties from the Keys union with the type `never` */
 type AddMissingNever<T, Keys extends string | number | symbol> = {
 	[K in Keys]: K extends keyof T ? T[K] : never;
 };
@@ -131,7 +132,7 @@ declare global {
 			c: undefined;
 		}
 
-		type Languages = 'en' | 'de' | 'ru' | 'pt' | 'nl' | 'fr' | 'it' | 'es' | 'pl' | 'zh-cn';
+		type Languages = 'en' | 'de' | 'ru' | 'pt' | 'nl' | 'fr' | 'it' | 'es' | 'pl' | 'uk' | 'zh-cn';
 		type StringOrTranslated = string | { [lang in Languages]?: string; };
 		type CommonType = "number" | "string" | "boolean" | "array" | "object" | "mixed" | "file";
 
@@ -205,7 +206,7 @@ declare global {
 			| 'user'
 			| 'chart';
 
-		// Define the naming schemes for objects so we can provide more specific types for get/setObject
+		// Define the naming schemes for objects, so we can provide more specific types for get/setObject
 		namespace ObjectIDs {
 			// Guaranteed meta objects
 			type Meta =
@@ -283,9 +284,8 @@ declare global {
 				T extends ObjectIDs.User ? UserObject :
 				T extends ObjectIDs.Host ? HostObject :
 				T extends ObjectIDs.Config ? OtherObject & { type: "config" } :
-				T extends ObjectIDs.AdapterScoped ? AdapterScopedObject :
-				iobJS.AnyObject
-				// When reading objects we should be less strict so working with the return type is less of a pain to work with
+				T extends ObjectIDs.AdapterScoped ? AdapterScopedObject : iobJS.AnyObject
+				// When reading objects, we should be less strict, so working with the return type is less of a pain to work with
 			> = Read extends "read" ? AnyOf<O> : O;
 
 		interface ObjectCommon {
@@ -306,6 +306,15 @@ declare global {
 			role?: string;
 		}
 
+		interface StateCommonAlias {
+			/** The target state id or two target states used for reading and writing values */
+			id: string | { read: string; write: string };
+			/** An optional conversion function when reading, e.g. `"(val − 32) * 5/9"` */
+			read?: string;
+			/** An optional conversion function when reading, e.g. `"(val * 9/5) + 32"` */
+			write?: string;
+		}
+
 		interface StateCommon extends ObjectCommon {
 			/** Type of this state. See https://github.com/ioBroker/ioBroker/blob/master/doc/SCHEMA.md#state-commonrole for a detailed description */
 			type?: CommonType;
@@ -313,7 +322,7 @@ declare global {
 			min?: number;
 			/** maximum value */
 			max?: number;
-			/** allowed interval for numeric values */
+			/** the allowed interval for numeric values */
 			step?: number;
 			/** unit of the value */
 			unit?: string;
@@ -333,14 +342,7 @@ declare global {
 			defAck?: boolean;
 
 			/** Configures this state as an alias for another state */
-			alias?: {
-				/** The target state id or two target states used for reading and writing values */
-				id: string | { read: string; write: string };
-				/** An optional conversion function when reading, e.g. `"(val − 32) * 5/9"` */
-				read?: string;
-				/** An optional conversion function when reading, e.g. `"(val * 9/5) + 32"` */
-				write?: string;
-			};
+			alias?: StateCommonAlias;
 
 			/**
 			 * Dictionary of possible values for this state in the form
@@ -366,7 +368,7 @@ declare global {
 			custom?: Record<string, any>;
 
 			/**
-			 * Settings for IOT adapters and how the state should be named in e.g. Alexa.
+			 * Settings for IOT adapters and how the state should be named in e.g., Alexa.
 			 * The string "ignore" is a special case, causing the state to be ignored.
 			 */
 			smartName?: string | ({ [lang in Languages]?: string; } & {
@@ -398,7 +400,7 @@ declare global {
 		}
 
 		interface MetaCommon extends ObjectCommon {
-			// Meta objects have to additional CommonTypes
+			// Meta-objects have to additional CommonTypes
 			type: CommonType | "meta.user" | "meta.folder";
 
 			// Make it possible to narrow the object type using the custom property
@@ -533,7 +535,7 @@ declare global {
 			blockly?: boolean;
 			/** Where the adapter will get its data from. Set this together with @see dataSource */
 			connectionType?: "local" | "cloud";
-			/** If true, this adapter can be started in compact mode (in the same process as other adapters) */
+			/** If true, this adapter can be started in compact mode (in the same process as other adpaters) */
 			compact?: boolean;
 			/** The directory relative to iobroker-data where the adapter stores the data. Supports the placeholder `%INSTANCE%`. This folder will be backed up and restored automatically. */
 			dataFolder?: string;
@@ -561,7 +563,7 @@ declare global {
 			/** @deprecated Use @see localLinks */
 			localLink?: string;
 			logLevel?: LogLevel;
-			/** Whether this adapter receives logs from other hosts and adapters (e.g. to store them somewhere) */
+			/** Whether this adapter receives logs from other hosts and adapters (e.g., to strore them somewhere) */
 			logTransporter?: boolean;
 			/** Path to the start file of the adapter. Should be the same as in `package.json` */
 			main?: string;
@@ -629,7 +631,7 @@ declare global {
 			unsafePerm?: true;
 			/** The available version in the ioBroker repo. */
 			version: string;
-			/** If `true`, the adapter will be started if any value is written into `system.adapter.<name>.<instance>.wakeup. Normally the adapter should stop after processing the event. */
+			/** If `true`, the adapter will be started if any value is written into `system.adapter.<name>.<instance>.wakeup. Normally, the adapter should stop after processing the event. */
 			wakeup?: boolean;
 			/** Include the adapter version in the URL of the web adapter, e.g. `http://ip:port/1.2.3/material` instead of `http://ip:port/material` */
 			webByVersion?: boolean;
@@ -677,6 +679,10 @@ declare global {
 			type: 'state';
 			common: StateCommon;
 			acl?: StateACL;
+			/** The IDs of enums this state is assigned to. For example ["enum.functions.Licht","enum.rooms.Garten"] */
+			enumIds?: string[];
+			/** The names of enums this state is assigned to. For example ["Licht","Garten"] */
+			enumNames?: Array<iobJS.StringOrTranslated>;
 		}
 		interface PartialStateObject extends Partial<Omit<StateObject, 'common' | 'acl'>> {
 			common?: Partial<StateCommon>;
@@ -863,7 +869,7 @@ declare global {
 			/** The IDs of enums this state is assigned to. For example ["enum.functions.Licht","enum.rooms.Garten"] */
 			enumIds?: string[];
 			/** The names of enums this state is assigned to. For example ["Licht","Garten"] */
-			enumNames?: string[];
+			enumNames?: Array<iobJS.StringOrTranslated>;
 			/** new state */
 			state: State<TNew>;
 			/** @deprecated Use state instead **/
@@ -890,6 +896,15 @@ declare global {
 		type SetStatePromise = Promise<NonNullCallbackReturnTypeOf<SetStateCallback>>;
 
 		type StateChangeHandler<TOld extends StateValue = any, TNew extends TOld = any> = (obj: ChangedStateObject<TOld, TNew>) => void | Promise<void>;
+		type ObjectChangeHandler = (id: string, obj: iobJS.Object) => void | Promise<void>;
+
+		type FileChangeHandler<WithFile extends boolean> =
+			// Variant 1: WithFile is false, data/mimeType is definitely not there
+			[WithFile] extends [false] ? (id: string, fileName: string, size: number, data?: undefined, mimeType?: undefined) => void | Promise<void>
+			// Variant 2: WithFile is true, data (and mimeType?) is definitely there
+			: [WithFile] extends [true] ? (id: string, fileName: string, size: number, data: Buffer | string, mimeType?: string) => void | Promise<void>
+			// Variant 3: WithFile is not known, data/mimeType might be there
+			: (id: string, fileName: string, size: number, data?: Buffer | string, mimeType?: string) => void | Promise<void>;
 
 		type SetObjectCallback = (err?: string | null, obj?: { id: string }) => void | Promise<void>;
 		type SetObjectPromise = Promise<NonNullCallbackReturnTypeOf<SetObjectCallback>>;
@@ -914,6 +929,11 @@ declare global {
 			time: number;
 		}
 		type MessageCallback = (result?: any) => void | Promise<void>;
+
+		interface SendToOptions {
+			/** Method throws or calls error cb, if callback not called in time, works for single targets only */
+			timeout?: number;
+		}
 
 		interface Subscription {
 			name: string;
@@ -970,7 +990,7 @@ declare global {
 			oldTs?: number;
 			/** Previous time stamp must be not equal to the given one (oldState.ts != ts) */
 			oldTsGt?: number;
-			/** Previous time stamp must be greater than given value (oldState.ts > ts) */
+			/** Previous time stamp must be greater than the given value (oldState.ts > ts) */
 			oldTsGe?: number;
 			/** Previous time stamp must be greater or equal to given one (oldState.ts >= ts) */
 			oldTsLt?: number;
@@ -980,7 +1000,7 @@ declare global {
 			lc?: number;
 			/** Last change time stamp must be not equal to the given one (state.lc != lc) */
 			lcGt?: number;
-			/** Last change time stamp must be greater than given value (state.lc > lc) */
+			/** Last change time stamp must be greater than the given value (state.lc > lc) */
 			lcGe?: number;
 			/** Last change time stamp must be greater or equal to given one (state.lc >= lc) */
 			lcLt?: number;
@@ -990,7 +1010,7 @@ declare global {
 			oldLc?: number;
 			/** Previous last change time stamp must be not equal to the given one (oldState.lc != lc) */
 			oldLcGt?: number;
-			/** Previous last change time stamp must be greater than given value (oldState.lc > lc) */
+			/** Previous last change time stamp must be greater than the given value (oldState.lc > lc) */
 			oldLcGe?: number;
 			/** Previous last change time stamp must be greater or equal to given one (oldState.lc >= lc) */
 			oldLcLt?: number;
@@ -1036,7 +1056,7 @@ declare global {
 			 * Returns the first state found by this query.
 			 * If the adapter is configured to subscribe to all states on start,
 			 * this can be called synchronously and immediately returns the state.
-			 * Otherwise you need to provide a callback.
+			 * Otherwise, you need to provide a callback.
 			 */
 			getState<T extends StateValue = any>(callback: GetStateCallback<T>): void;
 			getState<T extends StateValue = any>(): State<T> | null | undefined;
@@ -1046,7 +1066,7 @@ declare global {
 			 * Returns the first state found by this query.
 			 * If the adapter is configured to subscribe to all states on start,
 			 * this can be called synchronously and immediately returns the state.
-			 * Otherwise you need to provide a callback.
+			 * Otherwise, you need to provide a callback.
 			 */
 			getBinaryState(callback: GetBinaryStateCallback): void;
 			getBinaryState(): Buffer | null | undefined;
@@ -1057,6 +1077,7 @@ declare global {
 			 */
 			setState(state: State | StateValue | SettableState, ack?: boolean, callback?: SetStateCallback): this;
 			setStateAsync(state: State | StateValue | SettableState, ack?: boolean): Promise<void>;
+			setStateDelayed(state: any, isAck?: boolean, delay?: number, clearRunning?: boolean, callback?: SetStateCallback): this;
 
 			/**
 			 * Sets all queried binary states to the given value.
@@ -1175,6 +1196,13 @@ declare global {
 			rule: ScheduleRule | Date | string | number;
 		}
 
+		interface ScheduleStatus {
+			type: string;
+			pattern?: string;
+			scriptName: string;
+			id: string;
+		}
+
 		interface LogMessage {
 			severity: LogLevel; // severity
 			ts: number; 		// timestamp as Date.now()
@@ -1211,7 +1239,7 @@ declare global {
 	// available functions in the sandbox
 	// =======================================================
 
-	// The already pre-loaded request module
+	// The already preloaded request module
 	const request: typeof import("request");
 
 	/**
@@ -1221,7 +1249,7 @@ declare global {
 	/**
 	 * The name of the current script
 	 */
-	// @ts-ignore We need this variable although it conflicts with lib.es6
+	// @ts-ignore We need this variable, although it conflicts with lib.es6
 	const name: string;
 	/**
 	 * The name of the current script
@@ -1232,6 +1260,7 @@ declare global {
 	 * Queries all states with the given selector
 	 * @param selector See @link{https://github.com/ioBroker/ioBroker.javascript#---selector} for a description
 	 */
+	// @ts-ignore We need this function, although it conflicts with vue
 	function $(selector: string): iobJS.QueryResult;
 
 	/**
@@ -1239,40 +1268,46 @@ declare global {
 	 * @param message The message to print
 	 * @param severity (optional) severity of the message. default = "info"
 	 */
-	function log(message: string, severity?: iobJS.LogLevel): void;
+	function log(message: any, severity?: iobJS.LogLevel): void;
 
 	// console functions
-	// @ts-ignore We need this variable although it conflicts with the node typings
+	// @ts-ignore We need this variable, although it conflicts with the node typings
 	namespace console {
-		/** log message with debug level */
-		function debug(message: string): void;
-		/** log message with info level (default output level for all adapters) */
-		function info(message: string): void;
-		/** log message with warning severity */
-		function warn(message: string): void;
-		/** log message with error severity */
-		function error(message: string): void;
+		/** log a message with info level */
+		function log(message: any): void;
+		/** log a message with debug level */
+		function debug(message: any): void;
+		/** log a message with info level (default output level for all adapters) */
+		function info(message: any): void;
+		/** log a message with warning severity */
+		function warn(message: any): void;
+		/** log a message with error severity */
+		function error(message: any): void;
 	}
 
 	/**
 	 * Executes a system command
 	 */
-	function exec(command: string, callback?: (err: Error | null | undefined, stdout: string, stderr: string) => void | Promise<void>): child_process.ChildProcess;
+	const exec: typeof import("child_process").exec;
 
 	/**
 	 * Sends an email using the email adapter.
 	 * See the adapter documentation for a description of the msg parameter.
+	 *
+	 * @deprecated Use @see sendTo
 	 */
 	function email(msg: any): void;
 
 	/**
 	 * Sends a pushover message using the pushover adapter.
 	 * See the adapter documentation for a description of the msg parameter.
+	 *
+	 * @deprecated Use @see sendTo
 	 */
 	function pushover(msg: any): void;
 
 	/**
-	 * Subscribe to changes of the matched states.
+	 * Subscribe to the changes of the matched states.
 	 */
 	function on(pattern: string | RegExp | string[], handler: iobJS.StateChangeHandler): any;
 	function on(
@@ -1280,13 +1315,31 @@ declare global {
 		handler: iobJS.StateChangeHandler
 	): any;
 	/**
-	 * Subscribe to changes of the matched states.
+	 * Subscribe to the changes of the matched states.
 	 */
 	function subscribe(pattern: string | RegExp | string[], handler: iobJS.StateChangeHandler): any;
 	function subscribe(
 		astroOrScheduleOrOptions: iobJS.AstroSchedule | iobJS.SubscribeTime | iobJS.SubscribeOptions,
 		handler: iobJS.StateChangeHandler
 	): any;
+
+	/**
+	 * Subscribe to the changes of the matched files.
+	 * The return value can be used for offFile later
+	 * @param id ID of meta-object, like `vis.0`
+	 * @param filePattern File name or file pattern, like `main/*`
+	 * @param withFile If the content of the file must be returned in callback (high usage of memory)
+	 * @param handler Callback: function (id, fileName, size, data, mimeType) {}
+	 */
+	function onFile<WithFile extends boolean>(id: string, filePattern: string | string[], withFile: WithFile, handler: iobJS.FileChangeHandler<WithFile>): any;
+	function onFile(id: string, filePattern: string | string[], handler: iobJS.FileChangeHandler<false>): any;
+
+	/**
+	 * Un-subscribe from the changes of the matched files.
+	 * @param id ID of meta-object, like `vis.0`. You can provide here can be a returned object from onFile. In this case, no filePattern required.
+	 * @param filePattern File name or file pattern, like `main/*`
+	 */
+	function offFile(id: string | any, filePattern?: string | string[]): boolean;
 
 	/**
 	 * Registers a one-time subscription which automatically unsubscribes after the first invocation
@@ -1325,9 +1378,14 @@ declare global {
 	function subscribe(id1: string, id2: string, value2: any): any;
 
 	/**
-	 * Returns the list of all currently active subscriptions
+	 * Returns the list of all active subscriptions
 	 */
 	function getSubscriptions(): { [id: string]: iobJS.Subscription[] };
+
+	/**
+	 * Returns the list of all active file subscriptions
+	 */
+	function getFileSubscriptions(): { [id: string]: iobJS.Subscription[] };
 
 	/**
 	 * Unsubscribe from changes of the given object ID(s) or handler(s)
@@ -1345,6 +1403,21 @@ declare global {
 	function schedule(pattern: string | iobJS.SchedulePattern, callback: EmptyCallback): any;
 	function schedule(date: Date, callback: EmptyCallback): any;
 	function schedule(astro: iobJS.AstroSchedule, callback: EmptyCallback): any;
+
+	/**
+	 * [{"type":"cron","pattern":"0 15 13 * * *","scriptName":"script.js.scheduleById","id":"cron_1704187467197_22756"}]
+	 *
+	 * @param allScripts Return all registered schedules of all running scripts
+	 */
+	function getSchedules(allScripts?: boolean): Array<iobJS.ScheduleStatus>;
+
+	/**
+	 * Creates a schedule based on the state value (e.g. 12:53:09)
+	 * Schedule will be updated if the state value changes
+	 */
+	function scheduleById(id: string, callback: EmptyCallback): any;
+	function scheduleById(id: string, ack: boolean, callback: EmptyCallback): any;
+
 	/**
 	 * Clears a schedule. Returns true if it was successful.
 	 */
@@ -1352,9 +1425,10 @@ declare global {
 
 	/**
 	 * Calculates the astro time which corresponds to the given pattern.
-	 * For valid patterns, see @link{https://github.com/ioBroker/ioBroker.javascript#astro--function}
+	 * For valid patterns, see @link{https://github.com/ioBroker/ioBroker.javascript/blob/master/docs/en/javascript.md#astro-function}
+	 * @param pattern One of predefined patterns, like: sunrise, sunriseEnd, ...
 	 * @param date (optional) The date for which the astro time should be calculated. Default = today
-	 * @param offsetMinutes (optional) The amount of minutes to be added to the return value.
+	 * @param offsetMinutes (optional) The number of minutes to be added to the return value.
 	 */
 	function getAstroDate(pattern: string, date?: Date | number, offsetMinutes?: number): Date;
 
@@ -1374,7 +1448,7 @@ declare global {
 
 	/**
 	 * Sets a state to the given value after a timeout has passed.
-	 * Returns the timer so it can be manually cleared with clearStateDelayed
+	 * Returns the timer, so it can be manually cleared with clearStateDelayed
 	 * @param id The ID of the state to be set
 	 * @param delay The delay in milliseconds
 	 * @param clearRunning (optional) Whether an existing timeout for this state should be cleared
@@ -1408,6 +1482,10 @@ declare global {
 	/**
 	 * Sets a binary state to the given value
 	 * @param id The ID of the state to be set
+	 * @param state binary data as buffer
+	 * @param callback called when the operation finished
+	 *
+	 * @deprecated Use @see writeFile
 	 */
 	function setBinaryState(id: string, state: Buffer, callback?: iobJS.SetStateCallback): void;
 	function setBinaryStateAsync(id: string, state: Buffer): iobJS.SetStatePromise;
@@ -1416,7 +1494,7 @@ declare global {
 	 * Returns the state with the given ID.
 	 * If the adapter is configured to subscribe to all states on start,
 	 * this can be called synchronously and immediately returns the state.
-	 * Otherwise you need to provide a callback.
+	 * Otherwise, you need to provide a callback.
 	 */
 	function getState<T extends iobJS.StateValue = any>(id: string, callback: iobJS.GetStateCallback<T>): void;
 	function getState<T extends iobJS.StateValue = any>(id: string): iobJS.State<T> | iobJS.AbsentState;
@@ -1426,7 +1504,9 @@ declare global {
 	 * Returns the binary state with the given ID.
 	 * If the adapter is configured to subscribe to all states on start,
 	 * this can be called synchronously and immediately returns the state.
-	 * Otherwise you need to provide a callback.
+	 * Otherwise, you need to provide a callback.
+	 *
+	 * @deprecated Use @see readFile
 	 */
 	function getBinaryState(id: string, callback: iobJS.GetStateCallback): void;
 	function getBinaryState(id: string): Buffer;
@@ -1499,6 +1579,19 @@ declare global {
 	function createStateAsync(name: string, initValue: iobJS.StateValue, common: Partial<iobJS.StateCommon>): iobJS.SetStatePromise;
 	function createStateAsync(name: string, initValue: iobJS.StateValue, common: Partial<iobJS.StateCommon>, native?: any): iobJS.SetStatePromise;
 
+	function createAlias(name: string, alias: string | iobJS.StateCommonAlias, callback?: iobJS.SetStateCallback): void;
+	function createAlias(name: string, alias: string | iobJS.StateCommonAlias, forceCreation: boolean, callback?: iobJS.SetStateCallback): void;
+	function createAlias(name: string, alias: string | iobJS.StateCommonAlias, forceCreation: boolean, common: Partial<iobJS.StateCommon>, callback?: iobJS.SetStateCallback): void;
+	function createAlias(name: string, alias: string | iobJS.StateCommonAlias, forceCreation: boolean, common: Partial<iobJS.StateCommon>, native: any, callback?: iobJS.SetStateCallback): void;
+	function createAlias(name: string, alias: string | iobJS.StateCommonAlias, common: Partial<iobJS.StateCommon>, callback?: iobJS.SetStateCallback): void;
+	function createAlias(name: string, alias: string | iobJS.StateCommonAlias, common: Partial<iobJS.StateCommon>, native: any, callback?: iobJS.SetStateCallback): void;
+
+	function createAliasAsync(name: string, alias: string | iobJS.StateCommonAlias, forceCreation?: boolean, common?: Partial<iobJS.StateCommon>, native?: any): iobJS.SetStatePromise;
+	function createAliasAsync(name: string, alias: string | iobJS.StateCommonAlias, common: Partial<iobJS.StateCommon>): iobJS.SetStatePromise;
+	function createAliasAsync(name: string, alias: string | iobJS.StateCommonAlias, common: Partial<iobJS.StateCommon>, native?: any): iobJS.SetStatePromise;
+
+
+
 	/**
 	 * Deletes the state with the given ID
 	 * @param callback (optional) Is called after the state was deleted (or not).
@@ -1512,10 +1605,29 @@ declare global {
 	 * If the ID of an instance is given (e.g. "admin.0"), only this instance will receive the message.
 	 * If the name of an adapter is given (e.g. "admin"), all instances of this adapter will receive it.
 	 * @param command (optional) Command name of the target instance. Default: "send"
-	 * @param message The message (e.g. params) to send.
+	 * @param message The message (e.g., params) to send.
 	 */
-	function sendTo(instanceName: string, message: string | object, callback?: iobJS.MessageCallback | iobJS.MessageCallbackInfo): void;
+	function sendTo(instanceName: string, command: string, message: string | object, options: iobJS.SendToOptions, callback?: iobJS.MessageCallback | iobJS.MessageCallbackInfo): void;
 	function sendTo(instanceName: string, command: string, message: string | object, callback?: iobJS.MessageCallback | iobJS.MessageCallbackInfo): void;
+	function sendTo(instanceName: string, message: string | object, callback?: iobJS.MessageCallback | iobJS.MessageCallbackInfo): void;
+	function sendToAsync(instanceName: string, message: string | object): Promise<iobJS.MessageCallback | iobJS.MessageCallbackInfo>;
+	function sendToAsync(instanceName: string, command: string, message: string | object): Promise<iobJS.MessageCallback | iobJS.MessageCallbackInfo>;
+	function sendToAsync(instanceName: string, command: string, message: string | object, options: iobJS.SendToOptions): Promise<iobJS.MessageCallback | iobJS.MessageCallbackInfo>;
+
+	/**
+	 * Sends a message to a specific instance or all instances of some specific adapter.
+	 * @param host Host name.
+	 * @param command Command name for the target host.
+	 * @param message The message (e.g., params) to send.
+	 */
+	function sendToHost(host: string, command: string, message: string | object, callback?: iobJS.MessageCallback | iobJS.MessageCallbackInfo): void;
+	function sendToHostAsync(host: string, command: string, message: string | object): Promise<iobJS.MessageCallback | iobJS.MessageCallbackInfo>;
+
+	function setTimeout(callback: (args: void) => void, ms?: number): NodeJS.Timeout;
+	function clearTimeout(timeoutId: NodeJS.Timeout | string | number | undefined): void;
+	function setInterval(callback: (args: void) => void, ms?: number): NodeJS.Timeout;
+	function clearInterval(intervalId: NodeJS.Timeout | string | number | undefined): void;
+	function setImmediate(callback: (args: void) => void): NodeJS.Immediate;
 
 	type CompareTimeOperations =
 		"between" | "not between" |
@@ -1540,6 +1652,8 @@ declare global {
 	function formatValue(value: number | string, decimals: number, format?: any): string;
 	function formatDate(dateObj: string | Date | number, format: string, language?: string): string;
 	function formatDate(dateObj: string | Date | number, isDuration: boolean | string, format: string, language?: string): string;
+	function formatTimeDiff(diff: number): string;
+	function formatTimeDiff(diff: number, format: string): string;
 
 	function getDateObject(date: number | string | Date): Date;
 
@@ -1580,7 +1694,28 @@ declare global {
 	function delFile(id: string, name: string, callback: ErrorCallback): void;
 	function delFileAsync(id: string, name: string): Promise<void>;
 
+	/**
+	 * Renames a file.
+	 * @param id Name of the root directory. This should be the adapter instance, e.g. "admin.0"
+	 * @param oldName Current file name
+	 * @param newName New file name
+	 * @param callback Is called when the operation has finished (successfully or not)
+	 */
+	function rename(id: string, oldName: string, newName: string, callback: ErrorCallback);
+	function renameAsync(id: string, oldName: string, newName: string);
+
+	/**
+	 * Renames a file.
+	 * @param id Name of the root directory. This should be the adapter instance, e.g. "admin.0"
+	 * @param oldName Current file name
+	 * @param newName New file name
+	 * @param callback Is called when the operation has finished (successfully or not)
+	 */
+	function renameFile(id: string, oldName: string, newName: string, callback: ErrorCallback);
+	function renameFileAsync(id: string, oldName: string, newName: string);
+
 	function getHistory(instance: any, options: any, callback: any): any;
+	function getHistoryAsync(instance: any, options: any): Promise<any>;
 
 	/**
 	 * Starts or restarts a script by name
@@ -1636,13 +1771,14 @@ declare global {
 	 * @return ID of the subscription. It could be used for un-subscribe.
 	 */
 	function messageTo(target: iobJS.MessageTarget | string, data: any, options?: any, callback?: SimpleCallback<any>): iobJS.MessageSubscribeID;
+	function messageToAsync(target: iobJS.MessageTarget | string, data: any, options?: any): Promise<iobJS.MessageCallback | iobJS.MessageCallbackInfo>;
 
 	/**
-	 * Process message from other script.
+	 * Process message from another script.
 	 * @param message Message name
-	 * @param callback Callback to send the result to other script
+	 * @param callback Callback to send the result to another script
 	 */
-	function onMessage(message: string, callback?: SimpleCallback<any>);
+	function onMessage(message: string, callback?: MessageCallback<any>);
 
 	/**
 	 * Unregister onmessage handler
@@ -1651,10 +1787,17 @@ declare global {
 	 */
 	function onMessageUnregister(id: iobJS.MessageSubscribeID | string): boolean;
 
+	function jsonataExpression(data: any, expression: string): Promise<any>;
+
+	function onObject(pattern: string, callback: iobJS.ObjectChangeHandler);
+	function subscribeObject(pattern: string, callback: iobJS.ObjectChangeHandler);
+
+	function unsubscribeObject(id: string);
+
 	/**
-	 * Receives logs of specified severity level in script.
+	 * Receives logs of specified severity level in a script.
 	 * @param severity Severity level
-	 * @param callback Callback to send the result to other script
+	 * @param callback Callback to send the result to another script
 	 */
 	function onLog(severity: iobJS.LogLevel | "*", callback: SimpleCallback<iobJS.LogMessage>);
 
