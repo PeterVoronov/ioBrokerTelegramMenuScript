@@ -703,7 +703,7 @@ class ConfigOptions {
       case cfgSummaryTextLengthMax:
         if (
           user.userId != user.chatId &&
-          typeIs(result, 'number') &&
+          typeof result === 'number' &&
           (this.existsOption(cfgTextLengthModifierForGChats, user) || this.existsOption(cfgTextLengthModifierForGChats))
         ) {
           result += this.getOption(cfgTextLengthModifierForGChats, user);
@@ -723,7 +723,7 @@ class ConfigOptions {
    * @param {function} functionToProcess - This is the function that will be called when the option is changed.
    */
   subscribeOnOption(cfgItem, functionToProcess) {
-    if (this.existsOption(cfgItem) && typeOf(functionToProcess) === 'function') {
+    if (this.existsOption(cfgItem) && typeof functionToProcess === 'function') {
       this.externalSubscriptions.set(cfgItem, functionToProcess);
     }
   }
@@ -744,7 +744,7 @@ class ConfigOptions {
    * @returns {RegExp|undefined} The validation mask (RegExp) rule for the given configItem.
    */
   getMask(cfgItem) {
-    if (this.configOptions.hasOwnProperty(cfgItem) && typeIs(this.configOptions[cfgItem].template, 'object')) {
+    if (this.configOptions.hasOwnProperty(cfgItem) && typeof this.configOptions[cfgItem].template === 'object') {
       return this.configOptions[cfgItem].template.rule;
     }
     return undefined;
@@ -757,10 +757,10 @@ class ConfigOptions {
    */
   getMaskDescription(cfgItem) {
     if (this.configOptions.hasOwnProperty(cfgItem)) {
-      if (typeIs(this.configOptions[cfgItem].template, 'object')) {
+      if (typeof this.configOptions[cfgItem]?.['template']?.['text'] === 'string') {
         return this.configOptions[cfgItem].template.text;
       } else {
-        return typeIs(this.configOptions[cfgItem].subType, 'string')
+        return typeof this.configOptions[cfgItem].subType === 'string'
           ? this.configOptions[cfgItem].subType
           : this.configOptions[cfgItem].type;
       }
@@ -826,7 +826,7 @@ class ConfigOptions {
   parseOption(cfgItem, value) {
     const cfgItemType = this.configOptions[cfgItem].type;
     let result,
-      valueToParseType = typeOf(value);
+      valueToParseType = typeToText(value);
     if (cfgItemType === 'array') {
       if (valueToParseType === 'string') {
         if (value.indexOf('[') === 0) {
@@ -848,7 +848,7 @@ class ConfigOptions {
         } catch (err) {
           errs(`Parse error on configOptions[${cfgItem}] - ${jsonStringify(err)}`);
         }
-        valueToParseType = typeOf(value);
+        valueToParseType = typeToText(value);
       }
       if (valueToParseType === 'map') {
         result = value;
@@ -860,7 +860,7 @@ class ConfigOptions {
         } catch (err) {
           errs(`Parse error on configOptions[${cfgItem}] - ${jsonStringify(err)}`);
         }
-        valueToParseType = typeOf(value);
+        valueToParseType = typeToText(value);
       }
       if (valueToParseType === 'object') {
         result = value;
@@ -887,12 +887,8 @@ class ConfigOptions {
         result = `${value}`;
       }
       const currentMask = this.getMask(cfgItem);
-      switch (typeOf(currentMask)) {
-        case 'regexp':
-          result = currentMask?.test(result) ? result : undefined;
-          break;
-        default:
-          break;
+      if (currentMask instanceof RegExp) {
+        result = currentMask?.test(result) ? result : undefined;
       }
     }
     return result;
@@ -964,7 +960,7 @@ class ConfigOptions {
             }
             if (this.externalSubscriptions.has(cfgItem)) {
               const functionToProcess = this.externalSubscriptions.get(cfgItem);
-              if (typeOf(functionToProcess)) {
+              if (typeof functionToProcess === 'function') {
                 functionToProcess(cfgItem);
                 logs(
                   `External function ${functionToProcess} is executed on ` +
@@ -985,7 +981,7 @@ class ConfigOptions {
    */
   saveOption(cfgItem, user) {
     let currentValue = this.getOption(cfgItem, user),
-      stateType = typeOf(currentValue);
+      stateType = typeToText(currentValue);
     if (isDefined(currentValue)) {
       const id = this.#getStateId(cfgItem, user);
       if (stateType === 'object') {
@@ -1026,9 +1022,11 @@ class ConfigOptions {
    */
   restoreDataFromBackup(backupData) {
     if (
-      typeIs(backupData, 'object') &&
+      typeof backupData === 'object' &&
+      !Array.isArray(backupData) &&
       backupData.hasOwnProperty('globalConfig') &&
-      typeIs(backupData.globalConfig, 'object')
+      typeof backupData.globalConfig === 'object' &&
+      !Array.isArray(backupData.globalConfig)
     ) {
       Object.keys(this.globalConfig).forEach((cfgItem) => {
         if (backupData.globalConfig.hasOwnProperty(cfgItem) && isDefined(backupData.globalConfig[cfgItem])) {
@@ -1040,7 +1038,7 @@ class ConfigOptions {
         this.perUserConfig.forEach((userConfig, userId) => {
           const userConfigBackup =
             backupData.hasOwnProperty('perUserConfig') &&
-            typeIs(backupData.perUserConfig, 'map') &&
+            backupData.perUserConfig instanceof Map &&
             backupData.perUserConfig.size &&
             backupData.perUserConfig.has(userId)
               ? backupData.perUserConfig.get(userId)
@@ -1054,7 +1052,7 @@ class ConfigOptions {
       }
       if (
         backupData.hasOwnProperty('perUserConfig') &&
-        typeIs(backupData.perUserConfig, 'map') &&
+        backupData.perUserConfig instanceof Map &&
         backupData.perUserConfig.size
       ) {
         backupData.perUserConfig.forEach((userConfigData, userId) => {
@@ -1082,7 +1080,7 @@ class ConfigOptions {
    */
   menuGenerateForArray(user, menuItemToProcess) {
     const {item: cfgItem, scope: optionScope} = menuItemToProcess.options,
-      currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+      currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
       isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
@@ -1147,7 +1145,7 @@ class ConfigOptions {
    * @returns {object[]} An array of objects (menu items).
    */
   menuGenerate(user, menuItemToProcess) {
-    const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon,
       currentAccessLevel = menuItemToProcess.accessLevel,
       isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
@@ -1261,7 +1259,7 @@ class ConfigOptions {
                 subMenuItem.submenu = (user, menuItemToProcess) => {
                   let subMenu = new Array(),
                     subMenuIndex = 0;
-                  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+                  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
                     {scope: optionScope, value: currentLanguage} = menuItemToProcess.options;
                   Object.keys(translationsList)
                     .sort() // NOSONAR
@@ -1310,7 +1308,7 @@ class ConfigOptions {
                       submenu: (user, menuItemToProcess) => {
                         let subMenu = [],
                           subMenuIndex = 0;
-                        const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+                        const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
                           {item: cfgItem, scope: optionScope} = menuItemToProcess.options;
                         if (cachedValueExists(user, cachedConfigNewLanguageId)) {
                           const newLanguageId = translationsValidateLanguageId(
@@ -1372,7 +1370,7 @@ class ConfigOptions {
                 subMenuItem.submenu = (user, menuItemToProcess) => {
                   let subMenu = new Array(),
                     subMenuIndex = 0;
-                  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+                  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
                     currentAccessLevel = menuItemToProcess.accessLevel,
                     isCurrentAccessLevelAllowModify =
                       MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
@@ -1538,7 +1536,7 @@ class ConfigOptions {
                     break;
                   }
                 }
-                if (typeIs(interimItem, 'object')) {
+                if (typeof interimItem === 'object' && !Array.isArray(interimItem)) {
                   subMenuItem.options = interimItem.options;
                   subMenuItem.submenu = interimItem.submenu;
                   subMenuItem.command = interimItem.command;
@@ -1664,7 +1662,7 @@ class MenuRoles {
   initRules(itemId) {
     if (isDefined(itemId)) {
       itemId = this.existsId(itemId);
-      if (typeIs(this.data[itemId], 'array')) this.data[itemId] = MenuRoles.sortRules(this.data[itemId]);
+      if (Array.isArray(this.data[itemId])) this.data[itemId] = MenuRoles.sortRules(this.data[itemId]);
       this.compileRules(itemId);
     } else {
       Object.keys(this.data).forEach((roleId) => {
@@ -1800,7 +1798,7 @@ class MenuRoles {
    */
   static sortRules(rules, inverseMasks = false, sortDescending = false) {
     let currentSort;
-    if (rules && typeIs(rules, 'array') && rules.length > 0) {
+    if (rules && Array.isArray(rules) && rules.length > 0) {
       if (inverseMasks) {
         if (rules[0].hasOwnProperty('maskInverted') && rules[0].maskInverted) {
           currentSort = (ruleA, ruleB) =>
@@ -1890,7 +1888,7 @@ class MenuRoles {
   compileRules(itemId) {
     if (this.existsId(itemId)) {
       const currentRules = this.data[itemId];
-      if (typeIs(currentRules, 'array')) {
+      if (Array.isArray(currentRules)) {
         let compiledData = new Array();
         currentRules.forEach((currentRule) => {
           compiledData.push({...currentRule});
@@ -2228,7 +2226,7 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   #menuRuleSetAccessLevel(user, menuItemToProcess) {
-    const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       {dataType, roleId, ruleIndex} = menuItemToProcess.options,
       isForNewRule = Number(ruleIndex) == -1,
       currentRole = cachedValueExists(user, cachedRolesRoleUnderEdit)
@@ -2310,7 +2308,7 @@ class MenuRoles {
      * @returns {object[]} Newly generated submenu.
      */
     function selectMask(user, menuItemToProcess) {
-      const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+      const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
         {upperItemId, itemId: currentItemId} = menuItemToProcess.options,
         currentMasks = [
           `${upperItemId}${rolesIdAndMaskDelimiter}${currentItemId}`,
@@ -2443,7 +2441,7 @@ class MenuRoles {
     if (!cachedValueExists(user, cachedRolesNewRule)) {
       cachedValueSet(user, cachedRolesNewRule, {...rolesInitialRule});
     }
-    const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       {roleId} = menuItemToProcess.options,
       rootMenu = menuMenuItemGenerateRootMenu(null),
       savedRule = cachedValueGet(user, cachedRolesNewRule);
@@ -2473,7 +2471,7 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   #menuGenerateRoleRules(user, menuItemToProcess) {
-    const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       currentAccessLevel = menuItemToProcess.accessLevel,
       {roleId} = menuItemToProcess.options,
       isNewRole = !this.existsId(roleId);
@@ -2612,7 +2610,7 @@ class MenuRoles {
    * @returns {object[]} Newly generated submenu.
    */
   menuGenerate(user, menuItemToProcess) {
-    const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon,
       currentAccessLevel = menuItemToProcess.accessLevel;
     let subMenu = [],
@@ -2657,7 +2655,7 @@ class MenuRoles {
           }
         },
         submenu: (user, menuItemToProcess) => {
-          const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '';
+          const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '';
           let subMenu = [],
             subMenuIndex = 0;
           const newRoleId = cachedValueGet(user, cachedRolesNewRoleId);
@@ -2731,7 +2729,8 @@ class MenuUsers extends MenuRoles {
       if (
         telegramUsersListState.hasOwnProperty('val') &&
         telegramUsersListState.val &&
-        typeof telegramUsersListState === 'object'
+        typeof telegramUsersListState === 'object' &&
+        !Array.isArray(telegramUsersListState)
       ) {
         const users = jsonParse(telegramUsersListState.val);
         Object.keys(users).forEach((user) => {
@@ -2969,7 +2968,7 @@ class MenuUsers extends MenuRoles {
    * @returns {object[]}  Newly generated submenu.
    */
   menuGenerate(user, menuItemToProcess) {
-    const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
       currentIcon = menuItemToProcess.icon;
     let subMenu = [],
       subMenuIndex = 0;
@@ -3031,7 +3030,7 @@ class MenuUsers extends MenuRoles {
         }]`,
         options: {userId},
         submenu: (_user, menuItemToProcess) => {
-          const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+          const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
             {userId} = menuItemToProcess.options;
           let subMenu = [],
             subMenuIndex = 0;
@@ -3205,8 +3204,8 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
       repo
         .get(localeUrl.path)
         .then((response) => {
-          if (response?.data && typeIs(response.data, 'object')) {
-            if (!typeIs(translations, 'object')) translations = {};
+          if (response?.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+            if (typeof translations !== 'object') translations = {};
             translations[languageId] = response.data;
           }
         })
@@ -3248,7 +3247,7 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
         },
       })
       .then((response) => {
-        if (response?.data && typeIs(response.data, 'array')) {
+        if (response?.data && Array.isArray(response.data)) {
           const localesFolder = response.data,
             localesLinks = {};
           localesFolder.forEach((localesItem) => {
@@ -3289,13 +3288,13 @@ async function translationsInitialLoadLocalesFromRepository() {
       } else {
         Object.keys(locales).forEach((languageId) => {
           if (
-            typeIs(locales[languageId], 'object') &&
+            typeof locales[languageId] === 'object' &&
             translationsCheckAndCacheUploadedFile(cachedCommonId, '', '', '', locales[languageId])
           ) {
             const newTranslation = locales[languageId];
             if (
               newTranslation?.hasOwnProperty(idTranslation) &&
-              typeIs(newTranslation[idTranslation], 'object') &&
+              typeof newTranslation[idTranslation] === 'object' &&
               Math.abs(translationsCompareVersion(newTranslation['version'])) < 10
             ) {
               translationsList[languageId] = newTranslation[idTranslation];
@@ -3367,8 +3366,8 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
         Object.keys(translationInputPart).forEach((translationKey) => {
           if (translationCurrentPart.hasOwnProperty(translationKey)) {
             if (
-              typeIs(translationCurrentPart[translationKey], 'object') &&
-              typeIs(translationInputPart[translationKey], 'object')
+              typeof translationCurrentPart[translationKey] === 'object' &&
+              typeof translationInputPart[translationKey] === 'object'
             ) {
               translationCurrentPart[translationKey] = translationsProcessUpdate(
                 translationCurrentPart[translationKey],
@@ -3377,15 +3376,15 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
               );
             } else if (translationUpdateMode === 'overwrite') {
               if (
-                typeIs(translationInputPart[translationKey], 'string') &&
-                typeOf(translationCurrentPart[translationKey]) === typeOf(translationInputPart[translationKey])
+                typeof translationInputPart[translationKey] === 'string' &&
+                typeof translationCurrentPart[translationKey] === 'string'
               ) {
                 translationCurrentPart[translationKey] = translationInputPart[translationKey];
               }
             } else if (translationUpdateMode === 'enrich') {
               if (
-                typeIs(translationInputPart[translationKey], 'string') &&
-                typeOf(translationCurrentPart[translationKey]) === typeOf(translationInputPart[translationKey]) &&
+                typeof translationInputPart[translationKey] === 'string' &&
+                typeof translationCurrentPart[translationKey] === 'string' &&
                 translationCurrentPart[translationKey].includes(translationKey)
               ) {
                 translationCurrentPart[translationKey] = translationInputPart[translationKey];
@@ -3403,8 +3402,8 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
         Object.keys(translationTemplatePart).forEach((translationKey) => {
           if (translationCurrentPart.hasOwnProperty(translationKey)) {
             if (
-              typeIs(translationTemplatePart[translationKey], 'object') &&
-              typeIs(translationCurrentPart[translationKey], 'object')
+              typeof translationTemplatePart[translationKey] === 'object' &&
+              typeof translationCurrentPart[translationKey] === 'object'
             ) {
               translationTemplatePart[translationKey] = translationsProcessUpdate(
                 translationCurrentPart[translationKey],
@@ -3412,7 +3411,8 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
                 translationUpdateMode,
               );
             } else if (
-              typeOf(translationTemplatePart[translationKey]) === typeOf(translationCurrentPart[translationKey])
+              typeof translationTemplatePart[translationKey] === 'string' &&
+              typeof translationCurrentPart[translationKey] === 'string'
             ) {
               translationTemplatePart[translationKey] = translationCurrentPart[translationKey];
             }
@@ -3436,7 +3436,8 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
       translationInputVersionCompare = translationsCompareVersion(translationInputFull['version']);
     if (
       translationInputFull.hasOwnProperty(idTranslation) &&
-      typeIs(translationInputFull[idTranslation], 'object') &&
+      typeof translationInputFull[idTranslation] === 'object' &&
+      !Array.isArray(translationInputFull[idTranslation]) &&
       Math.abs(translationInputVersionCompare) < 10
     ) {
       const translationPossibleUpdateModes = translationInputVersionCompare ? ['overwrite'] : translationsUpdateModes,
@@ -3699,15 +3700,15 @@ function translationsGetObjectId(object, functionId, destinationId, isCommon = f
   let translationId;
   const functionsList = enumerationsList[dataTypeFunction].list,
     destinationsList = enumerationsList[dataTypeDestination].list;
-  if ((functionId && typeIs(functionId, 'string') && functionsList.hasOwnProperty(functionId)) || isCommon) {
+  if ((functionId && typeof functionId === 'string' && functionsList.hasOwnProperty(functionId)) || isCommon) {
     if (
-      !typeIs(destinationId, 'string') ||
-      (destinationId && typeIs(destinationId, 'string') && destinationsList.hasOwnProperty(destinationId))
+      typeof destinationId !== 'string' ||
+      (destinationId && typeof destinationId === 'string' && destinationsList.hasOwnProperty(destinationId))
     ) {
-      if (object && ((typeof object === 'object' && object.hasOwnProperty('_id')) || typeof object === 'string')) {
+      if (typeof object?.['_id'] === 'string' || typeof object === 'string') {
         const currentFunction = functionsList[functionId],
           currentEnum = currentFunction ? currentFunction.enum : '',
-          objectId = typeIs(object, 'string') ? object : object._id,
+          objectId = typeof object === 'string' ? object : object._id,
           prefixId = currentFunction
             ? objectId.split('.').slice(0, -currentFunction.statesSectionsCount).join('.')
             : '';
@@ -3752,7 +3753,7 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
       const objectCommonName = object.common.name;
       if (typeof objectCommonName === 'string') {
         result = objectCommonName;
-      } else if (typeof objectCommonName === 'object') {
+      } else if (typeof objectCommonName === 'object' && !Array.isArray(objectCommonName)) {
         const languageFromConfig = configOptions.getOption(cfgMenuLanguage, user);
         if (objectCommonName.hasOwnProperty(languageFromConfig)) {
           result = objectCommonName[languageFromConfig];
@@ -3799,7 +3800,7 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
       ) {
         result = `${enumPrefix}.${translationsSubPrefix}.${currentEnum.nameTranslationId}`;
       } else {
-        if (!typeIs(enumNameDeclinationKey, 'string')) enumNameDeclinationKey = enumerationsNamesMain;
+        if (typeof enumNameDeclinationKey !== 'string') enumNameDeclinationKey = enumerationsNamesMain;
         result = `${enumPrefix}.${enumerationsNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
       }
     }
@@ -3884,7 +3885,7 @@ function translationsCheckAndCacheUploadedFile(
   let translationFileIsOk = false;
   if (translationFileFullPath.includes(nodePath.join('document', translationFileName)) || translationObject) {
     try {
-      const noTranslationObject = !typeIs(translationObject, 'object');
+      const noTranslationObject = typeof translationObject !== 'object';
       if (noTranslationObject) nodeFS.accessSync(translationFileFullPath, nodeFS.constants.R_OK);
       const fileStats = noTranslationObject ? nodeFS.statSync(translationFileFullPath) : {};
       if (
@@ -3894,7 +3895,7 @@ function translationsCheckAndCacheUploadedFile(
       ) {
         let inputTranslation = noTranslationObject ? nodeFS.readFileSync(translationFileFullPath) : translationObject;
         try {
-          inputTranslation = typeIs(inputTranslation, 'string') ? jsonParse(inputTranslation) : inputTranslation;
+          inputTranslation = typeof inputTranslation === 'string' ? jsonParse(inputTranslation) : inputTranslation;
           const currentLanguage = translationsValidateLanguageId(inputTranslation.language);
           translationFileName = translationFileName || `locale_${currentLanguage}.json`;
           if (
@@ -3935,7 +3936,7 @@ function translationsCheckAndCacheUploadedFile(
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
   let subMenuIndex = 0,
@@ -4044,7 +4045,7 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     translationType = menuItemToProcess.id,
@@ -4105,7 +4106,7 @@ function translationsMenuGenerateBasicItems(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {
@@ -4207,7 +4208,7 @@ function translationsMenuGenerateFunctionStatesItems(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {function: currentFunction, functionEnum: currentFunctionEnum} = menuItemToProcess.options,
@@ -4283,7 +4284,7 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
  * @returns {object[]}  Newly generated submenu.
  */
 function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     extensionId = menuItemToProcess.id,
@@ -4303,7 +4304,7 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
       if (isCurrentAccessLevelAllowModify) {
         subMenuItem.options = {dataType: dataTypeTranslation, translationId: `${translationType}.${translationKey}`};
         subMenuItem.submenu = (user, menuItemToProcess) => {
-          const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '';
+          const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '';
           let subMenu = new Array(),
             subMenuIndex = 0;
           subMenuIndex = subMenu.push(
@@ -4467,7 +4468,7 @@ function cachedValueGet(user, valueId, getLastChange = false) {
     if ((!cachedValuesMap.has(id) || getLastChange) && cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
       if (existsState(id)) {
         const currentState = getState(id);
-        if (typeIs(currentState, 'object')) {
+        if (typeof currentState === 'object') {
           let cachedVal = currentState.val;
           stateLastChange = currentState.lc;
           if (cachedValuesStatesCommonAttributes[valueId].type === 'json' && cachedVal.length > 0) {
@@ -4525,7 +4526,7 @@ function cachedValueSet(user, valueId, value) {
         valueId = prefixExternalStates;
       }
       if (cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
-        if (!typeIs(value, 'string')) {
+        if (typeof value !== 'string') {
           if (cachedValuesStatesCommonAttributes[valueId].type === 'string') {
             value = `${value}`;
           } else if (cachedValuesStatesCommonAttributes[valueId].type === 'json') {
@@ -4684,7 +4685,7 @@ function sentImagesDelete(user) {
    */
   function sentImagesDeleteCallBack(result, user, telegramObject, sentImages) {
     const resultObject = telegramSendToAdapterResponse(result, telegramObject);
-    logs(`SendToTelegram: result (${typeOf(result)}) = ${jsonStringify(result, 1)}`, _l);
+    logs(`SendToTelegram: result (${typeToText(result)}) = ${jsonStringify(result, 1)}`, _l);
     logs(`resultObject: ${jsonStringify(resultObject, 1)}`, _l);
     if (!resultObject.success) {
       warns(
@@ -4886,12 +4887,16 @@ function enumerationsCompareOrderOfItems(a, b, enumerationType, enumerationList)
 function enumerationsLoad(enumerationType) {
   enumerationsList[enumerationType].list = {};
   if (existsState(enumerationsList[enumerationType].state)) {
-    const parsedObject = jsonParse(getState(enumerationsList[enumerationType].state).val);
-    if (parsedObject.hasOwnProperty('list') && typeIs(parsedObject.list, 'object') && parsedObject.list) {
-      enumerationsList[enumerationType].list = parsedObject.list;
-    }
-    if (parsedObject.hasOwnProperty('enums') && typeIs(parsedObject.enums, 'object') && parsedObject.enums) {
-      enumerationsList[enumerationType].enums = parsedObject.enums;
+    try {
+      const parsedObject = jsonParse(getState(enumerationsList[enumerationType].state).val);
+      if (typeof parsedObject?.list === 'object' && parsedObject.list) {
+        enumerationsList[enumerationType].list = parsedObject.list;
+      }
+      if (typeof parsedObject?.enums === 'object' && parsedObject.enums) {
+        enumerationsList[enumerationType].enums = parsedObject.enums;
+      }
+    } catch (error) {
+      warns(`Can't load enumeration of type "${enumerationType}". Error is "${jsonStringify(error)}"`);
     }
   }
 }
@@ -4968,8 +4973,8 @@ function enumerationsInit(enumerationType, withExtensions = false) {
           (currentItemSectionsCount === 2 && getEnums(compositeHolderEnum).length > 0);
       if (isCurrentItemAcceptable) {
         if (
-          currentEnumerationList.hasOwnProperty(currentItem) &&
-          typeIs(currentEnumerationList[currentItem], 'object')
+          typeof currentEnumerationList?.[currentItem] === 'object' &&
+          !Array.isArray(currentEnumerationList?.[currentItem])
         ) {
           currentEnumerationList[currentItem].isAvailable = true;
           if (holderItemId) currentEnumerationList[currentItem].holder = holderItemId;
@@ -5031,7 +5036,7 @@ function enumerationsUpdateItemName(
 ) {
   if (newName && typeof newName === 'string') {
     const translationIdPrefix = translationsGetEnumId(user, enumerationType, enumerationItemId, '');
-    if (enumerationItem.hasOwnProperty('names') && typeOf(enumerationItem.names) === 'array') {
+    if (enumerationItem.hasOwnProperty('names') && Array.isArray(enumerationItem.names)) {
       newName = newName.trim();
       let tmpKeys = [...enumerationItem.names];
       tmpKeys.unshift(enumerationsNamesMain);
@@ -5065,7 +5070,7 @@ function enumerationsRereadItemName(user, enumerationType, enumerationItemId) {
     currentEnum = getEnums(currentEnumeration[enumerationItemId].enum).find((current) => current.id === fullItemId);
   if (currentEnum?.hasOwnProperty('name') && isDefined(currentEnum.name)) {
     let newName = enumerationItemId;
-    if (typeIs(currentEnum.name, 'string')) {
+    if (typeof currentEnum.name === 'string') {
       newName = currentEnum.name;
     } else if (currentEnum.name[configOptions.getOption(cfgMenuLanguage)]) {
       newName = currentEnum.name[configOptions.getOption(cfgMenuLanguage)];
@@ -5093,7 +5098,7 @@ function enumerationsRereadItemName(user, enumerationType, enumerationItemId) {
 function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {dataType: dataTypeItem, item: currentItem, dataTypeExtraId} = menuItemToProcess.options,
     currentEnumerationsList = enumerationsGetList(dataTypeItem, dataTypeExtraId),
     currentMenuItem = currentEnumerationsList[currentItem],
@@ -5144,7 +5149,7 @@ function enumerationMenuGenerateItemGroups(user, menuItemToProcess) {
 function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {
@@ -5345,7 +5350,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
 
       case 'names': {
         if (
-          typeIs(currentEnumerationItem.names, 'array') &&
+          Array.isArray(currentEnumerationItem.names) &&
           !(enumerationItemAttrs.includes('nameTranslationId') && currentEnumerationItem['nameTranslationId'])
         ) {
           let namesItem = {
@@ -5380,7 +5385,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         const groupItem = {
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'group')}: [${
-            typeIs(currentEnumerationItem[enumerationItemAttr], 'string')
+            typeof currentEnumerationItem[enumerationItemAttr] === 'string'
               ? currentEnumerationItem[enumerationItemAttr]
               : ''
           }]`,
@@ -5729,7 +5734,7 @@ function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
   return Object.keys(extraMenuList).filter(
     (itemId) =>
       extraMenuList[itemId].isEnabled &&
-      (!typeIs(primaryEnumId, 'string') || extraMenuList[itemId].enum === primaryEnumId),
+      (typeof primaryEnumId !== 'string' || extraMenuList[itemId].enum === primaryEnumId),
   ).length;
 }
 
@@ -5785,7 +5790,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       const currentItemDetailsLineObject = {
         label: `${translationsItemTextGet(user, 'list', item)}`,
       };
-      if (typeIs(currentEnumerationItem[item], 'boolean')) {
+      if (typeof currentEnumerationItem[item] === 'boolean') {
         currentItemDetailsLineObject.value = currentEnumerationItem[item]
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user);
@@ -5879,7 +5884,7 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
     enumerationItemId,
     enumerationsNamesMain,
   );
-  if (!typeIs(enumerationItem, 'object')) {
+  if (typeof enumerationItem !== 'object') {
     const enumerationList = enumerationsGetList(enumerationType);
     enumerationItem = enumerationList ? enumerationList[enumerationItemId] : enumerationItem;
   }
@@ -5927,7 +5932,7 @@ function enumerationsItemIcon(user, enumerationType, enumerationItemId) {
   const enumerationList = enumerationsGetList(enumerationType);
   if (isDefined(enumerationList)) {
     const enumerationItem = enumerationList[enumerationItemId];
-    if (typeIs(enumerationItem, 'object') && typeof enumerationItem.icon === 'string') {
+    if (typeof enumerationItem?.icon === 'string') {
       result = enumerationItem.icon;
     }
   }
@@ -5942,7 +5947,7 @@ function enumerationsItemIcon(user, enumerationType, enumerationItemId) {
  */
 function enumerationsGetHolderIdOrIdWithIncludedItems(enumerations, enumerationId) {
   let result = '';
-  if (typeIs(enumerations[enumerationId].holder, 'string')) {
+  if (typeof enumerations[enumerationId].holder === 'string') {
     result = enumerations[enumerationId].holder;
   } else if (Object.keys(enumerations).every((item) => enumerations[item].holder === enumerationId)) {
     result = enumerationId;
@@ -5957,7 +5962,7 @@ function enumerationsGetHolderIdOrIdWithIncludedItems(enumerations, enumerationI
  * @returns {object[]} - The array of menuItem objects.
  */
 function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     {dataType: enumerationType, dataTypeExtraId: enumerationTypeExtraId} = menuItemToProcess.options,
     enumerationPrimaryType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId);
@@ -6158,7 +6163,7 @@ function enumerationsGetDeviceName(user, stateId, functionId, destinationId) {
  * @returns {object[]} Newly generated submenu.
  */
 function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: primaryStateId, device: devicePrefix} = options,
     functionsList = enumerationsList[dataTypeFunction].list,
@@ -6197,10 +6202,11 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
           const stateName = translationsGetObjectName(user, stateObject, functionId);
           if (stateName) {
             const currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
-              stateValue = typeIs(currentState, 'object')
-                ? // @ts-ignore
-                  enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
-                : undefined;
+              stateValue =
+                typeof currentState === 'object'
+                  ?
+                    enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
+                  : undefined;
             const currentOptions = {
               function: functionId,
               state: stateIdFull,
@@ -6301,7 +6307,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       };
       let subSubSubMenuIndex = 0;
       const graphsIntervals = configOptions.getOption(cfgGraphsIntervals, user);
-      if (graphsIntervals && typeIs(graphsIntervals, 'array') && graphsIntervals.length) {
+      if (graphsIntervals && Array.isArray(graphsIntervals) && graphsIntervals.length) {
         graphsIntervals.forEach(({id: graphsIntervalId, minutes: graphsIntervalMinutes}) => {
           subSubSubMenuIndex = subSubMenuItem.submenu.push({
             index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}.${subSubSubMenuIndex}`,
@@ -6354,7 +6360,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
  */
 function enumerationsExtractPossibleValueStates(user, stateIdOrObject, functionId = '') {
   const stateObject =
-    typeIs(stateIdOrObject, 'string') && existsObject(stateIdOrObject)
+    typeof stateIdOrObject === 'string' && existsObject(stateIdOrObject)
       ? getObjectEnriched(stateIdOrObject)
       : stateIdOrObject;
   let states = new Map(),
@@ -6363,18 +6369,17 @@ function enumerationsExtractPossibleValueStates(user, stateIdOrObject, functionI
     namePossible = '',
     valueName,
     possibleValueTranslationId = '';
-  if (typeIs(stateObject['common'], 'object')) {
+  if (typeof stateObject['common'] === 'object') {
     const objectCommon = stateObject['common'],
       inputStates = objectCommon.states,
       inputType = objectCommon.type,
-      stateId = typeIs(stateIdOrObject, 'string') ? stateIdOrObject : stateObject._id,
+      stateId = typeof stateIdOrObject === 'string' ? stateIdOrObject : stateObject._id,
       stateFunction = enumerationsList[dataTypeFunction].list[functionId],
-      stateAttributeId = typeIs(stateFunction, 'object')
-        ? stateId.split('.').slice(-stateFunction.statesSectionsCount).join('.')
-        : '',
+      stateAttributeId =
+        typeof stateFunction === 'object' ? stateId.split('.').slice(-stateFunction.statesSectionsCount).join('.') : '',
       stateTranslationIdPrefix = stateAttributeId.split('.').join('_');
-    if (['string', 'object'].includes(`${typeOf(objectCommon)}`)) {
-      if (typeIs(inputStates, 'string')) {
+    if (['string', 'object'].includes(`${typeof objectCommon}`)) {
+      if (typeof inputStates === 'string') {
         if (inputStates.includes(';')) {
           statesArray = inputStates.split(';');
         } else if (inputStates.includes(',')) {
@@ -6384,26 +6389,26 @@ function enumerationsExtractPossibleValueStates(user, stateIdOrObject, functionI
         statesArray = Object.keys(inputStates);
       }
       for (let iState of statesArray.values()) {
-        if (typeIs(inputStates, 'string') && inputStates.includes(':')) {
+        if (typeof inputStates === 'string' && inputStates.includes(':')) {
           [value, namePossible] = iState.split(':');
           value = value.trim();
           namePossible = namePossible.trim();
-        } else if (typeIs(inputStates, 'object')) {
+        } else if (typeof inputStates === 'object' && !Array.isArray(inputStates)) {
           value = iState;
           namePossible = inputStates[iState];
         } else {
           value = undefined;
         }
         if (isDefined(value)) {
-          if (typeIs(value, 'string') && inputType !== 'string') {
+          if (typeof value === 'string' && inputType !== 'string') {
             value = getValueFromStringByType(value, inputType);
           }
         }
-        if (typeIs(stateFunction, 'object')) {
+        if (typeof stateFunction === 'object') {
           possibleValueTranslationId = `${stateTranslationIdPrefix}_${value}`;
           valueName = translationsGetObjectName(user, possibleValueTranslationId, functionId);
           if (valueName === 'Undefined' || valueName.includes(possibleValueTranslationId)) valueName = namePossible;
-          if (!typeIs(valueName, 'string')) valueName = `${value}`;
+          if (typeof valueName !== 'string') valueName = `${value}`;
         } else {
           valueName = namePossible;
         }
@@ -6425,7 +6430,7 @@ function enumerationsExtractPossibleValueStates(user, stateIdOrObject, functionI
 function enumerationsEvaluateValueConversionCode(user, inputValue, convertValueCode) {
   if (convertValueCode && isDefined(inputValue)) {
     const printDate = 'printDate(value)';
-    if (typeIs(convertValueCode, 'string') && convertValueCode.length > 0) {
+    if (typeof convertValueCode === 'string' && convertValueCode.length > 0) {
       if (convertValueCode === printDate || convertValueCode === `${printDate};`) {
         try {
           inputValue = formatDate(new Date(inputValue), configOptions.getOption(cfgDateTimeTemplate, user));
@@ -6473,7 +6478,8 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
       const currentStateObject = getObject(stateId, '*');
       const currentItemEnums = currentStateObject['enumIds'];
       if (
-        currentItemEnums && typeIs(currentItemEnums, 'array') &&
+        currentItemEnums &&
+        Array.isArray(currentItemEnums) &&
         destinationsListIds.filter((itemId) =>
           currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`),
         ).length > 0
@@ -6504,16 +6510,11 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
  */
 function enumerationsStateValueDetails(user, stateIdOrObject, functionId, currentState, skipCodeConversion = false) {
   const currObject =
-    typeIs(stateIdOrObject, 'string') && existsObject(stateIdOrObject)
+    typeof stateIdOrObject === 'string' && existsObject(stateIdOrObject)
       ? getObjectEnriched(stateIdOrObject)
       : stateIdOrObject;
   let text = '';
-  if (
-    currObject &&
-    typeIs(currObject, 'object') &&
-    currObject.hasOwnProperty('_id') &&
-    currObject.hasOwnProperty('common')
-  ) {
+  if (typeof currObject?.['_id'] === 'string' && typeof currObject?.['common'] === 'object') {
     skipCodeConversion = skipCodeConversion || false;
     const currentId = currObject._id,
       currentFunction = enumerationsList[dataTypeFunction].list[functionId],
@@ -6557,7 +6558,7 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
         ['string', 'number'].includes(currObject.common['type'])
       ) {
         const states = enumerationsExtractPossibleValueStates(user, currObject, functionId);
-        if (typeIs(states, 'map') && states.has(currentStateValue)) {
+        if (states instanceof Map && states.has(currentStateValue)) {
           text = states.get(currentStateValue);
         } else {
           text = `${currentStateValue}`;
@@ -6666,9 +6667,9 @@ function enumerationsGetList(enumerationType, enumerationTypeExtraId) {
   if (enumerationTypeExtraId) {
     if (enumerationType === dataTypePrimaryEnums) {
       currentList = enumerationsList[enumerationPrimaryType].enums;
-    } else if (typeIs(enumerationTypeExtraId, 'string')) {
+    } else if (typeof enumerationTypeExtraId === 'string') {
       currentList = enumerationsList[enumerationPrimaryType].list[enumerationTypeExtraId][enumerationType];
-    } else if (typeIs(enumerationTypeExtraId, 'object')) {
+    } else if (typeof enumerationTypeExtraId === 'object') {
       const currentDeviceAttribute = enumerationsGetDeviceState(enumerationType, enumerationTypeExtraId);
       if (currentDeviceAttribute) {
         currentList = enumerationsGenerateDeviceStateAttributesList(currentDeviceAttribute);
@@ -6708,7 +6709,7 @@ function enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId)
  */
 function enumerationsGetDeviceState(enumerationType, enumerationTypeExtraId) {
   let currentDeviceState;
-  if (typeIs(enumerationTypeExtraId, 'object')) {
+  if (typeof enumerationTypeExtraId === 'object') {
     if (
       enumerationTypeExtraId.hasOwnProperty('dataType') &&
       enumerationTypeExtraId.hasOwnProperty('function') &&
@@ -6948,9 +6949,9 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
                               translationsItemGet(user, [currentDeviceAttrTranslationId, 'true'].join('_'));
                               translationsItemGet(user, [currentDeviceAttrTranslationId, 'false'].join('_'));
                             } else if (
-                              currentObjectCommon.hasOwnProperty('states') &&
-                              currentObjectCommon.states &&
-                              typeIs(currentObjectCommon.states, 'object')
+                              currentObjectCommon?.states &&
+                              typeof currentObjectCommon.states === 'object' &&
+                              !Array.isArray(currentObjectCommon.states)
                             ) {
                               Object.entries(currentObjectCommon.states).forEach(([possibleValue, possibleName]) => {
                                 const currentPossibleStateTranslationId = [
@@ -7005,7 +7006,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
   const {id, nameTranslationId, icon, extensionRootMenuId, scriptName, translationsKeys} = extensionDetails;
   const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
   const functionsList = enumerationsList[dataTypeFunction].list;
-  if (functionsList.hasOwnProperty(extensionId) && typeIs(functionsList[extensionId], 'object')) {
+  if (typeof functionsList?.[extensionId] === 'object') {
     functionsList[extensionId].isAvailable = true;
     functionsList[extensionId].scriptName = scriptName;
     functionsList[extensionId].state = extensionRootMenuId;
@@ -7118,9 +7119,12 @@ cachedValuesStatesCommonAttributes[idCachedAlertsStatesValues] = {
  * @returns {object} List of alerts
  */
 function alertsGet() {
-  if (!(typeIs(alertsRules, 'object') && Object.keys(alertsRules).length > 0) && existsState(alertsStateFullId)) {
+  if (
+    !(typeof alertsRules === 'object' && !Array.isArray(alertsRules) && Object.keys(alertsRules).length > 0) &&
+    existsState(alertsStateFullId)
+  ) {
     const alertsState = getState(alertsStateFullId);
-    if (typeIs(alertsState, 'object') && typeIs(alertsState.val, 'string')) {
+    if (typeof alertsState === 'object' && !Array.isArray(alertsState) && typeof alertsState.val === 'string') {
       try {
         alertsRules = jsonParse(alertsState.val);
       } catch (err) {
@@ -7138,7 +7142,7 @@ function alertsGet() {
  * @param {object} alerts  - List of alerts to store.
  */
 function alertsStore(alerts) {
-  if (typeIs(alerts, 'object') && Object.keys(alerts).length > 0) {
+  if (typeof alerts === 'object' && !Array.isArray(alerts) && Object.keys(alerts).length > 0) {
     const alertsJSON = jsonStringify(alerts);
     if (existsState(alertsStateFullId)) {
       setState(alertsStateFullId, alertsJSON, true);
@@ -7183,17 +7187,25 @@ function alertsStoreToCacheStateValue(alertStateId, currentValue) {
  */
 function alertsLoadFromCacheStateValue(alertStateId) {
   if (
-    !(typeIs(cachedAlertsStatesValues, 'object') && Object.keys(cachedAlertsStatesValues).length > 0) &&
+    !(
+      typeof cachedAlertsStatesValues === 'object' &&
+      !Array.isArray(cachedAlertsStatesValues) &&
+      Object.keys(cachedAlertsStatesValues).length > 0
+    ) &&
     existsState(cachedAlertsStatesValuesStateFullId)
   ) {
     const alertsStatesValuesState = getState(cachedAlertsStatesValuesStateFullId);
-    if (typeIs(alertsStatesValuesState, 'object') && typeIs(alertsStatesValuesState.val, 'string')) {
+    if (
+      typeof alertsStatesValuesState === 'object' &&
+      !Array.isArray(alertsStatesValuesState) &&
+      typeof alertsStatesValuesState.val === 'string'
+    ) {
       try {
         cachedAlertsStatesValues = jsonParse(alertsStatesValuesState.val);
       } catch (err) {
         // NOSONAR // cachedStates[id] = cachedVal;
         warns(`Alert states values parse error - ${jsonStringify(err)}`);
-        if (!typeIs(cachedAlertsStatesValues, 'object')) cachedAlertsStatesValues = {};
+        if (typeof cachedAlertsStatesValues !== 'object') cachedAlertsStatesValues = {};
       }
     }
   }
@@ -7217,8 +7229,8 @@ function alertsLoadFromCacheStateValue(alertStateId) {
  */
 function alertsManage(user, stateId, functionId, destinationId, alertDetailsOrThresholds, isTriggers) {
   let alerts = alertsGet();
-  if (!typeIs(alerts, 'object')) alerts = {};
-  if (!typeIs(alertDetailsOrThresholds, 'array')) alertDetailsOrThresholds = [];
+  if (typeof alerts !== 'object') alerts = {};
+  if (!Array.isArray(alertDetailsOrThresholds)) alertDetailsOrThresholds = [];
   const userId = isTriggers ? triggersInAlertsId : user.chatId;
   if (alerts.hasOwnProperty(stateId)) {
     const alert = alerts[stateId],
@@ -7357,7 +7369,7 @@ function alertGetMessages(user, nonAcknowledged = false) {
  * @param {object[]} alertMessages - The array of alert messages.
  */
 function alertsStoreMessagesToCache(user, alertMessages) {
-  if (!typeIs(alertMessages, 'array')) {
+  if (!Array.isArray(alertMessages)) {
     alertMessages = [];
   }
   cachedValueSet(user, cachedAlertMessages, alertMessages);
@@ -7376,13 +7388,13 @@ function alertsProcessMessageTemplate(user, template, variables) {
       postProcess = '';
     if (stringToProcess.includes('.')) [stringToProcess, postProcess] = stringToProcess.split('.');
     const translations = stringToProcess.match(/^translations\((\S+?)\)$/);
-    if (translations && typeIs(translations, 'array') && translations.length === 2) {
+    if (translations && Array.isArray(translations) && translations.length === 2) {
       result = translationsItemTextGet(user, translations[1]);
     } else if (variables.hasOwnProperty(stringToProcess)) {
       result = `${variables[stringToProcess]}`;
     } else if (stringToProcess.includes('?') && stringToProcess.includes(':')) {
       const ifClause = stringToProcess.match(/^(\w+?)\?(.*?):(.*?)$/);
-      if (ifClause && typeIs(ifClause, 'array') && ifClause.length === 4 && variables.hasOwnProperty(ifClause[1])) {
+      if (ifClause && Array.isArray(ifClause) && ifClause.length === 4 && variables.hasOwnProperty(ifClause[1])) {
         const conditionParam = variables[ifClause[1]];
         result = ifClause[conditionParam ? 2 : 3].replace(/\$value/g, conditionParam);
       }
@@ -7413,7 +7425,11 @@ function alertsActionOnSubscribedState(object) {
     activeChatGroups = telegramGetGroupChats(true),
     stateId = object.id,
     isEmulatedForTriggers = object.isEmulatedForTriggers;
-  if (typeIs(alerts, 'object') && alerts.hasOwnProperty(stateId)) {
+  if (
+    typeof alerts?.[stateId] === 'object' &&
+    alerts?.[stateId]?.['chatIds'] instanceof Map &&
+    alerts?.[stateId]?.['chatIds'].size > 0
+  ) {
     const alertTimeStamp = new Date(Date.now()),
       alertObject = getObjectEnriched(stateId, '*'),
       alertDestinationId = alerts[stateId].destination,
@@ -7440,7 +7456,7 @@ function alertsActionOnSubscribedState(object) {
           const stateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
             stateValueOld = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
             messageValues = {};
-          if (typeIs(user, 'object')) {
+          if (typeof user === 'object') {
             messageValues.alertFunctionName = translationsGetEnumName(
               user,
               dataTypeFunction,
@@ -7483,9 +7499,10 @@ function alertsActionOnSubscribedState(object) {
             detailsOrThresholds.length === 1
           ) {
             const threshold = detailsOrThresholds[0],
-              alertMessageTemplate = typeIs(threshold?.alertMessageTemplateId, 'string')
-                ? threshold[alertMessageTemplateId]
-                : configOptions.getOption(cfgAlertMessageTemplateMain, user),
+              alertMessageTemplate =
+                typeof threshold?.alertMessageTemplateId === 'string'
+                  ? threshold[alertMessageTemplateId]
+                  : configOptions.getOption(cfgAlertMessageTemplateMain, user),
               idStoredTimerOn = [stateId, chatId, 'timerOn'].join(itemsDelimiter),
               idStoredTimerValue = [stateId, chatId, 'timerValue'].join(itemsDelimiter),
               storedTimerOn = thresholdsVariables.has(idStoredTimerOn)
@@ -7496,8 +7513,8 @@ function alertsActionOnSubscribedState(object) {
                   ? thresholdsVariables.get(idStoredTimerValue)
                   : [undefined, undefined],
               alertMessageText = alertsProcessMessageTemplate(user, alertMessageTemplate, messageValues);
-            let onTimeInterval = typeIs(threshold?.onTimeIntervalId, 'number') ? threshold[onTimeIntervalId] : 0;
-            if (typeIs(threshold?.[onTimeIntervalIndividualId], 'map')) {
+            let onTimeInterval = typeof threshold?.onTimeIntervalId === 'number' ? threshold[onTimeIntervalId] : 0;
+            if (threshold?.[onTimeIntervalIndividualId] instanceof Map) {
               if (threshold[onTimeIntervalIndividualId].has(stateValue)) {
                 onTimeInterval = threshold[onTimeIntervalIndividualId].get(stateValue);
               }
@@ -7559,7 +7576,7 @@ function alertsActionOnSubscribedState(object) {
                       .forEach((target) => {
                         const targetValue = target.value,
                           targetState = target.state;
-                        if (typeIs(thresholdUsers, 'array') && thresholdUsers.length > 0) {
+                        if (Array.isArray(thresholdUsers) && thresholdUsers.length > 0) {
                           const targetFunctionId = target.function ? target.function : undefined,
                             targetFunction =
                               target.function && functionsList?.hasOwnProperty(targetFunctionId)
@@ -7693,7 +7710,7 @@ function alertsActionOnSubscribedState(object) {
                   isAbove =
                     stateValue >= thresholdValue && (stateValueOld < thresholdValue || (timerOn && storedValue < 0));
                   messageValues['alertThresholdIcon'] = isBelow ? iconItemBelow : iconItemAbove;
-                  if (typeIs(threshold?.[onTimeIntervalIndividualId], 'map')) {
+                  if (threshold?.[onTimeIntervalIndividualId] instanceof Map) {
                     let individualId = '';
                     if (isBelow && onBelow) {
                       individualId = 'onBelow';
@@ -7718,7 +7735,7 @@ function alertsActionOnSubscribedState(object) {
                   if (isTrigger) triggerItemInfo['triggerAction'] = 'equal';
                 }
                 const thresholdUsers = threshold.users,
-                  targets = typeIs(threshold.targets, 'array') ? [...threshold.targets] : [];
+                  targets = Array.isArray(threshold.targets) ? [...threshold.targets] : [];
                 targets.unshift(
                   isTrigger
                     ? {
@@ -7732,7 +7749,7 @@ function alertsActionOnSubscribedState(object) {
                         isEnabled: true,
                       },
                 );
-                if (typeIs(timeRange, 'object')) timeRangeIsOk = triggerTimeRangeCheck(alertTimeStamp, timeRange);
+                if (typeof timeRange === 'object') timeRangeIsOk = triggerTimeRangeCheck(alertTimeStamp, timeRange);
                 if (timeRangeIsOk) {
                   if (onTimeInterval) {
                     if (timerOn) {
@@ -7810,7 +7827,7 @@ function alertsActionOnSubscribedState(object) {
 function alertsOnAlertToTelegram(data, callback) {
   const {user, id, alertMessage} = data,
     userObject =
-      typeIs(user, 'object') && (user.hasOwnProperty('userId') || user.hasOwnProperty('chatId'))
+      typeof user === 'object' && (user.hasOwnProperty('userId') || user.hasOwnProperty('chatId'))
         ? user
         : telegramGenerateUserObjectFromId(Number(user));
   alertsMessagePush(userObject, id, alertMessage);
@@ -7826,7 +7843,7 @@ function alertsOnAlertToTelegram(data, callback) {
 function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
   const alertMessages = alertGetMessages(user),
     alertMessagesMaxIndex = alertMessages.length - 1,
-    currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     alertMessageAcknowledge = (user, menuItemToProcess) => {
       const {item: alertIndex} = menuItemToProcess.options,
         alertMessages = alertGetMessages(user),
@@ -7870,12 +7887,12 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
  */
 function alertsHistoryClearOld(user, alertsMessages) {
   const oldestDate = new Date(),
-    noInput = !typeIs(alertsMessages, 'array');
+    noInput = !Array.isArray(alertsMessages);
   alertsMessages = noInput ? alertGetMessages(user) : alertsMessages;
   oldestDate.setHours(oldestDate.getHours() - configOptions.getOption(cfgAlertMessagesHistoryDepth, user));
   const oldestDateNumber = oldestDate.valueOf();
-  alertsMessages = typeIs(alertsMessages, 'array')
-    ? // @ts-ignore
+  alertsMessages = Array.isArray(alertsMessages)
+    ?
       alertsMessages.filter((alertsMessage) => alertsMessage.date > oldestDateNumber)
     : [];
   if (noInput) alertsStoreMessagesToCache(user, alertsMessages);
@@ -7892,7 +7909,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
   const alertsList = alertsGet(),
     destinationsList = enumerationsList[dataTypeDestination].list,
     functionsList = enumerationsList[dataTypeFunction].list,
-    currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+    currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     isFunctionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
     currentAccessLevel = menuItemToProcess.accessLevel,
     options = menuItemToProcess.options,
@@ -7902,7 +7919,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
     userId = mode === 'alerts' ? user.chatId : triggersInAlertsId;
   let alertsListPrepared = {},
     subMenu = [];
-  if (typeIs(alertsList, 'object') && Object.keys(alertsList).length) {
+  if (typeof alertsList === 'object' && !Array.isArray(alertsList) && Object.keys(alertsList).length) {
     if (cachedValueExists(user, cachedAlertsListPrepared)) {
       alertsListPrepared = cachedValueGet(user, cachedAlertsListPrepared);
     } else {
@@ -7951,7 +7968,7 @@ function alertsMenuGenerateSubscribed(user, menuItemToProcess) {
         levelSecondType = isFunctionsFirst ? dataTypeDestination : dataTypeFunction,
         levelFirstEnum = isFunctionsFirst ? 'function' : 'destination',
         levelSecondEnum = isFunctionsFirst ? 'destination' : 'function',
-        noDeviceId = !typeIs(deviceId, 'string');
+        noDeviceId = typeof deviceId !== 'string';
       if ((!levelFirstId || isLevelFirstIdHolder) && !levelSecondId && noDeviceId) {
         const levelFirstProceed = [];
         Object.keys(levelFirstList)
@@ -8109,7 +8126,7 @@ function alertsGetStateAlertDetailsOrThresholds(user, alertId, returnBoth = fals
 function alertsMenuItemGenerateSubscribedOn(user, itemIndex, itemName, options, stateObject, isExtraMenu = false) {
   let menuItem;
   const stateId = options.state;
-  if (!typeIs(stateObject, 'object')) stateObject = getObjectEnriched(stateId);
+  if (typeof stateObject !== 'object') stateObject = getObjectEnriched(stateId);
   if (stateObject?.hasOwnProperty('common') && stateObject.common) {
     const stateType = stateObject.common['type'];
     menuItem = {
@@ -8129,8 +8146,8 @@ function alertsMenuItemGenerateSubscribedOn(user, itemIndex, itemName, options, 
     if (configOptions.getOption(cfgThresholdsForNumericString)) {
       if (stateType === 'string' && !stateObject.common.hasOwnProperty('states')) {
         const currentState = getState(stateId),
-          currentStateValue = typeIs(currentState, 'object') ? currentState.val : undefined,
-          currentStateNumeric = typeIs(currentState, 'object') ? Number(currentStateValue) : NaN;
+          currentStateValue = typeof currentState === 'object' ? currentState.val : undefined,
+          currentStateNumeric = typeof currentState === 'object' ? Number(currentStateValue) : NaN;
         isNumericString =
           !isNaN(currentStateNumeric) &&
           `${currentStateNumeric}` === currentStateValue.slice(0, `${currentStateNumeric}`.length);
@@ -8171,9 +8188,9 @@ function alertsMenuItemGenerateSubscribedOn(user, itemIndex, itemName, options, 
 function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
   const options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId, id: thresholdId} = options,
-    stateObject = typeIs(options.stateObject, 'object') ? options.stateObject : getObjectEnriched(stateId),
+    stateObject = typeof options.stateObject === 'object' ? options.stateObject : getObjectEnriched(stateId),
     alertDetails = alertsGetStateAlertDetailsOrThresholds(user, stateId),
-    thresholdIndex = typeIs(thresholdId, 'string') ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
+    thresholdIndex = typeof thresholdId === 'string' ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
     threshold = thresholdIndex >= 0 ? alertDetails[thresholdIndex] : {},
     secondsText = translationsItemTextGet(user, 'secondsShort'),
     itemAboveText = threshold.onAbove ? iconItemAbove : '',
@@ -8219,9 +8236,9 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
   }
   thresholdAttributesArray.push({
     label: translationsItemTextGet(user, onTimeIntervalId),
-    value: `${typeIs(threshold[onTimeIntervalId], 'number') ? threshold[onTimeIntervalId] : 0} ${secondsText}`,
+    value: `${typeof threshold[onTimeIntervalId] === 'number' ? threshold[onTimeIntervalId] : 0} ${secondsText}`,
   });
-  if (typeIs(timeIntervalsIndividual, 'map') && timeIntervalsIndividual.size > 0) {
+  if (timeIntervalsIndividual instanceof Map && timeIntervalsIndividual.size > 0) {
     thresholdAttributesArray.push({
       label: translationsItemTextGet(user, onTimeIntervalIndividualId),
       value: '',
@@ -8243,9 +8260,10 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
   }
   thresholdAttributesArray.push({
     label: translationsItemTextGet(user, alertMessageTemplateId),
-    value: typeIs(threshold[alertMessageTemplateId], 'string')
-      ? threshold[alertMessageTemplateId]
-      : translationsItemTextGet(user, 'global'),
+    value:
+      typeof threshold[alertMessageTemplateId] === 'string'
+        ? threshold[alertMessageTemplateId]
+        : translationsItemTextGet(user, 'global'),
   });
   return menuMenuItemDetailsPrintFixedLengthLines(user, thresholdAttributesArray);
 }
@@ -8258,21 +8276,22 @@ function alertsMenuItemThresholdDetails(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId, id: thresholdId} = options,
     alerts = alertsGet(),
     alertIsOn = alerts?.hasOwnProperty(stateId) && alerts[stateId].chatIds.has(user.chatId),
     [alertDetails, alertDetailsCurrent] = alertsGetStateAlertDetailsOrThresholds(user, stateId, true),
-    thresholdIndex = typeIs(thresholdId, 'string') ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
+    thresholdIndex = typeof thresholdId === 'string' ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
     threshold = thresholdIndex >= 0 ? alertDetails[thresholdIndex] : {},
     currentOnTimeInterval = `${
-      typeIs(threshold?.[onTimeIntervalId], 'number') ? threshold[onTimeIntervalId] : 0
+      typeof threshold?.[onTimeIntervalId] === 'number' ? threshold[onTimeIntervalId] : 0
     } ${translationsItemTextGet(user, 'secondsShort')}`,
-    currentMessageTemplate = typeIs(threshold?.alertMessageTemplateId, 'string')
-      ? threshold[alertMessageTemplateId]
-      : configOptions.getOption(cfgAlertMessageTemplateMain, user),
+    currentMessageTemplate =
+      typeof threshold?.alertMessageTemplateId === 'string'
+        ? threshold[alertMessageTemplateId]
+        : configOptions.getOption(cfgAlertMessageTemplateMain, user),
     timeText = `${translationsItemTextGet(user, onTimeIntervalId)} (${currentOnTimeInterval})`;
   let subMenu = [],
     subMenuIndex = 0;
@@ -8340,13 +8359,13 @@ function alertsMenuGenerateManageEnumerableStates(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageTimeIndividual(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, state: stateId, id: thresholdId, item} = options,
     alertDetails = alertsGetStateAlertDetailsOrThresholds(user, stateId),
-    thresholdIndex = typeIs(thresholdId, 'string') ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
+    thresholdIndex = typeof thresholdId === 'string' ? thresholdsGetIndex(alertDetails, thresholdId) : -1,
     threshold = thresholdIndex >= 0 ? alertDetails[thresholdIndex] : {},
-    stateObject = typeIs(options.stateObject, 'object') ? options.stateObject : getObjectEnriched(stateId),
+    stateObject = typeof options.stateObject === 'object' ? options.stateObject : getObjectEnriched(stateId),
     stateObjectCommon = stateObject?.common,
     stateType = options?.stateType ? options.stateType : stateObjectCommon?.['type'],
     timeIntervals = threshold?.[item] || new Map(),
@@ -8396,7 +8415,7 @@ function alertsMenuGenerateManageTimeIndividual(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentName = menuItemToProcess.name,
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId} = options,
@@ -8405,7 +8424,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
     [thresholds, currentStateThresholds] = alertsGetStateAlertDetailsOrThresholds(user, stateId, true);
   let subMenu = [],
     subMenuIndex = 0;
-  if (typeIs(thresholds, 'array')) {
+  if (Array.isArray(thresholds)) {
     thresholds.forEach((threshold) => {
       const thresholdValueText = enumerationsStateValueDetails(user, stateObject, functionId, {val: threshold.value}),
         onTimeInterval = `${
@@ -8442,7 +8461,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
     ),
   );
   const isThresholdsSetChanged = jsonStringify(currentStateThresholds) !== jsonStringify(thresholds);
-  if (isThresholdsSetChanged || (typeIs(currentStateThresholds, 'array') && currentStateThresholds.length)) {
+  if (isThresholdsSetChanged || (Array.isArray(currentStateThresholds) && currentStateThresholds.length)) {
     subMenuIndex = subMenu.push({
       index: `${currentIndex}.${subMenuIndex}`,
       name: `${currentName} (${isThresholdsSetChanged ? iconItemEdit : iconItemDelete})`,
@@ -8453,7 +8472,7 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
       submenu: [],
     });
   }
-  if (!isThresholdsSetChanged && typeIs(currentStateThresholds, 'array') && currentStateThresholds.length) {
+  if (!isThresholdsSetChanged && Array.isArray(currentStateThresholds) && currentStateThresholds.length) {
     subMenu.push(
       alertMenuItemGenerateAlertPropagation(user, currentIndex, subMenuIndex, stateId, functionId, destinationId),
     );
@@ -8469,11 +8488,12 @@ function alertsMenuGenerateManageNumericStates(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateManageThreshold(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {state: stateId, id} = menuItemToProcess.options,
-    stateUnitId = typeIs(menuItemToProcess?.options?.valueOptions?.unit, 'string')
-      ? menuItemToProcess.options.valueOptions.unit
-      : '',
+    stateUnitId =
+      typeof menuItemToProcess?.options?.valueOptions?.unit === 'string'
+        ? menuItemToProcess.options.valueOptions.unit
+        : '',
     thresholds = alertsGetStateAlertDetailsOrThresholds(user, stateId),
     thresholdIndex = thresholdsGetIndex(thresholds, id);
   let subMenu = [],
@@ -8637,7 +8657,7 @@ function alertMenuItemGenerateAlertPropagation(
  * @returns {object[]} - The array of menuItem objects.
  */
 function alertsMenuGenerateExtraSubscription(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: currentFunctionId, destination: currentDestinationId} = options,
     currentAccessLevel = menuItemToProcess.accessLevel,
@@ -8741,7 +8761,7 @@ cachedValuesStatesCommonAttributes[idTriggersLogs] = {
 function triggersLogsInit() {
   if (existsState(triggersLogsStateFullId)) {
     const triggersLogsString = getState(triggersLogsStateFullId).val;
-    if (typeIs(triggersLogsString, 'string')) {
+    if (typeof triggersLogsString === 'string') {
       try {
         triggersLogs = jsonParse(triggersLogsString);
       } catch (e) {
@@ -8757,7 +8777,7 @@ function triggersLogsInit() {
  */
 function triggersLogsPushTo(triggerLogItem) {
   const maxLogsItems = configOptions.getOption(cfgTriggersLogsMaxCountRecordsPerTrigger);
-  if (typeIs(triggerLogItem, 'object')) {
+  if (typeof triggerLogItem === 'object' && !Array.isArray(triggerLogItem)) {
     triggersLogs.push(triggerLogItem);
     if (
       triggersLogs.filter((logItem) => {
@@ -8794,8 +8814,8 @@ function triggersGetStateCommonType(stateId, stateObject) {
     if (configOptions.getOption(cfgThresholdsForNumericString)) {
       if (stateType === 'string' && !stateObjectCommon.hasOwnProperty('states')) {
         const currentState = getState(stateId),
-          currentStateValue = typeIs(currentState, 'object') ? currentState.val : undefined,
-          currentStateNumeric = typeIs(currentState, 'object') ? Number(currentStateValue) : NaN;
+          currentStateValue = typeof currentState === 'object' ? currentState.val : undefined,
+          currentStateNumeric = typeof currentState === 'object' ? Number(currentStateValue) : NaN;
         isNumericString =
           !isNaN(currentStateNumeric) &&
           `${currentStateNumeric}` === currentStateValue.slice(0, `${currentStateNumeric}`.length);
@@ -8820,7 +8840,7 @@ function triggersGetStateCommonType(stateId, stateObject) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerate(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId} = options,
     currentAccessLevel = menuItemToProcess.accessLevel,
@@ -8886,7 +8906,7 @@ function triggersGetStateTriggers(user, stateId, returnBoth = false) {
  * @returns {number} The index of appropriate Threshold or Trigger. -1 if not found.
  */
 function thresholdsGetIndex(triggers, triggerId) {
-  if (triggers && typeIs(triggers, 'array')) {
+  if (triggers && Array.isArray(triggers)) {
     return triggers.findIndex((trigger) => trigger.id === triggerId);
   }
   return -1;
@@ -8900,14 +8920,14 @@ function thresholdsGetIndex(triggers, triggerId) {
  */
 function triggersGetMaxSubIndex(triggers, triggerIdPrefix) {
   if (
-    typeIs(triggers, 'array') &&
+    Array.isArray(triggers) &&
     triggers.length > 0 &&
-    typeIs(triggerIdPrefix, 'string') &&
+    typeof triggerIdPrefix === 'string' &&
     triggerIdPrefix.length > 0
   ) {
     const triggersSubIndexes = triggers
       .filter((currentTrigger) => currentTrigger.id.startsWith(triggerIdPrefix))
-      .map((currentTrigger) => (typeIs(currentTrigger.index, 'number') ? currentTrigger.index : 0));
+      .map((currentTrigger) => (typeof currentTrigger.index === 'number' ? currentTrigger.index : 0));
     return triggersSubIndexes.length ? Math.max(...triggersSubIndexes) : -1;
   } else {
     return -1;
@@ -8922,7 +8942,7 @@ function triggersGetMaxSubIndex(triggers, triggerIdPrefix) {
  * @returns {object[]} The result sorted array of Thresholds or Triggers definitions.
  */
 function triggersSort(thresholds, preSorted) {
-  if (thresholds && typeIs(thresholds, 'array')) {
+  if (thresholds && Array.isArray(thresholds)) {
     thresholds = thresholds.sort((thresholdA, thresholdB) => {
       let result = 0;
       if (thresholdA.type === 'number') {
@@ -8942,7 +8962,7 @@ function triggersSort(thresholds, preSorted) {
         }
       } else if (preSorted) {
         result = preSorted.indexOf(thresholdA.value) - preSorted.indexOf(thresholdB.value);
-      } else if (typeIs(thresholdA.value, 'number')) {
+      } else if (typeof thresholdA.value === 'number') {
         result = thresholdA.value - thresholdB.value;
       } else {
         result = thresholdA.value.localeCompare(thresholdB.value);
@@ -8999,7 +9019,7 @@ function triggersGetEnabledIcon(trigger) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageState(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, state: stateId, stateObject} = options;
   let subMenu = [],
@@ -9009,7 +9029,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
       stateType = stateObjectCommon?.type,
       stateUnits = stateObjectCommon?.unit ? ` ${stateObjectCommon.unit}` : '',
       [triggers, currentStateTriggers] = triggersGetStateTriggers(user, stateId, true);
-    if (typeIs(triggers, 'array')) {
+    if (Array.isArray(triggers)) {
       triggers.forEach((trigger) => {
         const onTimeInterval = `${
             trigger.hasOwnProperty(onTimeIntervalId) ? trigger[onTimeIntervalId] : 0
@@ -9080,7 +9100,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {state: stateId, stateObject, id: triggerId, stateUnits} = options,
     triggers = triggersGetStateTriggers(user, stateId),
@@ -9192,7 +9212,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
       index: `${currentIndex}.${subMenuIndex}`,
       name:
         translationsItemTextGet(user, triggersConditionsId) +
-        (typeIs(conditions, 'array') && conditions.length ? ` (${conditions.length})` : ''),
+        (Array.isArray(conditions) && conditions.length ? ` (${conditions.length})` : ''),
       icon: iconItemCondition,
       options: {...triggerOptions, item: triggersConditionsId},
       submenu: triggersMenuItemGenerateManageConditionsOrTargets,
@@ -9239,7 +9259,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
         index: `${currentIndex}.${subMenuIndex}`,
         name:
           translationsItemTextGet(user, 'targetsAdditional') +
-          (typeIs(targets, 'array') && targets.length ? ` (${targets.length})` : ''),
+          (Array.isArray(targets) && targets.length ? ` (${targets.length})` : ''),
         icon: iconItemTarget,
         options: {...triggerOptions, item: triggersTargetsId},
         submenu: triggersMenuItemGenerateManageConditionsOrTargets,
@@ -9266,7 +9286,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
             icon: iconItemUser,
             showValueInName: true,
             item: 'users',
-            values: typeIs(trigger.users, 'array') ? trigger.users : [],
+            values: Array.isArray(trigger.users) ? trigger.users : [],
             applyMode: true,
             valueOptions: {
               interimCalculationMode: interimCalculationSelectMultiple,
@@ -9275,7 +9295,7 @@ function triggersMenuGenerateManageTrigger(user, menuItemToProcess) {
           }),
         );
       }
-      if (typeIs(trigger.users, 'array') && trigger.users.length > 0) {
+      if (Array.isArray(trigger.users) && trigger.users.length > 0) {
         const templateOptions = {...triggerOptions, item: alertMessageTemplateId, value: messageTemplate},
           templateText = translationsItemTextGet(user, alertMessageTemplateId),
           templateIndex = `${currentIndex}.${subMenuIndex}`;
@@ -9312,7 +9332,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
       : menuItemToProcess.options,
     {function: functionId, destination: destinationId, state: stateId, id} = options;
   let text = '';
-  if (options && stateId && typeIs(id, 'string')) {
+  if (options && stateId && typeof id === 'string') {
     const triggers = triggersGetStateTriggers(user, stateId),
       triggerIndex = thresholdsGetIndex(triggers, id),
       trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
@@ -9327,7 +9347,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           label: ` ${translationsGetObjectName(user, stateId, functionId)}`,
           value: enumerationsStateValueDetails(user, stateId, functionId, {val: trigger.value}),
         };
-      if (typeIs(trigger.onAbove, 'boolean') && typeIs(trigger.onBelow, 'boolean')) {
+      if (typeof trigger.onAbove === 'boolean' && typeof trigger.onBelow === 'boolean') {
         sourceStateDetails.value = `${trigger.onAbove ? '˃=' : '˂'} ${sourceStateDetails.value}`;
       }
       const triggerAttributesArray = [
@@ -9362,7 +9382,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
           value: triggerTimeRangeShortDescription(user, trigger[triggersTimeRangeId]),
         },
       ];
-      if (typeIs(trigger.conditions, 'array') && trigger.conditions.length) {
+      if (Array.isArray(trigger.conditions) && trigger.conditions.length) {
         triggerAttributesArray.push({
           label: `${translationsItemTextGet(user, triggersConditionsId)}`,
           value: `${trigger.conditions.length}`,
@@ -9397,7 +9417,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         });
         triggerAttributesArray.push(targetStateDetails);
       }
-      if (typeIs(trigger.targets, 'array') && trigger.targets.length) {
+      if (Array.isArray(trigger.targets) && trigger.targets.length) {
         triggerAttributesArray.push({
           label: `${translationsItemTextGet(user, 'targetsAdditional')}`,
           value: `${trigger.targets.length}`,
@@ -9423,7 +9443,7 @@ function triggersMenuItemDetailsTrigger(user, menuItemToProcess) {
         {
           label: ` ${translationsItemMenuGet(user, 'usersList')}`,
           value:
-            typeIs(trigger.users, 'array') && trigger.users.length
+            Array.isArray(trigger.users) && trigger.users.length
               ? `${trigger.users.map((userId) => usersInMenu.getUserName(userId))}`
               : '',
         },
@@ -9482,7 +9502,7 @@ function triggersTimeRangeAttributesGenerateDefaults(triggerTimeRangeAttributeId
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {state: targetStateId, id: triggerId} = options,
     triggers = triggersGetStateTriggers(user, targetStateId),
@@ -9491,10 +9511,10 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
     subMenuIndex = 0;
   if (triggerIndex >= 0) {
     const trigger = triggers[triggerIndex],
-      triggerTimeRange = typeIs(trigger[triggersTimeRangeId], 'object') ? trigger[triggersTimeRangeId] : {};
+      triggerTimeRange = typeof trigger[triggersTimeRangeId] === 'object' ? trigger[triggersTimeRangeId] : {};
     triggersTimeRangeAttributes.forEach((timeRangeAttribute) => {
       const timeRangeAttributePossibleValues = new Map(),
-        triggerHasTimeRangeAttribute = typeIs(triggerTimeRange[timeRangeAttribute], 'array'),
+        triggerHasTimeRangeAttribute = Array.isArray(triggerTimeRange[timeRangeAttribute]),
         timeRangeAttributeDefaultValues = triggersTimeRangeAttributesGenerateDefaults(timeRangeAttribute),
         timeRangeAttributeValues = triggerHasTimeRangeAttribute
           ? triggerTimeRange[timeRangeAttribute]
@@ -9615,7 +9635,7 @@ function triggersMenuGenerateManageTimeRange(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageTimeRangeDeltasItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {state: targetStateId, id: triggerId, subItem: timeRangeAttribute} = options,
     triggers = triggersGetStateTriggers(user, targetStateId),
@@ -9624,8 +9644,8 @@ function triggersMenuGenerateManageTimeRangeDeltasItems(user, menuItemToProcess)
     subMenuIndex = 0;
   if (triggerIndex >= 0) {
     const trigger = triggers[triggerIndex],
-      triggerTimeRange = typeIs(trigger[triggersTimeRangeId], 'object') ? trigger[triggersTimeRangeId] : {},
-      triggerHasTimeRangeAttribute = typeIs(triggerTimeRange[timeRangeAttribute], 'array'),
+      triggerTimeRange = typeof trigger[triggersTimeRangeId] === 'object' ? trigger[triggersTimeRangeId] : {},
+      triggerHasTimeRangeAttribute = Array.isArray(triggerTimeRange[timeRangeAttribute]),
       timeRangeAttributeValues = triggerHasTimeRangeAttribute
         ? triggerTimeRange[timeRangeAttribute]
         : triggersTimeRangeAttributesGenerateDefaults(timeRangeAttribute),
@@ -9702,7 +9722,7 @@ function timeRangeDeltaItemToString(user, deltaItem, timeRangeAttribute) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {state: targetStateId, id: triggerId, subItem: timeRangeAttribute, index: deltaIndex} = options,
     triggers = triggersGetStateTriggers(user, targetStateId),
@@ -9711,8 +9731,8 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
     subMenuIndex = 0;
   if (triggerIndex >= 0) {
     const trigger = triggers[triggerIndex],
-      triggerTimeRange = typeIs(trigger[triggersTimeRangeId], 'object') ? trigger[triggersTimeRangeId] : {},
-      triggerHasTimeRangeAttribute = typeIs(triggerTimeRange[timeRangeAttribute], 'array'),
+      triggerTimeRange = typeof trigger[triggersTimeRangeId] === 'object' ? trigger[triggersTimeRangeId] : {},
+      triggerHasTimeRangeAttribute = Array.isArray(triggerTimeRange[timeRangeAttribute]),
       timeRangeAttributeValues = triggerHasTimeRangeAttribute
         ? triggerTimeRange[timeRangeAttribute]
         : triggersTimeRangeAttributesGenerateDefaults(timeRangeAttribute),
@@ -9759,7 +9779,7 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
         options: {
           ...options,
           value: deltaValueCurrent,
-          backOnPress: !typeIs(options.backOnPress, 'boolean') || options.backOnPress,
+          backOnPress: typeof options.backOnPress !== 'boolean' || options.backOnPress,
           timeTemplate: timeTemplate,
         },
       });
@@ -9779,7 +9799,7 @@ function triggersMenuGenerateManageTimeRangeDeltasValues(user, menuItemToProcess
  */
 function triggerTimeRangeCheck(time, timeRange) {
   let result = true;
-  if (typeIs(timeRange, 'object')) {
+  if (typeof timeRange === 'object') {
     triggersTimeRangeAttributes.forEach((timeRangeAttribute) => {
       if (timeRange.hasOwnProperty(timeRangeAttribute)) {
         if (result) {
@@ -9822,7 +9842,7 @@ function triggerTimeRangeCheck(time, timeRange) {
             default:
               break;
           }
-          if (typeIs(valueToCheck, 'number'))
+          if (typeof valueToCheck === 'number')
             switch (timeRangeAttribute) {
               case triggersTimeRangeHours:
               case triggersTimeRangeDaysOfWeek:
@@ -9872,7 +9892,7 @@ function triggerTimeRangeCheck(time, timeRange) {
  */
 function triggerTimeRangeShortDescription(user, timeRange, withoutShortNames = false) {
   let result = '';
-  if (typeIs(timeRange, 'object')) {
+  if (typeof timeRange === 'object') {
     triggersTimeRangeAttributes.forEach((timeRangeAttribute, attributeIndex) => {
       if (timeRange.hasOwnProperty(timeRangeAttribute)) {
         if (result) result += ';';
@@ -9974,9 +9994,9 @@ function triggerTimeRangeShortDescription(user, timeRange, withoutShortNames = f
 function triggerTimeRangeGenerateStartTimes(timeRange) {
   const scheduleArray = [];
   let result = [];
-  if (typeIs(timeRange, 'object')) {
+  if (typeof timeRange === 'object') {
     triggersTimeRangeAttributes.forEach((attribute) => {
-      if (typeIs(timeRange[attribute], 'array')) {
+      if (Array.isArray(timeRange[attribute])) {
         let timeRangeValues = timeRange[attribute];
         switch (attribute) {
           case triggersTimeRangeHours:
@@ -10010,7 +10030,7 @@ function triggerTimeRangeGenerateStartTimes(timeRange) {
                 case triggersTimeRangeQuarters:
                 case triggersTimeRangeSeasons: {
                   scheduleArray.push('0', '0', '0');
-                  scheduleArray.push(typeIs(timeRange[triggersTimeRangeDaysOfWeek], 'array') ? '*' : '1');
+                  scheduleArray.push(Array.isArray(timeRange[triggersTimeRangeDaysOfWeek]) ? '*' : '1');
                   break;
                 }
                 case triggersTimeRangeDaysOfWeek: {
@@ -10068,7 +10088,7 @@ function triggerTimeRangeGenerateStartTimes(timeRange) {
     }
     result.push(scheduleArray);
     [triggersTimeRangeHoursWithMinutes, triggersTimeRangeMonthsWithDays].forEach((attribute) => {
-      if (typeIs(timeRange[attribute], 'array')) {
+      if (Array.isArray(timeRange[attribute])) {
         const timeRangeDeltas = timeRange[attribute],
           resultCopy = [...result],
           schedulePosition = attribute === triggersTimeRangeHoursWithMinutes ? 1 : 3,
@@ -10175,12 +10195,12 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
       triggersOld.forEach((triggerOld) => {
         if (triggerOld.isEnabled) {
           const startTimesOld = triggerOld?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes];
-          if (typeIs(startTimesOld, 'array')) {
+          if (Array.isArray(startTimesOld)) {
             startTimesOld.forEach((startTimeOld) => {
               const triggersFiltered = triggers.filter(
                 (trigger) =>
                   trigger.isEnabled &&
-                  typeIs(trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes], 'array') &&
+                  Array.isArray(trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes]) &&
                   trigger[triggersTimeRangeId][triggerTimeRangeStartTimes].includes(startTimeOld),
               );
               if (triggersFiltered.length === 0) {
@@ -10204,7 +10224,7 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
       triggers.forEach((trigger) => {
         if (trigger.isEnabled) {
           const startTimes = trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes];
-          if (typeIs(startTimes, 'array')) {
+          if (Array.isArray(startTimes)) {
             startTimes.forEach((startTime) => {
               if (!startTimesActual.includes(startTime)) startTimesActual.push(startTime);
               const startTimeSchedule = triggersTimeRangeStartTimes.has(startTime)
@@ -10247,7 +10267,7 @@ function triggersTimeRangeStartTimesUpdate(user = {userId: 0}, stateFullId = 'al
               const triggersFiltered = triggers.filter((trigger) => {
                 return (
                   trigger.isEnabled &&
-                  typeIs(trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes], 'array') &&
+                  Array.isArray(trigger?.[triggersTimeRangeId]?.[triggerTimeRangeStartTimes]) &&
                   trigger[triggersTimeRangeId][triggerTimeRangeStartTimes].includes(startTime) &&
                   item.value === trigger.value &&
                   item.onAbove === trigger.onAbove &&
@@ -10304,7 +10324,7 @@ function triggersTimeRangeStartTimeScheduled(startTime) {
         triggerState = getState(stateId);
       if (isDefined(triggerState?.val)) {
         const currentValue = triggerState.val,
-          isBooleanOrList = !(typeIs(onAbove, 'boolean') || typeIs(onBelow, 'boolean'));
+          isBooleanOrList = !(typeof onAbove === 'boolean' || typeof onBelow === 'boolean');
         if (isBooleanOrList || (onAbove && currentValue >= value) || (onBelow && currentValue < value)) {
           let oldValue = currentValue;
           if (onAbove) {
@@ -10332,7 +10352,7 @@ function triggersTimeRangeStartTimeScheduled(startTime) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuItemGenerateManageConditionsOrTargets(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {state: triggerStateId, id: triggerId, item} = options,
     triggers = triggersGetStateTriggers(user, triggerStateId),
@@ -10343,7 +10363,7 @@ function triggersMenuItemGenerateManageConditionsOrTargets(user, menuItemToProce
     const trigger = triggers[triggerIndex],
       items = trigger[item],
       isConditions = item === triggersConditionsId;
-    if (items && typeIs(items, 'array') && items.length) {
+    if (items && Array.isArray(items) && items.length) {
       items.forEach((itemData) => {
         const {isEnabled} = itemData,
           itemIcon = menuIconGenerate(
@@ -10386,7 +10406,7 @@ function triggersGetConditionOrTargetShortDescription(user, item, isCondition = 
     const {state: stateId, function: functionId, destination: destinationId, operator, value} = item;
     text += enumerationsGetDeviceName(user, stateId, functionId, destinationId);
     text += `:${translationsGetObjectName(user, stateId, functionId)}`;
-    if (isCondition) text += ` ${typeIs(operator, 'string') ? operator : ''}`;
+    if (isCondition) text += ` ${typeof operator === 'string' ? operator : ''}`;
     text += ` ${isDefined(value) ? enumerationsStateValueDetails(user, stateId, functionId, {val: value}) : ''}`;
   }
   return text;
@@ -10399,7 +10419,7 @@ function triggersGetConditionOrTargetShortDescription(user, item, isCondition = 
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateManageConditionOrTarget(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {state: triggerStateId, id: triggerId, item, index} = options,
     triggers = triggersGetStateTriggers(user, triggerStateId),
@@ -10410,7 +10430,7 @@ function triggersMenuGenerateManageConditionOrTarget(user, menuItemToProcess) {
     const trigger = triggers[triggerIndex],
       items = trigger[item],
       isCondition = item === triggersConditionsId;
-    if (items && typeIs(items, 'array') && items.length && index <= items.length) {
+    if (items && Array.isArray(items) && items.length && index <= items.length) {
       const {
         isEnabled,
         state: stateId,
@@ -10511,13 +10531,13 @@ function triggersMenuItemDetailsConditionOrTarget(user, menuItemToProcess) {
       : menuItemToProcess.options,
     {state: triggerStateId, id, item, index} = options;
   let text = '';
-  if (options && triggerStateId && typeIs(id, 'string') && triggersConditionsOrTargets.includes(item)) {
+  if (options && triggerStateId && typeof id === 'string' && triggersConditionsOrTargets.includes(item)) {
     const triggers = triggersGetStateTriggers(user, triggerStateId),
       triggerIndex = thresholdsGetIndex(triggers, id),
       trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
-    if (trigger && typeIs(trigger[item], 'array') && typeIs(index, 'number')) {
+    if (trigger && Array.isArray(trigger[item]) && typeof index === 'number') {
       const items = trigger[item];
-      if (typeIs(items, 'array') && index < items.length) {
+      if (Array.isArray(items) && index < items.length) {
         const itemData = items[index],
           {isEnabled, state: stateId, function: functionId, destination: destinationId, operator, value} = itemData,
           isCondition = item === triggersConditionsId,
@@ -10554,7 +10574,7 @@ function triggersMenuItemDetailsConditionOrTarget(user, menuItemToProcess) {
         if (isCondition) {
           itemAttributesArray.splice(-2, 0, {
             label: ` ${translationsItemTextGet(user, 'operator')}`,
-            value: typeIs(operator, 'string') ? operator : '',
+            value: typeof operator === 'string' ? operator : '',
           });
         }
         text = `${menuMenuItemDetailsPrintFixedLengthLines(user, itemAttributesArray)}`;
@@ -10571,7 +10591,7 @@ function triggersMenuItemDetailsConditionOrTarget(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateSelectTargetDevice(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     enumerationsMenu = menuMenuItemGenerateRootMenu(user, 'enumerationsOnly'),
     subMenu = enumerationsMenu ? enumerationsMenu.submenu : [],
@@ -10594,7 +10614,7 @@ function triggersMenuGenerateSelectTargetDevice(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function triggersMenuGenerateSelectTargetState(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options,
     {function: functionId, destination: destinationId, extraOptions} = options,
     currentAccessLevel = menuItemToProcess.accessLevel;
@@ -10631,7 +10651,7 @@ function triggersCheckConditions(conditions) {
     passed: true,
     checked: new Array(),
   };
-  if (typeIs(conditions, 'array')) {
+  if (Array.isArray(conditions)) {
     result['passed'] = conditions.every((condition) => {
       let check = true;
       if (condition?.isEnabled) {
@@ -10692,16 +10712,16 @@ function triggersCheckConditions(conditions) {
  * @returns {object[]}  Newly generated submenu.
  */
 function triggersMenuGenerateTriggersLogs(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
-    options = typeIs(menuItemToProcess.options, 'object') ? menuItemToProcess.options : {},
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+    options = typeof menuItemToProcess.options === 'object' ? menuItemToProcess.options : {},
     {state: triggerStateId, id: triggerId, function: functionId, destination: destinationId, item} = options,
     functionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
-    isFunctionDefined = typeIs(functionId, 'string'),
-    isDestinationDefined = typeIs(destinationId, 'string');
+    isFunctionDefined = typeof functionId === 'string',
+    isDestinationDefined = typeof destinationId === 'string';
   let subMenu = [],
     subMenuIndex = 0;
-  if (triggersLogs.length && !typeIs(item, 'object')) {
-    if (typeIs(triggerStateId, 'string') && typeIs(triggerId, 'string')) {
+  if (triggersLogs.length && typeof item !== 'object') {
+    if (typeof triggerStateId === 'string' && typeof triggerId === 'string') {
       const triggerLogs = triggersLogs
           .filter((logItem) => logItem.triggerState === triggerStateId && logItem.triggerId === triggerId)
           .sort((a, b) => Date.parse(b.date) - Date.parse(a.date)),
@@ -10720,7 +10740,7 @@ function triggersMenuGenerateTriggersLogs(user, menuItemToProcess) {
           });
         });
       }
-    } else if (typeIs(triggerStateId, 'string')) {
+    } else if (typeof triggerStateId === 'string') {
       const triggerLogs = triggersLogs.filter((logItem) => logItem.triggerState === triggerStateId),
         triggerLogsIds = new Set(triggerLogs.map((logItem) => logItem.triggerId)),
         triggers = triggersGetStateTriggers(user, triggerStateId);
@@ -10728,10 +10748,10 @@ function triggersMenuGenerateTriggersLogs(user, menuItemToProcess) {
         triggerLogsIds.forEach((triggerId) => {
           const triggerIndex = thresholdsGetIndex(triggers, triggerId),
             trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
-          if (typeIs(trigger, 'object')) {
+          if (typeof trigger === 'object') {
             const triggerValue = enumerationsStateValueDetails(user, triggerStateId, functionId, {val: trigger.value});
             let itemName = `${translationsGetObjectName(user, triggerStateId, functionId)}: `;
-            if (typeIs(trigger.onAbove, 'boolean') && typeIs(trigger.onBelow, 'boolean')) {
+            if (typeof trigger.onAbove === 'boolean' && typeof trigger.onBelow === 'boolean') {
               itemName += `${trigger.onAbove ? '˃=' : '˂'} ${triggerValue}`;
             } else {
               itemName += `${triggerValue}`;
@@ -10806,11 +10826,11 @@ function triggersMenuGenerateTriggersLogs(user, menuItemToProcess) {
  * @returns {string} - The description of the Trigger Logs item.
  */
 function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
-  const options = typeIs(menuItemToProcess.options, 'object') ? menuItemToProcess.options : {},
+  const options = typeof menuItemToProcess.options === 'object' ? menuItemToProcess.options : {},
     {state: triggerStateId, id: triggerId, function: functionId, destination: destinationId, item} = options,
     functionsFirst = configOptions.getOption(cfgMenuFunctionsFirst, user),
-    isFunctionDefined = typeIs(functionId, 'string'),
-    isDestinationDefined = typeIs(destinationId, 'string'),
+    isFunctionDefined = typeof functionId === 'string',
+    isDestinationDefined = typeof destinationId === 'string',
     triggersLogsItemArray = new Array(),
     iconOn = configOptions.getOption(cfgDefaultIconOn, user),
     iconOff = configOptions.getOption(cfgDefaultIconOff, user);
@@ -10820,7 +10840,7 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
     attributeFunction = {},
     attributeDestination = {},
     trigger;
-  if (typeIs(item, 'object')) {
+  if (typeof item === 'object' && !Array.isArray(item)) {
     triggersLogsItemArray.push(
       {
         label: `${translationsItemTextGet(user, 'date', 'time')}`,
@@ -10832,7 +10852,12 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
       },
     );
   }
-  if (isFunctionDefined || isDestinationDefined || typeIs(triggerStateId, 'string') || typeIs(triggerId, 'string')) {
+  if (
+    isFunctionDefined ||
+    isDestinationDefined ||
+    typeof triggerStateId === 'string' ||
+    typeof triggerId === 'string'
+  ) {
     triggersLogsItemArray.push({
       label: `${translationsItemTextGet(user, 'source')}:`,
       value: '',
@@ -10865,33 +10890,33 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
         value: '',
       });
     }
-    if (typeIs(triggerStateId, 'string')) {
+    if (typeof triggerStateId === 'string') {
       triggersLogsItemArray.push({
         label: ` ${translationsItemTextGet(user, 'device')}`,
         value: enumerationsGetDeviceName(user, triggerStateId, functionId, destinationId),
       });
-      if (!typeIs(triggerId, 'string') || typeIs(item, 'object')) {
+      if (typeof triggerId !== 'string' || typeof item === 'object') {
         triggersLogsItemArray.push({
           label: ` ${translationsItemTextGet(user, 'state')}`,
           value: translationsGetObjectName(user, triggerStateId, functionId),
         });
       }
     }
-    if (typeIs(triggerId, 'string')) {
+    if (typeof triggerId === 'string') {
       const triggers = triggersGetStateTriggers(user, triggerStateId),
         triggerIndex = thresholdsGetIndex(triggers, triggerId);
       trigger = triggers && triggerIndex >= 0 ? triggers[triggerIndex] : undefined;
-      if (typeIs(trigger, 'object')) {
+      if (typeof trigger === 'object') {
         const sourceStateDetails = {
           label: ` ${translationsGetObjectName(user, triggerStateId, functionId)}`,
           value: enumerationsStateValueDetails(user, triggerStateId, functionId, {val: trigger.value}),
         };
-        if (typeIs(trigger.onAbove, 'boolean') && typeIs(trigger.onBelow, 'boolean')) {
+        if (typeof trigger.onAbove === 'boolean' && typeof trigger.onBelow === 'boolean') {
           sourceStateDetails.value = `${trigger.onAbove ? '˃=' : '˂'} ${sourceStateDetails.value}`;
         } else {
           sourceStateDetails.value = `== ${sourceStateDetails.value}`;
         }
-        if (typeIs(item, 'object')) {
+        if (typeof item === 'object') {
           sourceStateDetails.label = ` ${enumerationsStateValueDetails(user, triggerStateId, functionId, {
             val: item.triggerValue,
           })} ${sourceStateDetails.value}`;
@@ -10901,24 +10926,24 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
       }
     }
   }
-  if (typeIs(item, 'object')) {
+  if (typeof item === 'object') {
     const targetFunctionText = enumerationsItemName(user, dataTypeFunction, trigger.targetFunction),
       targetDestinationText = enumerationsItemName(user, dataTypeDestination, trigger.targetDestination);
-    if (typeIs(item.conditions, 'object')) {
+    if (typeof item.conditions === 'object' && !Array.isArray(item.conditions)) {
       const conditions = item.conditions,
         conditionsChecked = conditions.checked;
       if (
-        (typeIs(conditions.passed, 'boolean') && !conditions.passed) ||
-        (typeIs(conditionsChecked, 'array') && conditionsChecked.length > 0)
+        (typeof conditions.passed === 'boolean' && !conditions.passed) ||
+        (Array.isArray(conditionsChecked) && conditionsChecked.length > 0)
       ) {
         triggersLogsItemArray.push({
           label: translationsItemTextGet(user, triggersConditionsId),
           value: conditions.passed ? iconOn : iconOff,
         });
       }
-      if (typeIs(conditionsChecked, 'array') && conditionsChecked.length > 0) {
+      if (Array.isArray(conditionsChecked) && conditionsChecked.length > 0) {
         conditionsChecked.forEach((condition, conditionIndex) => {
-          if (typeIs(condition, 'object')) {
+          if (typeof condition === 'object') {
             const conditionStateId = condition.state,
               conditionFunctionText = enumerationsItemName(user, dataTypeFunction, condition.function),
               conditionDestinationText = enumerationsItemName(user, dataTypeDestination, condition.destination),
@@ -10976,7 +11001,7 @@ function triggersMenuTriggersLogsItemDetails(user, menuItemToProcess) {
         val: trigger.targetValue,
       }),
     });
-    if (typeIs(item.error, 'string')) {
+    if (typeof item.error === 'string') {
       triggersLogsItemArray.push({
         label: `${translationsItemTextGet(user, 'error')}`,
         value: item.error,
@@ -11020,7 +11045,7 @@ let _backupScheduleReference;
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     _currentId = menuItemToProcess.id, // NOSONAR
     currentAccessLevel = menuItemToProcess.accessLevel,
     backupFiles = backupGetFolderList();
@@ -11084,7 +11109,7 @@ function backupMenuGenerateBackupAndRestore(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function backupMenuGenerateRestore(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {fileName} = menuItemToProcess.options;
   let subMenu = [],
     subMenuIndex = 0;
@@ -11182,8 +11207,7 @@ function backupCreate(backupMode) {
   backupData[backupItemMenuListItems] = enumerationItemsBackup;
   backupData[backupItemAlerts] = alertsGet();
   const backupDataJSON = jsonStringify(backupData, 2);
-  const
-    dateNow = formatDate(new Date(), 'YYYY-MM-DD-hh-mm-ss'),
+  const dateNow = formatDate(new Date(), 'YYYY-MM-DD-hh-mm-ss'),
     backupFileName = nodePath.join(backupFolder, `${backupPrefix}-${dateNow}-${backupMode}.json`);
   return new Promise((resolve, reject) => {
     backupFileWrite(backupFileName, backupDataJSON, backupMode)
@@ -11228,7 +11252,11 @@ function backupRestore(fileName, restoreItem) {
                 itemsToRestore.forEach((itemToRestore) => {
                   switch (itemToRestore) {
                     case backupItemConfigOptions:
-                      if (restoreData.hasOwnProperty(itemToRestore) && typeIs(restoreData[itemToRestore], 'object')) {
+                      if (
+                        restoreData.hasOwnProperty(itemToRestore) &&
+                        typeof restoreData[itemToRestore] === 'object' &&
+                        !Array.isArray(restoreData[itemToRestore])
+                      ) {
                         configOptions.restoreDataFromBackup(restoreData[backupItemConfigOptions]);
                         rolesInMenu.refresh();
                         usersInMenu.refresh();
@@ -11236,12 +11264,16 @@ function backupRestore(fileName, restoreItem) {
                       break;
 
                     case backupItemMenuListItems:
-                      if (restoreData.hasOwnProperty(itemToRestore) && typeIs(restoreData[itemToRestore], 'object')) {
+                      if (
+                        restoreData.hasOwnProperty(itemToRestore) &&
+                        typeof restoreData[itemToRestore] === 'object' &&
+                        !Array.isArray(restoreData[itemToRestore])
+                      ) {
                         const enumerationItemsBackup = restoreData[itemToRestore];
                         Object.keys(enumerationsList).forEach((dataType) => {
                           if (
                             enumerationItemsBackup.hasOwnProperty(dataType) &&
-                            typeIs(enumerationItemsBackup[dataType], 'object') &&
+                            typeof enumerationItemsBackup[dataType] === 'object' &&
                             enumerationItemsBackup[dataType].hasOwnProperty('enums') &&
                             enumerationItemsBackup[dataType].enums &&
                             enumerationItemsBackup[dataType].hasOwnProperty('list') &&
@@ -11257,7 +11289,11 @@ function backupRestore(fileName, restoreItem) {
                       break;
 
                     case backupItemAlerts:
-                      if (restoreData.hasOwnProperty(itemToRestore) && typeIs(restoreData[itemToRestore], 'object')) {
+                      if (
+                        restoreData.hasOwnProperty(itemToRestore) &&
+                        typeof restoreData[itemToRestore] === 'object' &&
+                        !Array.isArray(restoreData[itemToRestore])
+                      ) {
                         alertsStore(restoreData[itemToRestore]);
                         alertsInit();
                       }
@@ -11363,7 +11399,7 @@ const cachedSimpleReportIdToCreate = 'simpleReportIdToCreate',
  */
 function simpleReportMenuGenerateCreateNewReport(user, menuItemToProcess) {
   let newMenu = [];
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {enumType: enumId} = menuItemToProcess.options;
   if (enumId) {
     cachedValueDelete(user, cachedSimpleReportNewQuery);
@@ -11406,7 +11442,7 @@ function simpleReportMenuGenerateCreateNewReport(user, menuItemToProcess) {
  * @returns {object[]} - The array of menuItem objects.
  */
 function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {item: reportId} = menuItemToProcess.options,
     destinations = enumerationsList[dataTypeDestination].list,
     functions = enumerationsList[dataTypeFunction].list;
@@ -11419,9 +11455,10 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
     destsList = queryDests,
     itemsMarked = 0;
   if (!destsList.length) {
-    destsList = typeIs(destinations, 'object')
-      ? Object.keys(destinations).filter((key) => destinations[key]?.isAvailable && destinations[key]?.isEnabled)
-      : [];
+    destsList =
+      typeof destinations === 'object' && !Array.isArray(destinations)
+        ? Object.keys(destinations).filter((key) => destinations[key]?.isAvailable && destinations[key]?.isEnabled)
+        : [];
   }
   if (!queryStates?.length) queryStates = [];
   if (!queryPossibleStates?.length) {
@@ -11466,9 +11503,10 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
       labelState = translationsItemTextGet(user, 'state');
     queryPossibleStates.forEach(({stateId, destinationId, functionId}, index) => {
       if (destIdCurrent !== destinationId) {
-        const holderPrefix = typeIs(destinations[destinationId].holder, 'string')
-            ? `${translationsGetEnumName(user, dataTypeDestination, destinations[destinationId].holder)} > `
-            : '',
+        const holderPrefix =
+            typeof destinations[destinationId].holder === 'string'
+              ? `${translationsGetEnumName(user, dataTypeDestination, destinations[destinationId].holder)} > `
+              : '',
           group = enumerationsGetHolderIdOrIdWithIncludedItems(destinations, destinationId);
         destinationName = `${holderPrefix}${translationsGetEnumName(user, dataTypeDestination, destinationId)}`;
         if (destIdCurrent) {
@@ -11497,7 +11535,7 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
         deviceName = translationsGetObjectName(user, deviceId, functionId, destinationId),
         stateShortId = stateId.replace(`${deviceId}.`, ''),
         iconSelected =
-          typeIs(queryStates, 'array') && queryStates?.includes(stateId)
+          Array.isArray(queryStates) && queryStates?.includes(stateId)
             ? configOptions.getOption(cfgDefaultIconOn, user)
             : '',
         deviceIcon = `${iconSelected}${functions[functionId].icon}`,
@@ -11539,7 +11577,7 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
           },
         ],
       });
-      if (typeIs(queryStates, 'array') && queryStates?.includes(stateId)) itemsMarked++;
+      if (Array.isArray(queryStates) && queryStates?.includes(stateId)) itemsMarked++;
     });
     if (destIdCurrent) {
       subMenuItem.name += ` (${subMenuItem.submenu.length}, ${itemsMarked})`;
@@ -11580,7 +11618,7 @@ function simpleReportMenuGenerateReportItemsNewSelectStates(user, menuItemToProc
  * @returns {object[]} - The array of menuItem objects.
  */
 function simpleReportMenuGenerateReportItemsNewSelectDestination(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     destinations = enumerationsList[dataTypeDestination]?.list;
   let subMenu = [],
     subMenuIndex = 0;
@@ -11589,12 +11627,13 @@ function simpleReportMenuGenerateReportItemsNewSelectDestination(user, menuItemT
     : simpleReportQueryParamsTemplate();
   if (!cachedValueExists(user, cachedSimpleReportNewQuery))
     cachedValueSet(user, cachedSimpleReportNewQuery, {queryDests, queryState, queryRole});
-  if (typeIs(destinations, 'object')) {
+  if (typeof destinations === 'object' && !Array.isArray(destinations)) {
     const destinationIds = Object.keys(destinations).filter((key) => destinations[key]?.isEnabled);
     destinationIds.forEach((destinationId) => {
-      const holderPrefix = typeIs(destinations[destinationId].holder, 'string')
-          ? `${translationsGetEnumName(user, dataTypeDestination, destinations[destinationId].holder)} > `
-          : '',
+      const holderPrefix =
+          typeof destinations[destinationId].holder === 'string'
+            ? `${translationsGetEnumName(user, dataTypeDestination, destinations[destinationId].holder)} > `
+            : '',
         group = enumerationsGetHolderIdOrIdWithIncludedItems(destinations, destinationId),
         subMenuItem = {
           index: `${currentIndex}.${subMenuIndex}`,
@@ -11622,7 +11661,7 @@ function simpleReportMenuGenerateReportItemsNewSelectDestination(user, menuItemT
  * @returns {object[]} - The array of menuItem objects.
  */
 function simpleReportMenuGenerateReportItemsAddNewItems(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {item: reportId} = menuItemToProcess.options;
   let subMenuIndex = 0,
     subMenu = [];
@@ -11681,7 +11720,7 @@ function simpleReportMenuGenerateReportItemsAddNewItems(user, menuItemToProcess)
  */
 function simpleReportMenuGenerateEditReportItems(user, menuItemToProcess) {
   let newMenu = [];
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     {item: reportId} = menuItemToProcess.options;
   if (reportId) {
     const reportObjectId = `${prefixEnums}.${enumerationsList[dataTypeReport].list[reportId].enum}.${reportId}`,
@@ -11873,7 +11912,7 @@ function simpleReportGenerate(user, menuItemToProcess) {
  * @returns {object[]} Newly generated submenu.
  */
 function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
-  const currentIndex = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     reportId = menuItemToProcess.id,
     reportsList = enumerationsList[dataTypeReport].list,
     reportItem = reportsList[reportId],
@@ -11916,7 +11955,7 @@ function simpleReportMenuGenerateGraphs(user, menuItemToProcess) {
       subMenuIndex = subMenu.push(subMenuRefresh);
       if (graphsTemplate) {
         const graphsIntervals = configOptions.getOption(cfgGraphsIntervals, user);
-        if (graphsIntervals && typeIs(graphsIntervals, 'array') && graphsIntervals.length) {
+        if (graphsIntervals && Array.isArray(graphsIntervals) && graphsIntervals.length) {
           graphsIntervals.forEach(({id: graphsIntervalId, minutes: graphsIntervalMinutes}) => {
             subMenuIndex = subMenu.push({
               index: `${currentIndex}.${subMenuIndex}`,
@@ -11966,10 +12005,9 @@ const menuItemButtonPrefix = 'menu-', // Technical parameter for the telegram me
  * @returns {string} The result icon.
  */
 function menuIconGenerate(user, value, iconsPair) {
-  if (!typeIs(iconsPair, 'array')) {
+  if (!Array.isArray(iconsPair)) {
     iconsPair = [configOptions.getOption(cfgDefaultIconOn, user), configOptions.getOption(cfgDefaultIconOff, user)];
   }
-  // @ts-ignore
   return iconsPair[value ? 0 : 1];
 }
 
@@ -12135,11 +12173,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
         options: {dataType},
         submenu: enumerationsMenuGenerateListOfEnumerationItems,
       }));
-      subMenu.splice(
-        1,
-        0,
-        ...enumerationsSubMenuPart,
-      );
+      subMenu.splice(1, 0, ...enumerationsSubMenuPart);
       subMenu.forEach((subMenuItem) => {
         const subMenuItemAccessLevel = user?.userId
           ? usersInMenu.getMenuItemAccess(user.userId, `${menuItem.id}${rolesIdAndMaskDelimiter}${subMenuItem.id}`)
@@ -12311,7 +12345,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
       ) {
         result = menuItem;
       } else if (menuItemAccessLevel && !MenuRoles.accessLevelsPreventToShow.includes(menuItemAccessLevel)) {
-        if (typeOf(menuItem.submenu) === 'function') {
+        if (typeof menuItem.submenu === 'function') {
           const subMenu = menuItem.submenu(user, menuItem);
           if (subMenu.length) {
             result = menuItem;
@@ -12321,7 +12355,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
     }
     return result;
   }
-  if (typeIs(topRootMenuItemId, 'string')) {
+  if (typeof topRootMenuItemId === 'string') {
     switch (topRootMenuItemId) {
       case 'setup':
         rootMenu.submenu.push(menuMenuItemGenerateRootMenuSetup(user));
@@ -12347,10 +12381,8 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
         break;
 
       default:
-        // @ts-ignore
         if (currentListIds.includes(topRootMenuItemId)) {
           rootMenu.submenu.push(
-            // @ts-ignore
             menuMenuItemGenerateRootEnumeration(user, currentDataType, currentList, topRootMenuItemId, currentNameId),
           );
         }
@@ -12436,7 +12468,7 @@ function menuMenuItemGenerateEditItem(_user, upperItemIndex, itemIndex, itemName
   const menuItem = {
     index: `${upperItemIndex}.${itemIndex}`,
     name: itemName,
-    icon: typeIs(options?.icon, 'string') ? options.icon : iconItemEdit,
+    icon: typeof options?.icon === 'string' ? options.icon : iconItemEdit,
     command: cmdGetInput,
     options: options,
     submenu: [],
@@ -12515,9 +12547,9 @@ function menuMenuItemGenerateResetItem(user, upperItemIndex, itemIndex, options)
  * @returns {object} The menu item object {index:..., name:..., icon:..., command:..., submenu:[...]}
  */
 function menuMenuItemGenerateBooleanItem(_user, upperItemIndex, itemIndex, itemName, groupId, options) {
-  let menuItemIcon = typeIs(options?.icon, 'string') ? options.icon : '';
+  let menuItemIcon = typeof options?.icon === 'string' ? options.icon : '';
   if (options.icons) {
-    if (!typeIs(options.value, 'boolean')) {
+    if (typeof options.value !== 'boolean') {
       menuItemIcon = iconItemNotFound;
     } else {
       menuItemIcon = options.icons[options.value ? 0 : 1];
@@ -12552,12 +12584,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
     menuItem = {
       index: currentIndex,
       name: itemName,
-      icon: typeIs(inputOptions?.icon, 'string') ? inputOptions.icon : iconItemEdit,
+      icon: typeof inputOptions?.icon === 'string' ? inputOptions.icon : iconItemEdit,
       options: inputOptions,
       submenu: new Array(),
     };
-  if (itemValues && (typeIs(itemValues, 'map') || typeIs(itemValues, 'array'))) {
-    const itemValuesGroups = typeIs(itemValues, 'map') ? [itemValues] : itemValues,
+  if (itemValues && (itemValues instanceof Map || Array.isArray(itemValues))) {
+    const itemValuesGroups = itemValues instanceof Map ? [itemValues] : itemValues,
       applyMode = inputOptions.applyMode,
       valuesDefault = inputOptions.valueOptions?.valuesDefault,
       isValuesDefaultAvailable = isDefined(valuesDefault),
@@ -12566,12 +12598,12 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
       showValueInName = inputOptions.showValueInName,
       currentCommand = inputOptions?.replaceCommand ? inputOptions.replaceCommand : cmdItemPress,
       itemCommand = applyMode ? cmdItemSetInterimValue : currentCommand,
-      isValueApplicable = typeIs(inputOptions?.isValueApplicable, 'boolean') ? inputOptions.isValueApplicable : true,
+      isValueApplicable = typeof inputOptions?.isValueApplicable === 'boolean' ? inputOptions.isValueApplicable : true,
       interimCalculationMode = inputOptions.valueOptions?.interimCalculationMode,
       noMarkCurrent = inputOptions?.noMarkCurrent || interimCalculationMode === interimCalculationSummarize,
       showInApply = inputOptions?.valueOptions?.showInApply;
     if (applyMode) {
-      if (!typeIs(inputOptions.valueOptions?.interimItemId, 'string')) {
+      if (typeof inputOptions.valueOptions?.interimItemId !== 'string') {
         inputOptions.valueOptions = {...inputOptions.valueOptions, interimItemId: currentIndex};
       }
     }
@@ -12623,11 +12655,11 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         });
         if (!isDefined(showInApply) && subItemValue == valueCurrent) {
           valueToDisplayInApply = `${subItemName}`;
-          if (typeIs(inputOptions?.valueOptions?.unit, 'string'))
+          if (typeof inputOptions?.valueOptions?.unit === 'string')
             valueToDisplayInApply += inputOptions.valueOptions.unit;
         }
         if (
-          (!typeIs(interimCalculationMode, 'string') || interimCalculationMode === interimCalculationReplace) &&
+          (typeof interimCalculationMode !== 'string' || interimCalculationMode === interimCalculationReplace) &&
           itemOptions.valueOptions?.type !== 'time' &&
           subItemValue == valuePrevious
         ) {
@@ -12636,18 +12668,18 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
       });
     });
     if (valueText === iconItemNotFound) {
-      if (typeIs(showInApply, 'function')) {
+      if (typeof showInApply === 'function') {
         if (interimCalculationMode === interimCalculationSelectMultiple) {
-          if (typeIs(valuesPrevious, 'array')) valueText = showInApply(valuesPrevious);
+          if (Array.isArray(valuesPrevious)) valueText = showInApply(valuesPrevious);
         } else if (isDefined(valuePrevious)) valueText = showInApply(valuePrevious);
-      } else if (typeIs(inputOptions?.valueOptions?.valueToDisplay, 'string')) {
+      } else if (typeof inputOptions?.valueOptions?.valueToDisplay === 'string') {
         valueText = inputOptions.valueOptions.valueToDisplay;
       } else if (isDefined(valuePrevious)) {
         valueText = `${valuePrevious}`;
       }
     }
     if (valueToDisplayInApply === '') {
-      switch (typeOf(showInApply)) {
+      switch (typeof showInApply) {
         case 'string': {
           valueToDisplayInApply = showInApply;
           break;
@@ -12666,7 +12698,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         }
       }
     }
-    if (typeIs(inputOptions?.valueOptions?.unit, 'string')) valueText += inputOptions.valueOptions.unit;
+    if (typeof inputOptions?.valueOptions?.unit === 'string') valueText += inputOptions.valueOptions.unit;
     if (showValueInName) menuItem.name += ` [${valueText}]`;
     if (!isDefined(menuItem.text)) {
       const textLines = [
@@ -12706,7 +12738,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
             ...objectDeepClone(inputOptions, {valueOptions: {valuesDefault: true}}),
             value: valueCurrent,
             values: valuesCurrent,
-            backOnPress: !typeIs(inputOptions.backOnPress, 'boolean') || inputOptions.backOnPress,
+            backOnPress: typeof inputOptions.backOnPress !== 'boolean' || inputOptions.backOnPress,
           };
           subMenuIndex = menuItem.submenu.push({
             index: `${currentIndex}.${subMenuIndex}`,
@@ -12756,9 +12788,9 @@ const cachedInterimValue = 'interimValue',
  */
 function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, itemIndex, itemName, groupId, options) {
   let menuItem;
-  if (typeIs(options?.valueType, 'string')) {
+  if (typeof options?.valueType === 'string') {
     const inputOptions = objectDeepClone(options),
-      valueOptions = typeIs(inputOptions?.valueOptions, 'object') ? inputOptions.valueOptions : {},
+      valueOptions = typeof inputOptions?.valueOptions === 'object' ? inputOptions.valueOptions : {},
       valueType = inputOptions.valueType,
       valueCurrent = inputOptions?.value,
       booleanSelect = inputOptions?.booleanSelect,
@@ -12798,9 +12830,9 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
         valueInterimIsDefined = isDefined(valueInterim?.[interimItemId]),
         valueToWork = valueInterimIsDefined ? valueInterim[interimItemId] : baseValue;
-      if (!typeIs(valueStep, 'number')) {
+      if (typeof valueStep !== 'number') {
         const digitsNumberBase = Math.trunc(baseValue).toString.length || 0,
-          digitsNumberMax = typeIs(valueMax, 'number') ? Math.trunc(valueMax).toString.length : digitsNumberBase + 1;
+          digitsNumberMax = typeof valueMax === 'number' ? Math.trunc(valueMax).toString.length : digitsNumberBase + 1;
         for (let positionIndex = digitsNumberMax - 3; positionIndex <= digitsNumberMax; positionIndex++) {
           const multiplier = Math.pow(10, positionIndex);
           [-1, 1].forEach((sign) => {
@@ -12809,8 +12841,8 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
             valuesArray.forEach((value) => {
               const valueToSet = value * multiplier * sign;
               if (
-                (!typeIs(valueMin, 'number') || valueToWork + valueToSet >= valueMin) &&
-                (!typeIs(valueMax, 'number') || valueToWork + valueToSet <= valueMax)
+                (typeof valueMin !== 'number' || valueToWork + valueToSet >= valueMin) &&
+                (typeof valueMax !== 'number' || valueToWork + valueToSet <= valueMax)
               ) {
                 valuesMap.set(valueToSet, `${signSymbol}${valueToSet}`);
               }
@@ -12820,8 +12852,8 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         }
       } else {
         let stepMultiplier = 1;
-        if (!typeIs(valueMax, 'number')) valueMax = 10 ** (Math.trunc(valueMax).toString.length + 1);
-        if (!typeIs(valueMin, 'number')) valueMin = 0;
+        if (typeof valueMax !== 'number') valueMax = 10 ** (Math.trunc(valueMax).toString.length + 1);
+        if (typeof valueMin !== 'number') valueMin = 0;
         while (valueStep * stepMultiplier < valueMax - valueMin) {
           [-1, 1].forEach((sign) => {
             const valuesMap = new Map(),
@@ -12874,16 +12906,16 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
  */
 function menuMenuItemGenerateEditItemStateValue(user, upperItemIndex, itemIndex, itemName, groupId, options) {
   let menuItem;
-  if (typeIs(options?.state, 'string')) {
+  if (typeof options?.state === 'string') {
     const stateObject = options?.stateObject ? options.stateObject : getObject(options.state),
       stateObjectCommon = stateObject?.common,
       stateType = options?.stateType ? options.stateType : stateObjectCommon['type'],
       stateValue = options?.value ? options.value : getState(options.state)?.val,
       finctionId = options?.function,
-      valueOptions = typeIs(options.valueOptions, 'object') ? options.valueOptions : {};
+      valueOptions = typeof options.valueOptions === 'object' ? options.valueOptions : {};
     if (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(stateType)) {
       const states = enumerationsExtractPossibleValueStates(user, stateObject, finctionId);
-      if (typeIs(states, 'map') && states.size > 0) {
+      if (states instanceof Map && states.size > 0) {
         valueOptions['states'] = states;
       }
     } else if (stateType === 'number') {
@@ -13017,7 +13049,7 @@ const timeInternalUnitsSeconds = 's',
  */
 function timeInternalToString(value, template) {
   let result = '';
-  if (typeIs(value, 'number') && template?.length) {
+  if (typeof value === 'number' && template?.length) {
     const unitMinimal = template.slice(-1);
     template.split('').forEach((unit) => {
       const multiplier = timeInternalPerUnitMultipliers[unit][unitMinimal],
@@ -13037,11 +13069,11 @@ function timeInternalToString(value, template) {
  */
 function stringToTimeInternal(value, template) {
   let result = 0;
-  if (typeIs(value, 'string') && template?.length && isDefined(timeInternalParseRegExps[template])) {
+  if (typeof value === 'string' && template?.length && isDefined(timeInternalParseRegExps[template])) {
     const timeInternalParseRegExp = timeInternalParseRegExps[template],
       valueParsed = timeInternalParseRegExp.exec(value),
       unitsLength = template.length;
-    if (typeIs(valueParsed, 'array')) {
+    if (Array.isArray(valueParsed)) {
       valueParsed.shift();
       const valueParsedLength = valueParsed?.length;
       if (unitsLength === valueParsedLength) {
@@ -13111,7 +13143,7 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
       if (timeTemplate.includes(unit)) {
         const multiplier = timeInternalPerUnitMultipliers[unit][timeInternalUnitsMinimal],
           min = timeInternalPerUnitValueMinimal[unit],
-          valueInCurrentUnits = typeIs(valueToProcess, 'number') ? Math.trunc(valueToProcess / multiplier) : 0;
+          valueInCurrentUnits = typeof valueToProcess === 'number' ? Math.trunc(valueToProcess / multiplier) : 0;
         let max = timeInternalPerUnitMaxValueNonGreat[unit];
         if (timeMode === timeInternalModeMonthAndDay) {
           if (unit === timeInternalUnitsDaysInMonth && previousUnit === timeInternalUnitsMonths) {
@@ -13277,7 +13309,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
     if (
       menuItemToProcess.hasOwnProperty('subordinates') &&
-      typeIs(menuItemToProcess.subordinates, 'array') &&
+      Array.isArray(menuItemToProcess.subordinates) &&
       menuItemToProcess.subordinates.length
     ) {
       subMenu = menuMenuReIndex(menuItemToProcess.subordinates, currentIndex, extraOptions);
@@ -13443,7 +13475,7 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
     for (const subMenuIndex of subMenu.keys()) {
       const currentSubMenuItem = subMenu[subMenuIndex],
         currentSubMenuItemSubmenu = currentSubMenuItem.submenu;
-      if (typeIs(currentSubMenuItemSubmenu, 'array') && currentSubMenuItemSubmenu.length === 0) {
+      if (Array.isArray(currentSubMenuItemSubmenu) && currentSubMenuItemSubmenu.length === 0) {
         subMenu.splice(subMenuIndex, 1);
       }
     }
@@ -13702,7 +13734,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
       targetMenuPos = targetMenuPos.slice(savedPos.length);
       menuItemToProcess = savedMenu;
       messageObject = {...savedRows};
-      if (['function', 'string'].includes(typeOf(menuItemToProcess?.options?.generatedBy))) {
+      if (['function', 'string'].includes(typeof menuItemToProcess?.options?.generatedBy)) {
         menuItemToProcess.submenu = menuItemToProcess.options.generatedBy;
         menuItemToProcess.options.generatedBy = undefined;
         messageObject.buttons = [];
@@ -13716,7 +13748,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     }
   }
   const subMenu = menuItemToProcess.submenu;
-  switch (typeOf(subMenu)) {
+  switch (typeof subMenu) {
     case 'string': {
       const extensionMenuId = subMenu;
       messageTo(
@@ -13730,12 +13762,12 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
         (newMenuItem) => {
           if (
-            !(typeof newMenuItem === 'object' && newMenuItem.hasOwnProperty('error')) &&
+            !(typeof newMenuItem === 'object' && !Array.isArray(newMenuItem) && newMenuItem.hasOwnProperty('error')) &&
             newMenuItem.hasOwnProperty('name')
           ) {
             menuItemToProcess = menuMenuReIndex(newMenuItem);
           } else {
-            if (typeof newMenuItem === 'object' && newMenuItem.hasOwnProperty('error')) {
+            if (typeof newMenuItem === 'object' && !Array.isArray(newMenuItem) && newMenuItem.hasOwnProperty('error')) {
               warns(
                 `Can't update subMenu from extensionMenuId ${extensionMenuId}!` +
                   ` No result. Error is ${newMenuItem.error}`,
@@ -13760,7 +13792,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     default: {
       const hierarchicalCaption = configOptions.getOption(cfgHierarchicalCaption, user);
       if (hierarchicalCaption) {
-        if (!typeIs(currentIndent, 'string')) currentIndent = '';
+        if (typeof currentIndent !== 'string') currentIndent = '';
         currentIndent = currentIndent?.padStart(currentIndent?.length + hierarchicalCaption);
       }
       let subMenuPos;
@@ -13783,7 +13815,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           messageCaption = ' ' + iconItemToSubItemByArrow + ' ';
         }
       }
-      if (typeIs(subMenuPos, 'number') && subMenuPos >= 0 && subMenu.length > 0 && subMenuPos < subMenu.length) {
+      if (typeof subMenuPos === 'number' && subMenuPos >= 0 && subMenu.length > 0 && subMenuPos < subMenu.length) {
         messageObject.message += messageCaption + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
         const subMenuItem = subMenu[subMenuPos];
         messageObject.index = subMenuItem.index;
@@ -13795,8 +13827,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           messageObject.shortIndex = subMenuPos;
         }
         messageObject.name = subMenuItem.hasOwnProperty('name') ? subMenuItem.name : undefined;
-        messageObject.options =
-          subMenuItem.hasOwnProperty('options') && typeIs(subMenuItem.options, 'object') ? subMenuItem.options : {};
+        messageObject.options = typeof subMenuItem?.options === 'object' ? subMenuItem.options : {};
         if (isDefined(messageObject.navigationLeft)) messageObject.navigationLeft = undefined;
         if (isDefined(messageObject.navigationRight)) messageObject.navigationRight = undefined;
         const subMenuMaxIndex = subMenu.length - 1,
@@ -13813,7 +13844,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           if (subMenuPos > 0) {
             for (let itemPos = subMenuPos - 1; itemPos >= 0; itemPos--) {
               const currentSubMenuItem = subMenu[itemPos];
-              if (!typeIs(currentSubMenuItem.command, 'string') || !currentSubMenuItem.command.includes(cmdPrefix)) {
+              if (typeof currentSubMenuItem.command !== 'string' || !currentSubMenuItem.command.includes(cmdPrefix)) {
                 messageObject.navigationLeft = itemPos;
                 break;
               }
@@ -13822,7 +13853,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           if (subMenuPos < subMenuMaxIndex) {
             for (let itemPos = subMenuPos + 1; itemPos <= subMenuMaxIndex; itemPos++) {
               const currentSubMenuItem = subMenu[itemPos];
-              if (!typeIs(currentSubMenuItem.command, 'string') || !currentSubMenuItem.command.includes(cmdPrefix)) {
+              if (typeof currentSubMenuItem.command !== 'string' || !currentSubMenuItem.command.includes(cmdPrefix)) {
                 messageObject.navigationRight = itemPos;
                 break;
               }
@@ -13832,7 +13863,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         menuMenuDraw(user, targetMenuPos, messageOptions, subMenuItem, messageObject, currentIndent);
       } else {
         cachedValueDelete(user, cachedMenuItemsAndRows);
-        if (!typeIs(subMenu, 'array') || subMenuPos >= subMenu.length) {
+        if (!Array.isArray(subMenu) || subMenuPos >= subMenu.length) {
           let savedPos = cachedValueGet(user, cachedMenuItem);
           if (targetMenuPos?.length) {
             for (let i = targetMenuPos.length - 1; i >= 0; i--) {
@@ -13853,11 +13884,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         messageObject.message = encodedStr(messageObject.message);
         if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
           let menuText = menuItemToProcess.text;
-          if (typeIs(menuText, 'function')) menuText = menuText(user, menuItemToProcess);
-          if (typeIs(menuText, 'string') && menuText) messageObject.message += `\n<code>${menuText}</code>`;
+          if (typeof menuText === 'function') menuText = menuText(user, menuItemToProcess);
+          if (typeof menuText === 'string' && menuText) messageObject.message += `\n<code>${menuText}</code>`;
         }
         messageObject.buttons = [];
-        const indexCurrent = typeIs(menuItemToProcess.index, 'string') ? menuItemToProcess.index : '',
+        const indexCurrent = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
           backIndexCurrent = indexCurrent ? indexCurrent.split('.').slice(0, -1).join('.') : undefined,
           indexCurrentShort = indexCurrent.replace(messageObject.index, messageObject.shortIndex),
           currentBackIndexShort = indexCurrentShort ? indexCurrentShort.split('.').slice(0, -1).join('.') : undefined,
@@ -13890,7 +13921,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
                 : subMenuItem.index,
             subIndexCurrentShort = subMenuItem.index.replace(messageObject.index, messageObject.shortIndex);
           if (
-            typeIs(subMenuItem?.command, 'string') &&
+            typeof subMenuItem?.command === 'string' &&
             subMenuItem.command.indexOf(cmdPrefix) === 0 &&
             subMenuItem.command !== cmdPrefix
           ) {
@@ -14029,7 +14060,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
         if (user.userId) {
           lastRow[0].callback_data += `${itemsDelimiter}${user.userId}`;
         }
-        if (typeIs(backIndexCurrent, 'string')) {
+        if (typeof backIndexCurrent === 'string') {
           if (configOptions.getOption(cfgShowHomeButton, user)) {
             lastRow.unshift({text: translationsItemCoreGet(user, cmdHome), callback_data: cmdHome});
           }
@@ -14053,7 +14084,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           alertMessagesCount = alertMessages.length,
           alertMessage = alertMessages.pop();
         if (alertMessagesCount) {
-          // @ts-ignore
           const alertDate = formatDate(new Date(alertMessage.date), configOptions.getOption(cfgDateTimeTemplate, user));
           messageObject.alert = `<b><u>${alertDate}:</u> ${alertMessage.message}</b>\r\n\r\n`;
           const alerts = alertsGet(),
@@ -14100,11 +14130,11 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
  * @returns {boolean} The availability status.
  */
 function menuItemIsAvailable(currentFunction, primaryStateFullId) {
-  if (typeIs(currentFunction, 'string')) {
+  if (typeof currentFunction === 'string') {
     currentFunction = enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunction)
       ? enumerationsList[dataTypeFunction].list[currentFunction]
       : undefined;
-  } else if (!typeIs(currentFunction, 'object')) {
+  } else if (typeof currentFunction !== 'object') {
     currentFunction = null;
   }
   let result = true;
@@ -14138,7 +14168,7 @@ function menuItemIsAvailable(currentFunction, primaryStateFullId) {
  */
 function menuMenuItemGetIcon(user, menuItemToProcess) {
   let icon = '';
-  if (typeIs(menuItemToProcess, 'object')) {
+  if (typeof menuItemToProcess === 'object' && !Array.isArray(menuItemToProcess)) {
     if (menuItemToProcess.hasOwnProperty('options')) {
       const {function: currentFunctionId, state: currentStateId, device: devicePrefix} = menuItemToProcess.options,
         currentFunction =
@@ -14149,7 +14179,7 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
         if (!menuItemIsAvailable(currentFunction, currentStateId)) icon = iconItemUnavailable;
       }
       if (icon !== iconItemUnavailable) {
-        if (typeIs(menuItemToProcess.icons, 'object')) {
+        if (typeof menuItemToProcess.icons === 'object' && !Array.isArray(menuItemToProcess.icons)) {
           if (currentStateId && existsObject(currentStateId) && getObject(currentStateId).common.type === 'boolean') {
             const currentAttributeId = currentStateId.replace(`${devicePrefix}.`, ''),
               currentFunctionDeviceButtonsAndAttributes = {
@@ -14169,12 +14199,12 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
               }
             }
           }
-        } else if (typeIs(menuItemToProcess.icons, 'function')) {
+        } else if (typeof menuItemToProcess.icons === 'function') {
           icon = menuItemToProcess.icons(user, menuItemToProcess);
         }
       }
     }
-    if ((!typeIs(icon, 'string') || icon === '') && menuItemToProcess.icon) icon = menuItemToProcess.icon;
+    if ((typeof icon !== 'string' || icon === '') && menuItemToProcess.icon) icon = menuItemToProcess.icon;
   }
   return icon;
 }
@@ -14220,7 +14250,7 @@ function menuMenuUpdateBySchedule() {
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
       // NOSONAR // logs(`for user = ${stringifySafe(userId)} menu on pos ${stringifySafe(itemPos)}`, _l);
-      if (!cachedValueGet(user, cachedIsWaitForInput) && typeIs(itemPos, 'array')) {
+      if (!cachedValueGet(user, cachedIsWaitForInput) && Array.isArray(itemPos)) {
         logs(`make an menu update for = ${jsonStringify(user)}`);
         menuMenuDraw(user);
       }
@@ -14303,7 +14333,7 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
       if (isCachedMenuOn === true && ((!isBotMessageOld48OrNotExists && isBotMessageOld24OrNotExists) || noDraw)) {
         const itemPos = cachedValueGet(user, cachedMenuItem);
         warns('for user = ' + jsonStringify(user) + ' menu is open on ' + jsonStringify(itemPos));
-        if (!cachedValueGet(user, cachedIsWaitForInput) && typeIs(itemPos, 'array')) {
+        if (!cachedValueGet(user, cachedIsWaitForInput) && Array.isArray(itemPos)) {
           if (noDraw) {
             warns(`Make an menu object prepared for user/chat group = ${jsonStringify({...user, rootMenu: null})}`);
           } else {
@@ -14391,7 +14421,7 @@ function menuButtonsArraySplitIntoButtonsPerRowsArray(user, buttonsArray) {
  */
 function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
   let newMenuRow;
-  if (typeIs(inputMenu, 'array')) {
+  if (Array.isArray(inputMenu)) {
     newMenuRow = [];
     inputMenu
       .filter((menuItem) => menuItem)
@@ -14413,7 +14443,7 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
             }
 
             case 'submenu': {
-              if (typeIs(menuItem.submenu, 'array') && menuItem.submenu.length) {
+              if (Array.isArray(menuItem.submenu) && menuItem.submenu.length) {
                 newMenuRowItem.submenu = menuMenuReIndex(menuItem.submenu, newMenuRowItem.index, extraOptions);
               } else {
                 newMenuRowItem.submenu = menuItem.submenu;
@@ -14439,7 +14469,7 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
         });
         newMenuRow.push(newMenuRowItem);
       });
-  } else if (typeof inputMenu === 'object' && inputMenu.hasOwnProperty('submenu')) {
+  } else if (inputMenu?.hasOwnProperty('submenu')) {
     newMenuRow = objectDeepClone({...inputMenu, submenu: undefined});
     if (extraOptions) {
       if (newMenuRow.options) {
@@ -14448,8 +14478,8 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
         newMenuRow.options = {extraOptions};
       }
     }
-    newMenuRow.index = typeIs(newMenuRow.index, 'string') ? newMenuRow.index : '';
-    newMenuRow.submenu = typeIs(inputMenu.submenu, 'array')
+    newMenuRow.index = typeof newMenuRow.index === 'string' ? newMenuRow.index : '';
+    newMenuRow.submenu = Array.isArray(inputMenu.submenu)
       ? menuMenuReIndex(inputMenu.submenu, newMenuRow.index, extraOptions)
       : inputMenu.submenu;
   }
@@ -14605,21 +14635,21 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               let currentTranslationId;
               if (
                 commandOptions.translationType &&
-                typeIs(commandOptions.item, 'number') &&
-                typeIs(commandOptions.index, 'index')
+                typeof commandOptions.item === 'number' &&
+                typeof commandOptions.index === 'number'
               ) {
                 currentTranslationId = commandOptions.translationType;
                 let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
                 if (
                   destTranslation &&
-                  typeOf(destTranslation) === 'object' &&
+                  typeof destTranslation === 'object' &&
                   Object.keys(destTranslation).length > commandOptions.item
                 ) {
                   currentTranslationId += `.destinations.${Object.keys(destTranslation)[commandOptions.item]}`;
                   destTranslation = destTranslation[Object.keys(destTranslation)[commandOptions.item]];
                   if (
                     destTranslation &&
-                    typeOf(destTranslation) === 'object' &&
+                    typeof destTranslation === 'object' &&
                     Object.keys(destTranslation).length > commandOptions.index
                   ) {
                     currentTranslationId += `.${Object.keys(destTranslation)[commandOptions.index]}`;
@@ -14630,7 +14660,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               }
               if (currentTranslationId) translationsItemStore(user, currentTranslationId, userInputToProcess);
               const currentTranslation = translationsGetCurrentForUser(user);
-              if (commandOptions.translationType && commandOptions.item && !typeIs(commandOptions.index, 'number')) {
+              if (commandOptions.translationType && commandOptions.item && typeof commandOptions.index !== 'number') {
                 const newPosition = Object.keys(currentTranslation)
                   .filter((key) => !key.includes('.') && key.startsWith(commandOptions.item))
                   .sort((a, b) => currentTranslation[a].localeCompare(currentTranslation[b]))
@@ -14718,7 +14748,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon'
                           ? currentEnumerationsList[commandOptions.item][attribute]
                           : '';
-                      if (typeIs(currentEnumerationsList[commandOptions.item], 'object')) {
+                      if (typeof currentEnumerationsList[commandOptions.item] === 'object') {
                         currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
                         if (commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon') {
                           const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
@@ -14790,7 +14820,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   commandOptions.scope === configOptionScopeGlobal ? null : user,
                 );
                 if (
-                  typeIs(configItem, 'array') &&
+                  Array.isArray(configItem) &&
                   // @ts-ignore
                   !isNaN(commandOptions.index)
                 ) {
@@ -14816,7 +14846,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2])
                             ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]]
                             : undefined;
-                      newValue = typeIs(parsedValue, 'number') ? {id: userInputToProcess, minutes: parsedValue} : null;
+                      newValue =
+                        typeof parsedValue === 'number' ? {id: userInputToProcess, minutes: parsedValue} : null;
                       menuMessageObject.message = `${translationsItemTextGet(
                         user,
                         'WrongValue',
@@ -14885,7 +14916,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 switch (mode) {
                   case 'add': {
                     if (commandOptions.id === thresholdEnumerable) {
-                      if (typeIs(threshold, 'array') && threshold.length > 0) {
+                      if (Array.isArray(threshold) && threshold.length > 0) {
                         threshold = undefined;
                       } else {
                         detailsOrThresholds = new Array();
@@ -14896,7 +14927,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           type: commandOptions.type,
                         });
                         threshold = detailsOrThresholds[0];
-                        if (typeIs(commandOptions.subItem, 'string')) {
+                        if (typeof commandOptions.subItem === 'string') {
                           menuPositionCurrent = userInputToProcess.split('.');
                         } else {
                           threshold = undefined;
@@ -14918,7 +14949,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                         threshold = undefined;
                       } else {
-                        if (!typeIs(detailsOrThresholds, 'array')) detailsOrThresholds = new Array();
+                        if (!Array.isArray(detailsOrThresholds)) detailsOrThresholds = new Array();
                         detailsOrThresholds.push({
                           isEnabled: true,
                           id: thresholdId,
@@ -14939,9 +14970,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                   case 'edit': {
                     const thresholdId = commandOptions.id,
-                      thresholdIndex = typeIs(thresholdId, 'string')
-                        ? thresholdsGetIndex(detailsOrThresholds, thresholdId)
-                        : -1;
+                      thresholdIndex =
+                        typeof thresholdId === 'string' ? thresholdsGetIndex(detailsOrThresholds, thresholdId) : -1;
                     if (thresholdIndex >= 0) {
                       threshold = detailsOrThresholds[thresholdIndex];
                       if (thresholdId !== thresholdEnumerable) backStepsForCacheDelete--;
@@ -14985,7 +15015,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             if (item === onTimeIntervalId) {
                               const intervalsIndividual = threshold[onTimeIntervalIndividualId];
                               threshold[item] = thresholdValue;
-                              if (typeIs(intervalsIndividual, 'map') && intervalsIndividual.size > 0) {
+                              if (intervalsIndividual instanceof Map && intervalsIndividual.size > 0) {
                                 const intervalIndividualKeys = Array.from(intervalsIndividual.keys());
                                 intervalIndividualKeys.forEach((valueId) => {
                                   if (intervalsIndividual.get(valueId) === thresholdValue) {
@@ -14995,12 +15025,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               }
                             } else if (isDefined(commandOptions.subItem)) {
                               const valueId = commandOptions.subItem,
-                                timeIntervalCommon = typeIs(threshold[onTimeIntervalId], 'number')
-                                  ? threshold[onTimeIntervalId]
-                                  : 0;
+                                timeIntervalCommon =
+                                  typeof threshold[onTimeIntervalId] === 'number' ? threshold[onTimeIntervalId] : 0;
                               backStepsForCacheDelete--;
                               if (thresholdValue !== timeIntervalCommon) {
-                                if (!typeIs(threshold[item], 'map')) threshold[item] = new Map();
+                                if (!(threshold[item] instanceof Map)) threshold[item] = new Map();
                                 threshold[item].set(valueId, thresholdValue);
                               } else if (threshold[item].has(valueId)) {
                                 threshold[item].delete(valueId);
@@ -15008,7 +15037,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             }
                             if (
                               threshold.hasOwnProperty(onTimeIntervalIndividualId) &&
-                              (!typeIs(threshold[onTimeIntervalIndividualId], 'map') ||
+                              (!(threshold[onTimeIntervalIndividualId] instanceof Map) ||
                                 threshold[onTimeIntervalIndividualId].size === 0)
                             ) {
                               delete threshold[onTimeIntervalIndividualId];
@@ -15051,10 +15080,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               if (commandOptions.state) {
                 let triggers = triggersGetStateTriggers(
                     user,
-                    typeIs(commandOptions.triggerState, 'string') ? commandOptions.triggerState : commandOptions.state,
+                    typeof commandOptions.triggerState === 'string'
+                      ? commandOptions.triggerState
+                      : commandOptions.state,
                   ),
                   backStepsForCacheDelete = -1;
-                if (!typeIs(triggers, 'array')) triggers = new Array();
+                if (!Array.isArray(triggers)) triggers = new Array();
                 switch (commandOptions.mode) {
                   case 'add': {
                     const triggerType = commandOptions.triggerType,
@@ -15110,7 +15141,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         conditions: undefined,
                       };
                     }
-                    if (trigger && typeIs(trigger, 'object')) {
+                    if (typeof trigger === 'object') {
                       backStepsForCacheDelete--;
                       trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
                       trigger.id = `${triggerIdPrefix}#${trigger.index}`;
@@ -15122,7 +15153,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   }
 
                   case 'edit': {
-                    if (typeIs(commandOptions.id, 'string')) {
+                    if (typeof commandOptions.id === 'string') {
                       const triggerId = commandOptions.id,
                         triggerIndex = thresholdsGetIndex(triggers, triggerId);
                       if (triggerIndex >= 0) {
@@ -15201,7 +15232,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               index = commandOptions.index,
                               subItem = commandOptions.subItem;
                             logs(`trigger = ${jsonStringify(trigger)}`, _l);
-                            if (typeIs(items, 'array') && typeIs(index, 'number') && subItem) {
+                            if (Array.isArray(items) && typeof index === 'number' && subItem) {
                               const length = items.length;
                               if (index < length) {
                                 backStepsForCacheDelete -= 2;
@@ -15275,7 +15306,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     triggers = undefined;
                   }
                 }
-                if (typeIs(triggers, 'array')) {
+                if (Array.isArray(triggers)) {
                   cachedValueSet(user, cachedTriggersDetails, triggers);
                   cachedAddToDelCachedOnBack(
                     user,
@@ -15356,20 +15387,20 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               currentTranslationValue;
             if (
               currentTranslationId &&
-              typeIs(commandOptions.item, 'number') &&
-              typeIs(commandOptions.index, 'number')
+              typeof commandOptions.item === 'number' &&
+              typeof commandOptions.index === 'number'
             ) {
               let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
               if (
                 destTranslation &&
-                typeOf(destTranslation) === 'object' &&
+                typeof destTranslation === 'object' &&
                 Object.keys(destTranslation).length > commandOptions.item
               ) {
                 currentTranslationId += `.destinations.${Object.keys(destTranslation)[commandOptions.item]}`;
                 destTranslation = destTranslation[Object.keys(destTranslation)[commandOptions.item]];
                 if (
                   destTranslation &&
-                  typeOf(destTranslation) === 'object' &&
+                  typeof destTranslation === 'object' &&
                   Object.keys(destTranslation).length > commandOptions.index
                 ) {
                   currentTranslationId += `.${Object.keys(destTranslation)[commandOptions.index]}`;
@@ -15518,7 +15549,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
               ),
               configItemMask = configOptions.getMaskDescription(commandOptions.item);
             if (
-              typeOf(configItem) === 'array' &&
+              Array.isArray(configItem) &&
               // @ts-ignore
               !isNaN(commandOptions.index)
             ) {
@@ -15574,7 +15605,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           }
 
           default: {
-            if (typeIs(commandOptions?.['valueOptions'], 'object')) {
+            if (typeof commandOptions?.['valueOptions'] === 'object') {
               const valueOptions = commandOptions?.valueOptions,
                 currentName = valueOptions?.valueName
                   ? valueOptions.valueName
@@ -15696,7 +15727,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemSetInterimValue: {
-        if (typeIs(commandOptions.valueOptions?.interimItemId, 'string')) {
+        if (typeof commandOptions.valueOptions?.interimItemId === 'string') {
           const interimItemId = commandOptions.valueOptions.interimItemId,
             interimCalculationMode = commandOptions.valueOptions?.interimCalculationMode;
           let interimValue;
@@ -15708,7 +15739,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 case 'time': {
                   switch (commandOptions.valueOptions?.mode) {
                     case timeInternalModeTime: {
-                      if (typeIs(commandOptions.valueOptions?.template, 'string')) {
+                      if (typeof commandOptions.valueOptions?.template === 'string') {
                         const template = commandOptions.valueOptions.template;
                         interimValue = timeInternalToString(
                           modificator + stringToTimeInternal(valueCurrent, template),
@@ -15730,9 +15761,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 }
 
                 default: {
-                  const valueBase = typeIs(valueCurrent, 'number') ? valueCurrent : 0,
+                  const valueBase = typeof valueCurrent === 'number' ? valueCurrent : 0,
                     valueBaseDecimals = countDecimals(valueBase),
-                    valueModifier = typeIs(commandOptions.value, 'number') ? commandOptions.value : 0,
+                    valueModifier = typeof commandOptions.value === 'number' ? commandOptions.value : 0,
                     valueModifierDecimals = countDecimals(valueModifier),
                     maxDecimals = valueBaseDecimals > valueModifierDecimals ? valueBaseDecimals : valueModifierDecimals;
                   interimValue = valueBase + valueModifier;
@@ -15750,10 +15781,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   interimValue = interimValue.filter((item) => item !== value);
                 } else {
                   interimValue.push(value);
-                  if (typeOf(value) === 'number') interimValue = interimValue.sort((a, b) => a - b);
+                  if (typeof value === 'number') interimValue = interimValue.sort((a, b) => a - b);
                 }
               } else if (
-                typeIs(commandOptions.valueOptions?.resetValue, 'boolean') &&
+                typeof commandOptions.valueOptions?.resetValue === 'boolean' &&
                 commandOptions.valueOptions?.resetValue &&
                 isDefined(commandOptions.valueOptions?.valuesDefault)
               ) {
@@ -15787,14 +15818,14 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 commandOptions.dataTypeExtraId,
               ),
               currentDataItem = currentEnumerationsList[commandOptions.item];
-            if (typeIs(commandOptions.attribute, 'string')) {
+            if (typeof commandOptions.attribute === 'string') {
               if (
                 enumerationsDeviceStatesTypes.includes(commandOptions.dataType) &&
                 enumerationsDeviceButtonsAccessLevelAttrs.includes(commandOptions.attribute)
               ) {
                 currentDataItem[commandOptions.attribute] = commandOptions.value;
               } else {
-                switch (typeOf(currentDataItem[commandOptions.attribute])) {
+                switch (typeof currentDataItem[commandOptions.attribute]) {
                   case 'boolean': {
                     if (!isDefined(commandOptions.value)) {
                       currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
@@ -15916,7 +15947,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 backStepsForCacheDelete = -1;
               switch (mode) {
                 case 'save': {
-                  if (commandOptions.function && commandOptions.destination && typeIs(triggers, 'array')) {
+                  if (commandOptions.function && commandOptions.destination && Array.isArray(triggers)) {
                     triggersTimeRangeStartTimesUpdate(user, state);
                     alertsManage(user, state, commandOptions.function, commandOptions.destination, triggers, true);
                     cachedValueDelete(user, cachedTriggersDetails);
@@ -15928,9 +15959,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                 case 'edit': {
                   if (
-                    typeIs(commandOptions.item, 'string') &&
+                    typeof commandOptions.item === 'string' &&
                     commandOptions.item.length &&
-                    typeIs(commandOptions.id, 'string')
+                    typeof commandOptions.id === 'string'
                   ) {
                     const triggerAttributeId = commandOptions.item,
                       triggerIndex = thresholdsGetIndex(triggers, commandOptions.id);
@@ -15959,7 +15990,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           trigger[triggerAttributeId] = commandOptions.value;
                           trigger.targetFunction = commandOptions.function;
                           trigger.targetDestination = commandOptions.destination;
-                          if (typeIs(commandOptions.currentIndex, 'string'))
+                          if (typeof commandOptions.currentIndex === 'string')
                             menuPositionCurrent = commandOptions.currentIndex.split('.');
                           menuPositionCurrent.splice(-1, 1);
                           break;
@@ -15973,7 +16004,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
                         case 'users': {
                           const users = commandOptions.values;
-                          if (!typeIs(users, 'array') || users.length === 0) {
+                          if (!Array.isArray(users) || users.length === 0) {
                             delete trigger[triggerAttributeId];
                           } else {
                             trigger[triggerAttributeId] = [...users];
@@ -15997,7 +16028,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         }
 
                         case triggersTimeRangeId: {
-                          if (!typeIs(trigger?.[triggerAttributeId], 'object')) trigger[triggerAttributeId] = {};
+                          if (typeof trigger?.[triggerAttributeId] !== 'object') trigger[triggerAttributeId] = {};
                           const triggerTimeRange = trigger[triggerAttributeId],
                             triggerTimeRangeAttributeId = commandOptions.subItem;
                           backStepsForCacheDelete--;
@@ -16018,8 +16049,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                             }
                             case triggersTimeRangeHoursWithMinutes:
                             case triggersTimeRangeMonthsWithDays: {
-                              if (typeIs(commandOptions.index, 'number')) {
-                                if (typeIs(commandOptions.subIndex, 'number')) {
+                              if (typeof commandOptions.index === 'number') {
+                                if (typeof commandOptions.subIndex === 'number') {
                                   let currentTimeRangeDelta = new Array(new Array(), new Array());
                                   const timeTemplate = commandOptions.timeTemplate;
                                   if (cachedValueExists(user, cachedTriggersTimeRangeDelta)) {
@@ -16033,7 +16064,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                   }
                                   if (
                                     currentTimeRangeDelta &&
-                                    typeIs(timeTemplate, 'string') &&
+                                    typeof timeTemplate === 'string' &&
                                     timeTemplate.length === 2
                                   ) {
                                     const multiplier = timeInternalPerUnitMultipliers[timeTemplate[0]][timeTemplate[1]];
@@ -16049,11 +16080,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                     );
                                     triggers = undefined;
                                   }
-                                } else if (typeOf(commandOptions.value) === 'array') {
-                                  const subItemWasBlank = !typeIs(
-                                    triggerTimeRange[triggerTimeRangeAttributeId],
-                                    'array',
-                                  );
+                                } else if (Array.isArray(commandOptions.value)) {
+                                  const subItemWasBlank = !Array.isArray(triggerTimeRange[triggerTimeRangeAttributeId]);
                                   backStepsForCacheDelete--;
                                   cachedValueDelete(user, cachedTriggersTimeRangeDelta);
                                   if (subItemWasBlank) triggerTimeRange[triggerTimeRangeAttributeId] = [];
@@ -16086,7 +16114,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               break;
                             }
                           }
-                          if (typeIs(triggers, 'array') && Object.keys(triggerTimeRange).length === 0) {
+                          if (Array.isArray(triggers) && Object.keys(triggerTimeRange).length === 0) {
                             delete trigger[triggerAttributeId];
                           } else {
                             triggerTimeRange[triggerTimeRangeStartTimes] = triggerTimeRangeGenerateStartTimes(
@@ -16099,12 +16127,12 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         case triggersTargetsId:
                         case triggersConditionsId: {
                           logs(`trigger = ${jsonStringify(trigger)}`, _l);
-                          const items = typeIs(trigger[triggerAttributeId], 'array') ? trigger[triggerAttributeId] : [],
+                          const items = Array.isArray(trigger[triggerAttributeId]) ? trigger[triggerAttributeId] : [],
                             length = items.length,
                             index = commandOptions.index,
                             subItem = commandOptions.subItem;
-                          if (typeIs(index, 'number') && typeIs(subItem, 'string') && index <= length) {
-                            if (!typeIs(trigger[triggerAttributeId], 'array')) trigger[triggerAttributeId] = items;
+                          if (typeof index === 'number' && typeof subItem === 'string' && index <= length) {
+                            if (!Array.isArray(trigger[triggerAttributeId])) trigger[triggerAttributeId] = items;
                             backStepsForCacheDelete -= 2;
                             const subMode = index === length ? 'add' : 'edit';
                             if (index === length) {
@@ -16133,11 +16161,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                 if (!itemData.isEnabled) {
                                   const {state, value, operator} = itemData;
                                   itemData.isEnabled =
-                                    typeIs(state, 'string') &&
+                                    typeof state === 'string' &&
                                     state !== '' &&
                                     isDefined(value) &&
                                     (triggerAttributeId === triggersTargetsId ||
-                                      (typeIs(operator, 'string') && operator !== ''));
+                                      (typeof operator === 'string' && operator !== ''));
                                 } else {
                                   itemData.isEnabled = false;
                                 }
@@ -16188,7 +16216,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   break;
                 }
               }
-              if (typeIs(triggers, 'array')) {
+              if (Array.isArray(triggers)) {
                 cachedValueSet(user, cachedTriggersDetails, triggers);
                 cachedAddToDelCachedOnBack(
                   user,
@@ -16303,9 +16331,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                   (locales, error) => {
                     if (
                       locales &&
-                      typeIs(locales, 'object') &&
+                      typeof locales === 'object' &&
                       locales.hasOwnProperty(currentLanguageId) &&
-                      typeIs(locales[currentLanguageId], 'object')
+                      typeof locales[currentLanguageId] === 'object'
                     ) {
                       const isTranslationFileOk = translationsCheckAndCacheUploadedFile(
                         user,
@@ -16411,9 +16439,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeAlertSubscribed: {
             if (
-              typeIs(commandOptions.state, 'string') &&
+              typeof commandOptions.state === 'string' &&
               commandOptions.state.length &&
-              typeIs(commandOptions.id, 'string')
+              typeof commandOptions.id === 'string'
             ) {
               const detailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
                 thresholdIndex = thresholdsGetIndex(detailsOrThresholds, commandOptions.id);
@@ -16434,27 +16462,30 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             if (commandOptions.state) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state),
                 backStepsForCacheDelete = 0;
-              if (typeIs(commandOptions.id, 'string')) {
+              if (typeof commandOptions.id === 'string') {
                 const triggerIndex = thresholdsGetIndex(triggers, commandOptions.id);
                 if (triggerIndex >= 0) {
                   menuPositionCurrent.splice(-2, 2);
                   backStepsForCacheDelete--;
                   const triggerAttributeId = commandOptions.item;
-                  if (typeIs(triggerAttributeId, 'string')) {
+                  if (typeof triggerAttributeId === 'string') {
                     const trigger = triggers[triggerIndex];
                     switch (triggerAttributeId) {
                       case triggersTimeRangeId: {
-                        if (typeIs(trigger[triggerAttributeId], 'object')) {
+                        if (
+                          typeof trigger[triggerAttributeId] === 'object' &&
+                          !Array.isArray(trigger[triggerAttributeId])
+                        ) {
                           const triggerTimeRange = trigger[triggerAttributeId],
                             triggerTimeRangeAttributeId = commandOptions.subItem,
                             triggerTimeRangeAttribute = triggerTimeRange[triggerTimeRangeAttributeId];
                           delete triggerTimeRange[triggerTimeRangeStartTimes];
-                          if (typeIs(triggerTimeRangeAttribute, 'array')) {
+                          if (Array.isArray(triggerTimeRangeAttribute)) {
                             const valueIndex = commandOptions.index;
                             switch (triggerTimeRangeAttributeId) {
                               case triggersTimeRangeHoursWithMinutes:
                               case triggersTimeRangeMonthsWithDays: {
-                                if (typeIs(valueIndex, 'number') && valueIndex < triggerTimeRangeAttribute.length) {
+                                if (typeof valueIndex === 'number' && valueIndex < triggerTimeRangeAttribute.length) {
                                   triggerTimeRangeAttribute.splice(valueIndex, 1);
                                   backStepsForCacheDelete -= 3;
                                   if (triggerTimeRangeAttribute.length === 0) {
@@ -16481,7 +16512,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               }
                             }
                           }
-                          if (typeIs(triggers, 'array') && Object.keys(triggerTimeRange).length === 0) {
+                          if (Array.isArray(triggers) && Object.keys(triggerTimeRange).length === 0) {
                             delete trigger[triggerAttributeId];
                           } else {
                             triggerTimeRange[triggerTimeRangeStartTimes] = triggerTimeRangeGenerateStartTimes(
@@ -16493,10 +16524,10 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       }
                       case triggersTargetsId:
                       case triggersConditionsId: {
-                        const items = typeIs(trigger[triggerAttributeId], 'array') ? trigger[triggerAttributeId] : [],
+                        const items = Array.isArray(trigger[triggerAttributeId]) ? trigger[triggerAttributeId] : [],
                           length = items.length,
                           index = commandOptions.index;
-                        if (typeIs(index, 'number') && index < length) {
+                        if (typeof index === 'number' && index < length) {
                           items.splice(index, 1);
                         }
                         if (items.length === 0) {
@@ -16537,21 +16568,21 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             let currentTranslationId;
             if (
               commandOptions.translationType &&
-              typeIs(commandOptions.item, 'number') &&
-              typeIs(commandOptions.index, 'number')
+              typeof commandOptions.item === 'number' &&
+              typeof commandOptions.index === 'number'
             ) {
               currentTranslationId = commandOptions.translationType;
               let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
               if (
                 destTranslation &&
-                typeOf(destTranslation) === 'object' &&
+                typeof destTranslation === 'object' &&
                 Object.keys(destTranslation).length > commandOptions.item
               ) {
                 currentTranslationId += `.destinations.${Object.keys(destTranslation)[commandOptions.item]}`;
                 destTranslation = destTranslation[Object.keys(destTranslation)[commandOptions.item]];
                 if (
                   destTranslation &&
-                  typeOf(destTranslation) === 'object' &&
+                  typeof destTranslation === 'object' &&
                   Object.keys(destTranslation).length > commandOptions.index
                 ) {
                   currentTranslationId += `.${Object.keys(destTranslation)[commandOptions.index]}`;
@@ -16706,8 +16737,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
               case 'states':
                 if (
-                  typeIs(queryParams.queryStates, 'array') &&
-                  typeIs(queryParams.queryPossibleStates?.[commandOptions.item]?.stateId, 'string')
+                  Array.isArray(queryParams.queryStates) &&
+                  typeof queryParams.queryPossibleStates?.[commandOptions.item]?.stateId === 'string'
                 ) {
                   if (queryParams.queryStates.includes(queryParams.queryPossibleStates[commandOptions.item]?.stateId)) {
                     delete queryParams.queryStates[
@@ -16829,7 +16860,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     filterEnum = filterDestination;
                     break;
                 }
-                if (typeIs(alertDetailsSource, 'array') && alertDetailsSource.length > 0) {
+                if (Array.isArray(alertDetailsSource) && alertDetailsSource.length > 0) {
                   $(`${filterId}${filterEnum}`).each((stateId) => {
                     if (stateId !== alertStateId) {
                       let targetDestinationId = alertDestinationId,
@@ -16857,8 +16888,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                 .filter((enumId) => currentEnums[enumId].isEnabled)
                                 .every((enumId) => {
                                   const enumFullId = [prefixEnums, enumId, ''].join('.'),
-                                    enumIndex = currentStateEnumIds.findIndex(
-                                      (enumId) => enumId.startsWith(enumFullId),
+                                    enumIndex = currentStateEnumIds.findIndex((enumId) =>
+                                      enumId.startsWith(enumFullId),
                                     );
                                   if (enumIndex >= 0) {
                                     const foundId = currentStateEnumIds[enumIndex].replace(enumFullId, '');
@@ -16885,7 +16916,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           if (
                             isAlertDetailsDifferent &&
                             (propagateMode === 'alertPropagateOverwrite' ||
-                              !typeIs(alertDetailsCurrent, 'array') ||
+                              !Array.isArray(alertDetailsCurrent) ||
                               alertDetailsCurrent?.length === 0)
                           ) {
                             alertsManage(user, stateId, targetFunctionId, targetDestinationId, alertDetailsSource);
@@ -16941,15 +16972,15 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       translationsList[newLanguageId] = {};
                       if (
                         locales &&
-                        typeIs(locales, 'object') &&
+                        typeof locales === 'object' &&
                         locales.hasOwnProperty(newLanguageId) &&
-                        typeIs(locales[newLanguageId], 'object')
+                        typeof locales[newLanguageId] === 'object'
                       ) {
                         if (translationsCheckAndCacheUploadedFile(user, '', '', '', locales[newLanguageId])) {
                           const newTranslation = locales[newLanguageId];
                           if (
                             newTranslation?.hasOwnProperty(idTranslation) &&
-                            typeIs(newTranslation[idTranslation], 'object') &&
+                            typeof newTranslation[idTranslation] === 'object' &&
                             Math.abs(translationsCompareVersion(newTranslation['version'])) < 10
                           ) {
                             translationsList[newLanguageId] = newTranslation[idTranslation];
@@ -17057,7 +17088,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               reportStatesStructure[currentDestId][currentFuncId][currentDeviceObject];
                             currentStateObjects.forEach((currentStateObject) => {
                               const currentLine = objectDeepClone(templateLine);
-                              if (!typeIs(currentUnit, 'string'))
+                              if (typeof currentUnit !== 'string')
                                 currentUnit = currentStateObject?.common?.unit ? currentStateObject.common.unit : '';
                               currentLine.unit = currentUnit;
                               currentLine.id = currentStateObject._id;
@@ -17212,7 +17243,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             if (currentEnumerationsList) {
               if (
                 currentEnumerationsList[commandOptions.item] &&
-                typeIs(currentEnumerationsList[commandOptions.item][commandOptions.attribute], 'string')
+                typeof currentEnumerationsList[commandOptions.item][commandOptions.attribute] === 'string'
               ) {
                 currentEnumerationsList[commandOptions.item][commandOptions.attribute] = '';
               }
@@ -17228,7 +17259,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 item = commandOptions.item;
               let threshold = detailsOrThresholds,
                 backStepsForCacheDelete = -2;
-              if (typeIs(commandOptions.id, 'string')) {
+              if (typeof commandOptions.id === 'string') {
                 const thresholdIndex = thresholdsGetIndex(detailsOrThresholds, commandOptions.id);
                 if (thresholdIndex >= 0) {
                   threshold = detailsOrThresholds[thresholdIndex];
@@ -17262,9 +17293,9 @@ async function commandsUserInputProcess(user, userInputToProcess) {
 
           case dataTypeTrigger: {
             if (
-              typeIs(commandOptions.state, 'string') &&
+              typeof commandOptions.state === 'string' &&
               commandOptions.state.length &&
-              typeIs(commandOptions.id, 'string')
+              typeof commandOptions.id === 'string'
             ) {
               let triggers = triggersGetStateTriggers(user, commandOptions.state);
               const triggerIndex = thresholdsGetIndex(triggers, commandOptions.id),
@@ -17484,7 +17515,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         break;
       }
     }
-    if (typeIs(menuPositionCurrent, 'array')) menuMenuDraw(user, menuPositionCurrent);
+    if (Array.isArray(menuPositionCurrent)) menuMenuDraw(user, menuPositionCurrent);
   }
 }
 
@@ -17651,7 +17682,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
       telegramObject.chatId = user.chatId;
       if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       if ((createNewMessage && !isMenuOn) || clearBefore || isBotMessageOldOrNotExists) {
-        if (typeIs(messageObject.buttons, 'array')) {
+        if (Array.isArray(messageObject.buttons)) {
           telegramObject.reply_markup = {
             inline_keyboard: messageObject.buttons,
           };
@@ -17665,7 +17696,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
             parse_mode: 'HTML',
           },
         };
-        if (typeIs(messageObject.buttons, 'array')) {
+        if (Array.isArray(messageObject.buttons)) {
           telegramObject[telegramCommandEditMessage].options.reply_markup = {
             inline_keyboard: messageObject.buttons,
           };
@@ -17713,7 +17744,7 @@ function telegramObjectPushToQueue(user, telegramObject) {
     userMessagesQueue = [];
   }
   const isReady = userMessagesQueue.length === 0;
-  if (typeIs(telegramObject, 'array') && telegramObject.length && typeIs(telegramObject[0], 'array')) {
+  if (Array.isArray(telegramObject) && telegramObject.length && Array.isArray(telegramObject[0])) {
     telegramObject.forEach((telegramSubObject) => userMessagesQueue.push(telegramSubObject));
   } else {
     userMessagesQueue.push(telegramObject);
@@ -17755,7 +17786,7 @@ function telegramQueueProcess(user, messageId) {
       telegramError;
     const currentTS = Date.now(),
       resultObject = telegramSendToAdapterResponse(result, telegramObject);
-    logs(`SendToTelegram: result (${typeOf(result)}) = ${jsonStringify(result, 1)}`, _l);
+    logs(`SendToTelegram: result (${typeToText(result)}) = ${jsonStringify(result, 1)}`, _l);
     logs(`Converted result: ${jsonStringify(resultObject, 1)}`, _l);
     if (!resultObject.success) {
       logs(`check = waitForLog = ${waitForLog}, total = ${waitForLog && !resultObject.error.level}`, _l);
@@ -17775,7 +17806,7 @@ function telegramQueueProcess(user, messageId) {
             }
           } else if (user.chatId < 0 && telegramLastErrors.has(0)) {
             const groupChatErrors = telegramLastErrors.get(0);
-            if (typeIs(groupChatErrors, 'array') && groupChatErrors.length) {
+            if (Array.isArray(groupChatErrors) && groupChatErrors.length) {
               const errorIndex = groupChatErrors.findIndex((error) => error.ts >= sendToTS && error.ts < currentTS);
               if (errorIndex >= 0) {
                 telegramError = groupChatErrors[errorIndex];
@@ -17901,7 +17932,7 @@ function telegramQueueProcess(user, messageId) {
   if (telegramIsConnected) {
     const userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
     if (userMessagesQueue?.length) {
-      if (!typeIs(messageId, 'number')) {
+      if (typeof messageId !== 'number') {
         const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
           cachedBotSendMessageId,
@@ -17931,10 +17962,10 @@ function telegramQueueProcess(user, messageId) {
           }
           telegramObjects = currentPos >= 0 ? objectDeepClone(userMessagesQueue[currentPos]) : undefined;
         }
-        if (typeIs(telegramObjects, 'object')) telegramObjects = [telegramObjects];
+        if (typeof telegramObjects === 'object' && !Array.isArray(telegramObjects)) telegramObjects = [telegramObjects];
         if (telegramObjects?.[0]?.[telegramCommandDeleteMessage]?.isBotMessage) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
-          if (!typeIs(telegramObjects[0][telegramCommandDeleteMessage].options.message_id, 'number')) {
+          if (typeof telegramObjects[0][telegramCommandDeleteMessage].options.message_id !== 'number') {
             warns(`No message for Delete! Going to skip command ${jsonStringify(telegramObjects[0])}.`);
             telegramObjects.shift();
           }
@@ -17989,7 +18020,7 @@ function telegramMessageClearCurrent(
     timeDelta48,
   );
   let messageId;
-  if (typeIs(messageIdToDelete, 'number')) {
+  if (typeof messageIdToDelete === 'number') {
     messageId = messageIdToDelete;
   } else if (isUserMessageToDelete) {
     messageId = cachedValueGet(user, cachedMessageId);
@@ -18030,14 +18061,14 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
         show_alert: showAlert,
       },
     };
-    if (text && typeIs(text, 'string') && text.length) {
+    if (text && typeof text === 'string' && text.length) {
       telegramObject.answerCallbackQuery.text = text;
     }
     /** Can send pop-up only in private chat **/
     if (user.userId == user.chatId) {
       if (user.userId) telegramObject.user = telegramGetUserIdForTelegram(user);
       sendTo(telegramAdapter, telegramObject, (result) => {
-        logs(`SendToTelegram: pop-up result (${typeOf(result)}) = ${jsonStringify(result, 1)}`, _l);
+        logs(`SendToTelegram: pop-up result (${typeToText(result)}) = ${jsonStringify(result, 1)}`, _l);
         logs(`Converted result: ${jsonStringify(telegramSendToAdapterResponse(result, telegramObject), 1)}`, _l);
         if (!result) {
           warns(
@@ -18104,10 +18135,9 @@ function telegramSendToAdapterResponse(response, telegramObject) {
       result.chatId = telegramObject[result.operation]?.options?.chat_id;
     }
   }
-  if (typeIs(response, 'number')) {
+  if (typeof response === 'number') {
     result.success = response !== 0;
   } else if (result.chatId) {
-    // @ts-ignore
     response?.forEach((element) => {
       if (!result.success) {
         try {
@@ -18163,6 +18193,7 @@ function telegramGenerateUserObjectFromId(userId) {
   if (
     cachedObject &&
     typeof cachedObject === 'object' &&
+    !Array.isArray(cachedObject) &&
     (cachedObject.hasOwnProperty('userName') || cachedObject.hasOwnProperty('firstName'))
   ) {
     user = {...user, ...cachedObject};
@@ -18179,7 +18210,7 @@ function telegramGenerateUserObjectFromId(userId) {
  * @param {any} logRecord
  */
 function telegramActionOnLogError(logRecord) {
-  if (typeIs(logRecord, 'object') && logRecord.hasOwnProperty('from') && logRecord.from === telegramAdapter) {
+  if (logRecord?.from === telegramAdapter) {
     logs(`errorlog : ${jsonStringify(logRecord, 1)}`, _l);
     try {
       const telegramErrorParsed = telegramErrorParseRegExp.exec(logRecord.message);
@@ -18225,45 +18256,41 @@ function telegramActionOnUserRequestRaw(obj) {
   } catch (err) {
     warns(`userRequest: JSON parse error: ${jsonStringify(err)}`);
   }
-  if (typeIs(userRequest, 'object') && userRequest.hasOwnProperty('from') && userRequest.from.hasOwnProperty('id')) {
-    const userId = userRequest.from.id,
+  if (userRequest?.['from']?.hasOwnProperty('id')) {
+    const userId = userRequest['from']['id'],
       users = usersInMenu.getUsers();
     if (users.includes(userId)) {
       let messageId, chatId, command;
-      if (userRequest.hasOwnProperty('message_id')) {
-        messageId = userRequest.message_id;
-      } else if (userRequest.hasOwnProperty('message') && userRequest.message.hasOwnProperty('message_id')) {
-        messageId = userRequest.message.message_id;
+      if (userRequest?.hasOwnProperty('message_id')) {
+        messageId = userRequest['message_id'];
+      } else if (userRequest?.['message']?.hasOwnProperty('message_id')) {
+        messageId = userRequest['message']['message_id'];
       }
-      if (typeIs(messageId, 'number')) {
-        if (userRequest.hasOwnProperty('chat') && userRequest.chat.hasOwnProperty('id')) {
-          chatId = userRequest.chat.id;
-        } else if (
-          userRequest.hasOwnProperty('message') &&
-          userRequest.message.hasOwnProperty('chat') &&
-          userRequest.message.chat.hasOwnProperty('id')
-        ) {
-          chatId = userRequest.message.chat.id;
+      if (typeof messageId === 'number') {
+        if (userRequest?.['chat']?.hasOwnProperty('id')) {
+          chatId = userRequest['chat']['id'];
+        } else if (userRequest?.['message']?.['chat']?.hasOwnProperty('id')) {
+          chatId = userRequest['message']['chat']['id'];
         }
-        if (typeIs(chatId, 'number')) {
+        if (typeof chatId === 'number') {
           if (userRequest.hasOwnProperty('text')) {
-            command = userRequest.text;
+            command = userRequest['text'];
           } else if (userRequest.hasOwnProperty('data')) {
-            command = userRequest.data;
+            command = userRequest['data'];
           }
           let user = {};
           if (isDefined(command) || userRequest.hasOwnProperty('document')) {
             user = {
-              userId: userRequest.from.id,
+              userId: userRequest?.['from']?.['id'],
               chatId: chatId,
-              firstName: userRequest.from.first_name,
-              lastName: userRequest.from.last_name,
-              userName: userRequest.from.username,
+              firstName: userRequest?.['from']?.['first_name'],
+              lastName: userRequest?.['from']?.['last_name'],
+              userName: userRequest?.['from']?.['username'],
             };
             if (user.userId == user.chatId) cachedValueSet(user, cachedUser, user);
           }
           if (isDefined(command)) {
-            if (userRequest.data) {
+            if (userRequest?.['data']) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
               if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
                 warns(
@@ -18288,8 +18315,8 @@ function telegramActionOnUserRequestRaw(obj) {
               if (currentCommand === cmdItemUpload) {
                 commandOptionsCache.set(user, commandIndex, commandIndex, cmdItemUpload, {
                   ...commandOptions,
-                  fileName: userRequest.document.file_name,
-                  fileSize: userRequest.document.file_size,
+                  fileName: userRequest?.['document']?.['file_name'],
+                  fileSize: userRequest?.['document']?.['file_size'],
                 });
                 on({id: telegramRequestPathFile, change: 'any'}, (obj) => {
                   unsubscribe(telegramRequestPathFile);
@@ -18302,9 +18329,9 @@ function telegramActionOnUserRequestRaw(obj) {
       }
     } else {
       warns(
-        `Access denied. User ${jsonStringify(userRequest.from.first_name)} ${jsonStringify(
-          userRequest.from.last_name,
-        )} (${jsonStringify(userRequest.from.username)}) with id = ${userId} not in the list!`,
+        `Access denied. User ${jsonStringify(userRequest?.['from']?.['first_name'])} ${jsonStringify(
+          userRequest?.['from']?.['last_name'],
+        )} (${jsonStringify(userRequest?.['from']?.['username'])}) with id = ${userId} not in the list!`,
       );
     }
   }
@@ -18322,13 +18349,7 @@ function telegramActionOnSendToUserRaw(obj) {
   } catch (err) {
     warns(`sendToUser: JSON parse error: ${jsonStringify(err)}`);
   }
-  if (
-    typeIs(botMessage, 'object') &&
-    botMessage.hasOwnProperty('message_id') &&
-    botMessage.message_id &&
-    botMessage.hasOwnProperty('chat') &&
-    botMessage.chat.hasOwnProperty('type')
-  ) {
+  if (botMessage?.['message_id'] && typeof botMessage?.['chat']?.['type'] == 'string') {
     let user = {};
     const messageId = botMessage.message_id;
     if (botMessage.chat.type === 'private') {
@@ -18348,7 +18369,7 @@ function telegramActionOnSendToUserRaw(obj) {
     if (
       botMessage.hasOwnProperty('reply_markup') &&
       botMessage.reply_markup.hasOwnProperty('inline_keyboard') &&
-      typeIs(botMessage.reply_markup.inline_keyboard, 'array')
+      Array.isArray(botMessage.reply_markup.inline_keyboard)
     ) {
       const inline_keyboard = botMessage.reply_markup.inline_keyboard;
       isBotMessage =
@@ -18395,8 +18416,8 @@ function telegramActionOnSendToUserRaw(obj) {
  * @param {object} connected - The special object, if called from subscription on changes.
  */
 function telegramActionOnConnected(connected) {
-  if (typeIs(connected, 'object') && connected.hasOwnProperty('state') && connected.state.hasOwnProperty('val')) {
-    telegramIsConnected = connected.state.val;
+  if (connected?.['state']?.hasOwnProperty('val')) {
+    telegramIsConnected = connected['state']['val'];
   } else {
     telegramIsConnected = false;
   }
@@ -18516,7 +18537,7 @@ function isDefined(variable) {
  * @param {*} value - The input value, to return or check a type of it.
  * @returns {string} The result is a text string represent a type of input value.
  */
-function typeOf(value) {
+function typeToText(value) {
   let result;
   if (Array.isArray(value) || value instanceof Array) {
     result = 'array';
@@ -18534,22 +18555,6 @@ function typeOf(value) {
   return result;
 }
 
-
-/**
- * This function is used to compare type of input `value` with `type`.
- * @param {*} value - The input value, to return or check a type of it.
- * @param {string} type - The text code of possible JavaScript type, to compare with.
- * @returns {boolean} The result is a boolean value.
- */
-function typeIs(value, type) {
-  if (typeOf(type === 'string') && type.length > 0) {
-    return typeOf(value) === type;
-  } else {
-    return false;
-  }
-}
-
-
 /**
  * This function is used to convert string value to appropriate type.
  * @param {string} value - The string value to convert.
@@ -18558,7 +18563,7 @@ function typeIs(value, type) {
  */
 function getValueFromStringByType(value, type) {
   let result;
-  if (typeIs(value, 'string')) {
+  if (typeof value === 'string') {
     if (type === 'boolean') {
       result = value === 'true';
     } else if (type === 'number') {
@@ -18600,7 +18605,7 @@ function zeroPad(value, places) {
  * the function returns 0.
  */
 function countDecimals(value) {
-  if (typeIs(value, 'number')) return value % 1 ? value.toString().split('.')[1].length : 0;
+  if (typeof value === 'number') return value % 1 ? value.toString().split('.')[1].length : 0;
   return 0;
 }
 
@@ -18623,7 +18628,7 @@ function getObjectEnriched(id, enumId) {
       if (currentObjectCommon.hasOwnProperty('alias')) {
         const currentObjectAlias = currentObjectCommon.alias;
         let originObjectId = '';
-        if (currentObjectAlias.hasOwnProperty('id') && typeIs(currentObjectAlias.id, 'string')) {
+        if (currentObjectAlias.hasOwnProperty('id') && typeof currentObjectAlias.id === 'string') {
           originObjectId = currentObjectAlias.id;
         } else if (currentObjectAlias.id.hasOwnProperty('write')) {
           originObjectId = currentObjectAlias.write;
@@ -18687,14 +18692,14 @@ function objectInfoDeplete(object) {
  */
 function checkNumberStateValue(stateId, value, stateObject) {
   const currentObject = stateObject || getObjectEnriched(stateId);
-  if (typeIs(value, 'number') && currentObject?.common) {
+  if (typeof value === 'number' && currentObject?.common) {
     const currentObjectCommon = currentObject.common,
       currentType = currentObjectCommon['type'];
     if (currentType === 'number') {
       return (
-        (!typeIs(currentObjectCommon.min, 'number') || value >= Number(currentObjectCommon.min)) &&
-        (!typeIs(currentObjectCommon.max, 'number') || value <= Number(currentObjectCommon.max)) &&
-        (!typeIs(currentObjectCommon.step, 'number') || value % Number(currentObjectCommon.step) === 0)
+        (typeof currentObjectCommon.min !== 'number' || value >= Number(currentObjectCommon.min)) &&
+        (typeof currentObjectCommon.max !== 'number' || value <= Number(currentObjectCommon.max)) &&
+        (typeof currentObjectCommon.step !== 'number' || value % Number(currentObjectCommon.step) === 0)
       );
     }
   }
@@ -18730,7 +18735,7 @@ function objectDeepClone(source, filter = {}) {
   if (source instanceof Map) {
     const clonedMap = new Map();
     source.forEach((value, key) => {
-      if (!filter.hasOwnProperty(key) || typeof filter[key] === 'object') {
+      if (!filter.hasOwnProperty(key) || (typeof filter[key] === 'object' && !Array.isArray(filter[key]))) {
         clonedMap.set(key, objectDeepClone(value, filter?.[key]));
       }
     });
@@ -18740,7 +18745,10 @@ function objectDeepClone(source, filter = {}) {
   // If the object is a regular object, clone each property in the object
   const clonedObject = {};
   for (const key in source) {
-    if (source.hasOwnProperty(key) && (!filter.hasOwnProperty(key) || typeof filter[key] === 'object')) {
+    if (
+      source.hasOwnProperty(key) &&
+      (!filter.hasOwnProperty(key) || (typeof filter[key] === 'object' && !Array.isArray(filter[key])))
+    ) {
       clonedObject[key] = objectDeepClone(source[key], filter?.[key]);
     }
   }
@@ -18785,12 +18793,12 @@ function objectAssignToTemplateLevelOne(template, inputObject, level = 0) {
 function objectKeysSort(inputObject) {
   let sortedObject = {};
   // Check for type of inputObject and sort by alphabetical order
-  if (typeOf(inputObject) === 'object') {
+  if (typeof inputObject === 'object' && !Array.isArray(inputObject)) {
     const keys = Object.keys(inputObject).sort((a, b) => a.localeCompare(b));
     // Iterate through each key and copy values to sortedObject
     keys.forEach((id) => {
       // Recursive call of function when encountering object value
-      if (typeof inputObject[id] === 'object') {
+      if (typeof inputObject[id] === 'object' && !Array.isArray(inputObject[id])) {
         sortedObject[id] = objectKeysSort(inputObject[id]);
       } else {
         sortedObject[id] = inputObject[id];
@@ -18809,7 +18817,7 @@ function objectKeysSort(inputObject) {
  */
 function getStringLength(string) {
   let count = 0;
-  if (typeIs(string, 'string') && string) {
+  if (typeof string === 'string' && string) {
     count = string.length;
     for (const match of string.matchAll(checkEmojiRegex)) {
       const emoji = match[0];
