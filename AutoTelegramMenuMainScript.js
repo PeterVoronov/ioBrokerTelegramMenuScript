@@ -6477,6 +6477,7 @@ function enumerationsTestValueConversionCode(user, functionId, stateToTestOnShor
       const currentStateObject = getObject(stateId, '*');
       const currentItemEnums = currentStateObject['enumIds'];
       if (
+        currentItemEnums && typeOf(currentItemEnums, 'array') &&
         destinationsListIds.filter((itemId) =>
           currentItemEnums.includes(`${prefixEnums}.${destinationsList[itemId].enum}.${itemId}`),
         ).length > 0
@@ -16873,7 +16874,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                 .every((enumId) => {
                                   const enumFullId = [prefixEnums, enumId, ''].join('.'),
                                     enumIndex = currentStateEnumIds.findIndex(
-                                      (enumId) => enumId.indexOf(enumFullId) === 0,
+                                      (enumId) => enumId.startsWith(enumFullId),
                                     );
                                   if (enumIndex >= 0) {
                                     const foundId = currentStateEnumIds[enumIndex].replace(enumFullId, '');
