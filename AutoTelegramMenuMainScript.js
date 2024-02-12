@@ -6204,8 +6204,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
             const currentState = existsState(stateIdFull) ? getState(stateIdFull) : undefined,
               stateValue =
                 typeof currentState === 'object'
-                  ?
-                    enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
+                  ? enumerationsEvaluateValueConversionCode(user, currentState.val, convertValueCode)
                   : undefined;
             const currentOptions = {
               function: functionId,
@@ -7892,8 +7891,7 @@ function alertsHistoryClearOld(user, alertsMessages) {
   oldestDate.setHours(oldestDate.getHours() - configOptions.getOption(cfgAlertMessagesHistoryDepth, user));
   const oldestDateNumber = oldestDate.valueOf();
   alertsMessages = Array.isArray(alertsMessages)
-    ?
-      alertsMessages.filter((alertsMessage) => alertsMessage.date > oldestDateNumber)
+    ? alertsMessages.filter((alertsMessage) => alertsMessage.date > oldestDateNumber)
     : [];
   if (noInput) alertsStoreMessagesToCache(user, alertsMessages);
   return alertsMessages;
@@ -9020,7 +9018,7 @@ function triggersGetEnabledIcon(trigger) {
  */
 function triggersMenuGenerateManageState(user, menuItemToProcess) {
   const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
-    options = menuItemToProcess.options,
+    options = objectDeepClone(menuItemToProcess.options),
     {function: functionId, state: stateId, stateObject} = options;
   let subMenu = [],
     subMenuIndex = 0;
@@ -9029,6 +9027,7 @@ function triggersMenuGenerateManageState(user, menuItemToProcess) {
       stateType = stateObjectCommon?.type,
       stateUnits = stateObjectCommon?.unit ? ` ${stateObjectCommon.unit}` : '',
       [triggers, currentStateTriggers] = triggersGetStateTriggers(user, stateId, true);
+    if (typeof options?.['triggerType'] !== 'string') options['triggerType'] = stateType;
     if (Array.isArray(triggers)) {
       triggers.forEach((trigger) => {
         const onTimeInterval = `${
@@ -15125,7 +15124,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         conditions: undefined,
                       };
                     } else if (triggerType === 'number') {
-                      triggerIdPrefix = [triggerIdPrefix, 'onAbove'].join('.');
+                      triggerIdPrefix = [triggerIdPrefix, 'onAbove'].join('#');
                       trigger = {
                         id: triggerIdPrefix,
                         index: 0,
@@ -15144,7 +15143,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                     if (typeof trigger === 'object') {
                       backStepsForCacheDelete--;
                       trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
-                      trigger.id = `${triggerIdPrefix}#${trigger.index}`;
+                      trigger.id = [triggerIdPrefix, trigger.index].join('#');
                       triggers.push(trigger);
                       triggers = triggersSort(triggers);
                       menuPositionCurrent.push(thresholdsGetIndex(triggers, trigger.id));
@@ -15179,11 +15178,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                                   triggers = undefined;
                                 } else {
                                   const triggerIdPrefix = [triggerValue, trigger.onAbove ? 'onAbove' : 'onBelow'].join(
-                                    '.',
+                                    '#',
                                   );
                                   trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
                                   trigger.value = triggerValue;
-                                  trigger.id = `${triggerIdPrefix}#${trigger.index}`;
+                                  trigger.id = [triggerIdPrefix, trigger.index].join('#');
                                   trigger.isEnabled = false;
                                   triggers = triggersSort(triggers);
                                   menuPositionCurrent.splice(-1, 1, thresholdsGetIndex(triggers, trigger.id));
@@ -15971,11 +15970,11 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       switch (triggerAttributeId) {
                         case 'onAbove':
                         case 'onBelow': {
-                          const triggerIdPrefix = [trigger.value, trigger.onAbove ? 'onBelow' : 'onAbove'].join('.');
+                          const triggerIdPrefix = [trigger.value, trigger.onAbove ? 'onBelow' : 'onAbove'].join('#');
                           trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
                           trigger.onAbove = !trigger.onAbove;
                           trigger.onBelow = !trigger.onBelow;
-                          trigger.id = `${triggerIdPrefix}#${trigger.index}`;
+                          trigger.id = [triggerIdPrefix, trigger.index].join('#');
                           trigger.isEnabled = false;
                           triggers = triggersSort(triggers);
                           menuPositionCurrent.splice(-1, 1, thresholdsGetIndex(triggers, trigger.id));
