@@ -7002,31 +7002,42 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
  * @param {function} callback - The callback function.
  */
 function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
-  const {id, nameTranslationId, icon, extensionRootMenuId, scriptName, translationsKeys} = extensionDetails;
-  const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
-  const functionsList = enumerationsList[dataTypeFunction].list;
-  if (typeof functionsList?.[extensionId] === 'object') {
-    functionsList[extensionId].isAvailable = true;
-    functionsList[extensionId].scriptName = scriptName;
-    functionsList[extensionId].state = extensionRootMenuId;
-    functionsList[extensionId].nameTranslationId = nameTranslationId;
-    functionsList[extensionId].translationsKeys = translationsKeys;
-  } else {
-    functionsList[extensionId] = {
-      ...enumerationsDefaultObjects[dataTypeExtension],
-      isAvailable: true,
-      isExternal: true,
-      enum: idExternal,
-      nameTranslationId: nameTranslationId,
-      order: Object.keys(functionsList).length,
-      icon: icon,
-      state: extensionRootMenuId,
-      deviceAttributes: {},
-      scriptName: scriptName,
-      translationsKeys: translationsKeys,
-    };
+  const {id, type, nameTranslationId, icon, scriptName, translationsKeys} = extensionDetails;
+  switch (type) {
+    case 'function': {
+      const extensionPseudoState = extensionDetails?.['function']?.['state'];
+      if (typeof extensionPseudoState === 'string') {
+        const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
+        const functionsList = enumerationsList[dataTypeFunction].list;
+        if (typeof functionsList?.[extensionId] === 'object') {
+          functionsList[extensionId].isAvailable = true;
+          functionsList[extensionId].scriptName = scriptName;
+          functionsList[extensionId].state = extensionPseudoState;
+          functionsList[extensionId].nameTranslationId = nameTranslationId;
+          functionsList[extensionId].translationsKeys = translationsKeys;
+        } else {
+          functionsList[extensionId] = {
+            ...enumerationsDefaultObjects[dataTypeExtension],
+            isAvailable: true,
+            isExternal: true,
+            enum: idExternal,
+            nameTranslationId: nameTranslationId,
+            order: Object.keys(functionsList).length,
+            icon: icon,
+            state: extensionPseudoState,
+            deviceAttributes: {},
+            scriptName: scriptName,
+            translationsKeys: translationsKeys,
+          };
+        }
+        enumerationsSave(dataTypeFunction);
+      }
+      break;
+    }
+    default: {
+      break;
+    }
   }
-  enumerationsSave(dataTypeFunction);
   callback({success: true});
 }
 
