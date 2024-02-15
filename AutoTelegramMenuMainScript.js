@@ -13765,17 +13765,18 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             newMenuItem.hasOwnProperty('name')
           ) {
             menuItemToProcess = menuMenuReIndex(newMenuItem);
-          } else {
-            if (typeof newMenuItem === 'object' && !Array.isArray(newMenuItem) && newMenuItem.hasOwnProperty('error')) {
-              warns(
-                `Can't update subMenu from extensionMenuId ${extensionMenuId}!` +
-                  ` No result. Error is ${newMenuItem.error}`,
-              );
-            }
-            targetMenuPos = [];
+            menuItemToProcess.options = {...menuItemToProcess.options, generatedBy: subMenu};
+            menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
+          } else if (
+            typeof newMenuItem === 'object' &&
+            !Array.isArray(newMenuItem) &&
+            newMenuItem.hasOwnProperty('error')
+          ) {
+            warns(
+              `Can't update subMenu from extensionMenuId ${extensionMenuId}!` +
+                ` No result. Error is ${newMenuItem.error}`,
+            );
           }
-          menuItemToProcess.options = {...menuItemToProcess.options, generatedBy: subMenu};
-          menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
         },
       );
       break;
@@ -15843,7 +15844,8 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 if (
                   commandOptions.dataType === dataTypeFunction &&
                   commandOptions.attribute === 'isEnabled' &&
-                  currentEnumerationsList[commandOptions.item][commandOptions.attribute]
+                  !currentDataItem['isExternal'] &&
+                  currentDataItem[commandOptions.attribute]
                 ) {
                   enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceAttributes);
                   enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons);
