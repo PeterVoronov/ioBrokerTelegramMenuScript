@@ -309,7 +309,8 @@ const configOptionsParameters = {
       description: 'Maximum buttons on one screen except alerts and global menu related',
     },
     [cfgMenuRefreshInterval]: {
-      type: 'time',
+      typeExtended: 'time',
+      type: 'number',
       mode: timeInternalModeInterval,
       template: 'ms',
       systemLevel: true,
@@ -434,7 +435,7 @@ const configOptionsParameters = {
     },
     [cfgMenuLanguage]: {
       type: 'string',
-      systemLevel: true,
+      systemLevel: false,
       hidden: false,
       default: 'ru',
       description: 'Menu display language',
@@ -557,7 +558,8 @@ const configOptionsParameters = {
       description: 'Default icon for OFF state',
     },
     [cfgAlertMessagesHistoryDepth]: {
-      type: 'time',
+      typeExtended: 'time',
+      type: 'number',
       mode: timeInternalModeInterval,
       template: 'dh',
       systemLevel: false,
@@ -566,7 +568,8 @@ const configOptionsParameters = {
       description: 'Alert messages history depth in hours',
     },
     [cfgUpdateMessageTime]: {
-      type: 'time',
+      typeExtended: 'time',
+      type: 'string',
       mode: timeInternalModeTime,
       template: 'hm',
       systemLevel: false,
@@ -575,7 +578,8 @@ const configOptionsParameters = {
       description: 'Time to update menu messages',
     },
     [cfgUpdateMessagesOnStart]: {
-      type: 'time',
+      typeExtended: 'time',
+      type: 'number',
       mode: timeInternalModeInterval,
       template: 'm',
       systemLevel: false,
@@ -669,6 +673,20 @@ class ConfigOptions {
       }
     } else {
       return this.globalConfig.hasOwnProperty(cfgItem) && isDefined(this.globalConfig[cfgItem]);
+    }
+    return false;
+  }
+
+  /**
+   * This method checks, if the current config item state is exists
+   * @param {string} cfgItem - The id of the configuration item.
+   * @param {object=} user - The user object.
+   * @returns {boolean} A boolean value.
+   */
+  existsOptionState(cfgItem, user) {
+    if (this.existsOption(cfgItem, user)) {
+      const stateId = this.#getStateId(cfgItem, user);
+      return existsState(stateId);
     }
     return false;
   }
@@ -839,7 +857,7 @@ class ConfigOptions {
           result = value.split(',');
         }
       } else if (valueToParseType === 'array') {
-        this.globalConfig[cfgItem] = value;
+        result = value;
       }
     } else if (cfgItemType === 'map') {
       if (valueToParseType === 'string') {
@@ -879,8 +897,7 @@ class ConfigOptions {
       } else if (valueToParseType === 'boolean') {
         result = value;
       }
-    }
-    if (cfgItemType === 'string') {
+    } else if (cfgItemType === 'string') {
       if (valueToParseType === 'string') {
         result = value;
       } else if (valueToParseType === 'number' || valueToParseType === 'boolean') {
@@ -1212,14 +1229,17 @@ class ConfigOptions {
         .filter((optionId) => !this.configOptions[optionId].hidden)
         .filter((optionId) => optionFilter(optionId))
         .forEach((cfgItem, itemOrder) => {
-          let itemType = this.configOptions[cfgItem].type;
-          const currentItemName = translationsItemCoreGet(user, cfgItem),
-            currentItem = {
-              index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
-              name: `${currentItemName}`,
-              icon: currentIcon,
-              text: `${currentItemName}`,
-            };
+          const item = this.configOptions[cfgItem],
+            itemType = item.type,
+            itemTypeExtended = item.typeExtended,
+            itemTypeEffective = typeof itemTypeExtended === 'string' ? itemTypeExtended : itemType,
+            currentItemName = translationsItemCoreGet(user, cfgItem),
+              currentItem = {
+                index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
+                name: `${currentItemName}`,
+                icon: currentIcon,
+                text: `${currentItemName}`,
+              };
           if (isThisLevelAllowModify) currentItem.submenu = new Array();
           let subSubMenuIndex = 0;
           if (isCurrentAccessLevelFull) {
@@ -1488,9 +1508,8 @@ class ConfigOptions {
             }
             if (isThisLevelAllowModify) {
               if (isDefined(configOptionsParameters[cfgItem])) {
-                const itemSubType = configOptionsParameters[cfgItem];
                 let interimItem;
-                switch (itemSubType.type) {
+                switch (itemTypeEffective) {
                   case 'time': {
                     interimItem = menuMenuItemGenerateEditTime(
                       user,
@@ -1500,8 +1519,8 @@ class ConfigOptions {
                       '',
                       {
                         ...subMenuItem.options,
-                        timeMode: itemSubType.mode,
-                        timeTemplate: itemSubType.template,
+                        timeMode: item.mode,
+                        timeTemplate: item.template,
                         value: currentOptionValue,
                         valueToDisplay: `${currentOptionValue}`,
                       },
@@ -1513,15 +1532,15 @@ class ConfigOptions {
                       ...subMenuItem.options,
                       value: currentOptionValue,
                       valueToDisplay: `${currentOptionValue}`,
-                      valueType: itemSubType.type,
+                      valueType: item.type,
                       valueOptions: {
                         ...subMenuItem.options.valueOptions,
                       },
                     };
-                    if (itemSubType.hasOwnProperty('min')) interimItemOptions.valueOptions.min = itemSubType.min;
-                    if (itemSubType.hasOwnProperty('max')) interimItemOptions.valueOptions.max = itemSubType.max;
-                    if (itemSubType.hasOwnProperty('step')) interimItemOptions.valueOptions.step = itemSubType.step;
-                    if (itemSubType.hasOwnProperty('unit')) interimItemOptions.valueOptions.unit = itemSubType.unit;
+                    if (item.hasOwnProperty('min')) interimItemOptions.valueOptions.min = item.min;
+                    if (item.hasOwnProperty('max')) interimItemOptions.valueOptions.max = item.max;
+                    if (item.hasOwnProperty('step')) interimItemOptions.valueOptions.step = item.step;
+                    if (item.hasOwnProperty('unit')) interimItemOptions.valueOptions.unit = item.unit;
                     interimItem = menuMenuItemGenerateEditItemBasedOnValueType(
                       user,
                       subSubMenuIndexPrefix,
@@ -14335,9 +14354,11 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
         warns('for user = ' + jsonStringify(user) + ' menu is open on ' + jsonStringify(itemPos));
         if (!cachedValueGet(user, cachedIsWaitForInput) && Array.isArray(itemPos)) {
           if (noDraw) {
-            warns(`Make an menu object prepared for user/chat group = ${jsonStringify({...user, rootMenu: null})}`);
+            warns(
+              `Make an menu object prepared for user/chat group = ${jsonStringify({...user, rootMenu: undefined})}`,
+            );
           } else {
-            warns(`Make an menu refresh for user/chat group = ${jsonStringify({...user, rootMenu: null})}`);
+            warns(`Make an menu refresh for user/chat group = ${jsonStringify({...user, rootMenu: undefined})}`);
           }
           menuMenuDraw(user, itemPos, {clearBefore: true, clearUserMessage: false, isSilent: true, noDraw});
         }
@@ -18459,7 +18480,6 @@ async function autoTelegramMenuInstanceInit() {
   configOptions.subscribeOnOption(cfgMenuUsers, () => {
     usersInMenu.refresh();
   });
-
   /** Cached states */
   onMessage(extensionsGetCachedStateCommand, cachedActionOnGetCachedState); // 4
   onMessage(extensionsSetCachedStateCommand, cachedActionOnSetCachedState); // 5
@@ -18470,7 +18490,6 @@ async function autoTelegramMenuInstanceInit() {
 
   /** update translation */
   translationsLoad();
-
   if (Object.keys(translationsList).length === 0) {
     await translationsInitialLoadLocalesFromRepository();
   }
@@ -18499,7 +18518,6 @@ async function autoTelegramMenuInstanceInit() {
       backupCreate(backupModeAuto);
     });
   }
-
   if (configOptions.getOption(cfgUpdateMessagesOnStart)) {
     const updateAt = new Date(Date.now() + configOptions.getOption(cfgUpdateMessagesOnStart) * 60 * 1000);
     schedule(
@@ -18516,6 +18534,9 @@ async function autoTelegramMenuInstanceInit() {
         menuMenuMessageRenew(menuRefreshTimeAllUsers, true, false);
       },
     );
+  }
+  if (!configOptions.existsOptionState(cfgUpdateMessageTime)) {
+    configOptions.functionScheduleMenuMessageRenew(configOptions.getOption(cfgUpdateMessageTime));
   }
   menuMenuMessageRenew(menuRefreshTimeAllUsers, true, true);
 }
