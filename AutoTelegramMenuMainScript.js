@@ -132,6 +132,7 @@ const cmdPrefix = 'cmd',
   dataTypeReportMember = 'repMemb',
   dataTypeAlertSubscribed = 'alertS',
   dataTypeTrigger = 'trigger',
+  dataTypeAssociatedExtensions = 'associatedExtensions',
   dataTypeDeviceAttributes = 'deviceAttributes',
   dataTypeDeviceButtons = 'deviceButtons',
   dataTypeDeviceStatesAttributes = 'stateAttributes',
@@ -240,7 +241,8 @@ const cmdPrefix = 'cmd',
   iconItemTarget = '🎯',
   iconItemCondition = '🤔', //☑️
   iconItemEmpty = '❔',
-  iconItemClock = '⏰';
+  iconItemClock = '⏰',
+  iconItemExtension = '👽';
 const attributesToCopyFromOriginToAlias = ['read', 'write', 'min', 'max', 'step', 'states', 'unit'];
 const checkEmojiRegex = emojiRegex();
 
@@ -1234,12 +1236,12 @@ class ConfigOptions {
             itemTypeExtended = item.typeExtended,
             itemTypeEffective = typeof itemTypeExtended === 'string' ? itemTypeExtended : itemType,
             currentItemName = translationsItemCoreGet(user, cfgItem),
-              currentItem = {
-                index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
-                name: `${currentItemName}`,
-                icon: currentIcon,
-                text: `${currentItemName}`,
-              };
+            currentItem = {
+              index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
+              name: `${currentItemName}`,
+              icon: currentIcon,
+              text: `${currentItemName}`,
+            };
           if (isThisLevelAllowModify) currentItem.submenu = new Array();
           let subSubMenuIndex = 0;
           if (isCurrentAccessLevelFull) {
@@ -4747,7 +4749,11 @@ const enumerationsNamesMain = 'Main',
   enumerationsNamesTranslationIdPrefix = 'names',
   enumerationDeviceStateAttributes = ['ts', 'lc', 'ack', 'q', 'from', 'user'],
   enumerationsDeviceStatesTypes = [dataTypeDeviceAttributes, dataTypeDeviceButtons],
-  enumerationDeviceSubTypes = [...enumerationsDeviceStatesTypes, dataTypeDeviceStatesAttributes],
+  enumerationDeviceSubTypes = [
+    ...enumerationsDeviceStatesTypes,
+    dataTypeDeviceStatesAttributes,
+    dataTypeAssociatedExtensions,
+  ],
   enumerationsAccessLevelToShow = 'showAccessLevel',
   enumerationsAccessLevelToPress = 'pressAccessLevel',
   enumerationsDeviceButtonsAccessLevelAttrs = [enumerationsAccessLevelToShow, enumerationsAccessLevelToPress],
@@ -4768,6 +4774,7 @@ const enumerationsNamesMain = 'Main',
       name: enumerationsNamesMain,
       names: [enumerationsNamesBasic, enumerationsNamesMany],
       group: '',
+      associatedExtensions: {},
       deviceAttributes: {
         state: {
           isEnabled: true,
@@ -4865,7 +4872,7 @@ const enumerationsNamesMain = 'Main',
       icon: 'ℹ️',
     },
   },
-  enumerationItemDefaultDetails = ['itemId', 'isAvailable', 'state', 'order'],
+  enumerationItemDefaultDetails = ['isAvailable', 'itemId', 'name', 'state', 'order'],
   enumerationItemAttributesWithReset = ['convertValueCode'];
 
 /**
@@ -4951,12 +4958,14 @@ function enumerationsSave(enumerationType) {
  */
 function enumerationsReorderItems(currentEnumerations) {
   let countItems = 0;
-  Object.keys(currentEnumerations)
-    .sort((a, b) => currentEnumerations[a].order - currentEnumerations[b].order)
-    .forEach((currentItem) => {
-      currentEnumerations[currentItem].order = countItems;
-      countItems++;
-    });
+  if (typeof currentEnumerations === 'object' && !Array.isArray(currentEnumerations)) {
+    Object.keys(currentEnumerations)
+      .sort((a, b) => currentEnumerations[a].order - currentEnumerations[b].order)
+      .forEach((currentItem) => {
+        currentEnumerations[currentItem].order = countItems;
+        countItems++;
+      });
+  }
   return countItems;
 }
 
@@ -5222,6 +5231,9 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
     case dataTypeFunction:
       if (!currentEnumerationItem.isExternal) {
         enumerationItemAttrs.splice(enumerationItemAttrs.indexOf('deviceAttributes'), 0, 'devicesTranslation');
+        if (!enumerationItemAttrs.includes('associatedExtensions')) {
+          enumerationItemAttrs.splice(enumerationItemAttrs.indexOf('devicesTranslation'), 0, 'associatedExtensions');
+        }
         enumerationItemAttrs.splice(
           enumerationItemAttrs.indexOf('deviceAttributes') + 1,
           0,
@@ -5269,11 +5281,12 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         break;
       }
 
+      case 'associatedExtensions':
+      case 'devicesTranslation':
       case 'deviceAttributes':
-      case 'deviceButtons':
       case 'deviceAttributesValuesTranslation':
-      case 'deviceButtonsValuesTranslation':
-      case 'devicesTranslation': {
+      case 'deviceButtons':
+      case 'deviceButtonsValuesTranslation': {
         if (!devicesMenuItem) {
           devicesMenuIndex = subMenuIndex;
           devicesMenuItem = {
@@ -5286,8 +5299,19 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           subMenuIndex = subMenu.push(devicesMenuItem);
         }
         switch (enumerationItemAttr) {
+          case 'associatedExtensions': {
+            devicesMenuItem.submenu.push({
+              index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
+              name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
+              accessLevel: currentAccessLevel,
+              options: {dataType: enumerationItemAttr, dataTypeExtraId: currentItem},
+              icon: iconItemExtension,
+              submenu: enumerationsMenuGenerateListOfEnumerationItems,
+            });
+            break;
+          }
           case 'deviceAttributes':
-          case 'deviceButtons':
+          case 'deviceButtons': {
             devicesMenuItem.submenu.push({
               index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
@@ -5297,10 +5321,10 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               submenu: enumerationsMenuGenerateListOfEnumerationItems,
             });
             break;
-
+          }
           case 'deviceAttributesValuesTranslation':
           case 'deviceButtonsValuesTranslation':
-          case 'devicesTranslation':
+          case 'devicesTranslation': {
             devicesMenuItem.submenu.push({
               index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
@@ -5318,6 +5342,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 : translationsMenuGenerateFunctionDeviceItems,
             });
             break;
+          }
         }
         break;
       }
@@ -5805,7 +5830,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
     currentEnumerationItem = currentEnumerationsList[currentItem];
   const currentItemDetailsList = [];
   enumerationItemDefaultDetails.forEach((item) => {
-    if (currentEnumerationItem.hasOwnProperty(item) || item === 'itemId') {
+    if (currentEnumerationItem.hasOwnProperty(item) || ['itemId', 'name'].includes(item)) {
       const currentItemDetailsLineObject = {
         label: `${translationsItemTextGet(user, 'list', item)}`,
       };
@@ -5813,6 +5838,13 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
         currentItemDetailsLineObject.value = currentEnumerationItem[item]
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user);
+      } else if (item === 'name') {
+        currentItemDetailsLineObject.value = enumerationsItemName(
+          user,
+          enumerationType,
+          currentItem,
+          currentEnumerationsList[currentItem],
+        );
       } else if (currentEnumerationItem.hasOwnProperty(item)) {
         currentItemDetailsLineObject.value = currentEnumerationItem[item];
       } else if (currentEnumerationItem.hasOwnProperty('enum')) {
@@ -5989,13 +6021,15 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
     enumerationsLoad(enumerationPrimaryType);
     enumerationsInit(enumerationPrimaryType);
   }
-  const currentEnumerationsList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
-  enumerationsReorderItems(currentEnumerationsList);
+  let currentEnumerationsList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
   if (enumerationsDeviceStatesTypes.includes(enumerationType)) {
-    if (Object.keys(enumerationsGetList).length === 0) {
+    if (Object.keys(currentEnumerationsList).length === 0) {
       enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType);
+      currentEnumerationsList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
     }
   }
+  if (currentEnumerationsList === undefined || currentEnumerationsList === null) currentEnumerationsList = {};
+  enumerationsReorderItems(currentEnumerationsList);
   let subMenu = [],
     subMenuIndex = 0;
   Object.keys(currentEnumerationsList)
@@ -6015,17 +6049,15 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
         accessLevel: currentAccessLevel,
         text: enumerationsMenuItemDetailsEnumerationItem,
         options: {
+          ...menuItemToProcess.options,
           [menuOptionHorizontalNavigation]: true,
-          dataType: enumerationType,
           item: currentItem,
-          dataTypeExtraId: enumerationTypeExtraId,
           list: currentEnumerationsList,
         },
         submenu: enumerationsMenuGenerateEnumerationItem,
       };
       subMenuIndex = subMenu.push(currentMenuItem);
     });
-
   switch (enumerationType) {
     case dataTypeFunction:
     case dataTypeDestination:
@@ -6087,6 +6119,39 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
         submenu: enumerationsMenuGenerateListOfEnumerationItems,
       });
       break;
+
+    case dataTypeAssociatedExtensions: {
+      const assignedExtensions = Object.keys(currentEnumerationsList),
+        availableExtensions = Object.keys(extensionsList).filter(
+          (extensionId) => !assignedExtensions.includes(extensionId),
+        );
+      if (availableExtensions.length > 0) {
+        const extensionsMap = new Map();
+        availableExtensions.forEach((extensionId) => {
+          extensionsMap.set(
+            extensionId,
+            `${extensionsList[extensionId].icon} ${extensionsList[extensionId].nameTranslationId}`,
+          );
+        });
+        subMenuIndex = subMenu.push(
+          menuMenuItemGenerateSelectItem(
+            user,
+            `${currentIndex}`,
+            subMenuIndex,
+            translationsItemCoreGet(user, cmdItemAdd),
+            extensionsMap,
+            cmdItemAdd,
+            {
+              dataType: dataTypeAssociatedExtensions,
+              dataTypeExtraId: enumerationTypeExtraId,
+              list: currentEnumerationsList,
+              mode: 'add',
+            },
+          ),
+        );
+      }
+      break;
+    }
 
     case dataTypeDeviceAttributes:
     case dataTypeDeviceButtons:
@@ -7009,6 +7074,8 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
 
 //*** Extensions - begin ***//
 
+const extensionsList = {};
+
 /**
  * This function is used to process a registration messages from AutoTelegramMenu Extensions.
  * @param {object} extensionDetails - The object, contained
@@ -7021,10 +7088,10 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
  * @param {function} callback - The callback function.
  */
 function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
-  const {id, type, nameTranslationId, icon, scriptName, translationsKeys} = extensionDetails;
+  const {id, type, nameTranslationId, icon, scriptName, translationsKeys, options} = extensionDetails;
   switch (type) {
     case 'function': {
-      const extensionPseudoState = extensionDetails?.['function']?.['state'];
+      const extensionPseudoState = options?.['state'];
       if (typeof extensionPseudoState === 'string') {
         const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
         const functionsList = enumerationsList[dataTypeFunction].list;
@@ -7054,6 +7121,26 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
       break;
     }
     default: {
+      if (
+        typeof extensionsList?.[id] !== 'object' ||
+        (extensionsList[id].type === type && extensionsList[id].scriptName === scriptName)
+      ) {
+        if (typeof extensionsList[id] === 'object')
+          logs(`Extension "${id}" is already registered. Going to update it.`, _l);
+        extensionsList[id] = {
+          type: type,
+          nameTranslationId: nameTranslationId,
+          icon: icon,
+          scriptName: scriptName,
+          translationsKeys: translationsKeys,
+          options: options,
+        };
+        logs(`Extension "${id}" is registered: ${jsonStringify(extensionsList[id])}.`, _l);
+      } else if (typeof extensionsList?.[id] === 'object') {
+        warns(
+          `Extension "${id}" is already registered with different type or script! Will not update already registered!`,
+        );
+      }
       break;
     }
   }
@@ -15842,61 +15929,78 @@ async function commandsUserInputProcess(user, userInputToProcess) {
           case dataTypeDestination:
           case dataTypeFunction:
           case dataTypeReport:
+          case dataTypeAssociatedExtensions:
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons:
           case dataTypeDeviceStatesAttributes: {
-            const currentEnumerationsList = enumerationsGetList(
-                commandOptions.dataType,
-                commandOptions.dataTypeExtraId,
-              ),
-              currentDataItem = currentEnumerationsList[commandOptions.item];
-            if (typeof commandOptions.attribute === 'string') {
-              if (
-                enumerationsDeviceStatesTypes.includes(commandOptions.dataType) &&
-                enumerationsDeviceButtonsAccessLevelAttrs.includes(commandOptions.attribute)
-              ) {
-                currentDataItem[commandOptions.attribute] = commandOptions.value;
-              } else {
-                switch (typeof currentDataItem[commandOptions.attribute]) {
-                  case 'boolean': {
-                    if (!isDefined(commandOptions.value)) {
-                      currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
-                    }
-                    break;
-                  }
+            const enumerationType = commandOptions.dataType,
+              enumerationExtraId = commandOptions.dataTypeExtraId,
+              currentEnumerationsList = enumerationsGetList(enumerationType, enumerationExtraId);
+            if (typeof currentEnumerationsList === 'object') {
+              if (typeof commandOptions.item === 'string' && currentEnumerationsList?.[commandOptions.item]) {
+                const currentDataItem = currentEnumerationsList[commandOptions.item];
+                if (typeof commandOptions.attribute === 'string') {
+                  if (
+                    enumerationsDeviceStatesTypes.includes(enumerationType) &&
+                    enumerationsDeviceButtonsAccessLevelAttrs.includes(commandOptions.attribute)
+                  ) {
+                    currentDataItem[commandOptions.attribute] = commandOptions.value;
+                  } else {
+                    switch (typeof currentDataItem[commandOptions.attribute]) {
+                      case 'boolean': {
+                        if (!isDefined(commandOptions.value)) {
+                          currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
+                        }
+                        break;
+                      }
 
-                  default: {
-                    if (commandOptions.value) {
-                      currentDataItem[commandOptions.attribute] =
-                        currentDataItem[commandOptions.attribute] === commandOptions.value ? '' : commandOptions.value;
+                      default: {
+                        if (commandOptions.value) {
+                          currentDataItem[commandOptions.attribute] =
+                            currentDataItem[commandOptions.attribute] === commandOptions.value
+                              ? ''
+                              : commandOptions.value;
+                        }
+                        break;
+                      }
                     }
-                    break;
+                    if (
+                      enumerationType === dataTypeFunction &&
+                      commandOptions.attribute === 'isEnabled' &&
+                      !currentDataItem['isExternal'] &&
+                      currentDataItem[commandOptions.attribute]
+                    ) {
+                      enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceAttributes);
+                      enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons);
+                    } else if (
+                      enumerationType === dataTypeDeviceStatesAttributes &&
+                      commandOptions.attribute === 'isEnabled'
+                    ) {
+                      const currentDeviceAttribute = enumerationsGetDeviceState(enumerationType, enumerationExtraId),
+                        currentSort = (a, b) =>
+                          enumerationsCompareOrderOfItems(
+                            a,
+                            b,
+                            dataTypeDeviceStatesAttributes,
+                            currentEnumerationsList,
+                          );
+                      currentDeviceAttribute.stateAttributes = Object.keys(currentEnumerationsList)
+                        .filter((currentAttribute) => currentEnumerationsList[currentAttribute].isEnabled)
+                        .sort(currentSort);
+                    }
                   }
+                  enumerationsSave(enumerationsGetPrimaryDataType(enumerationType, enumerationExtraId));
                 }
-                if (
-                  commandOptions.dataType === dataTypeFunction &&
-                  commandOptions.attribute === 'isEnabled' &&
-                  !currentDataItem['isExternal'] &&
-                  currentDataItem[commandOptions.attribute]
-                ) {
-                  enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceAttributes);
-                  enumerationsRefreshFunctionDeviceStates(user, commandOptions.item, dataTypeDeviceButtons);
-                } else if (
-                  commandOptions.dataType === dataTypeDeviceStatesAttributes &&
-                  commandOptions.attribute === 'isEnabled'
-                ) {
-                  const currentDeviceAttribute = enumerationsGetDeviceState(
-                      commandOptions.dataType,
-                      commandOptions.dataTypeExtraId,
-                    ),
-                    currentSort = (a, b) =>
-                      enumerationsCompareOrderOfItems(a, b, dataTypeDeviceStatesAttributes, currentEnumerationsList);
-                  currentDeviceAttribute.stateAttributes = Object.keys(currentEnumerationsList)
-                    .filter((currentAttribute) => currentEnumerationsList[currentAttribute].isEnabled)
-                    .sort(currentSort);
+              } else if (enumerationType === dataTypeAssociatedExtensions) {
+                if (typeof commandOptions.value === 'string') {
+                  const extensionId = commandOptions.value;
+                  currentEnumerationsList[extensionId] = {
+                    isEnabled: true,
+                  };
+                  enumerationsSave(enumerationsGetPrimaryDataType(enumerationType, enumerationExtraId));
+                  menuPositionCurrent.splice(-1, 1, Object.keys(currentEnumerationsList).indexOf(extensionId));
                 }
               }
-              enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             }
             break;
           }
@@ -16432,6 +16536,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
             }
           }
           // break omitted
+          case dataTypeAssociatedExtensions:
           case dataTypeDeviceAttributes:
           case dataTypeDeviceButtons: {
             const currentEnumerationsList = enumerationsGetList(
