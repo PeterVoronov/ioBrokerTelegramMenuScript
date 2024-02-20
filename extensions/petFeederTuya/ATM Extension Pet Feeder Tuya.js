@@ -12,7 +12,7 @@ function autoTelegramMenuExtensionPetFeeder() {
       : 'autoTelegramMenuExtensionsRegister',
     autoTelegramMenuExtensionsTimeout = 500,
     autoTelegramMenuExtensionId = 'petFeederTuya',
-    autoTelegramMenuExtensionType = 'extraAttributesAndButtons',
+    autoTelegramMenuExtensionType = 'attributesModifier',
     autoTelegramMenuExtensionTranslationsKeys = [
       [autoTelegramMenuExtensionId],
       'enabled',
@@ -43,15 +43,7 @@ function autoTelegramMenuExtensionPetFeeder() {
         nameTranslationId: autoTelegramMenuExtensionId,
         icon: '🐈',
         options: {
-          buttons: [
-            {
-              id: 'schedule',
-            },
-            {
-              id: 'manualFeed',
-            },
-          ],
-          attributes: [],
+          attributes: ['schedule', 'manualFeed']
         },
         scriptName: scriptName,
         translationsKeys: autoTelegramMenuExtensionTranslationsKeys,
@@ -124,7 +116,7 @@ function autoTelegramMenuExtensionPetFeeder() {
     callback({success: true});
   });
 
-  onMessage('schedule', ({user: _user, data, extensionId: _extensionId, translations}, callback) => {
+  onMessage('schedule', ({user: _user, data, _extensionId, translations}, callback) => {
     const {
       device,
       state,
@@ -288,7 +280,7 @@ function autoTelegramMenuExtensionPetFeeder() {
     }
   });
 
-  onMessage('manualFeed', ({user: _user, data, extensionId: _extensionId, translations}, callback) => {
+  onMessage('manualFeed', ({user: _user, data, _extensionId, translations}, callback) => {
     const {device, state, function: functionId, destination: destinationId, value} = data;
     if (typeof device === 'string' && typeof state === 'string' && typeof value === 'number') {
       const options = {

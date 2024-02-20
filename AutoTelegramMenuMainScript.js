@@ -158,6 +158,7 @@ const cmdPrefix = 'cmd',
   idConfig = 'config',
   idTranslation = 'translation',
   idExternal = dataTypeExtension,
+  idExtensions = dataTypeExtension,
   idAlerts = 'alerts',
   idCachedAlertsStatesValues = 'alertsStatesPreviousValues',
   idTriggersLogs = 'triggersLogs',
@@ -4414,7 +4415,7 @@ const cachedIsWaitForInput = 'isWaitForInput',
 /**
  * The attributes list for the appropriate ioBroker states (to store the cache items).
  */
-const cachedValuesStatesCommonAttributes = {
+const statesCommonAttributes = {
   [cachedBotSendMessageId]: {
     name: 'Message ID of last sent message by the bot',
     type: 'number',
@@ -4468,7 +4469,7 @@ function cachedValueExists(user, valueId) {
   const id = cachedGetValueId(user, valueId);
   if (id) {
     if (valueId.startsWith(prefixExternalStates)) valueId = prefixExternalStates;
-    return cachedValuesMap.has(id) || (cachedValuesStatesCommonAttributes.hasOwnProperty(valueId) && existsState(id));
+    return cachedValuesMap.has(id) || (statesCommonAttributes.hasOwnProperty(valueId) && existsState(id));
   }
   return false;
 }
@@ -4486,13 +4487,13 @@ function cachedValueGet(user, valueId, getLastChange = false) {
   let result, stateLastChange;
   if (id) {
     if (valueId.startsWith(prefixExternalStates)) valueId = prefixExternalStates;
-    if ((!cachedValuesMap.has(id) || getLastChange) && cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
+    if ((!cachedValuesMap.has(id) || getLastChange) && statesCommonAttributes.hasOwnProperty(valueId)) {
       if (existsState(id)) {
         const currentState = getState(id);
         if (typeof currentState === 'object') {
           let cachedVal = currentState.val;
           stateLastChange = currentState.lc;
-          if (cachedValuesStatesCommonAttributes[valueId].type === 'json' && cachedVal.length > 0) {
+          if (statesCommonAttributes[valueId].type === 'json' && cachedVal.length > 0) {
             try {
               cachedVal = jsonParse(cachedVal);
             } catch (err) {
@@ -4543,21 +4544,21 @@ function cachedValueSet(user, valueId, value) {
       cachedValuesMap.set(id, value);
       const common = {};
       if (valueId.startsWith(prefixExternalStates)) {
-        common.name = `${cachedValuesStatesCommonAttributes[prefixExternalStates].name} ${valueId}`;
+        common.name = `${statesCommonAttributes[prefixExternalStates].name} ${valueId}`;
         valueId = prefixExternalStates;
       }
-      if (cachedValuesStatesCommonAttributes.hasOwnProperty(valueId)) {
+      if (statesCommonAttributes.hasOwnProperty(valueId)) {
         if (typeof value !== 'string') {
-          if (cachedValuesStatesCommonAttributes[valueId].type === 'string') {
+          if (statesCommonAttributes[valueId].type === 'string') {
             value = `${value}`;
-          } else if (cachedValuesStatesCommonAttributes[valueId].type === 'json') {
+          } else if (statesCommonAttributes[valueId].type === 'json') {
             value = jsonStringify(value);
           }
         }
         if (existsState(id)) {
           setState(id, value, true);
         } else {
-          createState(id, value, {...cachedValuesStatesCommonAttributes[valueId], ...common});
+          createState(id, value, {...statesCommonAttributes[valueId], ...common});
         }
       }
     }
@@ -4737,6 +4738,171 @@ function sentImagesDelete(user) {
 }
 
 //*** sentImages - end ***//
+
+//*** Extensions - begin ***//
+
+let extensionsList = {};
+const extensionTypeFunction = 'function',
+  extensionTypeAttributesModifier = 'attributesModifier',
+  extensionsListState = `${prefixEnums}.${idExtensions}`;
+
+statesCommonAttributes[idExtensions] = {
+  name: 'List of extensions for AutoTelegramMenu',
+  type: 'json',
+  read: true,
+  write: true,
+  role: 'list',
+};
+
+/**
+ * This function send a message to all Extensions with request to the to send a registration Message.
+ */
+function extensionsInit() {
+  extensionsLoad();
+  Object.keys(extensionsList).forEach((extensionId) => {
+    extensionsList[extensionId].isAvailable = false;
+  });
+  const timeout = configOptions.getOption(cfgExternalMenuTimeout);
+  messageTo(
+    extensionsInitCommand,
+    {messageId: extensionsRegisterCommand, timeout: timeout},
+    {timeout: timeout},
+    (result) => {
+      logs(`${extensionsInitCommand} result = ${jsonStringify(result)}`);
+    },
+  );
+}
+
+/**
+ * This function is used to load previously registered extensions from appropriate state.
+ **/
+function extensionsLoad() {
+  if (existsState(extensionsListState)) {
+    try {
+      const parsedObject = jsonParse(getState(extensionsListState).val);
+      if (typeof parsedObject === 'object' && !Array.isArray(parsedObject)) {
+        extensionsList = parsedObject;
+      }
+    } catch (error) {
+      warns(`Can't load extensions list from the "${extensionsListState}". Error is "${jsonStringify(error)}"`);
+    }
+  }
+}
+
+/**
+ * This function is used to save the list of registered extensions to the appropriate state.
+ **/
+function extensionsSave() {
+  const listToSave = jsonStringify(extensionsList);
+  if (existsState(extensionsListState)) {
+    setState(extensionsListState, listToSave, true);
+  } else {
+    createState(
+      extensionsListState,
+      // @ts-ignore
+      listToSave,
+      statesCommonAttributes[idExtensions],
+    );
+  }
+}
+
+/**
+ * This function is used to process a registration messages from AutoTelegramMenu Extensions.
+ * @param {object} extensionDetails - The object, contained
+ * - `id` - The Extension Id,
+ * - `name` - The Extension name,
+ * - `icon` - The Extension Icon,
+ * - `extensionRootMenuId` - The Extension Root menu item Id,
+ * - `scriptName` - The script name, which contains the Extension,
+ * properties.
+ * @param {function} callback - The callback function.
+ */
+function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
+  const {id, type, nameTranslationId, icon, scriptName, translationsKeys, options} = extensionDetails;
+  switch (type) {
+    case extensionTypeFunction: {
+      const extensionPseudoState = options?.['state'];
+      if (typeof extensionPseudoState === 'string') {
+        const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
+        const functionsList = enumerationsList[dataTypeFunction].list;
+        if (typeof functionsList?.[extensionId] === 'object') {
+          functionsList[extensionId].isAvailable = true;
+          functionsList[extensionId].scriptName = scriptName;
+          functionsList[extensionId].state = extensionPseudoState;
+          functionsList[extensionId].nameTranslationId = nameTranslationId;
+          functionsList[extensionId].translationsKeys = translationsKeys;
+        } else {
+          functionsList[extensionId] = {
+            ...enumerationsDefaultObjects[dataTypeExtension],
+            isAvailable: true,
+            isExternal: true,
+            enum: idExternal,
+            nameTranslationId: nameTranslationId,
+            order: Object.keys(functionsList).length,
+            icon: icon,
+            state: extensionPseudoState,
+            deviceAttributes: {},
+            scriptName: scriptName,
+            translationsKeys: translationsKeys,
+          };
+        }
+        enumerationsSave(dataTypeFunction);
+      }
+    }
+    // eslint-disable-next-line no-fallthrough
+    default: {
+      if (
+        typeof extensionsList?.[id] !== 'object' ||
+        (extensionsList[id].type === type && extensionsList[id].scriptName === scriptName)
+      ) {
+        if (typeof extensionsList[id] === 'object')
+          logs(`Extension "${id}" is already registered. Going to update it.`, _l);
+        extensionsList[id] = {
+          isAvailable: true,
+          type: type,
+          nameTranslationId: nameTranslationId,
+          icon: icon,
+          scriptName: scriptName,
+          translationsKeys: [...translationsKeys],
+          options: objectDeepClone(options),
+        };
+        extensionsSave();
+        logs(`Extension "${id}" is registered: ${jsonStringify(extensionsList[id])}.`, _l);
+      } else if (typeof extensionsList?.[id] === 'object') {
+        warns(
+          `Extension "${id}" is already registered with different type or script! Will not update already registered!`,
+        );
+      }
+      break;
+    }
+  }
+  callback({success: true});
+}
+
+const extensionsInitCommand = autoTelegramMenuExtensionsInitCommand
+    ? `${autoTelegramMenuExtensionsInitCommand}`
+    : 'autoTelegramMenuExtensionsInit',
+  extensionsRegisterCommand = autoTelegramMenuExtensionsRegisterCommand
+    ? `${autoTelegramMenuExtensionsRegisterCommand}`
+    : 'autoTelegramMenuExtensionsRegister',
+  /** Make cached values manage be available for External Scripts */
+  extensionsGetCachedStateCommand = autoTelegramMenuExtensionsGetCachedStateCommand
+    ? `${autoTelegramMenuExtensionsGetCachedStateCommand}`
+    : 'autoTelegramMenuExtensionsGetCachedState',
+  extensionsSetCachedStateCommand = autoTelegramMenuExtensionsSetCachedStateCommand
+    ? `${autoTelegramMenuExtensionsSetCachedStateCommand}`
+    : 'autoTelegramMenuExtensionsSetCachedState',
+  extensionsSendFileCommand = autoTelegramMenuExtensionsSendFile
+    ? `${autoTelegramMenuExtensionsSendFile}`
+    : 'autoTelegramMenuExtensionsSendFile',
+  extensionsSendImageCommand = autoTelegramMenuExtensionsSendImage
+    ? `${autoTelegramMenuExtensionsSendImage}`
+    : 'autoTelegramMenuExtensionsSendImage',
+  extensionSendAlertToTelegramCommand = autoTelegramMenuExtensionsSendAlertToTelegram
+    ? `${autoTelegramMenuExtensionsSendAlertToTelegram}`
+    : 'autoTelegramMenuExtensionsSendAlertToTelegram';
+
+//*** Extensions - end ***//
 
 //*** Enumerations - begin ***//
 
@@ -4944,7 +5110,7 @@ function enumerationsSave(enumerationType) {
       enumerationsList[enumerationType].state,
       // @ts-ignore
       listToSave,
-      cachedValuesStatesCommonAttributes.enumerationItems,
+      statesCommonAttributes.enumerationItems,
     );
   }
 }
@@ -5257,6 +5423,10 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         currentEnumerationItem.stateAttributes = [];
         enumerationItemAttrs.push('stateAttributes');
       }
+      if (!enumerationItemAttrs.includes('assignedExtension')) {
+        currentEnumerationItem['assignedExtension'] = {};
+        enumerationItemAttrs.push('assignedExtension');
+      }
       break;
     }
 
@@ -5342,6 +5512,96 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 : translationsMenuGenerateFunctionDeviceItems,
             });
             break;
+          }
+        }
+        break;
+      }
+
+      case 'assignedExtension': {
+        if (isCurrentAccessLevelAllowModify) {
+          if (enumerationType === dataTypeDeviceButtons || enumerationType === dataTypeDeviceAttributes) {
+            const primaryEnumType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId),
+              primaryEnumsList = enumerationsGetList(primaryEnumType),
+              primaryEnum = primaryEnumsList[enumerationTypeExtraId],
+              associatedExtensions = primaryEnum?.['associatedExtensions'] || {},
+              associatedExtensionsAvailableKeys = Object.keys(associatedExtensions).filter(
+                (extensionId) =>
+                  associatedExtensions[extensionId].isEnabled &&
+                  extensionsList[extensionId]?.type === extensionTypeAttributesModifier &&
+                  extensionsList[extensionId]?.isAvailable,
+              ),
+              associatedExtensionsAvailableCount = associatedExtensionsAvailableKeys.length;
+            if (associatedExtensionsAvailableCount) {
+              const assignedExtension = currentEnumerationItem?.['assignedExtension'],
+                assignedExtensionId = assignedExtension?.['extensionId'],
+                assignedExtensionAttributeId = assignedExtension?.['attributeId'];
+              let assignedAttributeName = '';
+              if (
+                assignedExtensionId &&
+                assignedExtensionAttributeId &&
+                associatedExtensionsAvailableKeys.includes(assignedExtensionId)
+              ) {
+                assignedAttributeName =
+                  `${extensionsList[assignedExtensionId].nameTranslationId}/${assignedExtensionAttributeId}`;
+              }
+              const subMenuItem = {
+                index: `${currentIndex}.${subMenuIndex}`,
+                name: `${translationsItemMenuGet(user, enumerationItemAttr)} [${assignedAttributeName}]`,
+                accessLevel: currentAccessLevel,
+                options: {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId},
+                icon: iconItemExtension,
+                submenu: new Array(),
+              };
+              associatedExtensionsAvailableKeys.forEach((extensionId, extensionIndex) => {
+                const attributesMap = new Map(),
+                  attributesList = extensionsList[extensionId]?.['options']?.['attributes'] || [];
+                if (attributesList.length) {
+                  attributesList.forEach((attribute) => {
+                    if (attribute !== assignedExtensionAttributeId) {
+                      attributesMap.set(attribute, attribute);
+                    }
+                  });
+                  subMenuItem.submenu.push(
+                    menuMenuItemGenerateSelectItem(
+                      user,
+                      `${currentIndex}.${subMenuIndex}`,
+                      extensionIndex,
+                      extensionsList[extensionId].nameTranslationId,
+                      attributesMap,
+                      'associatedAttributes',
+                      {
+                        dataType: enumerationType,
+                        dataTypeExtraId: enumerationTypeExtraId,
+                        list: currentEnumerationsList,
+                        item: currentItem,
+                        attribute: 'assignedExtension',
+                        subItem: extensionId,
+                        mode: 'edit',
+                      },
+                    ),
+                  );
+                }
+              });
+              if (assignedAttributeName.length) {
+                subMenuItem.submenu.push(
+                  menuMenuItemGenerateResetItem(
+                    user,
+                    `${currentIndex}.${subMenuIndex}`,
+                    associatedExtensionsAvailableCount,
+                    {
+                      dataType: enumerationType,
+                      dataTypeExtraId: enumerationTypeExtraId,
+                      list: currentEnumerationsList,
+                      item: currentItem,
+                      attribute: 'assignedExtension',
+                      replaceCommand: cmdItemPress,
+                      mode: 'reset',
+                    }
+                  ),
+                );
+              }
+              subMenuIndex = subMenu.push(subMenuItem);
+            }
           }
         }
         break;
@@ -5861,7 +6121,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
         (item) => currentEnumerationsList[item].order === previousOrder,
       );
     currentItemDetailsList.push({
-      label: translationsItemTextGet(user, 'ListPrevious'),
+      label: translationsItemTextGet(user, 'list', 'previous'),
       value: previousItem
         ? enumerationsItemName(user, enumerationType, previousItem, currentEnumerationsList[previousItem])
         : '',
@@ -5871,7 +6131,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
     const nextOrder = currentEnumerationItem.order + 1,
       nextItem = Object.keys(currentEnumerationsList).find((item) => currentEnumerationsList[item].order === nextOrder);
     currentItemDetailsList.push({
-      label: translationsItemTextGet(user, 'ListNext'),
+      label: translationsItemTextGet(user, 'list', 'next'),
       value: nextItem ? enumerationsItemName(user, enumerationType, nextItem, currentEnumerationsList[nextItem]) : '',
     });
   }
@@ -5887,6 +6147,14 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
               currentEnumerationsList[currentEnumerationItem.holder],
             )
           : '',
+    });
+  }
+  if (enumerationType === dataTypeAssociatedExtensions) {
+    currentItemDetailsList.unshift({
+      label: translationsItemTextGet(user, 'list', 'isAvailable'),
+      value: extensionsList?.[currentItem]?.isAvailable
+        ? configOptions.getOption(cfgDefaultIconOn, user)
+        : configOptions.getOption(cfgDefaultIconOff, user),
     });
   }
   if (enumerationType === dataTypePrimaryEnums) {
@@ -5914,6 +6182,31 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
           : configOptions.getOption(cfgDefaultIconOff, user)
       }`,
     });
+  }
+  if (enumerationType === dataTypeDeviceStatesAttributes || enumerationType === dataTypeDeviceAttributes) {
+    const primaryEnumType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId),
+      primaryEnumsList = enumerationsGetList(primaryEnumType),
+      primaryEnum = primaryEnumsList[enumerationTypeExtraId];
+    if (
+      typeof currentEnumerationItem?.['assignedExtension'] === 'object' &&
+      typeof currentEnumerationItem?.['assignedExtension']?.['extensionId'] === 'string' &&
+      typeof currentEnumerationItem?.['assignedExtension']?.['attributeId'] === 'string' &&
+      extensionsList[currentEnumerationItem['assignedExtension']['extensionId']]?.isAvailable &&
+      extensionsList[currentEnumerationItem['assignedExtension']['extensionId']]?.type ===
+        extensionTypeAttributesModifier &&
+      primaryEnum?.['associatedExtensions']?.[currentEnumerationItem['assignedExtension']['extensionId']]?.isEnabled
+    ) {
+      currentItemDetailsList.push(
+        {
+          label: translationsItemTextGet(user, 'assignedExtension'),
+          value: extensionsList[currentEnumerationItem['assignedExtension']['extensionId']].nameTranslationId,
+        },
+        {
+          label: translationsItemTextGet(user, 'assignedAttribute'),
+          value: currentEnumerationItem['assignedExtension']['attributeId'],
+        },
+      );
+    }
   }
   return currentItemDetailsList.length
     ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}`
@@ -6040,6 +6333,11 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
       if (currentEnumerationItem.isEnabled) {
         currentIcon = currentEnumerationItem.icon || '';
       }
+      if (enumerationType === dataTypeAssociatedExtensions) {
+        if (!extensionsList?.[currentItem]?.isAvailable) {
+          currentIcon = iconItemNotFound;
+        }
+      }
       const currentMenuItem = {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${enumerationsItemName(user, enumerationType, currentItem, currentEnumerationItem)}${
@@ -6123,7 +6421,9 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
     case dataTypeAssociatedExtensions: {
       const assignedExtensions = Object.keys(currentEnumerationsList),
         availableExtensions = Object.keys(extensionsList).filter(
-          (extensionId) => !assignedExtensions.includes(extensionId),
+          (extensionId) =>
+            extensionsList[extensionId].type === extensionTypeAttributesModifier &&
+            !assignedExtensions.includes(extensionId),
         );
       if (availableExtensions.length > 0) {
         const extensionsMap = new Map();
@@ -7072,121 +7372,6 @@ function enumerationsRefreshFunctionDeviceStates(user, functionId, typeOfDeviceS
 
 //*** Enumerations - end ***//
 
-//*** Extensions - begin ***//
-
-const extensionsList = {};
-
-/**
- * This function is used to process a registration messages from AutoTelegramMenu Extensions.
- * @param {object} extensionDetails - The object, contained
- * - `id` - The Extension Id,
- * - `name` - The Extension name,
- * - `icon` - The Extension Icon,
- * - `extensionRootMenuId` - The Extension Root menu item Id,
- * - `scriptName` - The script name, which contains the Extension,
- * properties.
- * @param {function} callback - The callback function.
- */
-function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
-  const {id, type, nameTranslationId, icon, scriptName, translationsKeys, options} = extensionDetails;
-  switch (type) {
-    case 'function': {
-      const extensionPseudoState = options?.['state'];
-      if (typeof extensionPseudoState === 'string') {
-        const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
-        const functionsList = enumerationsList[dataTypeFunction].list;
-        if (typeof functionsList?.[extensionId] === 'object') {
-          functionsList[extensionId].isAvailable = true;
-          functionsList[extensionId].scriptName = scriptName;
-          functionsList[extensionId].state = extensionPseudoState;
-          functionsList[extensionId].nameTranslationId = nameTranslationId;
-          functionsList[extensionId].translationsKeys = translationsKeys;
-        } else {
-          functionsList[extensionId] = {
-            ...enumerationsDefaultObjects[dataTypeExtension],
-            isAvailable: true,
-            isExternal: true,
-            enum: idExternal,
-            nameTranslationId: nameTranslationId,
-            order: Object.keys(functionsList).length,
-            icon: icon,
-            state: extensionPseudoState,
-            deviceAttributes: {},
-            scriptName: scriptName,
-            translationsKeys: translationsKeys,
-          };
-        }
-        enumerationsSave(dataTypeFunction);
-      }
-      break;
-    }
-    default: {
-      if (
-        typeof extensionsList?.[id] !== 'object' ||
-        (extensionsList[id].type === type && extensionsList[id].scriptName === scriptName)
-      ) {
-        if (typeof extensionsList[id] === 'object')
-          logs(`Extension "${id}" is already registered. Going to update it.`, _l);
-        extensionsList[id] = {
-          type: type,
-          nameTranslationId: nameTranslationId,
-          icon: icon,
-          scriptName: scriptName,
-          translationsKeys: translationsKeys,
-          options: options,
-        };
-        logs(`Extension "${id}" is registered: ${jsonStringify(extensionsList[id])}.`, _l);
-      } else if (typeof extensionsList?.[id] === 'object') {
-        warns(
-          `Extension "${id}" is already registered with different type or script! Will not update already registered!`,
-        );
-      }
-      break;
-    }
-  }
-  callback({success: true});
-}
-
-const extensionsInitCommand = autoTelegramMenuExtensionsInitCommand
-    ? `${autoTelegramMenuExtensionsInitCommand}`
-    : 'autoTelegramMenuExtensionsInit',
-  extensionsRegisterCommand = autoTelegramMenuExtensionsRegisterCommand
-    ? `${autoTelegramMenuExtensionsRegisterCommand}`
-    : 'autoTelegramMenuExtensionsRegister',
-  /** Make cached values manage be available for External Scripts */
-  extensionsGetCachedStateCommand = autoTelegramMenuExtensionsGetCachedStateCommand
-    ? `${autoTelegramMenuExtensionsGetCachedStateCommand}`
-    : 'autoTelegramMenuExtensionsGetCachedState',
-  extensionsSetCachedStateCommand = autoTelegramMenuExtensionsSetCachedStateCommand
-    ? `${autoTelegramMenuExtensionsSetCachedStateCommand}`
-    : 'autoTelegramMenuExtensionsSetCachedState',
-  extensionsSendFileCommand = autoTelegramMenuExtensionsSendFile
-    ? `${autoTelegramMenuExtensionsSendFile}`
-    : 'autoTelegramMenuExtensionsSendFile',
-  extensionsSendImageCommand = autoTelegramMenuExtensionsSendImage
-    ? `${autoTelegramMenuExtensionsSendImage}`
-    : 'autoTelegramMenuExtensionsSendImage',
-  extensionSendAlertToTelegramCommand = autoTelegramMenuExtensionsSendAlertToTelegram
-    ? `${autoTelegramMenuExtensionsSendAlertToTelegram}`
-    : 'autoTelegramMenuExtensionsSendAlertToTelegram';
-
-/**
- * This function send a message to all Extensions with request to the to send a registration Message.
- */
-function extensionsInit() {
-  const timeout = configOptions.getOption(cfgExternalMenuTimeout);
-  messageTo(
-    extensionsInitCommand,
-    {messageId: extensionsRegisterCommand, timeout: timeout},
-    {timeout: timeout},
-    (result) => {
-      logs(`${extensionsInitCommand} result = ${jsonStringify(result)}`);
-    },
-  );
-}
-
-//*** Extensions - end ***//
-
 //*** Alerts - begin ***//
 
 const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
@@ -7209,21 +7394,21 @@ const alertsStateFullId = `${prefixPrimary}.${idAlerts}`,
 let alertsRules = {},
   cachedAlertsStatesValues = {};
 
-cachedValuesStatesCommonAttributes[cachedAlertMessages] = {
+statesCommonAttributes[cachedAlertMessages] = {
   name: 'List of alert messages from alert subscriptions',
   type: 'json',
   read: true,
   write: true,
   role: 'array',
 };
-cachedValuesStatesCommonAttributes[idAlerts] = {
+statesCommonAttributes[idAlerts] = {
   name: 'List of states for alert subscription',
   type: 'json',
   read: true,
   write: true,
   role: 'list',
 };
-cachedValuesStatesCommonAttributes[idCachedAlertsStatesValues] = {
+statesCommonAttributes[idCachedAlertsStatesValues] = {
   name: 'List of previous(cached) values of states for alert subscription',
   type: 'json',
   read: true,
@@ -7263,7 +7448,7 @@ function alertsStore(alerts) {
     if (existsState(alertsStateFullId)) {
       setState(alertsStateFullId, alertsJSON, true);
     } else {
-      createState(alertsStateFullId, alertsJSON, cachedValuesStatesCommonAttributes[idAlerts]);
+      createState(alertsStateFullId, alertsJSON, statesCommonAttributes[idAlerts]);
     }
   }
 }
@@ -7286,11 +7471,7 @@ function alertsStoreToCacheStateValue(alertStateId, currentValue) {
     if (existsState(cachedAlertsStatesValuesStateFullId)) {
       setState(cachedAlertsStatesValuesStateFullId, stringValue, true);
     } else {
-      createState(
-        cachedAlertsStatesValuesStateFullId,
-        stringValue,
-        cachedValuesStatesCommonAttributes[idCachedAlertsStatesValues],
-      );
+      createState(cachedAlertsStatesValuesStateFullId, stringValue, statesCommonAttributes[idCachedAlertsStatesValues]);
     }
   }
 }
@@ -8862,7 +9043,7 @@ const triggersInAlertsId = 0,
 
 let triggersLogs = new Array();
 
-cachedValuesStatesCommonAttributes[idTriggersLogs] = {
+statesCommonAttributes[idTriggersLogs] = {
   name: 'List of previous(cached) values of states for alert subscription',
   type: 'json',
   read: true,
@@ -8909,7 +9090,7 @@ function triggersLogsPushTo(triggerLogItem) {
     if (existsState(triggersLogsStateFullId)) {
       setState(triggersLogsStateFullId, stringValue, true);
     } else {
-      createState(triggersLogsStateFullId, stringValue, cachedValuesStatesCommonAttributes[idTriggersLogs]);
+      createState(triggersLogsStateFullId, stringValue, statesCommonAttributes[idTriggersLogs]);
     }
   }
 }
@@ -12645,7 +12826,7 @@ function menuMenuItemGenerateResetItem(user, upperItemIndex, itemIndex, options)
     index: `${upperItemIndex}.${itemIndex}`,
     name: `${translationsItemCoreGet(user, cmdItemReset)}`,
     icon: iconItemReset,
-    command: cmdItemReset,
+    command: options?.replaceCommand ? options.replaceCommand : cmdItemReset,
     options: options,
     group: 'reset',
     submenu: [],
@@ -15955,7 +16136,31 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       }
 
                       default: {
-                        if (commandOptions.value) {
+                        if (commandOptions.attribute === 'assignedExtension') {
+                          switch (commandOptions.mode) {
+                            case 'edit': {
+                              if (
+                                typeof commandOptions.subItem === 'string' &&
+                                typeof commandOptions.value === 'string'
+                              ) {
+                                currentDataItem[commandOptions.attribute] = {
+                                  extensionId: commandOptions.subItem,
+                                  attributeId: commandOptions.value,
+                                };
+                                menuPositionCurrent.splice(-2, 2);
+                              }
+                              break;
+                            }
+                            case 'reset': {
+                              delete currentDataItem[commandOptions.attribute];
+                              menuPositionCurrent.splice(-1, 1);
+                              break;
+                            }
+                            default: {
+                              break;
+                            }
+                          }
+                        } else if (commandOptions.value) {
                           currentDataItem[commandOptions.attribute] =
                             currentDataItem[commandOptions.attribute] === commandOptions.value
                               ? ''
