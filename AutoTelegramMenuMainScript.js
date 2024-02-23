@@ -14270,8 +14270,8 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
           (newMenuItem) => {
             if (newMenuItem?.error === undefined && typeof newMenuItem?.id === 'string' && newMenuItem?.id.length > 0) {
+              menuItemToProcess = menuMenuReIndex(newMenuItem);
               if (extensionsList?.[extensionId]?.type === 'attributesModifier') {
-                menuItemToProcess = menuMenuReIndex(newMenuItem);
                 if (
                   typeof menuItemToProcess?.['options']?.['valueOptions']?.['externalValueId'] === 'string' &&
                   menuItemToProcess?.['options']?.['valueOptions']?.['externalValueId'] === menuItemToProcess?.index &&
@@ -14287,7 +14287,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
                 }
                 menuItemToProcess = menuAssignInternalMenuItems(user, menuItemToProcess);
               }
-
               menuItemToProcess.options = {...menuItemToProcess.options, generatedBy: subMenu};
               menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
             } else if (newMenuItem.error !== undefined) {
