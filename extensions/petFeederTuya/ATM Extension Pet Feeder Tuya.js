@@ -3,18 +3,28 @@
 /* global  autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
 /* global autoTelegramMenuExtensionsSendAlertToTelegram */
 
+// @ts-ignore
+if(!Object.hasOwn(Function.prototype, 'toJSON')) {
+  Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
+    // eslint-disable-next-line space-before-function-paren
+    value: function () {
+      return `function ${this.name}`;
+    },
+  });
+}
+
 function autoTelegramMenuExtensionPetFeeder() {
-  const autoTelegramMenuExtensionsInit = autoTelegramMenuExtensionsInitCommand
+  const extensionsInit = autoTelegramMenuExtensionsInitCommand
       ? `${autoTelegramMenuExtensionsInitCommand}`
       : 'autoTelegramMenuExtensionsInit',
-    autoTelegramMenuExtensionsRegister = autoTelegramMenuExtensionsRegisterCommand
+    extensionsRegister = autoTelegramMenuExtensionsRegisterCommand
       ? `${autoTelegramMenuExtensionsRegisterCommand}`
       : 'autoTelegramMenuExtensionsRegister',
-    autoTelegramMenuExtensionsTimeout = 500,
-    autoTelegramMenuExtensionId = 'petFeederTuya',
-    autoTelegramMenuExtensionType = 'attributesModifier',
-    autoTelegramMenuExtensionTranslationsKeys = [
-      [autoTelegramMenuExtensionId],
+    extensionsTimeout = 500,
+    extensionId = 'petFeederTuya',
+    extensionType = 'attributesModifier',
+    extensionTranslationsKeys = [
+      [extensionId],
       'enabled',
       'time',
       'weekdays',
@@ -25,7 +35,13 @@ function autoTelegramMenuExtensionPetFeeder() {
       'manualFeed',
       'manualFeedCurrent',
       'manualFeedCustom',
-    ];
+    ],
+    scheduleTemplate = {
+      enabled: false,
+      time: '00:00',
+      weekdays: [0, 0, 0, 0, 0, 0, 0],
+      portion: 1,
+    };
 
   const _autoTelegramMenuExtensionsGetCachedState = autoTelegramMenuExtensionsGetCachedStateCommand
       ? `${autoTelegramMenuExtensionsGetCachedStateCommand}`
@@ -36,22 +52,31 @@ function autoTelegramMenuExtensionPetFeeder() {
 
   function extensionPetFeederInit(messageId, timeout) {
     messageTo(
-      messageId === undefined ? autoTelegramMenuExtensionsRegister : messageId,
+      messageId === undefined ? extensionsRegister : messageId,
       {
-        id: autoTelegramMenuExtensionId,
-        type: autoTelegramMenuExtensionType,
-        nameTranslationId: autoTelegramMenuExtensionId,
+        id: extensionId,
+        type: extensionType,
+        nameTranslationId: extensionId,
         icon: '🐈',
         options: {
-          attributes: ['schedule', 'manualFeed']
+          attributes: {
+            'schedule': {
+              asButton: true,
+              asAttribute: true,
+            },
+            'manualFeed': {
+              asButton: true,
+              asAttribute: false,
+            },
+          }
         },
         scriptName: scriptName,
-        translationsKeys: autoTelegramMenuExtensionTranslationsKeys,
+        translationsKeys: extensionTranslationsKeys,
       },
-      {timeout: timeout === undefined ? autoTelegramMenuExtensionsTimeout : timeout},
+      {timeout: timeout === undefined ? extensionsTimeout : timeout},
       (result) => {
         if (!result.success) {
-          console.warn(`Error to register ${autoTelegramMenuExtensionId} - ${result.error}`);
+          console.warn(`Error to register ${extensionId} - ${result.error}`);
         }
       },
     );
@@ -111,220 +136,290 @@ function autoTelegramMenuExtensionPetFeeder() {
     return Buffer.from(scheduleByteArray).toString('base64');
   }
 
-  onMessage(autoTelegramMenuExtensionsInit, ({messageId, timeout}, callback) => {
+  onMessage(extensionsInit, ({messageId, timeout}, callback) => {
     extensionPetFeederInit(messageId, timeout);
     callback({success: true});
   });
 
-  onMessage('schedule', ({user: _user, data, _extensionId, translations}, callback) => {
-    const {
-      device,
-      state,
-      value,
-      function: functionId,
-      destination: destinationId,
-      isButton,
-      interimValue,
-      icons,
-    } = data;
-    if (typeof device === 'string' && typeof state === 'string' && typeof value === 'string') {
-      const schedule = interimValue !== undefined && isButton ? interimValue : scheduleDecode(value),
-        scheduleText = schedule.map((item) => `${item.enabled ? icons.on : icons.off}${item.time}`).join(',');
+  onMessage(`${extensionId}#schedule`, ({user: _user, data, translations}, callback) => {
+    const options = data.options || {},
+      {
+        device,
+        state,
+        stateValue,
+        index,
+        isButton,
+        valueOptions,
+        icons,
+      } = options;
+    if (typeof device === 'string' && typeof state === 'string' && typeof stateValue === 'string') {
+      const valueInterim = valueOptions?.['externalValueInterim'],
+        schedule = valueInterim !== undefined && isButton ? valueInterim : scheduleDecode(stateValue),
+        iconOn = icons?.[0] || '✅',
+        iconOff = icons?.[1] || '❌',
+        scheduleText = schedule.map((item) => `${item.enabled ? iconOn : iconOff}${item.time}`).join(','),
+        messageToId = `${extensionId}#schedule`;
       if (isButton) {
-        const isChanged = interimValue !== undefined && value !== scheduleEncode(interimValue),
-          options = {
-            device: device,
-            state: state,
-            function: functionId,
-            destination: destinationId,
-            id: 'schedule',
-            mode: 'edit',
-          },
-          menuItem = {
-            icon: '',
-            submenu: new Array(),
-            options: {
-              ...options,
-              valueOptions: {
-                showValue: true,
-                valueText: scheduleText,
+        const isChanged = valueInterim !== undefined && stateValue !== scheduleEncode(valueInterim),
+          menuItem= {...data};
+        menuItem.options = options;
+        menuItem.submenu =  new Array();
+        if (typeof index === 'number') {
+          if (index < schedule.length) {
+            const item = schedule[index],
+              itemOptions = {
+                ...options,
+                index: index,
+              };
+            item.enabled = item.enabled && !(
+              item.time === undefined ||
+              item.time === '' ||
+              item.weekdays === undefined ||
+              item.weekdays.reduce((a, b) => a || b === 1, false) === false ||
+              item.portion === undefined ||
+              item.portion === 0
+            );
+            menuItem.submenu = [
+              {
+                name: translations['enabled'] || 'enabled',
+                icon: item.enabled ? iconOn : iconOff,
+                id: 'enabled',
+                extensionId: extensionId,
+                type: 'internalMenuItem',
+                command: 'editValue',
+                options: {
+                  ...itemOptions,
+                  item: 'enabled',
+                  value: item.enabled === undefined ? false : item.enabled,
+                  valueOptions: {
+                    ...itemOptions.valueOptions,
+                    type: 'boolean',
+                  },
+                },
+                submenu: [],
               },
-            },
-          };
-        schedule.forEach((item, index) => {
+              {
+                name: `${translations['time'] || 'time'}`,
+                id: 'time',
+                extensionId: extensionId,
+                icon: '',
+                type: 'internalMenuItem',
+                command: 'editValue',
+                options: {
+                  ...itemOptions,
+                  item: 'time',
+                  value: item.time === undefined ? '00:00' : item.time,
+                  valueOptions: {
+                    ...itemOptions.valueOptions,
+                    showValue: true,
+                    type: 'string',
+                    subType: 'time',
+                    timeTemplate: 'hm',
+                  },
+                },
+                submenu: [],
+              },
+              {
+                name: `${translations['weekdays'] || 'weekdays'}`,
+                id: 'weekdays',
+                extensionId: extensionId,
+                icon: '',
+                type: 'internalMenuItem',
+                command: 'editValue',
+                options: {
+                  ...itemOptions,
+                  item: 'weekdays',
+                  value: item.weekdays === undefined ? [0, 0, 0, 0, 0, 0, 0] : item.weekdays,
+                  valueOptions: {
+                    ...itemOptions.valueOptions,
+                    showValue: true,
+                    type: 'array',
+                    subType: 'weekdays',
+                  },
+                },
+                submenu: [],
+              },
+              {
+                name: `${translations['portion'] || 'portion'}`,
+                id: 'portion',
+                extensionId: extensionId,
+                icon: '',
+                type: 'internalMenuItem',
+                command: 'editValue',
+                options: {
+                  ...itemOptions,
+                  item: 'portion',
+                  value: item.portion === undefined ? 1 : item.portion,
+                  valueOptions: {
+                    ...itemOptions.valueOptions,
+                    type: 'number',
+                    min: 1,
+                    max: 40,
+                    step: 1,
+                    showValue: true,
+                  },
+                },
+                submenu: [],
+              },
+              {
+                name: translations['delete'] || 'delete',
+                id: 'delete',
+                extensionId: extensionId,
+                icon: icons.delete,
+                group: 'delete',
+                type: 'internalMenuItem',
+                command: 'deleteItem',
+                options: {
+                  ...itemOptions,
+                  mode: 'delete',
+                },
+                submenu: [],
+              }
+            ];
+          }
+        } else {
           const itemOptions = {
             ...options,
-            index: index,
-          };
-          item.enabled = !(
-            item.time === undefined ||
-            item.time === '' ||
-            item.weekdays === undefined ||
-            item.weekdays.reduce((a, b) => a || b === 1, false) === false ||
-            item.portion === undefined ||
-            item.portion === 0
-          );
-          const scheduleMenuItem = {
-            name: `${item.time}`,
-            icon: item.enabled ? icons.on : icons.off,
-            submenu: new Array(),
-          };
-          scheduleMenuItem.submenu.push({
-            name: translations['enabled'],
-            icon: item.enabled ? icons.on : icons.off,
-            command: 'editValue',
-            options: {
-              ...itemOptions,
-              item: 'enabled',
-              value: item.enabled === undefined ? false : item.enabled,
-              valueOptions: {
-                type: 'boolean',
-              },
-            },
-            submenu: [],
-          });
-          scheduleMenuItem.submenu.push({
-            name: translations['time'],
-            icon: '',
-            command: 'editValue',
-            options: {
-              ...itemOptions,
-              item: 'time',
-              value: item.time === undefined ? '00:00' : item.time,
-              valueOptions: {
-                showValue: true,
-                type: 'time',
-                format: 'hm',
-              },
-            },
-            submenu: [],
-          });
-          scheduleMenuItem.submenu.push({
-            name: translations['weekdays'],
-            icon: '',
-            command: 'editValue',
-            options: {
-              ...itemOptions,
-              item: 'weekdays',
-              value: item.weekdays === undefined ? [0, 0, 0, 0, 0, 0, 0] : item.weekdays,
-              valueOptions: {
-                showValue: true,
-                type: 'weekdays',
-              },
-            },
-            submenu: [],
-          });
-          scheduleMenuItem.submenu.push({
-            name: translations['portion'],
-            icon: '',
-            command: 'editValue',
-            options: {
-              ...itemOptions,
-              item: 'portion',
-              value: item.portion === undefined ? 1 : item.portion,
-              valueOptions: {
-                type: 'number',
-                min: 1,
-                max: 10,
-                step: 1,
-                showValue: true,
-              },
-            },
-            submenu: [],
-          });
-          scheduleMenuItem.submenu.push({
-            name: translations['delete'],
-            icon: icons.delete,
-            command: 'deleteItem',
-            options: {
-              ...itemOptions,
-              mode: 'delete',
-            },
-            submenu: [],
-          });
-          menuItem.submenu.push(scheduleMenuItem);
-        });
-        menuItem.submenu.push({
-          name: translations['add'],
-          icon: icons.add,
-          command: 'editItem',
-          options: {
-            ...options,
-            index: schedule.length,
-            item: 'time',
-            mode: 'add',
             valueOptions: {
-              type: 'time',
-              format: 'hm',
+              ...options.valueOptions,
+              externalValueType: 'array#object',
+              externalValueId: menuItem.index,
+              externalObjectTemplate: scheduleTemplate,
             },
-          },
-          submenu: [],
-        });
-        if (isChanged) {
+          };
+          menuItem.options = {
+            ...options,
+            valueOptions: {
+              ...options.valueOptions,
+              externalValue: schedule,
+              externalValueType: 'array#object',
+              externalValueId: menuItem.index,
+            },
+          };
+          menuItem.id = 'schedule';
+          schedule.forEach((item, index) => {
+            item.enabled = !(
+              item.time === undefined ||
+              item.time === '' ||
+              item.weekdays === undefined ||
+              item.weekdays.reduce((a, b) => a || b === 1, false) === false ||
+              item.portion === undefined ||
+              item.portion === 0
+            );
+            menuItem.submenu.push({
+              name: `${item.time}`,
+              id: `${index}`,
+              extensionId: extensionId,
+              group: 'schedule',
+              icon: item.enabled ? iconOn : iconOff,
+              options: {
+                ...itemOptions,
+                index: index,
+              },
+              submenu: messageToId,
+            });
+          });
           menuItem.submenu.push({
-            name: translations['save'],
-            icon: icons.save,
-            command: 'setStateValue',
+            name: translations['add'] || 'add',
+            id: 'add',
+            extensionId: extensionId,
+            icon: icons.add,
+            group: 'add',
+            type: 'internalMenuItem',
+            command: 'editValue',
             options: {
-              ...options,
-              mode: 'save',
-              value: scheduleEncode([...interimValue].sort((a, b) => a.time.localeCompare(b.time))),
+              ...itemOptions,
+              mode: 'add',
+              index: schedule.length,
+              item: 'time',
+              value: undefined,
+              valueOptions: {
+                ...itemOptions.valueOptions,
+                type: 'string',
+                subType: 'time',
+                timeTemplate: 'hm',
+              },
             },
             submenu: [],
           });
+          if (isChanged) {
+            menuItem.submenu.push({
+              name: translations['save'] || 'save'  ,
+              id: `schedule#save`,
+              extensionId: extensionId,
+              icon: icons.save,
+              group: 'save',
+              type: 'internalMenuItem',
+              command: 'setStateValue',
+              options: {
+                ...options,
+                mode: 'save',
+                value: scheduleEncode([...valueInterim].sort((a, b) => a.time.localeCompare(b.time))),
+              },
+              submenu: [],
+            });
+          }
         }
-        callback({...data, menuItem: menuItem, valueText: scheduleText, interimValue: schedule});
+        callback({...menuItem});
       } else {
         callback({...data, valueText: scheduleText});
       }
     }
   });
 
-  onMessage('manualFeed', ({user: _user, data, _extensionId, translations}, callback) => {
-    const {device, state, function: functionId, destination: destinationId, value} = data;
-    if (typeof device === 'string' && typeof state === 'string' && typeof value === 'number') {
-      const options = {
-          device: device,
-          state: state,
-          function: functionId,
-          destination: destinationId,
-          value: value,
-          id: 'manualFeed',
-        },
-        menuItem = {
-          icon: '',
-          options: {
-            ...options,
-            valueOptions: {
-              showValue: true,
+  onMessage(`${extensionId}#manualFeed`, ({user: _user, data, translations}, callback) => {
+    const options = data.options || {},
+    {
+      device,
+      state,
+      stateValue,
+      isButton,
+      valueOptions,
+    } = options;
+    if (typeof device === 'string' && typeof state === 'string' && typeof stateValue === 'number') {
+      if (isButton) {
+        const menuItem = {...data};
+        menuItem['id'] = 'manualFeed';
+        menuItem['submenu'] = [
+          {
+            name: translations['manualFeedCurrent'] || 'manualFeedCurrent',
+            type: 'internalMenuItem',
+            command: 'setStateValue',
+            extensionId: extensionId,
+            id: 'current',
+            options: {
+              ...options,
+              valueOptions: {
+                ...valueOptions,
+                showValue: true,
+              },
             },
+            submenu: [],
           },
-          submenu: [
-            {
-              name: translations['manualFeedCurrent'],
-              type: 'internalCommand',
-              command: 'setStateValue',
-              options: {
-                ...options,
-                valueOptions: {
-                  showValue: true,
-                },
+          {
+            name: translations['manualFeedCustom'] || 'manualFeedCustom',
+            type: 'internalMenuItem',
+            command: 'editStateValue',
+            extensionId: extensionId,
+            id: 'custom',
+            options: {
+              ...options,
+              valueOptions: {
+                ...valueOptions,
+                type: 'number',
+                min: 1,
+                max: 40,
+                step: 1,
+                showValue: true,
               },
             },
-            {
-              name: translations['manualFeedCustom'],
-              type: 'internalMenuItem',
-              command: 'editStateValue',
-              options: {
-                ...options,
-                valueOptions: {
-                  showValue: true,
-                },
-              },
-            },
-          ],
-        };
-      callback({...data, menuItem: menuItem});
+            submenu: [],
+          },
+        ];
+        callback({...menuItem});
+      } else {
+        callback(data);
+      }
     }
   });
 

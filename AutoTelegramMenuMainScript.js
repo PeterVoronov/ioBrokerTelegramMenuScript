@@ -127,6 +127,7 @@ const cmdPrefix = 'cmd',
   dataTypeDestination = 'destination',
   dataTypeFunction = 'function',
   dataTypeExtension = 'extensions',
+  dataTypeExternal = 'external',
   dataTypeConfig = 'conf',
   dataTypeReport = 'report',
   dataTypeReportMember = 'repMemb',
@@ -4819,11 +4820,12 @@ function extensionsSave() {
  */
 function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
   const {id, type, nameTranslationId, icon, scriptName, translationsKeys, options} = extensionDetails;
+  let extensionId = id;
   switch (type) {
     case extensionTypeFunction: {
       const extensionPseudoState = options?.['state'];
       if (typeof extensionPseudoState === 'string') {
-        const extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
+        extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
         const functionsList = enumerationsList[dataTypeFunction].list;
         if (typeof functionsList?.[extensionId] === 'object') {
           functionsList[extensionId].isAvailable = true;
@@ -4852,12 +4854,12 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
     // eslint-disable-next-line no-fallthrough
     default: {
       if (
-        typeof extensionsList?.[id] !== 'object' ||
-        (extensionsList[id].type === type && extensionsList[id].scriptName === scriptName)
+        typeof extensionsList?.[extensionId] !== 'object' ||
+        (extensionsList[extensionId].type === type && extensionsList[extensionId].scriptName === scriptName)
       ) {
-        if (typeof extensionsList[id] === 'object')
-          logs(`Extension "${id}" is already registered. Going to update it.`, _l);
-        extensionsList[id] = {
+        if (typeof extensionsList[extensionId] === 'object')
+          logs(`Extension "${extensionId}" is already registered. Going to update it.`, _l);
+        extensionsList[extensionId] = {
           isAvailable: true,
           type: type,
           nameTranslationId: nameTranslationId,
@@ -4867,10 +4869,11 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
           options: objectDeepClone(options),
         };
         extensionsSave();
-        logs(`Extension "${id}" is registered: ${jsonStringify(extensionsList[id])}.`, _l);
-      } else if (typeof extensionsList?.[id] === 'object') {
+        logs(`Extension "${extensionId}" is registered: ${jsonStringify(extensionsList[extensionId])}.`, _l);
+      } else if (typeof extensionsList?.[extensionId] === 'object') {
         warns(
-          `Extension "${id}" is already registered with different type or script! Will not update already registered!`,
+          `Extension "${extensionId}" is already registered with different type or script!` +
+            ' Will not update already registered!',
         );
       }
       break;
@@ -5533,20 +5536,28 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               associatedExtensionsAvailableCount = associatedExtensionsAvailableKeys.length;
             if (associatedExtensionsAvailableCount) {
               const assignedExtension = currentEnumerationItem?.['assignedExtension'],
-                assignedExtensionId = assignedExtension?.['extensionId'],
-                assignedExtensionAttributeId = assignedExtension?.['attributeId'];
-              let assignedAttributeName = '';
-              if (
-                assignedExtensionId &&
-                assignedExtensionAttributeId &&
-                associatedExtensionsAvailableKeys.includes(assignedExtensionId)
-              ) {
-                assignedAttributeName =
-                  `${extensionsList[assignedExtensionId].nameTranslationId}/${assignedExtensionAttributeId}`;
+                extensionId = assignedExtension?.['extensionId'],
+                attributeId = assignedExtension?.['attributeId'];
+              let attributeName = '';
+              if (typeof extensionId === 'string' && associatedExtensionsAvailableKeys.includes(extensionId)) {
+                const extensionDetails = extensionsList[extensionId],
+                  extensionIsForButtons =
+                    extensionDetails?.['options']?.['attributes']?.[attributeId]?.['asButton'] === true,
+                  extensionIsForAttributes =
+                    extensionDetails?.['options']?.['attributes']?.[attributeId]?.['asAttribute'] === true;
+                if (
+                  extensionId &&
+                  attributeId &&
+                  ((enumerationType === dataTypeDeviceButtons && extensionIsForButtons) ||
+                    (enumerationType === dataTypeDeviceAttributes && extensionIsForAttributes)) &&
+                  associatedExtensionsAvailableKeys.includes(extensionId)
+                ) {
+                  attributeName = extensionsList[extensionId].nameTranslationId + '/' + attributeId;
+                }
               }
               const subMenuItem = {
                 index: `${currentIndex}.${subMenuIndex}`,
-                name: `${translationsItemMenuGet(user, enumerationItemAttr)} [${assignedAttributeName}]`,
+                name: `${translationsItemMenuGet(user, enumerationItemAttr)} [${attributeName}]`,
                 accessLevel: currentAccessLevel,
                 options: {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId},
                 icon: iconItemExtension,
@@ -5554,35 +5565,46 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               };
               associatedExtensionsAvailableKeys.forEach((extensionId, extensionIndex) => {
                 const attributesMap = new Map(),
-                  attributesList = extensionsList[extensionId]?.['options']?.['attributes'] || [];
-                if (attributesList.length) {
-                  attributesList.forEach((attribute) => {
-                    if (attribute !== assignedExtensionAttributeId) {
+                  attributesList = extensionsList[extensionId]?.['options']?.['attributes'] || {},
+                  attributesListKeys = Object.keys(attributesList);
+                if (attributesListKeys.length) {
+                  attributesListKeys.forEach((attribute) => {
+                    if (
+                      attribute !== attributeId &&
+                      (
+                        enumerationType === dataTypeDeviceButtons &&
+                        attributesList[attribute]?.['asButton'] === true ||
+                        enumerationType === dataTypeDeviceAttributes &&
+                        attributesList[attribute]?.['asAttribute'] === true
+                      )
+                    ) {
                       attributesMap.set(attribute, attribute);
                     }
                   });
-                  subMenuItem.submenu.push(
-                    menuMenuItemGenerateSelectItem(
-                      user,
-                      `${currentIndex}.${subMenuIndex}`,
-                      extensionIndex,
-                      extensionsList[extensionId].nameTranslationId,
-                      attributesMap,
-                      'associatedAttributes',
-                      {
-                        dataType: enumerationType,
-                        dataTypeExtraId: enumerationTypeExtraId,
-                        list: currentEnumerationsList,
-                        item: currentItem,
-                        attribute: 'assignedExtension',
-                        subItem: extensionId,
-                        mode: 'edit',
-                      },
-                    ),
-                  );
+                  if (attributesMap.size) {
+                    subMenuItem.submenu.push(
+                      menuMenuItemGenerateSelectItem(
+                        user,
+                        `${currentIndex}.${subMenuIndex}`,
+                        extensionIndex,
+                        extensionsList[extensionId].nameTranslationId,
+                        attributesMap,
+                        'associatedAttributes',
+                        {
+                          dataType: enumerationType,
+                          dataTypeExtraId: enumerationTypeExtraId,
+                          list: currentEnumerationsList,
+                          item: currentItem,
+                          attribute: 'assignedExtension',
+                          subItem: extensionId,
+                          mode: 'edit',
+                        },
+                      ),
+                    );
+                  }
                 }
               });
-              if (assignedAttributeName.length) {
+              if (attributeName.length) {
                 subMenuItem.submenu.push(
                   menuMenuItemGenerateResetItem(
                     user,
@@ -5596,7 +5618,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                       attribute: 'assignedExtension',
                       replaceCommand: cmdItemPress,
                       mode: 'reset',
-                    }
+                    },
                   ),
                 );
               }
@@ -6183,7 +6205,7 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       }`,
     });
   }
-  if (enumerationType === dataTypeDeviceStatesAttributes || enumerationType === dataTypeDeviceAttributes) {
+  if (enumerationType === dataTypeDeviceButtons || enumerationType === dataTypeDeviceAttributes) {
     const primaryEnumType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId),
       primaryEnumsList = enumerationsGetList(primaryEnumType),
       primaryEnum = primaryEnumsList[enumerationTypeExtraId];
@@ -6336,6 +6358,8 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
       if (enumerationType === dataTypeAssociatedExtensions) {
         if (!extensionsList?.[currentItem]?.isAvailable) {
           currentIcon = iconItemNotFound;
+        } else {
+          currentIcon = extensionsList?.[currentItem]?.icon || '';
         }
       }
       const currentMenuItem = {
@@ -6597,7 +6621,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
               stateObject: objectInfoDeplete(stateObject),
               valueType: currentStateType,
               device: devicePrefix,
-              replaceCommand: cmdSetState,
               dataType: dataTypeStateValue,
               value: stateValue,
               icon: '',
@@ -6607,14 +6630,23 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   ? [currentFunction.iconOn, currentFunction.iconOff]
                   : [defaultIconOn, defaultIconOff],
             };
-            const subMenuItem = menuMenuItemGenerateEditItemStateValue(
-              user,
-              currentIndex,
-              subMenuIndex,
-              stateName,
-              '',
-              currentOptions,
-            );
+            const subMenuItem =
+              typeof currentButton?.['assignedExtension']?.['extensionId'] === 'string' &&
+              typeof currentButton?.['assignedExtension']?.['attributeId'] === 'string'
+                ? {
+                    index: `${currentIndex}.${subMenuIndex}`,
+                    name: `${stateName}`,
+                    options: {...currentOptions, isButton: true, stateValue: stateValue},
+                    extensionId: currentButton['assignedExtension']['extensionId'],
+                    submenu: [
+                      currentButton['assignedExtension']['extensionId'],
+                      currentButton['assignedExtension']['attributeId'],
+                    ].join('#'),
+                  }
+                : menuMenuItemGenerateEditItemStateValue(user, currentIndex, subMenuIndex, stateName, '', {
+                    ...currentOptions,
+                    replaceCommand: cmdSetState,
+                  });
             if (deviceButtonId !== primaryStateShortId) {
               subMenuIndex = subMenu.push(subMenuItem);
             } else {
@@ -12898,7 +12930,8 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
       isValueApplicable = typeof inputOptions?.isValueApplicable === 'boolean' ? inputOptions.isValueApplicable : true,
       interimCalculationMode = inputOptions.valueOptions?.interimCalculationMode,
       noMarkCurrent = inputOptions?.noMarkCurrent || interimCalculationMode === interimCalculationSummarize,
-      showInApply = inputOptions?.valueOptions?.showInApply;
+      showInApply = inputOptions?.valueOptions?.showInApply,
+      convertBeforeApply = inputOptions?.valueOptions?.convertBeforeApply;
     if (applyMode) {
       if (typeof inputOptions.valueOptions?.interimItemId !== 'string') {
         inputOptions.valueOptions = {...inputOptions.valueOptions, interimItemId: currentIndex};
@@ -13033,10 +13066,30 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
         ) {
           const applyOptions = {
             ...objectDeepClone(inputOptions, {valueOptions: {valuesDefault: true}}),
-            value: valueCurrent,
-            values: valuesCurrent,
             backOnPress: typeof inputOptions.backOnPress !== 'boolean' || inputOptions.backOnPress,
           };
+          if (valueCurrent !== undefined) {
+            if (typeof convertBeforeApply === 'function') {
+              applyOptions['value'] = convertBeforeApply(valueCurrent);
+            } else {
+              applyOptions['value'] = valueCurrent;
+            }
+          }
+          if (valuesCurrent !== undefined) {
+            if (typeof convertBeforeApply === 'function') {
+              applyOptions['values'] = convertBeforeApply(valuesCurrent);
+            } else {
+              applyOptions['values'] = valuesCurrent;
+            }
+          }
+          if (applyOptions?.['valueOptions']?.['valuesToValue'] === true) {
+            applyOptions['value'] = applyOptions['values'];
+            delete applyOptions['values'];
+          }
+          if (typeof applyOptions?.['valueOptions']?.['interimCalculationMode'] === 'string')
+            delete applyOptions['valueOptions']['interimCalculationMode'];
+          if (typeof applyOptions?.['valueOptions']?.['interimItemId'] === 'string')
+            delete applyOptions['valueOptions']['interimItemId'];
           subMenuIndex = menuItem.submenu.push({
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'apply')} [${valueToDisplayInApply}]`,
@@ -13066,6 +13119,26 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
   }
   if (groupId) menuItem.group = groupId;
   return menuItem;
+}
+
+function menuMenuItemGenerateEditWeekDays(user, upperItemIndex, itemIndex, itemName, groupId, itemValues, options) {
+  const localDaysOfWeek = getLocalDaysOfWeekNames(configOptions.getOption(cfgMenuLanguage, user), 'long'),
+    daysOfWeekMap = new Map();
+  localDaysOfWeek.forEach((dayOfWeekName, dayOfWeek) => {
+    daysOfWeekMap.set(dayOfWeek + 1, dayOfWeekName);
+  });
+  return menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemName, daysOfWeekMap, groupId, {
+    ...options,
+    applyMode: true,
+    values: itemValues,
+    replaceCommand: cmdItemSetValue,
+    valueOptions: {
+      ...options.valueOptions,
+      showInApply: (value) => triggerTimeRangeShortDescription(user, {[triggersTimeRangeDaysOfWeek]: value}, true),
+      interimCalculationMode: interimCalculationSelectMultiple,
+      valuesDefault: triggersTimeRangeAttributesGenerateDefaults(triggersTimeRangeDaysOfWeek),
+    },
+  });
 }
 
 const cachedInterimValue = 'interimValue',
@@ -13124,9 +13197,9 @@ function menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, item
         valuesArray = [1, 2, 5],
         baseValue = isDefined(valueCurrent) ? valueCurrent : inputOptions.referenceValue,
         interimItemId = `${upperItemIndex}.${itemIndex}`,
-        valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
-        valueInterimIsDefined = isDefined(valueInterim?.[interimItemId]),
-        valueToWork = valueInterimIsDefined ? valueInterim[interimItemId] : baseValue;
+        interimValues = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
+        valueInterimIsDefined = isDefined(interimValues?.[interimItemId]),
+        valueToWork = valueInterimIsDefined ? interimValues[interimItemId] : baseValue;
       if (typeof valueStep !== 'number') {
         const digitsNumberBase = Math.trunc(baseValue).toString.length || 0,
           digitsNumberMax = typeof valueMax === 'number' ? Math.trunc(valueMax).toString.length : digitsNumberBase + 1;
@@ -13406,9 +13479,9 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
     timeUnitsFull = timeInternalUnitsFull;
   const valuesMapArray = [],
     interimItemId = `${upperItemIndex}.${itemIndex}`,
-    valueInterim = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
-    valueInterimIsDefined = isDefined(valueInterim?.[interimItemId]),
-    valueCurrent = valueInterimIsDefined ? valueInterim[`${upperItemIndex}.${itemIndex}`] : options?.value,
+    interimValues = cachedValueExists(user, cachedInterimValue) ? cachedValueGet(user, cachedInterimValue) : null,
+    valueInterimIsDefined = isDefined(interimValues?.[interimItemId]),
+    valueCurrent = valueInterimIsDefined ? interimValues[`${upperItemIndex}.${itemIndex}`] : options?.value,
     timeMode = options.timeMode ? options.timeMode : timeInternalModeInterval;
   switch (timeMode) {
     case timeInternalModeInterval: {
@@ -13499,9 +13572,13 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
       }
     });
     if (valuesMapArray.length) {
+      let valueType = 'number';
+      if (timeMode === timeInternalModeMonthAndDay || timeMode === timeInternalModeTime) {
+        valueType = 'string';
+      }
       menuItem = menuMenuItemGenerateEditItemBasedOnValueType(user, upperItemIndex, itemIndex, itemName, groupId, {
         ...options,
-        valueType: 'number',
+        valueType: valueType,
         backOnPress: true,
         applyMode: true,
         noMarkCurrent: true,
@@ -13509,7 +13586,8 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
         valueOptions: {
           ...options.valueOptions,
           showInApply: showInApply.length ? showInApply : undefined,
-          type: timeInternalModeTime,
+          type: valueType,
+          subType: 'time',
           template: timeTemplate,
           mode: timeMode,
           states: valuesMapArray,
@@ -13520,6 +13598,127 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
     }
   }
   return menuItem;
+}
+
+function menuAssignInternalMenuItems(user, menuItemToProcess) {
+  const prepareInternalOptions = (options) => {
+    const optionsNew = objectDeepClone(options);
+    if (typeof optionsNew['valueOptions']?.['externalValueId'] === 'string') {
+      delete optionsNew['state'];
+      delete optionsNew['stateType'];
+      delete optionsNew['stateObject'];
+      optionsNew['valueType'] = optionsNew['valueOptions']?.['type'] || optionsNew['valueType'];
+      optionsNew['dataType'] = dataTypeExternal;
+      optionsNew['mode'] = optionsNew['mode'] || 'edit';
+      return optionsNew;
+    }
+  };
+  const options = menuItemToProcess.options || {};
+  let subMenu;
+  if (menuItemToProcess.type === 'internalMenuItem') {
+    const optionsPrepared = prepareInternalOptions(options),
+      upperItemIndex = menuItemToProcess.index.split('.').slice(0, -1).join('.') || '',
+      itemIndex = menuItemToProcess.index.split('.').pop();
+    switch (menuItemToProcess.command) {
+      case 'editValue': {
+        switch (menuItemToProcess['options']?.['valueOptions']?.['subType']) {
+          case 'time': {
+            optionsPrepared['timeTemplate'] = menuItemToProcess['options']?.['valueOptions']?.['timeTemplate'];
+            if (optionsPrepared['valueOptions']?.['type'] === 'string') {
+              optionsPrepared['timeMode'] = timeInternalModeTime;
+            } else if (optionsPrepared['valueOptions']?.['type'] === 'number') {
+              optionsPrepared['timeMode'] = timeInternalModeInterval;
+            }
+            subMenu = menuMenuItemGenerateEditTime(
+              user,
+              upperItemIndex,
+              itemIndex,
+              menuItemToProcess.name,
+              menuItemToProcess.group,
+              optionsPrepared,
+            );
+            break;
+          }
+          case 'weekdays': {
+            const weekdaysInput = menuItemToProcess['options']?.['value'] || [],
+              weekdays = weekdaysInput.map((day, index) => (day === 0 ? 0 : index + 1)).filter((day) => day > 0);
+            logs(
+              `menuAssignInternalMenuItems: weekdaysInput = ${jsonStringify(weekdaysInput)}, weekdays = ${jsonStringify(
+                weekdays,
+              )}`,
+              _l,
+            );
+            delete optionsPrepared['value'];
+            if (typeof optionsPrepared['valueOptions'] !== 'object') optionsPrepared['valueOptions'] = {};
+            optionsPrepared['valueOptions']['convertBeforeApply'] = (weekdays) =>
+              new Array(7).fill(0).map((_, index) => (weekdays.includes(index + 1) ? 1 : 0));
+            optionsPrepared['valueOptions']['valuesToValue'] = true;
+            weekdays.map((day) => day - 1);
+            subMenu = menuMenuItemGenerateEditWeekDays(
+              user,
+              upperItemIndex,
+              itemIndex,
+              menuItemToProcess.name,
+              menuItemToProcess.group,
+              weekdays,
+              optionsPrepared,
+            );
+            break;
+          }
+          default: {
+            subMenu = menuMenuItemGenerateEditItemBasedOnValueType(
+              user,
+              upperItemIndex,
+              itemIndex,
+              menuItemToProcess.name,
+              menuItemToProcess.group,
+              optionsPrepared,
+            );
+            break;
+          }
+        }
+        break;
+      }
+      case 'deleteItem': {
+        subMenu = menuMenuItemGenerateDeleteItem(user, upperItemIndex, itemIndex, optionsPrepared);
+        break;
+      }
+      case 'editStateValue': {
+        subMenu = menuMenuItemGenerateEditItemStateValue(
+          user,
+          upperItemIndex,
+          itemIndex,
+          menuItemToProcess.name,
+          menuItemToProcess.group,
+          {...options,
+          replaceCommand: cmdEmptyCommand},
+        );
+        break;
+      }
+      case 'setStateValue': {
+        subMenu = {
+          index: menuItemToProcess.index,
+          name: menuItemToProcess.name,
+          icon: menuItemToProcess.icon,
+          command: cmdEmptyCommand,
+          options: options,
+          group: menuItemToProcess.group,
+          submenu: [],
+        };
+        break;
+      }
+    }
+    subMenu.extensionId = menuItemToProcess.extensionId;
+  } else {
+    subMenu = {...menuItemToProcess, options: undefined, submenu: undefined};
+    subMenu.options = objectDeepClone(options);
+    if (Array.isArray(menuItemToProcess.submenu)) {
+      subMenu.submenu = menuItemToProcess.submenu.map((subMenuItem) => menuAssignInternalMenuItems(user, subMenuItem));
+    } else {
+      subMenu.submenu = menuItemToProcess.submenu;
+    }
+  }
+  return subMenu || {};
 }
 
 /**
@@ -14047,36 +14246,64 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
   const subMenu = menuItemToProcess.submenu;
   switch (typeof subMenu) {
     case 'string': {
-      const extensionMenuId = subMenu;
-      messageTo(
-        extensionMenuId,
-        {
-          user,
-          data: menuItemToProcess,
-          extensionId: menuItemToProcess.extensionId,
-          translations: translationsGetForExtension(user, menuItemToProcess.extensionId),
-        },
-        {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
-        (newMenuItem) => {
-          if (
-            !(typeof newMenuItem === 'object' && !Array.isArray(newMenuItem) && newMenuItem.hasOwnProperty('error')) &&
-            newMenuItem.hasOwnProperty('name')
-          ) {
-            menuItemToProcess = menuMenuReIndex(newMenuItem);
-            menuItemToProcess.options = {...menuItemToProcess.options, generatedBy: subMenu};
-            menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
-          } else if (
-            typeof newMenuItem === 'object' &&
-            !Array.isArray(newMenuItem) &&
-            newMenuItem.hasOwnProperty('error')
-          ) {
-            warns(
-              `Can't update subMenu from extensionMenuId ${extensionMenuId}!` +
-                ` No result. Error is ${newMenuItem.error}`,
-            );
+      const extensionMenuId = subMenu,
+        extensionId = menuItemToProcess.extensionId;
+      if (extensionsList?.[extensionId]?.isAvailable === true) {
+        const data = objectDeepClone(menuItemToProcess),
+          externalValueId = data?.['options']?.['valueOptions']?.['externalValueId'] || data.index;
+        if (typeof externalValueId === 'string' && cachedValueExists(user, cachedInterimValue)) {
+          const interimValues = cachedValueGet(user, cachedInterimValue);
+          if (interimValues?.[externalValueId] !== undefined) {
+            if (data['options'] === undefined) data['options'] = {};
+            if (data['options']['valueOptions'] === undefined) data['options']['valueOptions'] = {};
+            data['options']['valueOptions']['externalValueInterim'] = interimValues[externalValueId];
           }
-        },
-      );
+        }
+        messageTo(
+          extensionMenuId,
+          {
+            user,
+            data: data,
+            extensionId: extensionId,
+            translations: translationsGetForExtension(user, extensionId),
+          },
+          {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
+          (newMenuItem) => {
+            if (newMenuItem?.error === undefined && typeof newMenuItem?.id === 'string' && newMenuItem?.id.length > 0) {
+              if (extensionsList?.[extensionId]?.type === 'attributesModifier') {
+                menuItemToProcess = menuMenuReIndex(newMenuItem);
+                if (
+                  typeof menuItemToProcess?.['options']?.['valueOptions']?.['externalValueId'] === 'string' &&
+                  menuItemToProcess?.['options']?.['valueOptions']?.['externalValueId'] === menuItemToProcess?.index &&
+                  typeof menuItemToProcess?.['options']?.['valueOptions']?.['externalValueType'] === 'string' &&
+                  menuItemToProcess?.['options']?.['valueOptions']?.['externalValue'] !== undefined
+                ) {
+                  const interimValues = cachedValueGet(user, cachedInterimValue) || {},
+                    externalValueId = menuItemToProcess['options']['valueOptions']['externalValueId'];
+                  interimValues[externalValueId] = objectDeepClone(
+                    newMenuItem['options']['valueOptions']['externalValue'],
+                  );
+                  cachedValueSet(user, cachedInterimValue, interimValues);
+                }
+                menuItemToProcess = menuAssignInternalMenuItems(user, menuItemToProcess);
+              }
+
+              menuItemToProcess.options = {...menuItemToProcess.options, generatedBy: subMenu};
+              menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
+            } else if (newMenuItem.error !== undefined) {
+              warns(
+                `Can't update subMenu from extensionMenuId ${extensionMenuId} on position ${menuItemToProcess.index}!` +
+                  ` No result. Error is ${newMenuItem.error}`,
+              );
+              menuMenuDraw(user, menuItemToProcess.index.split('.').slice(0, -1));
+            }
+          },
+        );
+      } else {
+        warns(`Extension menu ${extensionMenuId} is not available!`);
+        menuMenuDraw(user, menuItemToProcess.index.split('.').slice(0, -1));
+      }
+
       break;
     }
 
@@ -14468,7 +14695,8 @@ function menuMenuItemGetIcon(user, menuItemToProcess) {
   let icon = '';
   if (typeof menuItemToProcess === 'object' && !Array.isArray(menuItemToProcess)) {
     if (menuItemToProcess.hasOwnProperty('options')) {
-      const {function: currentFunctionId, state: currentStateId, device: devicePrefix} = menuItemToProcess.options,
+      const options = menuItemToProcess.options || {},
+        {function: currentFunctionId, state: currentStateId, device: devicePrefix} = options,
         currentFunction =
           currentFunctionId && enumerationsList[dataTypeFunction].list.hasOwnProperty(currentFunctionId)
             ? enumerationsList[dataTypeFunction].list[currentFunctionId]
@@ -14794,10 +15022,11 @@ function menuMenuReIndex(inputMenu, indexPrefix, extraOptions) {
  * This function is a core to process of  the user input. It can be an input as user message,
  * or the appropriate text, when the menu button is pressed.
  * @param {object} user - The user object.
- * @param {string} userInputToProcess - The string, contained the user input.
+ * @param {string} userInputValue - The string, contained the user input.
  */
-async function commandsUserInputProcess(user, userInputToProcess) {
-  let timer;
+async function commandsUserInputProcess(user, userInputValue) {
+  let timer, userInputToProcess;
+  userInputToProcess = userInputValue;
 
   /**
    * This function is called, when the "execution" is finished.
@@ -14875,6 +15104,98 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     }
   }
 
+  /**
+   * This function is used to process setting the interim values.
+   * @param {object} commandOptions - The command options object.
+   * @param {any=} userInputValue - The possible value for the command.
+   **/
+  function setInterimValue(commandOptions, userInputValue) {
+    if (typeof commandOptions.valueOptions?.interimItemId === 'string') {
+      const interimItemId = commandOptions?.['valueOptions']?.['interimItemId'],
+        interimCalculationMode = commandOptions?.['valueOptions']?.['directInput']
+          ? 'interimCalculationReplace'
+          : commandOptions?.['valueOptions']?.['interimCalculationMode'],
+        inputValue = userInputValue !== undefined ? userInputValue : commandOptions?.['value'];
+      let interimValue;
+      if (typeof interimItemId === 'string' && typeof interimCalculationMode === 'string') {
+        switch (interimCalculationMode) {
+          case interimCalculationSummarize: {
+            if (inputValue !== undefined) {
+              const valueCurrent = commandOptions.valueOptions?.valueCurrent,
+                modificator = isDefined(inputValue) ? Number(inputValue) : 0;
+              switch (commandOptions.valueOptions?.subType) {
+                case 'time': {
+                  switch (commandOptions.valueOptions?.mode) {
+                    case timeInternalModeTime: {
+                      if (typeof commandOptions.valueOptions?.template === 'string') {
+                        const template = commandOptions.valueOptions.template;
+                        interimValue = timeInternalToString(
+                          modificator + stringToTimeInternal(valueCurrent, template),
+                          template,
+                        );
+                      }
+                      break;
+                    }
+
+                    default: {
+                      interimValue =
+                        (isDefined(inputValue) ? Number(inputValue) : 0) +
+                        (isDefined(valueCurrent) ? Number(valueCurrent) : 0);
+                      break;
+                    }
+                  }
+
+                  break;
+                }
+
+                default: {
+                  const valueBase = typeof valueCurrent === 'number' ? valueCurrent : 0,
+                    valueBaseDecimals = countDecimals(valueBase),
+                    valueModifier = typeof inputValue === 'number' ? inputValue : 0,
+                    valueModifierDecimals = countDecimals(valueModifier),
+                    maxDecimals = valueBaseDecimals > valueModifierDecimals ? valueBaseDecimals : valueModifierDecimals;
+                  interimValue = valueBase + valueModifier;
+                  if (maxDecimals > 0) interimValue = Math.round(interimValue * 10 ** maxDecimals) / 10 ** maxDecimals;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+          case interimCalculationSelectMultiple: {
+            if (
+              commandOptions?.['valueOptions']?.['resetValue'] === true &&
+              isDefined(commandOptions?.['valueOptions']?.['valuesDefault'])
+            ) {
+              interimValue = commandOptions['valueOptions']['valuesDefault'];
+            } else if (isDefined(commandOptions.values) && isDefined(inputValue)) {
+              interimValue = [...commandOptions.values];
+              if (interimValue.includes(inputValue)) {
+                interimValue = interimValue.filter((item) => item !== inputValue);
+              } else {
+                interimValue.push(inputValue);
+                if (typeof inputValue === 'number') interimValue = interimValue.sort((a, b) => a - b);
+              }
+            }
+            break;
+          }
+          case interimCalculationReplace:
+          default: {
+            if (inputValue !== undefined)
+              interimValue = commandOptions.valueType === 'number' ? Number(inputValue) : inputValue;
+            break;
+          }
+        }
+      }
+      if (isDefined(interimValue)) {
+        const interimValues = cachedValueGet(user, cachedInterimValue) || {};
+        interimValues[interimItemId] = interimValue;
+        cachedValueSet(user, cachedInterimValue, interimValues);
+        menuMenuItemsAndRowsClearCached(user);
+      }
+    }
+  }
+
   const isWaitForInput = cachedValueGet(user, cachedIsWaitForInput),
     userInput = isWaitForInput || userInputToProcess,
     menuMessageObject = {},
@@ -14887,11 +15208,25 @@ async function commandsUserInputProcess(user, userInputToProcess) {
     - currentMenuPosition = ${menuPositionCurrent},
     - commandCurrent = ${commandCurrent},
     - commandOptions = ${jsonStringify(commandOptions)},
-    - commandIndex = ${commandIndex}`,
+    - commandIndex = ${commandIndex}
+    - interimValues = ${jsonStringify(cachedValueGet(user, cachedInterimValue))}`,
     _l,
   );
+  if (cachedValueExists(user, cachedInterimValue)) {
+    const itemIdCurrent = menuPositionCurrent.join('.');
+    const interimValues = cachedValueGet(user, cachedInterimValue);
+    Object.keys(interimValues).forEach((interimValueId) => {
+      logs(
+        `itemIdCurrent = ${itemIdCurrent}, interimValueId = ${interimValueId}, = ${!itemIdCurrent.startsWith(
+          interimValueId,
+        )}`,
+        _l,
+      );
+      if (!itemIdCurrent.startsWith(interimValueId)) delete interimValues[interimValueId];
+    });
+    cachedValueSet(user, cachedInterimValue, interimValues);
+  }
   if (commandOptions?.backOnPress) menuPositionCurrent.splice(-1, 1);
-  cachedValueDelete(user, cachedInterimValue);
   if (isWaitForInput || commandCurrent === cmdItemSetValue) {
     if (userInputToProcess != dataTypeIgnoreInput) {
       switch (commandCurrent) {
@@ -14930,224 +15265,299 @@ async function commandsUserInputProcess(user, userInputToProcess) {
         // eslint-disable-next-line no-fallthrough
         case cmdGetInput:
         default: {
-          switch (commandOptions.dataType) {
-            case dataTypeTranslation: {
-              let currentTranslationId;
+          if (commandOptions?.valueType === 'number' || commandOptions?.['valueOptions']?.['type'] === 'number') {
+            userInputToProcess = Number(userInputToProcess);
+            if (isNaN(userInputToProcess)) {
+              userInputToProcess = undefined;
+            } else {
               if (
-                commandOptions.translationType &&
-                typeof commandOptions.item === 'number' &&
-                typeof commandOptions.index === 'number'
+                typeof commandOptions?.['valueOptions']?.['step'] === 'number' &&
+                commandOptions?.['valueOptions']?.['step'] > 0
               ) {
-                currentTranslationId = commandOptions.translationType;
-                let destTranslation = translationsPointOnItemOwner(user, `${currentTranslationId}.destinations`, true);
+                const step = commandOptions?.['valueOptions']?.['step'];
+                if (userInputToProcess % step !== 0) {
+                  userInputToProcess = undefined;
+                }
+              }
+              if (userInputToProcess !== undefined && typeof commandOptions?.['valueOptions']?.['min'] === 'number') {
+                const min = commandOptions?.['valueOptions']?.['min'];
+                if (userInputToProcess < min) {
+                  userInputToProcess = undefined;
+                }
+              }
+              if (userInputToProcess !== undefined && typeof commandOptions?.['valueOptions']?.['max'] === 'number') {
+                const max = commandOptions?.['valueOptions']?.['max'];
+                if (userInputToProcess > max) {
+                  userInputToProcess = undefined;
+                }
+              }
+            }
+          }
+          if (userInputToProcess === undefined) {
+            telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+          } else if (
+            typeof commandOptions?.['valueOptions']?.['interimItemId'] === 'string' &&
+            typeof commandOptions?.['valueOptions']?.['interimCalculationMode'] === 'string' &&
+            commandOptions?.['applyMode'] === true
+          ) {
+            setInterimValue(commandOptions, userInputToProcess);
+          } else {
+            switch (commandOptions.dataType) {
+              case dataTypeTranslation: {
+                let currentTranslationId;
                 if (
-                  destTranslation &&
-                  typeof destTranslation === 'object' &&
-                  Object.keys(destTranslation).length > commandOptions.item
+                  commandOptions.translationType &&
+                  typeof commandOptions.item === 'number' &&
+                  typeof commandOptions.index === 'number'
                 ) {
-                  currentTranslationId += `.destinations.${Object.keys(destTranslation)[commandOptions.item]}`;
-                  destTranslation = destTranslation[Object.keys(destTranslation)[commandOptions.item]];
+                  currentTranslationId = commandOptions.translationType;
+                  let destTranslation = translationsPointOnItemOwner(
+                    user,
+                    `${currentTranslationId}.destinations`,
+                    true,
+                  );
                   if (
                     destTranslation &&
                     typeof destTranslation === 'object' &&
-                    Object.keys(destTranslation).length > commandOptions.index
+                    Object.keys(destTranslation).length > commandOptions.item
                   ) {
-                    currentTranslationId += `.${Object.keys(destTranslation)[commandOptions.index]}`;
+                    currentTranslationId += `.destinations.${Object.keys(destTranslation)[commandOptions.item]}`;
+                    destTranslation = destTranslation[Object.keys(destTranslation)[commandOptions.item]];
+                    if (
+                      destTranslation &&
+                      typeof destTranslation === 'object' &&
+                      Object.keys(destTranslation).length > commandOptions.index
+                    ) {
+                      currentTranslationId += `.${Object.keys(destTranslation)[commandOptions.index]}`;
+                    }
+                  }
+                } else if (commandOptions.translationId) {
+                  currentTranslationId = commandOptions.translationId;
+                }
+                if (currentTranslationId) translationsItemStore(user, currentTranslationId, userInputToProcess);
+                const currentTranslation = translationsGetCurrentForUser(user);
+                if (commandOptions.translationType && commandOptions.item && typeof commandOptions.index !== 'number') {
+                  const newPosition = Object.keys(currentTranslation)
+                    .filter((key) => !key.includes('.') && key.startsWith(commandOptions.item))
+                    .sort((a, b) => currentTranslation[a].localeCompare(currentTranslation[b]))
+                    .indexOf(commandOptions.translationType);
+                  if (newPosition >= 0) {
+                    menuPositionCurrent.splice(-1, newPosition);
                   }
                 }
-              } else if (commandOptions.translationId) {
-                currentTranslationId = commandOptions.translationId;
+                break;
               }
-              if (currentTranslationId) translationsItemStore(user, currentTranslationId, userInputToProcess);
-              const currentTranslation = translationsGetCurrentForUser(user);
-              if (commandOptions.translationType && commandOptions.item && typeof commandOptions.index !== 'number') {
-                const newPosition = Object.keys(currentTranslation)
-                  .filter((key) => !key.includes('.') && key.startsWith(commandOptions.item))
-                  .sort((a, b) => currentTranslation[a].localeCompare(currentTranslation[b]))
-                  .indexOf(commandOptions.translationType);
-                if (newPosition >= 0) {
-                  menuPositionCurrent.splice(-1, newPosition);
-                }
-              }
-              break;
-            }
 
-            case dataTypeDestination:
-            case dataTypeFunction:
-            case dataTypeReport:
-            case dataTypePrimaryEnums:
-            case dataTypeDeviceAttributes:
-            case dataTypeDeviceButtons: {
-              const currentEnumerationsList = enumerationsGetList(
-                  commandOptions.dataType,
-                  commandOptions.dataTypeExtraId,
-                ),
-                attribute = commandOptions.attribute;
-              switch (attribute) {
-                case 'state': {
-                  const currentEnumeration = currentEnumerationsList[commandOptions.item],
-                    currentDeviceAttributes = currentEnumeration.deviceAttributes,
-                    currentState = currentEnumeration[attribute];
-                  if (currentDeviceAttributes?.hasOwnProperty(currentState)) {
-                    currentDeviceAttributes[userInputToProcess] = objectDeepClone(
-                      currentDeviceAttributes[currentState],
-                    );
-                    currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(
-                      userInputToProcess.split('.').join('_'),
-                      commandOptions.item,
-                      undefined,
-                    );
-                    delete currentDeviceAttributes[currentState];
-                  }
-                  currentEnumeration[attribute] = userInputToProcess;
-                  break;
-                }
-
-                case 'names': {
-                  enumerationsUpdateItemName(
-                    user,
+              case dataTypeDestination:
+              case dataTypeFunction:
+              case dataTypeReport:
+              case dataTypePrimaryEnums:
+              case dataTypeDeviceAttributes:
+              case dataTypeDeviceButtons: {
+                const currentEnumerationsList = enumerationsGetList(
                     commandOptions.dataType,
-                    commandOptions.item,
-                    currentEnumerationsList[commandOptions.item],
-                    userInputToProcess,
-                    commandOptions.index !== enumerationsNamesMain ? commandOptions.index : '',
-                  );
-                  break;
-                }
+                    commandOptions.dataTypeExtraId,
+                  ),
+                  attribute = commandOptions.attribute;
+                switch (attribute) {
+                  case 'state': {
+                    const currentEnumeration = currentEnumerationsList[commandOptions.item],
+                      currentDeviceAttributes = currentEnumeration.deviceAttributes,
+                      currentState = currentEnumeration[attribute];
+                    if (currentDeviceAttributes?.hasOwnProperty(currentState)) {
+                      currentDeviceAttributes[userInputToProcess] = objectDeepClone(
+                        currentDeviceAttributes[currentState],
+                      );
+                      currentDeviceAttributes[userInputToProcess].nameTranslationId = translationsGetObjectId(
+                        userInputToProcess.split('.').join('_'),
+                        commandOptions.item,
+                        undefined,
+                      );
+                      delete currentDeviceAttributes[currentState];
+                    }
+                    currentEnumeration[attribute] = userInputToProcess;
+                    break;
+                  }
 
-                case 'convertValueCode': {
-                  if (
-                    enumerationsTestValueConversionCode(
+                  case 'names': {
+                    enumerationsUpdateItemName(
                       user,
-                      commandOptions.dataTypeExtraId,
+                      commandOptions.dataType,
                       commandOptions.item,
+                      currentEnumerationsList[commandOptions.item],
                       userInputToProcess,
-                    )
-                  ) {
-                    currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
-                  } else {
-                    warns(
-                      `Unacceptable value '${userInputToProcess}' code conversion of attribute ` +
-                        `${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
+                      commandOptions.index !== enumerationsNamesMain ? commandOptions.index : '',
                     );
-                    telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                  }
-                  break;
-                }
-
-                default: {
-                  switch (commandOptions.mode) {
-                    case 'setId':
-                    case 'fixId': {
-                      cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
-                      break;
-                    }
-
-                    default: {
-                      const oldIcon =
-                        commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon'
-                          ? currentEnumerationsList[commandOptions.item][attribute]
-                          : '';
-                      if (typeof currentEnumerationsList[commandOptions.item] === 'object') {
-                        currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
-                        if (commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon') {
-                          const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
-                          Object.keys(workList).forEach((currentListItem) => {
-                            if (
-                              workList[currentListItem].enum === commandOptions.dataType &&
-                              currentEnumerationsList[currentListItem].icon === oldIcon
-                            ) {
-                              currentEnumerationsList[currentListItem].icon = userInputToProcess;
-                            }
-                          });
-                          enumerationsInit(commandOptions.dataTypeExtraId);
-                        }
-                      }
-                      break;
-                    }
+                    break;
                   }
 
-                  break;
-                }
-              }
-              enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
-              break;
-            }
-
-            case dataTypeGroups: {
-              const currentEnumerationsList = enumerationsGetList(
-                commandOptions.groupDataType,
-                commandOptions.groupDataTypeExtraId,
-              );
-              if (commandOptions.item && currentEnumerationsList?.[commandOptions.item]) {
-                currentEnumerationsList[commandOptions.item].group = userInputToProcess;
-              }
-              enumerationsSave(
-                enumerationsGetPrimaryDataType(commandOptions.groupDataType, commandOptions.groupDataTypeExtraId),
-              );
-              break;
-            }
-
-            case dataTypeMenuRoles: {
-              switch (commandOptions.mode) {
-                case 'setId':
-                case 'fixId':
-                  cachedValueSet(user, cachedRolesNewRoleId, userInputToProcess);
-                  break;
-                default:
-                  break;
-              }
-              break;
-            }
-
-            case dataTypeReportMember: {
-              let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
-              queryParams = queryParams || simpleReportQueryParamsTemplate();
-              queryParams[commandOptions.item] = userInputToProcess;
-              queryParams.queryStates = [];
-              queryParams.queryPossibleStates = [];
-              cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
-              cachedAddToDelCachedOnBack(user, menuPositionCurrent.slice(0, -1).join('.'), cachedSimpleReportNewQuery);
-              break;
-            }
-
-            case dataTypeConfig: {
-              if (commandOptions.item === cfgMenuLanguage) {
-                cachedValueSet(user, cachedConfigNewLanguageId, userInputToProcess);
-              } else {
-                const configItem = configOptions.getOption(
-                  commandOptions.item,
-                  commandOptions.scope === configOptionScopeGlobal ? null : user,
-                );
-                if (
-                  Array.isArray(configItem) &&
-                  // @ts-ignore
-                  !isNaN(commandOptions.index)
-                ) {
-                  const configItemIndex = Number(commandOptions.index);
-                  let newValue;
-                  newValue = userInputToProcess;
-                  if (configItemIndex < configItem.length) {
-                    if (commandOptions.item === cfgGraphsIntervals) {
-                      configItem[configItemIndex].name = newValue;
+                  case 'convertValueCode': {
+                    if (
+                      enumerationsTestValueConversionCode(
+                        user,
+                        commandOptions.dataTypeExtraId,
+                        commandOptions.item,
+                        userInputToProcess,
+                      )
+                    ) {
+                      currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
                     } else {
-                      configItem[configItemIndex] = newValue;
+                      warns(
+                        `Unacceptable value '${userInputToProcess}' code conversion of attribute ` +
+                          `${commandOptions.item} for function ${commandOptions.dataTypeExtraId}`,
+                      );
+                      telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                     }
+                    break;
+                  }
+
+                  default: {
+                    switch (commandOptions.mode) {
+                      case 'setId':
+                      case 'fixId': {
+                        cachedValueSet(user, cachedSimpleReportIdToCreate, userInputToProcess);
+                        break;
+                      }
+
+                      default: {
+                        const oldIcon =
+                          commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon'
+                            ? currentEnumerationsList[commandOptions.item][attribute]
+                            : '';
+                        if (typeof currentEnumerationsList[commandOptions.item] === 'object') {
+                          currentEnumerationsList[commandOptions.item][attribute] = userInputToProcess;
+                          if (commandOptions.dataType === dataTypePrimaryEnums && attribute === 'icon') {
+                            const workList = enumerationsList[commandOptions.dataTypeExtraId].list;
+                            Object.keys(workList).forEach((currentListItem) => {
+                              if (
+                                workList[currentListItem].enum === commandOptions.dataType &&
+                                currentEnumerationsList[currentListItem].icon === oldIcon
+                              ) {
+                                currentEnumerationsList[currentListItem].icon = userInputToProcess;
+                              }
+                            });
+                            enumerationsInit(commandOptions.dataTypeExtraId);
+                          }
+                        }
+                        break;
+                      }
+                    }
+
+                    break;
+                  }
+                }
+                enumerationsSave(
+                  enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId),
+                );
+                break;
+              }
+
+              case dataTypeGroups: {
+                const currentEnumerationsList = enumerationsGetList(
+                  commandOptions.groupDataType,
+                  commandOptions.groupDataTypeExtraId,
+                );
+                if (commandOptions.item && currentEnumerationsList?.[commandOptions.item]) {
+                  currentEnumerationsList[commandOptions.item].group = userInputToProcess;
+                }
+                enumerationsSave(
+                  enumerationsGetPrimaryDataType(commandOptions.groupDataType, commandOptions.groupDataTypeExtraId),
+                );
+                break;
+              }
+
+              case dataTypeMenuRoles: {
+                switch (commandOptions.mode) {
+                  case 'setId':
+                  case 'fixId':
+                    cachedValueSet(user, cachedRolesNewRoleId, userInputToProcess);
+                    break;
+                  default:
+                    break;
+                }
+                break;
+              }
+
+              case dataTypeReportMember: {
+                let queryParams = cachedValueGet(user, cachedSimpleReportNewQuery);
+                queryParams = queryParams || simpleReportQueryParamsTemplate();
+                queryParams[commandOptions.item] = userInputToProcess;
+                queryParams.queryStates = [];
+                queryParams.queryPossibleStates = [];
+                cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
+                cachedAddToDelCachedOnBack(
+                  user,
+                  menuPositionCurrent.slice(0, -1).join('.'),
+                  cachedSimpleReportNewQuery,
+                );
+                break;
+              }
+
+              case dataTypeConfig: {
+                if (commandOptions.item === cfgMenuLanguage) {
+                  cachedValueSet(user, cachedConfigNewLanguageId, userInputToProcess);
+                } else {
+                  const configItem = configOptions.getOption(
+                    commandOptions.item,
+                    commandOptions.scope === configOptionScopeGlobal ? null : user,
+                  );
+                  if (
+                    Array.isArray(configItem) &&
+                    // @ts-ignore
+                    !isNaN(commandOptions.index)
+                  ) {
+                    const configItemIndex = Number(commandOptions.index);
+                    let newValue;
+                    newValue = userInputToProcess;
+                    if (configItemIndex < configItem.length) {
+                      if (commandOptions.item === cfgGraphsIntervals) {
+                        configItem[configItemIndex].name = newValue;
+                      } else {
+                        configItem[configItemIndex] = newValue;
+                      }
+                    } else {
+                      if (commandOptions.item === cfgGraphsIntervals) {
+                        const currentMask = configOptions.getMask(commandOptions.item),
+                          configItemMask = configOptions.getMaskDescription(commandOptions.item),
+                          parsedValueArray = currentMask?.test(userInputToProcess)
+                            ? RegExp(currentMask).exec(userInputToProcess)
+                            : [],
+                          parsedValue =
+                            parsedValueArray &&
+                            parsedValueArray.length > 2 &&
+                            timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2])
+                              ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]]
+                              : undefined;
+                        newValue =
+                          typeof parsedValue === 'number' ? {id: userInputToProcess, minutes: parsedValue} : null;
+                        menuMessageObject.message = `${translationsItemTextGet(
+                          user,
+                          'WrongValue',
+                        )}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(
+                          user,
+                          'for',
+                          commandOptions.dataType,
+                        )} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(
+                          user,
+                          'CurrentValue',
+                        )} = ${userInputToProcess})${
+                          configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''
+                        }:`;
+                      }
+                      if (isDefined(newValue)) {
+                        configItem.push(newValue);
+                        if (menuMessageObject.message) menuMessageObject.message = '';
+                      }
+                    }
+                    configOptions.setOption(commandOptions.item, user, configItem);
                   } else {
-                    if (commandOptions.item === cfgGraphsIntervals) {
-                      const currentMask = configOptions.getMask(commandOptions.item),
-                        configItemMask = configOptions.getMaskDescription(commandOptions.item),
-                        parsedValueArray = currentMask?.test(userInputToProcess)
-                          ? RegExp(currentMask).exec(userInputToProcess)
-                          : [],
-                        parsedValue =
-                          parsedValueArray &&
-                          parsedValueArray.length > 2 &&
-                          timeIntervalsInMinutes.hasOwnProperty(parsedValueArray[2])
-                            ? Number(parsedValueArray[1]) * timeIntervalsInMinutes[parsedValueArray[2]]
-                            : undefined;
-                      newValue =
-                        typeof parsedValue === 'number' ? {id: userInputToProcess, minutes: parsedValue} : null;
+                    const parsedValue = configOptions.parseOption(commandOptions.item, userInputToProcess);
+                    if (!isDefined(parsedValue)) {
+                      const configItem = configOptions.getOption(
+                          commandOptions.item,
+                          commandOptions.scope === configOptionScopeGlobal ? null : user,
+                        ),
+                        configItemMask = configOptions.getMaskDescription(commandOptions.item);
                       menuMessageObject.message = `${translationsItemTextGet(
                         user,
                         'WrongValue',
@@ -15158,427 +15568,165 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                       )} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(
                         user,
                         'CurrentValue',
-                      )} = ${userInputToProcess})${
+                      )} = ${configItem})${
                         configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''
                       }:`;
-                    }
-                    if (isDefined(newValue)) {
-                      configItem.push(newValue);
-                      if (menuMessageObject.message) menuMessageObject.message = '';
-                    }
-                  }
-                  configOptions.setOption(commandOptions.item, user, configItem);
-                } else {
-                  const parsedValue = configOptions.parseOption(commandOptions.item, userInputToProcess);
-                  if (!isDefined(parsedValue)) {
-                    const configItem = configOptions.getOption(
+                    } else {
+                      configOptions.setOption(
                         commandOptions.item,
                         commandOptions.scope === configOptionScopeGlobal ? null : user,
-                      ),
-                      configItemMask = configOptions.getMaskDescription(commandOptions.item);
-                    menuMessageObject.message = `${translationsItemTextGet(
-                      user,
-                      'WrongValue',
-                    )}!\n${translationsItemTextGet(user, 'SetNewAttributeValue')} ${translationsItemTextGet(
-                      user,
-                      'for',
-                      commandOptions.dataType,
-                    )} '${translationsItemCoreGet(user, commandOptions.item)}' (${translationsItemTextGet(
-                      user,
-                      'CurrentValue',
-                    )} = ${configItem})${
-                      configItemMask ? ` [${translationsItemTextGet(user, 'Mask')}: '${configItemMask}']` : ''
-                    }:`;
-                  } else {
-                    configOptions.setOption(
-                      commandOptions.item,
-                      commandOptions.scope === configOptionScopeGlobal ? null : user,
-                      parsedValue,
-                    );
+                        parsedValue,
+                      );
+                    }
                   }
                 }
+                break;
               }
-              break;
-            }
 
-            case dataTypeStateValue: {
-              setStateValue(user, commandOptions.state, userInputToProcess, true);
-              break;
-            }
+              case dataTypeStateValue: {
+                setStateValue(user, commandOptions.state, userInputToProcess, true);
+                break;
+              }
 
-            case dataTypeAlertSubscribed: {
-              if (commandOptions.state) {
-                let detailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
-                  backStepsForCacheDelete = -1,
-                  threshold = detailsOrThresholds;
-                const mode = commandOptions.mode,
-                  item = commandOptions.item;
-                switch (mode) {
-                  case 'add': {
-                    if (commandOptions.id === thresholdEnumerable) {
-                      if (Array.isArray(threshold) && threshold.length > 0) {
-                        threshold = undefined;
-                      } else {
-                        detailsOrThresholds = new Array();
-                        detailsOrThresholds.push({
-                          isEnabled: true,
-                          id: thresholdEnumerable,
-                          index: 0,
-                          type: commandOptions.type,
-                        });
-                        threshold = detailsOrThresholds[0];
-                        if (typeof commandOptions.subItem === 'string') {
-                          menuPositionCurrent = userInputToProcess.split('.');
-                        } else {
+              case dataTypeAlertSubscribed: {
+                if (commandOptions.state) {
+                  let detailsOrThresholds = alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
+                    backStepsForCacheDelete = -1,
+                    threshold = detailsOrThresholds;
+                  const mode = commandOptions.mode,
+                    item = commandOptions.item;
+                  switch (mode) {
+                    case 'add': {
+                      if (commandOptions.id === thresholdEnumerable) {
+                        if (Array.isArray(threshold) && threshold.length > 0) {
                           threshold = undefined;
-                        }
-                      }
-                    } else if (Number.isNaN(userInputToProcess)) {
-                      warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
-                      telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                      threshold = undefined;
-                    } else if (!checkNumberStateValue(commandOptions.state, Number(userInputToProcess))) {
-                      warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
-                      telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                      threshold = undefined;
-                    } else {
-                      const thresholdValue = Number(userInputToProcess),
-                        thresholdId = `${thresholdValue}`;
-                      if (thresholdsGetIndex(detailsOrThresholds, thresholdId) >= 0) {
-                        warns(`Unacceptable value '${userInputToProcess}' - already exists such key!`);
-                        telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                        threshold = undefined;
-                      } else {
-                        if (!Array.isArray(detailsOrThresholds)) detailsOrThresholds = new Array();
-                        detailsOrThresholds.push({
-                          isEnabled: true,
-                          id: thresholdId,
-                          index: 0,
-                          type: 'number',
-                          value: thresholdValue,
-                          onAbove: true,
-                          onBelow: true,
-                          [onTimeIntervalId]: 0,
-                        });
-                        detailsOrThresholds = triggersSort(detailsOrThresholds);
-                        menuPositionCurrent.push(thresholdsGetIndex(detailsOrThresholds, thresholdId));
-                        backStepsForCacheDelete--;
-                      }
-                    }
-                    break;
-                  }
-
-                  case 'edit': {
-                    const thresholdId = commandOptions.id,
-                      thresholdIndex =
-                        typeof thresholdId === 'string' ? thresholdsGetIndex(detailsOrThresholds, thresholdId) : -1;
-                    if (thresholdIndex >= 0) {
-                      threshold = detailsOrThresholds[thresholdIndex];
-                      if (thresholdId !== thresholdEnumerable) backStepsForCacheDelete--;
-                    }
-                    if (threshold) {
-                      switch (item) {
-                        case 'value': {
-                          if (Number.isNaN(userInputToProcess)) {
-                            warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
-                            telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                            threshold = undefined;
-                          } else if (!checkNumberStateValue(commandOptions.state, Number(userInputToProcess))) {
-                            warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
-                            telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                            threshold = undefined;
+                        } else {
+                          detailsOrThresholds = new Array();
+                          detailsOrThresholds.push({
+                            isEnabled: true,
+                            id: thresholdEnumerable,
+                            index: 0,
+                            type: commandOptions.type,
+                          });
+                          threshold = detailsOrThresholds[0];
+                          if (typeof commandOptions.subItem === 'string') {
+                            menuPositionCurrent = userInputToProcess.split('.');
                           } else {
-                            const thresholdValue = Number(userInputToProcess),
-                              thresholdId = `${thresholdValue}`;
-                            if (thresholdsGetIndex(detailsOrThresholds, thresholdId) >= 0) {
-                              warns(`Unacceptable value '${userInputToProcess}' - already exists such key!`);
-                              telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                              threshold = undefined;
-                            } else {
-                              threshold.value = thresholdValue;
-                              threshold.id = thresholdId;
-                              detailsOrThresholds = triggersSort(detailsOrThresholds);
-                              menuPositionCurrent.splice(-1, 1, thresholdsGetIndex(detailsOrThresholds, thresholdId));
-                            }
-                          }
-                          break;
-                        }
-
-                        case onTimeIntervalId:
-                        case onTimeIntervalIndividualId: {
-                          if (Number.isNaN(userInputToProcess)) {
-                            warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
-                            telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
                             threshold = undefined;
-                          } else {
-                            const thresholdValue = Number(userInputToProcess);
-                            if (item === onTimeIntervalId) {
-                              const intervalsIndividual = threshold[onTimeIntervalIndividualId];
-                              threshold[item] = thresholdValue;
-                              if (intervalsIndividual instanceof Map && intervalsIndividual.size > 0) {
-                                const intervalIndividualKeys = Array.from(intervalsIndividual.keys());
-                                intervalIndividualKeys.forEach((valueId) => {
-                                  if (intervalsIndividual.get(valueId) === thresholdValue) {
-                                    intervalsIndividual.delete(valueId);
-                                  }
-                                });
-                              }
-                            } else if (isDefined(commandOptions.subItem)) {
-                              const valueId = commandOptions.subItem,
-                                timeIntervalCommon =
-                                  typeof threshold[onTimeIntervalId] === 'number' ? threshold[onTimeIntervalId] : 0;
-                              backStepsForCacheDelete--;
-                              if (thresholdValue !== timeIntervalCommon) {
-                                if (!(threshold[item] instanceof Map)) threshold[item] = new Map();
-                                threshold[item].set(valueId, thresholdValue);
-                              } else if (threshold[item].has(valueId)) {
-                                threshold[item].delete(valueId);
-                              }
-                            }
-                            if (
-                              threshold.hasOwnProperty(onTimeIntervalIndividualId) &&
-                              (!(threshold[onTimeIntervalIndividualId] instanceof Map) ||
-                                threshold[onTimeIntervalIndividualId].size === 0)
-                            ) {
-                              delete threshold[onTimeIntervalIndividualId];
-                            }
                           }
-                          break;
                         }
-
-                        case alertMessageTemplateId: {
-                          backStepsForCacheDelete--;
-                        }
-                        // eslint-disable-next-line no-fallthrough
-                        default: {
-                          threshold[item] = userInputToProcess;
-                        }
-                      }
-                    }
-                    break;
-                  }
-
-                  default: {
-                    threshold = undefined;
-                    break;
-                  }
-                }
-                if (threshold) {
-                  cachedValueSet(user, cachedAlertThresholdSet, detailsOrThresholds);
-                  cachedAddToDelCachedOnBack(
-                    user,
-                    menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
-                    cachedAlertThresholdSet,
-                  );
-                  menuMenuItemsAndRowsClearCached(user);
-                }
-              }
-              break;
-            }
-
-            case dataTypeTrigger: {
-              if (commandOptions.state) {
-                let triggers = triggersGetStateTriggers(
-                    user,
-                    typeof commandOptions.triggerState === 'string'
-                      ? commandOptions.triggerState
-                      : commandOptions.state,
-                  ),
-                  backStepsForCacheDelete = -1;
-                if (!Array.isArray(triggers)) triggers = new Array();
-                switch (commandOptions.mode) {
-                  case 'add': {
-                    const triggerType = commandOptions.triggerType,
-                      stateObjectCommon = commandOptions.stateObject?.common;
-                    let triggerValue;
-                    if (triggerType === 'number') {
-                      if (Number.isNaN(userInputToProcess)) {
+                      } else if (Number.isNaN(userInputToProcess)) {
                         warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
                         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                        triggers = undefined;
+                        threshold = undefined;
                       } else if (!checkNumberStateValue(commandOptions.state, Number(userInputToProcess))) {
                         warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
                         telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                        triggers = undefined;
+                        threshold = undefined;
                       } else {
-                        triggerValue = Number(userInputToProcess);
+                        const thresholdValue = Number(userInputToProcess),
+                          thresholdId = `${thresholdValue}`;
+                        if (thresholdsGetIndex(detailsOrThresholds, thresholdId) >= 0) {
+                          warns(`Unacceptable value '${userInputToProcess}' - already exists such key!`);
+                          telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+                          threshold = undefined;
+                        } else {
+                          if (!Array.isArray(detailsOrThresholds)) detailsOrThresholds = new Array();
+                          detailsOrThresholds.push({
+                            isEnabled: true,
+                            id: thresholdId,
+                            index: 0,
+                            type: 'number',
+                            value: thresholdValue,
+                            onAbove: true,
+                            onBelow: true,
+                            [onTimeIntervalId]: 0,
+                          });
+                          detailsOrThresholds = triggersSort(detailsOrThresholds);
+                          menuPositionCurrent.push(thresholdsGetIndex(detailsOrThresholds, thresholdId));
+                          backStepsForCacheDelete--;
+                        }
                       }
-                    } else {
-                      triggerValue = userInputToProcess;
+                      break;
                     }
-                    let trigger,
-                      triggerIdPrefix = `${triggerValue}`;
-                    if (
-                      triggerType === 'boolean' ||
-                      (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(triggerType))
-                    ) {
-                      trigger = {
-                        id: triggerIdPrefix,
-                        index: 0,
-                        isEnabled: false,
-                        type: triggerType,
-                        value: triggerValue,
-                        [onTimeIntervalId]: 0,
-                        targetState: '',
-                        targetFunction: undefined,
-                        targetValue: undefined,
-                        conditions: undefined,
-                      };
-                    } else if (triggerType === 'number') {
-                      triggerIdPrefix = [triggerIdPrefix, 'onAbove'].join('#');
-                      trigger = {
-                        id: triggerIdPrefix,
-                        index: 0,
-                        isEnabled: false,
-                        type: triggerType,
-                        value: triggerValue,
-                        [onTimeIntervalId]: 0,
-                        onAbove: true,
-                        onBelow: false,
-                        targetState: '',
-                        targetFunction: undefined,
-                        targetValue: undefined,
-                        conditions: undefined,
-                      };
-                    }
-                    if (typeof trigger === 'object') {
-                      backStepsForCacheDelete--;
-                      trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
-                      trigger.id = [triggerIdPrefix, trigger.index].join('#');
-                      triggers.push(trigger);
-                      triggers = triggersSort(triggers);
-                      menuPositionCurrent.push(thresholdsGetIndex(triggers, trigger.id));
-                    }
-                    break;
-                  }
 
-                  case 'edit': {
-                    if (typeof commandOptions.id === 'string') {
-                      const triggerId = commandOptions.id,
-                        triggerIndex = thresholdsGetIndex(triggers, triggerId);
-                      if (triggerIndex >= 0) {
-                        const trigger = triggers[triggerIndex],
-                          item = commandOptions.item;
-                        backStepsForCacheDelete--;
+                    case 'edit': {
+                      const thresholdId = commandOptions.id,
+                        thresholdIndex =
+                          typeof thresholdId === 'string' ? thresholdsGetIndex(detailsOrThresholds, thresholdId) : -1;
+                      if (thresholdIndex >= 0) {
+                        threshold = detailsOrThresholds[thresholdIndex];
+                        if (thresholdId !== thresholdEnumerable) backStepsForCacheDelete--;
+                      }
+                      if (threshold) {
                         switch (item) {
-                          case 'value':
-                          case onTimeIntervalId: {
+                          case 'value': {
                             if (Number.isNaN(userInputToProcess)) {
                               warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
                               telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
-                              triggers = undefined;
+                              threshold = undefined;
+                            } else if (!checkNumberStateValue(commandOptions.state, Number(userInputToProcess))) {
+                              warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
+                              telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+                              threshold = undefined;
                             } else {
-                              const triggerValue = Number(userInputToProcess);
-                              if (item === 'value') {
-                                if (!checkNumberStateValue(commandOptions.state, triggerValue)) {
-                                  warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
-                                  telegramMessageDisplayPopUp(
-                                    user,
-                                    translationsItemTextGet(user, 'MsgValueUnacceptable'),
-                                  );
-                                  triggers = undefined;
-                                } else {
-                                  const triggerIdPrefix = [triggerValue, trigger.onAbove ? 'onAbove' : 'onBelow'].join(
-                                    '#',
-                                  );
-                                  trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
-                                  trigger.value = triggerValue;
-                                  trigger.id = [triggerIdPrefix, trigger.index].join('#');
-                                  trigger.isEnabled = false;
-                                  triggers = triggersSort(triggers);
-                                  menuPositionCurrent.splice(-1, 1, thresholdsGetIndex(triggers, trigger.id));
-                                }
-                              } else {
-                                trigger[item] = triggerValue;
-                                break;
-                              }
-                            }
-                            break;
-                          }
-                          case 'targetValue': {
-                            const targetStateObject = commandOptions.stateObject,
-                              targetStateObjectCommon = targetStateObject?.common,
-                              targetStateType = targetStateObjectCommon?.type;
-                            let targetValue;
-                            if (targetStateType === 'number') {
-                              if (Number.isNaN(userInputToProcess)) {
-                                warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                              const thresholdValue = Number(userInputToProcess),
+                                thresholdId = `${thresholdValue}`;
+                              if (thresholdsGetIndex(detailsOrThresholds, thresholdId) >= 0) {
+                                warns(`Unacceptable value '${userInputToProcess}' - already exists such key!`);
                                 telegramMessageDisplayPopUp(
                                   user,
                                   translationsItemTextGet(user, 'MsgValueUnacceptable'),
                                 );
-                                triggers = undefined;
+                                threshold = undefined;
                               } else {
-                                targetValue = Number(userInputToProcess);
-                                if (!checkNumberStateValue(trigger.targetState, targetValue, targetStateObject)) {
-                                  warns(`Unacceptable value '${targetValue}' for state conditions`);
-                                  telegramMessageDisplayPopUp(
-                                    user,
-                                    translationsItemTextGet(user, 'MsgValueUnacceptable'),
-                                  );
-                                  triggers = undefined;
-                                }
+                                threshold.value = thresholdValue;
+                                threshold.id = thresholdId;
+                                detailsOrThresholds = triggersSort(detailsOrThresholds);
+                                menuPositionCurrent.splice(-1, 1, thresholdsGetIndex(detailsOrThresholds, thresholdId));
                               }
-                            } else {
-                              targetValue = userInputToProcess;
                             }
-                            if (triggers) trigger[item] = targetValue;
                             break;
                           }
 
-                          case triggersTargetsId:
-                          case triggersConditionsId: {
-                            const items = trigger[item],
-                              index = commandOptions.index,
-                              subItem = commandOptions.subItem;
-                            logs(`trigger = ${jsonStringify(trigger)}`, _l);
-                            if (Array.isArray(items) && typeof index === 'number' && subItem) {
-                              const length = items.length;
-                              if (index < length) {
-                                backStepsForCacheDelete -= 2;
-                                const itemData = items[index];
-                                switch (subItem) {
-                                  case 'value': {
-                                    const itemStateObject = commandOptions.stateObject,
-                                      itemStateObjectCommon = itemStateObject?.common,
-                                      itemStateType = itemStateObjectCommon?.type;
-                                    let itemValue;
-                                    if (itemStateType === 'number') {
-                                      if (Number.isNaN(userInputToProcess)) {
-                                        warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
-                                        telegramMessageDisplayPopUp(
-                                          user,
-                                          translationsItemTextGet(user, 'MsgValueUnacceptable'),
-                                        );
-                                        triggers = undefined;
-                                      } else {
-                                        itemValue = Number(userInputToProcess);
-                                        if (!checkNumberStateValue(trigger.targetState, itemValue, itemStateObject)) {
-                                          warns(`Unacceptable value '${itemValue}' for state conditions`);
-                                          telegramMessageDisplayPopUp(
-                                            user,
-                                            translationsItemTextGet(user, 'MsgValueUnacceptable'),
-                                          );
-                                          triggers = undefined;
-                                        }
-                                      }
-                                    } else {
-                                      itemValue = userInputToProcess;
-                                    }
-                                    if (triggers) itemData[subItem] = itemValue;
-                                    break;
-                                  }
-
-                                  default: {
-                                    triggers = undefined;
-                                    break;
-                                  }
-                                }
-                              } else {
-                                triggers = undefined;
-                              }
+                          case onTimeIntervalId:
+                          case onTimeIntervalIndividualId: {
+                            if (Number.isNaN(userInputToProcess)) {
+                              warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                              telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+                              threshold = undefined;
                             } else {
-                              triggers = undefined;
+                              const thresholdValue = Number(userInputToProcess);
+                              if (item === onTimeIntervalId) {
+                                const intervalsIndividual = threshold[onTimeIntervalIndividualId];
+                                threshold[item] = thresholdValue;
+                                if (intervalsIndividual instanceof Map && intervalsIndividual.size > 0) {
+                                  const intervalIndividualKeys = Array.from(intervalsIndividual.keys());
+                                  intervalIndividualKeys.forEach((valueId) => {
+                                    if (intervalsIndividual.get(valueId) === thresholdValue) {
+                                      intervalsIndividual.delete(valueId);
+                                    }
+                                  });
+                                }
+                              } else if (isDefined(commandOptions.subItem)) {
+                                const valueId = commandOptions.subItem,
+                                  timeIntervalCommon =
+                                    typeof threshold[onTimeIntervalId] === 'number' ? threshold[onTimeIntervalId] : 0;
+                                backStepsForCacheDelete--;
+                                if (thresholdValue !== timeIntervalCommon) {
+                                  if (!(threshold[item] instanceof Map)) threshold[item] = new Map();
+                                  threshold[item].set(valueId, thresholdValue);
+                                } else if (threshold[item].has(valueId)) {
+                                  threshold[item].delete(valueId);
+                                }
+                              }
+                              if (
+                                threshold.hasOwnProperty(onTimeIntervalIndividualId) &&
+                                (!(threshold[onTimeIntervalIndividualId] instanceof Map) ||
+                                  threshold[onTimeIntervalIndividualId].size === 0)
+                              ) {
+                                delete threshold[onTimeIntervalIndividualId];
+                              }
                             }
                             break;
                           }
@@ -15588,39 +15736,355 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                           }
                           // eslint-disable-next-line no-fallthrough
                           default: {
-                            const triggerValue = userInputToProcess;
-                            trigger[item] = triggerValue;
-                            break;
+                            threshold[item] = userInputToProcess;
                           }
+                        }
+                      }
+                      break;
+                    }
+
+                    default: {
+                      threshold = undefined;
+                      break;
+                    }
+                  }
+                  if (threshold) {
+                    cachedValueSet(user, cachedAlertThresholdSet, detailsOrThresholds);
+                    cachedAddToDelCachedOnBack(
+                      user,
+                      menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
+                      cachedAlertThresholdSet,
+                    );
+                    menuMenuItemsAndRowsClearCached(user);
+                  }
+                }
+                break;
+              }
+
+              case dataTypeTrigger: {
+                if (commandOptions.state) {
+                  let triggers = triggersGetStateTriggers(
+                      user,
+                      typeof commandOptions.triggerState === 'string'
+                        ? commandOptions.triggerState
+                        : commandOptions.state,
+                    ),
+                    backStepsForCacheDelete = -1;
+                  if (!Array.isArray(triggers)) triggers = new Array();
+                  switch (commandOptions.mode) {
+                    case 'add': {
+                      const triggerType = commandOptions.triggerType,
+                        stateObjectCommon = commandOptions.stateObject?.common;
+                      let triggerValue;
+                      if (triggerType === 'number') {
+                        if (Number.isNaN(userInputToProcess)) {
+                          warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                          telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+                          triggers = undefined;
+                        } else if (!checkNumberStateValue(commandOptions.state, Number(userInputToProcess))) {
+                          warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
+                          telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgValueUnacceptable'));
+                          triggers = undefined;
+                        } else {
+                          triggerValue = Number(userInputToProcess);
+                        }
+                      } else {
+                        triggerValue = userInputToProcess;
+                      }
+                      let trigger,
+                        triggerIdPrefix = `${triggerValue}`;
+                      if (
+                        triggerType === 'boolean' ||
+                        (stateObjectCommon.hasOwnProperty('states') && ['string', 'number'].includes(triggerType))
+                      ) {
+                        trigger = {
+                          id: triggerIdPrefix,
+                          index: 0,
+                          isEnabled: false,
+                          type: triggerType,
+                          value: triggerValue,
+                          [onTimeIntervalId]: 0,
+                          targetState: '',
+                          targetFunction: undefined,
+                          targetValue: undefined,
+                          conditions: undefined,
+                        };
+                      } else if (triggerType === 'number') {
+                        triggerIdPrefix = [triggerIdPrefix, 'onAbove'].join('#');
+                        trigger = {
+                          id: triggerIdPrefix,
+                          index: 0,
+                          isEnabled: false,
+                          type: triggerType,
+                          value: triggerValue,
+                          [onTimeIntervalId]: 0,
+                          onAbove: true,
+                          onBelow: false,
+                          targetState: '',
+                          targetFunction: undefined,
+                          targetValue: undefined,
+                          conditions: undefined,
+                        };
+                      }
+                      if (typeof trigger === 'object') {
+                        backStepsForCacheDelete--;
+                        trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
+                        trigger.id = [triggerIdPrefix, trigger.index].join('#');
+                        triggers.push(trigger);
+                        triggers = triggersSort(triggers);
+                        menuPositionCurrent.push(thresholdsGetIndex(triggers, trigger.id));
+                      }
+                      break;
+                    }
+
+                    case 'edit': {
+                      if (typeof commandOptions.id === 'string') {
+                        const triggerId = commandOptions.id,
+                          triggerIndex = thresholdsGetIndex(triggers, triggerId);
+                        if (triggerIndex >= 0) {
+                          const trigger = triggers[triggerIndex],
+                            item = commandOptions.item;
+                          backStepsForCacheDelete--;
+                          switch (item) {
+                            case 'value':
+                            case onTimeIntervalId: {
+                              if (Number.isNaN(userInputToProcess)) {
+                                warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                                telegramMessageDisplayPopUp(
+                                  user,
+                                  translationsItemTextGet(user, 'MsgValueUnacceptable'),
+                                );
+                                triggers = undefined;
+                              } else {
+                                const triggerValue = Number(userInputToProcess);
+                                if (item === 'value') {
+                                  if (!checkNumberStateValue(commandOptions.state, triggerValue)) {
+                                    warns(`Unacceptable value '${userInputToProcess}' for state conditions`);
+                                    telegramMessageDisplayPopUp(
+                                      user,
+                                      translationsItemTextGet(user, 'MsgValueUnacceptable'),
+                                    );
+                                    triggers = undefined;
+                                  } else {
+                                    const triggerIdPrefix = [
+                                      triggerValue,
+                                      trigger.onAbove ? 'onAbove' : 'onBelow',
+                                    ].join('#');
+                                    trigger.index = triggersGetMaxSubIndex(triggers, `${triggerIdPrefix}#`) + 1;
+                                    trigger.value = triggerValue;
+                                    trigger.id = [triggerIdPrefix, trigger.index].join('#');
+                                    trigger.isEnabled = false;
+                                    triggers = triggersSort(triggers);
+                                    menuPositionCurrent.splice(-1, 1, thresholdsGetIndex(triggers, trigger.id));
+                                  }
+                                } else {
+                                  trigger[item] = triggerValue;
+                                  break;
+                                }
+                              }
+                              break;
+                            }
+                            case 'targetValue': {
+                              const targetStateObject = commandOptions.stateObject,
+                                targetStateObjectCommon = targetStateObject?.common,
+                                targetStateType = targetStateObjectCommon?.type;
+                              let targetValue;
+                              if (targetStateType === 'number') {
+                                if (Number.isNaN(userInputToProcess)) {
+                                  warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                                  telegramMessageDisplayPopUp(
+                                    user,
+                                    translationsItemTextGet(user, 'MsgValueUnacceptable'),
+                                  );
+                                  triggers = undefined;
+                                } else {
+                                  targetValue = Number(userInputToProcess);
+                                  if (!checkNumberStateValue(trigger.targetState, targetValue, targetStateObject)) {
+                                    warns(`Unacceptable value '${targetValue}' for state conditions`);
+                                    telegramMessageDisplayPopUp(
+                                      user,
+                                      translationsItemTextGet(user, 'MsgValueUnacceptable'),
+                                    );
+                                    triggers = undefined;
+                                  }
+                                }
+                              } else {
+                                targetValue = userInputToProcess;
+                              }
+                              if (triggers) trigger[item] = targetValue;
+                              break;
+                            }
+
+                            case triggersTargetsId:
+                            case triggersConditionsId: {
+                              const items = trigger[item],
+                                index = commandOptions.index,
+                                subItem = commandOptions.subItem;
+                              logs(`trigger = ${jsonStringify(trigger)}`, _l);
+                              if (Array.isArray(items) && typeof index === 'number' && subItem) {
+                                const length = items.length;
+                                if (index < length) {
+                                  backStepsForCacheDelete -= 2;
+                                  const itemData = items[index];
+                                  switch (subItem) {
+                                    case 'value': {
+                                      const itemStateObject = commandOptions.stateObject,
+                                        itemStateObjectCommon = itemStateObject?.common,
+                                        itemStateType = itemStateObjectCommon?.type;
+                                      let itemValue;
+                                      if (itemStateType === 'number') {
+                                        if (Number.isNaN(userInputToProcess)) {
+                                          warns(`Unacceptable value '${userInputToProcess}' for number conditions`);
+                                          telegramMessageDisplayPopUp(
+                                            user,
+                                            translationsItemTextGet(user, 'MsgValueUnacceptable'),
+                                          );
+                                          triggers = undefined;
+                                        } else {
+                                          itemValue = Number(userInputToProcess);
+                                          if (!checkNumberStateValue(trigger.targetState, itemValue, itemStateObject)) {
+                                            warns(`Unacceptable value '${itemValue}' for state conditions`);
+                                            telegramMessageDisplayPopUp(
+                                              user,
+                                              translationsItemTextGet(user, 'MsgValueUnacceptable'),
+                                            );
+                                            triggers = undefined;
+                                          }
+                                        }
+                                      } else {
+                                        itemValue = userInputToProcess;
+                                      }
+                                      if (triggers) itemData[subItem] = itemValue;
+                                      break;
+                                    }
+
+                                    default: {
+                                      triggers = undefined;
+                                      break;
+                                    }
+                                  }
+                                } else {
+                                  triggers = undefined;
+                                }
+                              } else {
+                                triggers = undefined;
+                              }
+                              break;
+                            }
+
+                            case alertMessageTemplateId: {
+                              backStepsForCacheDelete--;
+                            }
+                            // eslint-disable-next-line no-fallthrough
+                            default: {
+                              const triggerValue = userInputToProcess;
+                              trigger[item] = triggerValue;
+                              break;
+                            }
+                          }
+                        } else {
+                          triggers = undefined;
                         }
                       } else {
                         triggers = undefined;
                       }
-                    } else {
+                      break;
+                    }
+
+                    default: {
                       triggers = undefined;
+                    }
+                  }
+                  if (Array.isArray(triggers)) {
+                    cachedValueSet(user, cachedTriggersDetails, triggers);
+                    cachedAddToDelCachedOnBack(
+                      user,
+                      menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
+                      cachedTriggersDetails,
+                    );
+                    menuMenuItemsAndRowsClearCached(user);
+                  }
+                }
+                break;
+              }
+
+              case dataTypeExternal: {
+                const interimValues = cachedValueGet(user, cachedInterimValue) || {},
+                  externalValueId = commandOptions?.['valueOptions']?.['externalValueId'] || '',
+                  externalValueType = commandOptions?.['valueOptions']?.['externalValueType'] || '';
+                let valueInterim = interimValues[externalValueId];
+                switch (commandOptions.mode) {
+                  case 'add': {
+                    if (valueInterim === undefined) {
+                      switch (externalValueType) {
+                        case 'array#object': {
+                          valueInterim = [];
+                          break;
+                        }
+                        default: {
+                          break;
+                        }
+                      }
+                    }
+                    if (valueInterim !== undefined) {
+                      switch (externalValueType) {
+                        case 'array#object': {
+                          let index = commandOptions['index'];
+                          if (index === undefined) index = valueInterim.length;
+                          if (
+                            index >= 0 &&
+                            typeof commandOptions?.['valueOptions']?.['externalObjectTemplate'] === 'object'
+                          ) {
+                            valueInterim[index] = {...commandOptions['valueOptions']['externalObjectTemplate']};
+                          }
+                          menuPositionCurrent.push(index);
+                          break;
+                        }
+                        default: {
+                          break;
+                        }
+                      }
+                    }
+                  }
+                  // eslint-disable-next-line no-fallthrough
+                  case 'edit': {
+                    if (valueInterim !== undefined) {
+                      switch (externalValueType) {
+                        case 'array#object': {
+                          const index = commandOptions['index'];
+                          if (index !== undefined && index >= 0 && valueInterim.length > index) {
+                            const itemId = commandOptions['item'] || '',
+                              item = valueInterim[index];
+                            if (typeof itemId === 'string' && item !== undefined) {
+                              if (typeof item[itemId] === 'number') {
+                                const parsedValue = Number(userInputToProcess);
+                                if (!Number.isNaN(parsedValue)) {
+                                  item[itemId] = parsedValue;
+                                }
+                              } else if (typeof item[itemId] === 'boolean') {
+                                item[itemId] = !item[itemId];
+                              } else {
+                                item[itemId] = userInputToProcess;
+                              }
+                              cachedValueSet(user, cachedInterimValue, interimValues);
+                            }
+                          }
+                          break;
+                        }
+                      }
                     }
                     break;
                   }
-
                   default: {
-                    triggers = undefined;
+                    break;
                   }
                 }
-                if (Array.isArray(triggers)) {
-                  cachedValueSet(user, cachedTriggersDetails, triggers);
-                  cachedAddToDelCachedOnBack(
-                    user,
-                    menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
-                    cachedTriggersDetails,
-                  );
-                  menuMenuItemsAndRowsClearCached(user);
-                }
+                break;
               }
-              break;
-            }
 
-            default: {
-              break;
+              default: {
+                break;
+              }
             }
           }
           break;
@@ -16027,81 +16491,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
       }
 
       case cmdItemSetInterimValue: {
-        if (typeof commandOptions.valueOptions?.interimItemId === 'string') {
-          const interimItemId = commandOptions.valueOptions.interimItemId,
-            interimCalculationMode = commandOptions.valueOptions?.interimCalculationMode;
-          let interimValue;
-          switch (interimCalculationMode) {
-            case interimCalculationSummarize: {
-              const valueCurrent = commandOptions.valueOptions?.valueCurrent,
-                modificator = isDefined(commandOptions.value) ? Number(commandOptions.value) : 0;
-              switch (commandOptions.valueOptions?.type) {
-                case 'time': {
-                  switch (commandOptions.valueOptions?.mode) {
-                    case timeInternalModeTime: {
-                      if (typeof commandOptions.valueOptions?.template === 'string') {
-                        const template = commandOptions.valueOptions.template;
-                        interimValue = timeInternalToString(
-                          modificator + stringToTimeInternal(valueCurrent, template),
-                          template,
-                        );
-                      }
-                      break;
-                    }
-
-                    default: {
-                      interimValue =
-                        (isDefined(commandOptions.value) ? Number(commandOptions.value) : 0) +
-                        (isDefined(valueCurrent) ? Number(valueCurrent) : 0);
-                      break;
-                    }
-                  }
-
-                  break;
-                }
-
-                default: {
-                  const valueBase = typeof valueCurrent === 'number' ? valueCurrent : 0,
-                    valueBaseDecimals = countDecimals(valueBase),
-                    valueModifier = typeof commandOptions.value === 'number' ? commandOptions.value : 0,
-                    valueModifierDecimals = countDecimals(valueModifier),
-                    maxDecimals = valueBaseDecimals > valueModifierDecimals ? valueBaseDecimals : valueModifierDecimals;
-                  interimValue = valueBase + valueModifier;
-                  if (maxDecimals > 0) interimValue = Math.round(interimValue * 10 ** maxDecimals) / 10 ** maxDecimals;
-                  break;
-                }
-              }
-              break;
-            }
-            case interimCalculationSelectMultiple: {
-              if (isDefined(commandOptions.values) && isDefined(commandOptions.value)) {
-                const value = commandOptions.value;
-                interimValue = [...commandOptions.values];
-                if (interimValue.includes(value)) {
-                  interimValue = interimValue.filter((item) => item !== value);
-                } else {
-                  interimValue.push(value);
-                  if (typeof value === 'number') interimValue = interimValue.sort((a, b) => a - b);
-                }
-              } else if (
-                typeof commandOptions.valueOptions?.resetValue === 'boolean' &&
-                commandOptions.valueOptions?.resetValue &&
-                isDefined(commandOptions.valueOptions?.valuesDefault)
-              ) {
-                interimValue = commandOptions.valueOptions.valuesDefault;
-              }
-              break;
-            }
-            case interimCalculationReplace:
-            default: {
-              interimValue =
-                commandOptions.valueType === 'number' ? Number(commandOptions.value) : commandOptions.value;
-              break;
-            }
-          }
-          if (isDefined(interimValue)) cachedValueSet(user, cachedInterimValue, {[interimItemId]: interimValue});
-        }
-        menuMenuItemsAndRowsClearCached(user);
+        setInterimValue(commandOptions);
         break;
       }
 
@@ -16152,7 +16542,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                               break;
                             }
                             case 'reset': {
-                              delete currentDataItem[commandOptions.attribute];
+                              delete currentDataItem['assignedExtension'];
                               menuPositionCurrent.splice(-1, 1);
                               break;
                             }
@@ -16194,6 +16584,7 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                         .sort(currentSort);
                     }
                   }
+                  menuMenuItemsAndRowsClearCached(user);
                   enumerationsSave(enumerationsGetPrimaryDataType(enumerationType, enumerationExtraId));
                 }
               } else if (enumerationType === dataTypeAssociatedExtensions) {
@@ -17041,6 +17432,26 @@ async function commandsUserInputProcess(user, userInputToProcess) {
                 telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgError'));
               });
             menuPositionCurrent = undefined;
+            break;
+          }
+
+          case dataTypeExternal: {
+            const interimValues = cachedValueGet(user, cachedInterimValue) || {},
+              externalValueId = commandOptions?.['valueOptions']?.['externalValueId'] || '',
+              valueInterim = interimValues[externalValueId];
+            if (valueInterim !== undefined) {
+              switch (commandOptions?.['valueOptions']?.['externalValueType']) {
+                case 'array#object': {
+                  const index = commandOptions['index'];
+                  if (index !== undefined && index >= 0 && index < valueInterim.length) {
+                    valueInterim.splice(index, 1);
+                    cachedValueSet(user, cachedInterimValue, interimValues);
+                    menuPositionCurrent.splice(-2, 2);
+                  }
+                  break;
+                }
+              }
+            }
             break;
           }
 
