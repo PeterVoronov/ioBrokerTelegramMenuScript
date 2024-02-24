@@ -13053,7 +13053,10 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           menuItem.submenu.length,
           `${translationsItemMenuGet(user, 'SetValue')} [${valueText}]`,
           'directInput',
-          itemOptions,
+          {
+            ...itemOptions,
+            valueOptions: {...itemOptions.valueOptions, interimCalculationMode: interimCalculationReplace}
+          },
         ),
       );
     }
@@ -15111,9 +15114,8 @@ async function commandsUserInputProcess(user, userInputValue) {
   function setInterimValue(commandOptions, userInputValue) {
     if (typeof commandOptions.valueOptions?.interimItemId === 'string') {
       const interimItemId = commandOptions?.['valueOptions']?.['interimItemId'],
-        interimCalculationMode = commandOptions?.['valueOptions']?.['directInput']
-          ? 'interimCalculationReplace'
-          : commandOptions?.['valueOptions']?.['interimCalculationMode'],
+        interimCalculationMode = typeof commandOptions?.['valueOptions']?.['interimCalculationMode'] === 'string' ?
+        commandOptions['valueOptions']['interimCalculationMode'] : interimCalculationReplace,
         inputValue = userInputValue !== undefined ? userInputValue : commandOptions?.['value'];
       let interimValue;
       if (typeof interimItemId === 'string' && typeof interimCalculationMode === 'string') {
