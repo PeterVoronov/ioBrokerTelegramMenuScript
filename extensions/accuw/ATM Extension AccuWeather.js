@@ -4,16 +4,17 @@
 /* global autoTelegramMenuExtensionsSendAlertToTelegram */
 
 function autoTelegramMenuExtensionAccuWeather() {
-  const autoTelegramMenuExtensionsInit = autoTelegramMenuExtensionsInitCommand
+  const extensionsInit = autoTelegramMenuExtensionsInitCommand
       ? `${autoTelegramMenuExtensionsInitCommand}`
       : 'autoTelegramMenuExtensionsInit',
-    autoTelegramMenuExtensionsRegister = autoTelegramMenuExtensionsRegisterCommand
+    extensionsRegister = autoTelegramMenuExtensionsRegisterCommand
       ? `${autoTelegramMenuExtensionsRegisterCommand}`
       : 'autoTelegramMenuExtensionsRegister',
-    autoTelegramMenuExtensionsTimeout = 500,
-    autoTelegramMenuExtensionId = 'accuw',
-    autoTelegramMenuExtensionMenuId = 'menuAccuWeatherForecast',
-    autoTelegramMenuExtensionTranslationsKeys = [
+    extensionsTimeout = 500,
+    extensionId = 'accuw',
+    extensionType = 'function',
+    extensionMenuId = 'menuAccuWeatherForecast',
+    extensionTranslationsKeys = [
       'WeatherForecast',
       'ForecastDetailed',
       'ForecastHourly',
@@ -61,31 +62,31 @@ function autoTelegramMenuExtensionAccuWeather() {
       ? `${autoTelegramMenuExtensionsSetCachedStateCommand}`
       : 'autoTelegramMenuExtensionsSetCachedState';
 
-  function extensionAccuWeatherInit(messageId, timeout) {
+  function extensionInit(messageId, timeout) {
     messageTo(
-      messageId === undefined ? autoTelegramMenuExtensionsRegister : messageId,
+      messageId === undefined ? extensionsRegister : messageId,
       {
-        id: autoTelegramMenuExtensionId,
-        type: 'function',
+        id: extensionId,
+        type: extensionType,
         nameTranslationId: 'WeatherForecast',
         icon: '☂️',
-        function: {
-          state: autoTelegramMenuExtensionMenuId
+        options: {
+          state: extensionMenuId
         },
         scriptName: scriptName,
-        translationsKeys: autoTelegramMenuExtensionTranslationsKeys,
+        translationsKeys: extensionTranslationsKeys,
       },
-      {timeout: timeout === undefined ? autoTelegramMenuExtensionsTimeout : timeout},
+      {timeout: timeout === undefined ? extensionsTimeout : timeout},
       (result) => {
         if (!result.success) {
-          console.warn(`Error to register ${autoTelegramMenuExtensionId} - ${result.error}`);
+          console.warn(`Error to register ${extensionId} - ${result.error}`);
         }
       },
     );
   }
 
-  onMessage(autoTelegramMenuExtensionsInit, ({messageId, timeout}, callback) => {
-    extensionAccuWeatherInit(messageId, timeout);
+  onMessage(extensionsInit, ({messageId, timeout}, callback) => {
+    extensionInit(messageId, timeout);
     callback({success: true});
   });
 
@@ -211,12 +212,6 @@ function autoTelegramMenuExtensionAccuWeather() {
       icon: '🌑⛅🌨️',
     },
   };
-
-  function _getCurrentHour() {
-    let currentHour = Number.parseInt(new Date().toTimeString().slice(0, 2));
-    if (currentHour === 24) currentHour = 0;
-    return currentHour;
-  }
 
   function convertSpeed(inKmH) {
     return Math.round((inKmH * 10) / 3.6) / 10;
@@ -439,7 +434,7 @@ function autoTelegramMenuExtensionAccuWeather() {
     return text;
   }
 
-  onMessage(autoTelegramMenuExtensionMenuId, ({user: _user, data, extensionId, translations}, callback) => {
+  onMessage(extensionMenuId, ({user: _user, data, translations}, callback) => {
     if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
       switch (data.id) {
         case 'ForecastDetailed': {
@@ -478,9 +473,9 @@ function autoTelegramMenuExtensionAccuWeather() {
             const currentDate = new Date(getState(`accuweather.0.Summary.DateTime_d${day}`).val);
             const currentDay = getState(`accuweather.0.Summary.DayOfWeek_d${day}`).val + ` ${currentDate.getDate()}`;
             data.submenu.push({
-              name: `${getState('accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum').val} ${degrees} .. ${
-                getState('accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum').val
-              } ${degrees} (${currentDay})`,
+              name: getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val + ` ${degrees} .. ` +
+                getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val +
+                ` ${degrees} (${currentDay})`,
               text: getDetailedForecast(day, translations),
               icon: accuWeatherIcons[getState(`accuweather.0.Summary.WeatherIcon_d${day}`).val].icon,
               submenu: [],
@@ -499,14 +494,14 @@ function autoTelegramMenuExtensionAccuWeather() {
               name: translations['ForecastDetailed'],
               extensionId: extensionId,
               icon: data.icon,
-              submenu: autoTelegramMenuExtensionMenuId,
+              submenu: extensionMenuId,
             },
             {
               id: 'ForecastHourly',
               name: translations['ForecastHourly'],
               extensionId: extensionId,
               icon: accuWeatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
-              submenu: autoTelegramMenuExtensionMenuId,
+              submenu: extensionMenuId,
             },
             {
               id: 'ForecastTomorrow',
@@ -515,7 +510,7 @@ function autoTelegramMenuExtensionAccuWeather() {
               } ${degrees} - ${translations['ForecastTomorrow']}`,
               extensionId: extensionId,
               icon: accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
-              submenu: autoTelegramMenuExtensionMenuId,
+              submenu: extensionMenuId,
             },
             {
               id: 'ForecastLong',
@@ -527,7 +522,7 @@ function autoTelegramMenuExtensionAccuWeather() {
                 accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d4').val].icon +
                 ' ' +
                 accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d5').val].icon,
-              submenu: autoTelegramMenuExtensionMenuId,
+              submenu: extensionMenuId,
             },
           ];
           break;
@@ -537,7 +532,7 @@ function autoTelegramMenuExtensionAccuWeather() {
     }
   });
 
-  extensionAccuWeatherInit();
+  extensionInit();
 }
 
 console.log(`Script is ${scriptName} on instance ${instance}`);

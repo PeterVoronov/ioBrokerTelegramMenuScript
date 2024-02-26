@@ -3870,7 +3870,7 @@ function translationsGetForExtension(user, extensionId) {
     if (extensionFunctionId.startsWith(prefixExtensionId)) {
       extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, ''); // NOSONAR
     } else {
-      extensionId = `${prefixExtensionId}.${stringCapitalize(extensionId)}`;
+      extensionId = `${prefixExtensionId}${stringCapitalize(extensionId)}`;
     }
     if (
       enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) &&
@@ -3884,6 +3884,10 @@ function translationsGetForExtension(user, extensionId) {
           translations[translationKey] = currentTranslation !== 'No translation' ? currentTranslation : translationKey;
         });
       }
+    } else if (Array.isArray(extensionsList?.[extensionFunctionId]?.['translationsKeys'])) {
+      extensionsList[extensionFunctionId]['translationsKeys'].forEach((translationKey) => {
+        translations[translationKey] = translationKey;
+      });
     }
   }
   return translations;
@@ -4744,7 +4748,7 @@ function sentImagesDelete(user) {
 
 let extensionsList = {};
 const extensionTypeFunction = 'function',
-  extensionTypeAttributesModifier = 'attributesModifier',
+  extensionTypeAttributes = 'attributes',
   extensionsListState = `${prefixEnums}.${idExtensions}`;
 
 statesCommonAttributes[idExtensions] = {
@@ -4820,21 +4824,22 @@ function extensionsSave() {
  */
 function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback) {
   const {id, type, nameTranslationId, icon, scriptName, translationsKeys, options} = extensionDetails;
-  let extensionId = id;
+  let extensionId = id,
+    functionId;
   switch (type) {
     case extensionTypeFunction: {
       const extensionPseudoState = options?.['state'];
       if (typeof extensionPseudoState === 'string') {
-        extensionId = `${prefixExtensionId}${stringCapitalize(id)}`;
+        functionId = `${prefixExtensionId}${stringCapitalize(id)}`;
         const functionsList = enumerationsList[dataTypeFunction].list;
-        if (typeof functionsList?.[extensionId] === 'object') {
-          functionsList[extensionId].isAvailable = true;
-          functionsList[extensionId].scriptName = scriptName;
-          functionsList[extensionId].state = extensionPseudoState;
-          functionsList[extensionId].nameTranslationId = nameTranslationId;
-          functionsList[extensionId].translationsKeys = translationsKeys;
+        if (typeof functionsList?.[functionId] === 'object') {
+          functionsList[functionId].isAvailable = true;
+          functionsList[functionId].scriptName = scriptName;
+          functionsList[functionId].state = extensionPseudoState;
+          functionsList[functionId].nameTranslationId = nameTranslationId;
+          functionsList[functionId].translationsKeys = translationsKeys;
         } else {
-          functionsList[extensionId] = {
+          functionsList[functionId] = {
             ...enumerationsDefaultObjects[dataTypeExtension],
             isAvailable: true,
             isExternal: true,
@@ -4868,6 +4873,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
           translationsKeys: [...translationsKeys],
           options: objectDeepClone(options),
         };
+        if (typeof functionId === 'string') extensionsList[extensionId].functionId = functionId;
         extensionsSave();
         logs(`Extension "${extensionId}" is registered: ${jsonStringify(extensionsList[extensionId])}.`, _l);
       } else if (typeof extensionsList?.[extensionId] === 'object') {
@@ -4880,6 +4886,18 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
     }
   }
   callback({success: true});
+}
+
+/**
+ * This function is used to find an extensions Id by appropriate function Id.
+ * @param {string} functionId - The function Id.
+ * @returns {string|undefined} The Extension Id.
+ **/
+function extensionsGetIdByFunctionId(functionId) {
+  return Object.keys(extensionsList).find(
+    (extensionId) =>
+      extensionsList[extensionId]['isAvailable'] && extensionsList[extensionId]['functionId'] === functionId,
+  );
 }
 
 const extensionsInitCommand = autoTelegramMenuExtensionsInitCommand
@@ -5351,33 +5369,51 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
     {
       dataType: enumerationType,
-      item: currentItem,
+      item: itemIdCurrent,
       dataTypeExtraId: enumerationTypeExtraId,
       list: currentEnumerationsList,
     } = menuItemToProcess.options;
-  const currentEnumerationItem = currentEnumerationsList[currentItem],
+  const currentEnumerationItem = currentEnumerationsList[itemIdCurrent],
     currentEnumerationItemEnum = currentEnumerationItem.enum,
-    lastItemIndex = Object.keys(currentEnumerationsList).length - 1;
+    lastItemIndex = Object.keys(currentEnumerationsList).length - 1,
+    primaryEnumType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId),
+    primaryEnumsList = enumerationsGetList(primaryEnumType),
+    primaryEnumItem = primaryEnumsList[enumerationTypeExtraId];
   let currentIcon = iconItemDisabled;
-  if (currentEnumerationItem.isEnabled) {
+  if (currentEnumerationItem?.['isEnabled']) {
     currentIcon = currentEnumerationItem.icon || '';
+    if (enumerationType === dataTypeAssociatedExtensions) {
+      if (!extensionsList?.[itemIdCurrent]?.['isAvailable']) {
+        currentIcon = iconItemNotFound;
+      } else if (currentEnumerationItem?.['isEnabled']) {
+        currentIcon = extensionsList?.[itemIdCurrent]?.icon || '';
+      }
+    }
   }
   if (isCurrentAccessLevelAllowModify) {
     if (enumerationType !== dataTypePrimaryEnums) {
-      subMenuIndex = subMenu.push({
+      const subMenuItem = {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${translationsItemTextGet(user, currentEnumerationItem.isEnabled ? 'SwitchOff' : 'SwitchOn')}`,
         icon: currentIcon,
         command: cmdItemPress,
         options: {
           dataType: enumerationType,
-          item: currentItem,
+          item: itemIdCurrent,
           attribute: 'isEnabled',
           dataTypeExtraId: enumerationTypeExtraId,
         },
-        group: 'topRows',
+        group: 'isEnabled',
         submenu: [],
-      });
+      };
+      if (typeof currentEnumerationItem?.['isAvailable'] === 'boolean' && currentEnumerationItem.isAvailable !== true ||
+        enumerationType === dataTypeAssociatedExtensions && extensionsList?.[itemIdCurrent]?.['isAvailable'] !== true ||
+        enumerationsDeviceStatesTypes.includes(enumerationType) && currentEnumerationItem?.['isExternal'] === true &&
+        (primaryEnumItem?.['associatedExtensions']?.[currentEnumerationItem?.['extensionId']]?.['isEnabled'] !== true ||
+        extensionsList?.[currentEnumerationItem?.['extensionId']]?.['isAvailable'] !== true)) {
+        subMenuItem['command'] = cmdNoOperation;
+      }
+      subMenuIndex = subMenu.push(subMenuItem);
     }
     if (
       !(enumerationType === dataTypeDeviceStatesAttributes && !currentEnumerationItem.isEnabled) &&
@@ -5390,8 +5426,8 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         subMenuIndex,
         currentEnumerationItem.order,
         lastItemIndex,
-        {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId},
-        'topRows',
+        {dataType: enumerationType, item: itemIdCurrent, dataTypeExtraId: enumerationTypeExtraId},
+        'UpDown',
       );
     }
   }
@@ -5426,9 +5462,9 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         currentEnumerationItem.stateAttributes = [];
         enumerationItemAttrs.push('stateAttributes');
       }
-      if (!enumerationItemAttrs.includes('assignedExtension')) {
-        currentEnumerationItem['assignedExtension'] = {};
-        enumerationItemAttrs.push('assignedExtension');
+      if (currentEnumerationItem?.['isExternal'] && !enumerationItemAttrs.includes('targetStateId')) {
+        currentEnumerationItem['targetStateId'] = '';
+        enumerationItemAttrs.push('targetStateId');
       }
       break;
     }
@@ -5450,7 +5486,9 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       case 'nameTranslationId':
       case 'scriptName':
       case 'showAccessLevel':
-      case 'pressAccessLevel': {
+      case 'pressAccessLevel':
+      case 'extensionId':
+      case 'extensionAttributeId': {
         break;
       }
 
@@ -5477,7 +5515,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
               accessLevel: currentAccessLevel,
-              options: {dataType: enumerationItemAttr, dataTypeExtraId: currentItem},
+              options: {dataType: enumerationItemAttr, dataTypeExtraId: itemIdCurrent},
               icon: iconItemExtension,
               submenu: enumerationsMenuGenerateListOfEnumerationItems,
             });
@@ -5489,7 +5527,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${devicesMenuIndex}.${devicesMenuItem.submenu.length}`,
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
               accessLevel: currentAccessLevel,
-              options: {dataType: enumerationItemAttr, dataTypeExtraId: currentItem},
+              options: {dataType: enumerationItemAttr, dataTypeExtraId: itemIdCurrent},
               icon: enumerationItemAttr === 'deviceAttributes' ? iconItemAttribute : iconItemSquareButtonBlack,
               submenu: enumerationsMenuGenerateListOfEnumerationItems,
             });
@@ -5503,7 +5541,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
               accessLevel: currentAccessLevel,
               options: {
-                function: currentItem,
+                function: itemIdCurrent,
                 functionEnum: currentEnumerationItemEnum,
                 dataType: enumerationItemAttr.replace('ValuesTranslation', ''),
               },
@@ -5520,127 +5558,85 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         break;
       }
 
-      case 'assignedExtension': {
-        if (isCurrentAccessLevelAllowModify) {
-          if (enumerationType === dataTypeDeviceButtons || enumerationType === dataTypeDeviceAttributes) {
-            const primaryEnumType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId),
-              primaryEnumsList = enumerationsGetList(primaryEnumType),
-              primaryEnum = primaryEnumsList[enumerationTypeExtraId],
-              associatedExtensions = primaryEnum?.['associatedExtensions'] || {},
-              associatedExtensionsAvailableKeys = Object.keys(associatedExtensions).filter(
-                (extensionId) =>
-                  associatedExtensions[extensionId].isEnabled &&
-                  extensionsList[extensionId]?.type === extensionTypeAttributesModifier &&
-                  extensionsList[extensionId]?.isAvailable,
-              ),
-              associatedExtensionsAvailableCount = associatedExtensionsAvailableKeys.length;
-            if (associatedExtensionsAvailableCount) {
-              const assignedExtension = currentEnumerationItem?.['assignedExtension'],
-                extensionId = assignedExtension?.['extensionId'],
-                attributeId = assignedExtension?.['attributeId'];
-              let attributeName = '';
-              if (typeof extensionId === 'string' && associatedExtensionsAvailableKeys.includes(extensionId)) {
-                const extensionDetails = extensionsList[extensionId],
-                  extensionIsForButtons =
-                    extensionDetails?.['options']?.['attributes']?.[attributeId]?.['asButton'] === true,
-                  extensionIsForAttributes =
-                    extensionDetails?.['options']?.['attributes']?.[attributeId]?.['asAttribute'] === true;
-                if (
-                  extensionId &&
-                  attributeId &&
-                  ((enumerationType === dataTypeDeviceButtons && extensionIsForButtons) ||
-                    (enumerationType === dataTypeDeviceAttributes && extensionIsForAttributes)) &&
-                  associatedExtensionsAvailableKeys.includes(extensionId)
-                ) {
-                  attributeName = extensionsList[extensionId].nameTranslationId + '/' + attributeId;
-                }
-              }
-              const subMenuItem = {
-                index: `${currentIndex}.${subMenuIndex}`,
-                name: `${translationsItemMenuGet(user, enumerationItemAttr)} [${attributeName}]`,
-                accessLevel: currentAccessLevel,
-                options: {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId},
-                icon: iconItemExtension,
-                submenu: new Array(),
-              };
-              associatedExtensionsAvailableKeys.forEach((extensionId, extensionIndex) => {
-                const attributesMap = new Map(),
-                  attributesList = extensionsList[extensionId]?.['options']?.['attributes'] || {},
-                  attributesListKeys = Object.keys(attributesList);
-                if (attributesListKeys.length) {
-                  attributesListKeys.forEach((attribute) => {
-                    if (
-                      attribute !== attributeId &&
-                      (
-                        enumerationType === dataTypeDeviceButtons &&
-                        attributesList[attribute]?.['asButton'] === true ||
-                        enumerationType === dataTypeDeviceAttributes &&
-                        attributesList[attribute]?.['asAttribute'] === true
-                      )
-                    ) {
-                      attributesMap.set(attribute, attribute);
-                    }
-                  });
-                  if (attributesMap.size) {
-                    subMenuItem.submenu.push(
-                      menuMenuItemGenerateSelectItem(
-                        user,
-                        `${currentIndex}.${subMenuIndex}`,
-                        extensionIndex,
-                        extensionsList[extensionId].nameTranslationId,
-                        attributesMap,
-                        'associatedAttributes',
-                        {
-                          dataType: enumerationType,
-                          dataTypeExtraId: enumerationTypeExtraId,
-                          list: currentEnumerationsList,
-                          item: currentItem,
-                          attribute: 'assignedExtension',
-                          subItem: extensionId,
-                          mode: 'edit',
-                        },
-                      ),
-                    );
-                  }
-                }
-              });
-              if (attributeName.length) {
-                subMenuItem.submenu.push(
-                  menuMenuItemGenerateResetItem(
-                    user,
-                    `${currentIndex}.${subMenuIndex}`,
-                    associatedExtensionsAvailableCount,
-                    {
-                      dataType: enumerationType,
-                      dataTypeExtraId: enumerationTypeExtraId,
-                      list: currentEnumerationsList,
-                      item: currentItem,
-                      attribute: 'assignedExtension',
-                      replaceCommand: cmdItemPress,
-                      mode: 'reset',
-                    },
-                  ),
-                );
-              }
-              subMenuIndex = subMenu.push(subMenuItem);
-            }
-          }
+      case 'stateAttributes': {
+        if (currentEnumerationItem['isExternal'] !== true) {
+          subMenuIndex = subMenu.push({
+            index: `${currentIndex}.${subMenuIndex}`,
+            name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
+            accessLevel: currentAccessLevel,
+            options: {
+              dataType: dataTypeDeviceStatesAttributes,
+              dataTypeExtraId: {dataType: enumerationType, function: enumerationTypeExtraId, item: itemIdCurrent},
+            },
+            icon: '',
+            submenu: enumerationsMenuGenerateListOfEnumerationItems,
+          });
         }
         break;
       }
 
-      case 'stateAttributes': {
-        subMenuIndex = subMenu.push({
-          index: `${currentIndex}.${subMenuIndex}`,
-          name: `${translationsItemMenuGet(user, enumerationItemAttr)}`,
-          accessLevel: currentAccessLevel,
-          options: {
-            dataType: dataTypeDeviceStatesAttributes,
-            dataTypeExtraId: {dataType: enumerationType, function: enumerationTypeExtraId, item: currentItem},
-          },
-          icon: '',
-          submenu: enumerationsMenuGenerateListOfEnumerationItems,
-        });
+      case 'targetStateId': {
+        if (
+          currentEnumerationItem['isExternal'] === true &&
+          extensionsList[currentEnumerationItem?.['extensionId']]?.['isAvailable'] === true
+        ) {
+          const valueCurrent = currentEnumerationItem[enumerationItemAttr],
+            associatedExtensions = primaryEnumItem?.['associatedExtensions'] || {},
+            associatedExtensionsAvailableKeys = Object.keys(associatedExtensions).filter(
+              (extensionId) =>
+                associatedExtensions[extensionId].isEnabled &&
+                extensionsList[extensionId]?.type === extensionTypeAttributes &&
+                extensionsList[extensionId]?.isAvailable,
+            ),
+            associatedExtensionsAvailableCount = associatedExtensionsAvailableKeys.length;
+          if (
+            associatedExtensionsAvailableCount > 0 &&
+            associatedExtensionsAvailableKeys.includes(currentEnumerationItem?.['extensionId'])
+          ) {
+            const availableStatesMap = new Map();
+            Object.keys(primaryEnumItem['deviceAttributes']).forEach((deviceAttributeId) => {
+              const deviceAttribute = primaryEnumItem['deviceAttributes'][deviceAttributeId];
+              if (!deviceAttribute['isExternal']) {
+                availableStatesMap.set(
+                  deviceAttributeId,
+                  enumerationsItemName(user, dataTypeDeviceAttributes, deviceAttributeId, deviceAttribute),
+                );
+              }
+            });
+            Object.keys(primaryEnumItem['deviceButtons']).forEach((deviceAttributeId) => {
+              const deviceAttribute = primaryEnumItem['deviceButtons'][deviceAttributeId];
+              if (!deviceAttribute['isExternal'] && !availableStatesMap.has(deviceAttributeId)) {
+                availableStatesMap.set(
+                  deviceAttributeId,
+                  enumerationsItemName(user, dataTypeDeviceButtons, deviceAttributeId, deviceAttribute),
+                );
+              }
+            });
+            const valueCurrentText = availableStatesMap.has(valueCurrent)
+              ? availableStatesMap.get(valueCurrent)
+              : valueCurrent;
+            subMenuIndex = subMenu.push(
+              menuMenuItemGenerateSelectItem(
+                user,
+                currentIndex,
+                subMenuIndex,
+                `${translationsItemMenuGet(user, enumerationItemAttr)} [${valueCurrentText}]`,
+                availableStatesMap,
+                'targetStateId',
+                {
+                  dataType: enumerationType,
+                  dataTypeExtraId: enumerationTypeExtraId,
+                  list: currentEnumerationsList,
+                  item: itemIdCurrent,
+                  attribute: enumerationItemAttr,
+                  mode: 'edit',
+                  value: valueCurrent,
+                  applyMode: true,
+                },
+              ),
+            );
+          }
+        }
         break;
       }
 
@@ -5650,14 +5646,14 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             subMenuIndex = subMenu.push(
               menuMenuItemGenerateRenameItem(user, `${currentIndex}`, subMenuIndex, {
                 dataType: dataTypeTranslation,
-                translationId: translationsGetEnumId(user, enumerationType, currentItem, enumerationsNamesMain),
+                translationId: translationsGetEnumId(user, enumerationType, itemIdCurrent, enumerationsNamesMain),
               }),
             );
           } else {
             subMenuIndex = subMenu.push(
               menuMenuItemGenerateRenameItem(user, `${currentIndex}`, subMenuIndex, {
                 dataType: enumerationType,
-                item: currentItem,
+                item: itemIdCurrent,
                 attribute: 'names',
                 index: enumerationsNamesMain,
               }),
@@ -5666,7 +5662,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
               command: cmdItemNameGet,
-              options: {dataType: enumerationType, item: currentItem},
+              options: {dataType: enumerationType, item: itemIdCurrent},
               submenu: [],
             });
           }
@@ -5694,10 +5690,10 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 name: `${translationsItemCoreGet(user, 'cmdItemRename')} "${translationsItemTextGet(
                   user,
                   namesKey,
-                )}" (${translationsGetEnumName(user, enumerationType, currentItem, namesKey)})`,
+                )}" (${translationsGetEnumName(user, enumerationType, itemIdCurrent, namesKey)})`,
                 icon: isCurrentAccessLevelAllowModify ? iconItemEdit : '',
                 command: isCurrentAccessLevelAllowModify ? cmdGetInput : cmdNoOperation,
-                options: {dataType: enumerationType, item: currentItem, attribute: 'names', declinationKey: namesKey},
+                options: {dataType: enumerationType, item: itemIdCurrent, attribute: 'names', declinationKey: namesKey},
                 submenu: [],
               });
             });
@@ -5718,7 +5714,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           icon: iconItemEdit,
         };
         if (isCurrentAccessLevelAllowModify) {
-          groupItem.options = {dataType: enumerationType, item: currentItem, dataTypeExtraId: enumerationTypeExtraId};
+          groupItem.options = {dataType: enumerationType, item: itemIdCurrent, dataTypeExtraId: enumerationTypeExtraId};
           groupItem.submenu = enumerationMenuGenerateItemGroups;
         } else {
           groupItem.command = cmdNoOperation;
@@ -5733,15 +5729,15 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           subMenuIndex = subMenu.push({
             index: `${currentIndex}.${subMenuIndex}`,
             name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
-            id: currentItem,
+            id: itemIdCurrent,
             submenu: menuMenuReIndex(
               [
                 {
                   name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
-                  id: currentItem,
+                  id: itemIdCurrent,
                   submenu: translationsMenuGenerateExtensionsTranslationsItems,
                 },
-                ...translationsDownloadUploadMenuPartGenerate(user, currentItem),
+                ...translationsDownloadUploadMenuPartGenerate(user, itemIdCurrent),
               ],
               `${currentIndex}.${subMenuIndex}`,
             ),
@@ -5763,7 +5759,8 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           let subSubMenuIndex = 0;
           Object.keys(currentEnumerationsList)
             .filter(
-              (itemId) => !itemId.includes('.') && itemId !== currentItem && currentEnumerationsList[itemId].isEnabled,
+              (itemId) =>
+                !itemId.includes('.') && itemId !== itemIdCurrent && currentEnumerationsList[itemId].isEnabled,
             )
             .forEach((itemId) => {
               const isCurrentHolder = itemId === currentHolder,
@@ -5773,7 +5770,12 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 name: currentItemName,
                 icon: isCurrentHolder ? iconItemCheckMark : '',
                 command: cmdItemPress,
-                options: {dataType: enumerationType, item: currentItem, attribute: enumerationItemAttr, value: itemId},
+                options: {
+                  dataType: enumerationType,
+                  item: itemIdCurrent,
+                  attribute: enumerationItemAttr,
+                  value: itemId,
+                },
                 submenu: [],
               });
               if (isCurrentHolder) subMenuItem.name += ` "${currentItemName}"`;
@@ -5794,7 +5796,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           command: isCurrentAccessLevelAllowModify ? cmdItemPress : cmdNoOperation,
           options: {
             dataType: enumerationType,
-            item: currentItem,
+            item: itemIdCurrent,
             attribute: enumerationItemAttr,
             dataTypeExtraId: enumerationTypeExtraId,
             value: currentEnumerationItem[enumerationItemAttr] === 2 ? 1 : 2,
@@ -5817,7 +5819,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               command: isCurrentAccessLevelAllowModify ? cmdItemPress : cmdNoOperation,
               options: {
                 dataType: enumerationType,
-                item: currentItem,
+                item: itemIdCurrent,
                 attribute: enumerationItemAttr,
                 dataTypeExtraId: enumerationTypeExtraId,
               },
@@ -5842,7 +5844,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               command: itemCommand,
               options: {
                 dataType: enumerationType,
-                item: currentItem,
+                item: itemIdCurrent,
                 attribute: enumerationItemAttr,
                 dataTypeExtraId: enumerationTypeExtraId,
               },
@@ -5854,7 +5856,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
               const currentSubMenuIndex = `${currentIndex}.${subMenuIndex}`,
                 currentCommandOptions = {
                   dataType: enumerationType,
-                  item: currentItem,
+                  item: itemIdCurrent,
                   attribute: enumerationItemAttr,
                   dataTypeExtraId: enumerationTypeExtraId,
                 };
@@ -5891,9 +5893,9 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             currentFunction.enum
           }.${enumerationTypeExtraId.replace('.', '_')}`,
           currentTranslation = translationsPointOnItemOwner(user, translationType, true);
-        let currentIds = [currentItem];
-        if (currentItem === currentFunction.state && enumerationType === dataTypeDeviceButtons) {
-          currentIds = [currentItem, translationsPrimaryStateId];
+        let currentIds = [itemIdCurrent];
+        if (itemIdCurrent === currentFunction.state && enumerationType === dataTypeDeviceButtons) {
+          currentIds = [itemIdCurrent, translationsPrimaryStateId];
         }
         if (enumerationType === dataTypeDeviceButtons) {
           enumerationsDeviceButtonsAccessLevelAttrs.forEach((accessLevelsAttr) => {
@@ -5920,7 +5922,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                 command: cmdItemPress,
                 options: {
                   dataType: enumerationType,
-                  item: currentItem,
+                  item: itemIdCurrent,
                   attribute: accessLevelsAttr,
                   dataTypeExtraId: enumerationTypeExtraId,
                   value: enumerationsConvertButtonToAttribute,
@@ -5942,7 +5944,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                     command: cmdItemPress,
                     options: {
                       dataType: enumerationType,
-                      item: currentItem,
+                      item: itemIdCurrent,
                       attribute: accessLevelsAttr,
                       dataTypeExtraId: enumerationTypeExtraId,
                       value: accessLevel,
@@ -6022,7 +6024,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         subMenuIndex = subMenu.push({
           index: `${currentIndex}.${subMenuIndex}`,
           name: `${translationsItemMenuGet(user, 'ReportEdit')}`,
-          options: {item: currentItem},
+          options: {item: itemIdCurrent},
           submenu: simpleReportMenuGenerateEditReportItems,
         });
         break;
@@ -6030,17 +6032,18 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
     }
     if (
       (enumerationType === dataTypePrimaryEnums &&
-        enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, currentItem) === 0) ||
+        enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, itemIdCurrent) === 0) ||
       (enumerationType !== dataTypePrimaryEnums &&
         enumerationType !== dataTypeDeviceStatesAttributes &&
+        !(enumerationsDeviceStatesTypes.includes(enumerationType) && currentEnumerationItem['isExternal'] === true) &&
         ((configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
-          enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) ||
-          enumerationsIsItemCanBeDeleted(enumerationType, currentItem, false)))
+          enumerationsIsItemCanBeDeleted(enumerationType, itemIdCurrent, true)) ||
+          enumerationsIsItemCanBeDeleted(enumerationType, itemIdCurrent, false)))
     )
       subMenuIndex = subMenu.push(
         menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, {
           dataType: enumerationType,
-          item: currentItem,
+          item: itemIdCurrent,
           dataTypeExtraId: enumerationTypeExtraId,
         }),
       );
@@ -6205,31 +6208,6 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       }`,
     });
   }
-  if (enumerationType === dataTypeDeviceButtons || enumerationType === dataTypeDeviceAttributes) {
-    const primaryEnumType = enumerationsGetPrimaryDataType(enumerationType, enumerationTypeExtraId),
-      primaryEnumsList = enumerationsGetList(primaryEnumType),
-      primaryEnum = primaryEnumsList[enumerationTypeExtraId];
-    if (
-      typeof currentEnumerationItem?.['assignedExtension'] === 'object' &&
-      typeof currentEnumerationItem?.['assignedExtension']?.['extensionId'] === 'string' &&
-      typeof currentEnumerationItem?.['assignedExtension']?.['attributeId'] === 'string' &&
-      extensionsList[currentEnumerationItem['assignedExtension']['extensionId']]?.isAvailable &&
-      extensionsList[currentEnumerationItem['assignedExtension']['extensionId']]?.type ===
-        extensionTypeAttributesModifier &&
-      primaryEnum?.['associatedExtensions']?.[currentEnumerationItem['assignedExtension']['extensionId']]?.isEnabled
-    ) {
-      currentItemDetailsList.push(
-        {
-          label: translationsItemTextGet(user, 'assignedExtension'),
-          value: extensionsList[currentEnumerationItem['assignedExtension']['extensionId']].nameTranslationId,
-        },
-        {
-          label: translationsItemTextGet(user, 'assignedAttribute'),
-          value: currentEnumerationItem['assignedExtension']['attributeId'],
-        },
-      );
-    }
-  }
   return currentItemDetailsList.length
     ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}`
     : '';
@@ -6342,6 +6320,70 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
       enumerationsRefreshFunctionDeviceStates(user, enumerationTypeExtraId, enumerationType);
       currentEnumerationsList = enumerationsGetList(enumerationType, enumerationTypeExtraId);
     }
+    const currentFunction = enumerationsGetList(enumerationPrimaryType)?.[enumerationTypeExtraId];
+    const associatedExtensions = currentFunction?.['associatedExtensions'] || {};
+    let enumerationsListIsChanged = false;
+    Object.keys(associatedExtensions).forEach((extensionId) => {
+      if (associatedExtensions[extensionId]?.['isEnabled'] && extensionsList[extensionId]?.['isAvailable']) {
+        const attributes = extensionsList[extensionId]?.['options']?.['attributes'];
+        logs(`attributes: ${JSON.stringify(attributes)}`, _l);
+        if (typeof attributes === 'object') {
+          Object.keys(attributes).forEach((attributeId) => {
+            const attribute = attributes[attributeId];
+            if (
+              (enumerationType === dataTypeDeviceAttributes && attribute?.['asAttribute'] === true) ||
+              (enumerationType === dataTypeDeviceButtons && attribute?.['asButton'] === true)
+            ) {
+              const attributeExternalId = `${extensionId}#${attributeId}`;
+              if (typeof currentEnumerationsList[attributeExternalId] !== 'object') {
+                currentEnumerationsList[attributeExternalId] = {
+                  isEnabled: false,
+                  isExternal: true,
+                  targetStateId: '',
+                  icon: extensionsList[extensionId]?.['icon'] || '',
+                  extensionId: extensionId,
+                  extensionAttributeId: attributeId,
+                  nameTranslationId: [translationsExtensionsPrefix, extensionId, attributeId].join('.'),
+                  stateAttributes: [],
+                  order: Object.keys(currentEnumerationsList).length,
+                  group: '',
+                  showAccessLevel: 'read-only',
+                  pressAccessLevel: 'selective',
+                };
+                enumerationsListIsChanged || (enumerationsListIsChanged = true);
+              }
+            }
+          });
+        }
+      }
+    });
+    Object.keys(currentEnumerationsList).forEach((enumerationId) => {
+      const enumerationItem = currentEnumerationsList[enumerationId];
+      if (
+        enumerationItem?.['isExternal'] === true &&
+        typeof enumerationItem['extensionId'] === 'string' &&
+        typeof enumerationItem['extensionAttributeId'] === 'string' &&
+        enumerationItem?.['isAvailable'] === true
+      ) {
+        const extensionId = enumerationItem['extensionId'],
+          attributeId = enumerationItem['extensionAttributeId'];
+        if (associatedExtensions?.[extensionId]?.['isEnabled'] && extensionsList?.[extensionId]?.['isAvailable']) {
+          const attributes = extensionsList[extensionId]?.['options']?.['attributes'];
+          if (
+            typeof attributes !== 'object' ||
+            !(enumerationType === dataTypeDeviceAttributes && attributes?.[attributeId]?.['asAttribute']) ||
+            (enumerationType === dataTypeDeviceButtons && attributes?.[attributeId]?.['asButton'])
+          ) {
+            enumerationItem['isAvailable'] = false;
+            enumerationsListIsChanged || (enumerationsListIsChanged = true);
+          }
+        } else {
+          enumerationItem['isAvailable'] = false;
+          enumerationsListIsChanged || (enumerationsListIsChanged = true);
+        }
+      }
+    });
+    if (enumerationsListIsChanged) enumerationsSave(enumerationPrimaryType);
   }
   if (currentEnumerationsList === undefined || currentEnumerationsList === null) currentEnumerationsList = {};
   enumerationsReorderItems(currentEnumerationsList);
@@ -6354,14 +6396,15 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
       let currentIcon = iconItemDisabled;
       if (currentEnumerationItem.isEnabled) {
         currentIcon = currentEnumerationItem.icon || '';
-      }
-      if (enumerationType === dataTypeAssociatedExtensions) {
-        if (!extensionsList?.[currentItem]?.isAvailable) {
-          currentIcon = iconItemNotFound;
-        } else {
-          currentIcon = extensionsList?.[currentItem]?.icon || '';
+        if (enumerationType === dataTypeAssociatedExtensions) {
+          if (!extensionsList?.[currentItem]?.isAvailable) {
+            currentIcon = iconItemNotFound;
+          } else if (currentEnumerationItem.isEnabled) {
+            currentIcon = extensionsList?.[currentItem]?.icon || '';
+          }
         }
       }
+
       const currentMenuItem = {
         index: `${currentIndex}.${subMenuIndex}`,
         name: `${enumerationsItemName(user, enumerationType, currentItem, currentEnumerationItem)}${
@@ -6443,11 +6486,10 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
       break;
 
     case dataTypeAssociatedExtensions: {
-      const assignedExtensions = Object.keys(currentEnumerationsList),
+      const associatedExtensions = Object.keys(currentEnumerationsList),
         availableExtensions = Object.keys(extensionsList).filter(
           (extensionId) =>
-            extensionsList[extensionId].type === extensionTypeAttributesModifier &&
-            !assignedExtensions.includes(extensionId),
+            extensionsList[extensionId].type === extensionTypeAttributes && !associatedExtensions.includes(extensionId),
         );
       if (availableExtensions.length > 0) {
         const extensionsMap = new Map();
@@ -6599,7 +6641,7 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
       };
     enumerationsProcessDeviceStatesList(user, currentAccessLevel, optionsForAttributes, deviceAttributesCheckOnGraphs);
   }
-  const optionsForButtons = {...options, attributes: 'no', buttons: 'press', details: true},
+  const optionsForButtons = {...options, attributes: 'no', buttons: 'press', external: true, details: true},
     deviceButtonsProcess = (user, deviceButtonId, stateIdFull, stateObject, currentButton, _options) => {
       const stateObjectCommon = stateObject.common,
         convertValueCode = currentButton.convertValueCode;
@@ -6630,27 +6672,34 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   ? [currentFunction.iconOn, currentFunction.iconOff]
                   : [defaultIconOn, defaultIconOff],
             };
-            const subMenuItem =
-              typeof currentButton?.['assignedExtension']?.['extensionId'] === 'string' &&
-              typeof currentButton?.['assignedExtension']?.['attributeId'] === 'string'
-                ? {
-                    index: `${currentIndex}.${subMenuIndex}`,
-                    name: `${stateName}`,
-                    options: {...currentOptions, isButton: true, stateValue: stateValue},
-                    extensionId: currentButton['assignedExtension']['extensionId'],
-                    submenu: [
-                      currentButton['assignedExtension']['extensionId'],
-                      currentButton['assignedExtension']['attributeId'],
-                    ].join('#'),
-                  }
-                : menuMenuItemGenerateEditItemStateValue(user, currentIndex, subMenuIndex, stateName, '', {
-                    ...currentOptions,
-                    replaceCommand: cmdSetState,
-                  });
-            if (deviceButtonId !== primaryStateShortId) {
-              subMenuIndex = subMenu.push(subMenuItem);
+            logs(`currentButton: ${jsonStringify(currentButton)}`, _l);
+            let subMenuItem;
+            if (currentButton?.['isExternal'] === true) {
+              if (
+                typeof currentButton?.['extensionId'] === 'string' &&
+                typeof currentButton?.['extensionAttributeId'] === 'string'
+              ) {
+                subMenuItem = {
+                  index: `${currentIndex}.${subMenuIndex}`,
+                  name: `${stateName}`,
+                  options: {...currentOptions, isButton: true, stateValue: stateValue},
+                  extensionId: currentButton?.['extensionId'],
+                  id: currentButton['extensionAttributeId'],
+                  submenu: `${currentButton['extensionId']}#${currentButton['extensionAttributeId']}`,
+                };
+              }
             } else {
-              subMenuIndex = subMenu.unshift(subMenuItem);
+              subMenuItem = menuMenuItemGenerateEditItemStateValue(user, currentIndex, subMenuIndex, stateName, '', {
+                ...currentOptions,
+                replaceCommand: cmdSetState,
+              });
+            }
+            if (subMenuItem !== undefined) {
+              if (deviceButtonId !== primaryStateShortId) {
+                subMenuIndex = subMenu.push(subMenuItem);
+              } else {
+                subMenuIndex = subMenu.unshift(subMenuItem);
+              }
             }
             if (
               isGraphsEnabled &&
@@ -7215,30 +7264,27 @@ function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, 
     functionsList = enumerationsList[dataTypeFunction].list,
     currentFunction = functionsList[functionId],
     currentFunctionEnum = currentFunction.enum,
-    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${functionId}`;
-  let currentDeviceStates = new Array(),
-    currentDeviceStatesList = {};
+    fullFunctionId = `${prefixEnums}.${currentFunctionEnum}.${functionId}`,
+    deviceStatesList = {};
   if (attributesFilter === 'all') {
     const deviceAttributesList = currentFunction.deviceAttributes;
     if (deviceAttributesList) {
-      currentDeviceStates = Object.keys(deviceAttributesList)
+      Object.keys(deviceAttributesList)
         .filter((deviceAttr) => deviceAttributesList[deviceAttr].isEnabled)
-        .sort((a, b) => deviceAttributesList[a].order - deviceAttributesList[b].order);
-    }
-    if (withDetails) {
-      currentDeviceStates.forEach(
-        (deviceAttribute) => (currentDeviceStatesList[deviceAttribute] = deviceAttributesList[deviceAttribute]),
-      );
+        .forEach(
+          (deviceAttributeId) => (deviceStatesList[deviceAttributeId] = deviceAttributesList[deviceAttributeId]),
+        );
     }
   }
   if (buttonsFilter) {
-    const deviceButtonsList = currentFunction.deviceButtons;
+    const deviceButtonsList = currentFunction.deviceButtons,
+      orderOffset = Object.keys(deviceStatesList).length;
     if (deviceButtonsList) {
-      const currentDeviceButtons = Object.keys(deviceButtonsList)
+      Object.keys(deviceButtonsList)
         .filter((deviceButton) => {
           return (
             deviceButtonsList[deviceButton].isEnabled &&
-            !currentDeviceStates.includes(deviceButton) &&
+            !deviceStatesList.hasOwnProperty(deviceButton) &&
             ((buttonsFilter === 'show' &&
               MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
                 0) ||
@@ -7253,26 +7299,48 @@ function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, 
               buttonsFilter === 'all')
           );
         })
-        .sort((a, b) => deviceButtonsList[a].order - deviceButtonsList[b].order);
-      if (withDetails) {
-        currentDeviceButtons.forEach(
-          (deviceButton) => (currentDeviceStatesList[deviceButton] = deviceButtonsList[deviceButton]),
+        .forEach(
+          (deviceButtonId) =>
+            (deviceStatesList[deviceButtonId] = {
+              ...deviceButtonsList[deviceButtonId],
+              order: deviceButtonsList[deviceButtonId].order + orderOffset,
+            }),
         );
-      }
-      currentDeviceStates = currentDeviceStates.concat(currentDeviceButtons);
     }
   }
-  currentDeviceStates.forEach((deviceStateId) => {
-    const deviceStateIdFull = [devicePrefix, deviceStateId].join('.'),
-      deviceStateObject = getObjectEnriched(deviceStateIdFull, '*');
-    if (deviceStateObject?.hasOwnProperty('enumIds')) {
-      const deviceStateObjectEnums = deviceStateObject.enumIds;
-      if (deviceStateObjectEnums.includes(fullFunctionId) && deviceStateObjectEnums.includes(fullDestinationId)) {
-        const deviceStateDetails = withDetails ? currentDeviceStatesList[deviceStateId] : {};
-        processStateFn(user, deviceStateId, deviceStateIdFull, deviceStateObject, deviceStateDetails, options);
+  Object.keys(deviceStatesList)
+    .sort((a, b) => deviceStatesList[a].order - deviceStatesList[b].order)
+    .forEach((deviceStateId) => {
+      let deviceState = deviceStatesList[deviceStateId],
+        deviceStateShortId = deviceStateId;
+      if (deviceState?.['isExternal'] === true && options?.['external'] === true) {
+        deviceStateShortId = '';
+        if (
+          typeof deviceState?.['extensionId'] === 'string' &&
+          typeof deviceState?.['extensionAttributeId'] === 'string'
+        ) {
+          const extensionId = deviceState['extensionId'];
+          if (
+            currentFunction?.['associatedExtensions']?.[extensionId]?.['isEnabled'] === true &&
+            extensionsList[extensionId]?.['isAvailable'] === true &&
+            typeof deviceState['targetStateId'] === 'string'
+          ) {
+            deviceStateShortId = deviceState['targetStateId'];
+          }
+        }
       }
-    }
-  });
+      if (deviceStateShortId.length > 0) {
+        const deviceStateIdFull = [devicePrefix, deviceStateShortId].join('.'),
+          deviceStateObject = getObjectEnriched(deviceStateIdFull, '*');
+        if (deviceStateObject?.hasOwnProperty('enumIds')) {
+          const deviceStateObjectEnums = deviceStateObject.enumIds;
+          if (deviceStateObjectEnums.includes(fullFunctionId) && deviceStateObjectEnums.includes(fullDestinationId)) {
+            if (!withDetails) deviceState = {};
+            processStateFn(user, deviceStateId, deviceStateIdFull, deviceStateObject, deviceState, options);
+          }
+        }
+      }
+    });
 }
 
 /**
@@ -12643,7 +12711,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
       if (currentItem.isExternal) {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId));
         menuItem.submenu = currentItem.state;
-        menuItem.extensionId = itemId;
+        menuItem.extensionId = extensionsGetIdByFunctionId(itemId);
       } else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
         menuItem.submenu = menuMenuGenerateFirstLevelAfterRoot;
@@ -13055,7 +13123,7 @@ function menuMenuItemGenerateSelectItem(user, upperItemIndex, itemIndex, itemNam
           'directInput',
           {
             ...itemOptions,
-            valueOptions: {...itemOptions.valueOptions, interimCalculationMode: interimCalculationReplace}
+            valueOptions: {...itemOptions.valueOptions, interimCalculationMode: interimCalculationReplace},
           },
         ),
       );
@@ -13693,17 +13761,16 @@ function menuAssignInternalMenuItems(user, menuItemToProcess) {
           itemIndex,
           menuItemToProcess.name,
           menuItemToProcess.group,
-          {...options,
-          replaceCommand: cmdEmptyCommand},
+          {...options, replaceCommand: cmdNoOperation},
         );
         break;
       }
       case 'setStateValue': {
         subMenu = {
           index: menuItemToProcess.index,
-          name: menuItemToProcess.name,
+          name: `${menuItemToProcess.name} [${menuItemToProcess.options?.value}]`,
           icon: menuItemToProcess.icon,
-          command: cmdEmptyCommand,
+          command: cmdNoOperation,
           options: options,
           group: menuItemToProcess.group,
           submenu: [],
@@ -14251,7 +14318,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     case 'string': {
       const extensionMenuId = subMenu,
         extensionId = menuItemToProcess.extensionId;
-      if (extensionsList?.[extensionId]?.isAvailable === true) {
+      if (extensionsList?.[extensionId]?.['isAvailable'] === true) {
         const data = objectDeepClone(menuItemToProcess),
           externalValueId = data?.['options']?.['valueOptions']?.['externalValueId'] || data.index;
         if (typeof externalValueId === 'string' && cachedValueExists(user, cachedInterimValue)) {
@@ -14274,7 +14341,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           (newMenuItem) => {
             if (newMenuItem?.error === undefined && typeof newMenuItem?.id === 'string' && newMenuItem?.id.length > 0) {
               menuItemToProcess = menuMenuReIndex(newMenuItem);
-              if (extensionsList?.[extensionId]?.type === 'attributesModifier') {
+              if (extensionsList?.[extensionId]?.type === extensionTypeAttributes) {
                 if (
                   typeof menuItemToProcess?.['options']?.['valueOptions']?.['externalValueId'] === 'string' &&
                   menuItemToProcess?.['options']?.['valueOptions']?.['externalValueId'] === menuItemToProcess?.index &&
@@ -15114,8 +15181,10 @@ async function commandsUserInputProcess(user, userInputValue) {
   function setInterimValue(commandOptions, userInputValue) {
     if (typeof commandOptions.valueOptions?.interimItemId === 'string') {
       const interimItemId = commandOptions?.['valueOptions']?.['interimItemId'],
-        interimCalculationMode = typeof commandOptions?.['valueOptions']?.['interimCalculationMode'] === 'string' ?
-        commandOptions['valueOptions']['interimCalculationMode'] : interimCalculationReplace,
+        interimCalculationMode =
+          typeof commandOptions?.['valueOptions']?.['interimCalculationMode'] === 'string'
+            ? commandOptions['valueOptions']['interimCalculationMode']
+            : interimCalculationReplace,
         inputValue = userInputValue !== undefined ? userInputValue : commandOptions?.['value'];
       let interimValue;
       if (typeof interimItemId === 'string' && typeof interimCalculationMode === 'string') {
@@ -16522,36 +16591,35 @@ async function commandsUserInputProcess(user, userInputValue) {
                       case 'boolean': {
                         if (!isDefined(commandOptions.value)) {
                           currentDataItem[commandOptions.attribute] = !currentDataItem[commandOptions.attribute];
+                          if (
+                            commandOptions.attribute === 'isEnabled' &&
+                            currentDataItem[commandOptions.attribute] === true
+                          ) {
+                            if (
+                              enumerationsDeviceStatesTypes.includes(enumerationType) &&
+                              currentDataItem['isExternal'] === true
+                            ) {
+                              const primaryEnumType = enumerationsGetPrimaryDataType(
+                                  enumerationType,
+                                  enumerationExtraId,
+                                ),
+                                primaryEnumsList = enumerationsGetList(primaryEnumType),
+                                primaryEnum = primaryEnumsList[enumerationExtraId],
+                                associatedExtensions = primaryEnum?.['associatedExtensions'] || {};
+                              if (
+                                associatedExtensions?.[currentDataItem['extensionId']]?.['isEnabled'] !== true ||
+                                extensionsList[currentDataItem['extensionId']]?.['isAvailable'] !== true
+                              ) {
+                                currentDataItem[commandOptions.attribute] = false;
+                              }
+                            }
+                          }
                         }
                         break;
                       }
 
                       default: {
-                        if (commandOptions.attribute === 'assignedExtension') {
-                          switch (commandOptions.mode) {
-                            case 'edit': {
-                              if (
-                                typeof commandOptions.subItem === 'string' &&
-                                typeof commandOptions.value === 'string'
-                              ) {
-                                currentDataItem[commandOptions.attribute] = {
-                                  extensionId: commandOptions.subItem,
-                                  attributeId: commandOptions.value,
-                                };
-                                menuPositionCurrent.splice(-2, 2);
-                              }
-                              break;
-                            }
-                            case 'reset': {
-                              delete currentDataItem['assignedExtension'];
-                              menuPositionCurrent.splice(-1, 1);
-                              break;
-                            }
-                            default: {
-                              break;
-                            }
-                          }
-                        } else if (commandOptions.value) {
+                        if (commandOptions.value !== undefined) {
                           currentDataItem[commandOptions.attribute] =
                             currentDataItem[commandOptions.attribute] === commandOptions.value
                               ? ''
