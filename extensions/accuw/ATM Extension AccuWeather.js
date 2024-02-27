@@ -14,6 +14,13 @@ function autoTelegramMenuExtensionAccuWeather() {
     extensionId = 'accuw',
     extensionType = 'function',
     extensionMenuId = 'menuAccuWeatherForecast',
+    extensionRepository = {
+      path: '/PeterVoronov/ioBrokerTelegramMenuScript/',
+      branch: 'v0.9.5-dev',
+      baseFolder: `extensions/${extensionId}`,
+      scriptName: 'ATM Extension AccuWeather.js',
+      localesFolder: `extensions/${extensionId}/locales`,
+    },
     extensionTranslationsKeys = [
       'WeatherForecast',
       'ForecastDetailed',
@@ -71,7 +78,8 @@ function autoTelegramMenuExtensionAccuWeather() {
         nameTranslationId: 'WeatherForecast',
         icon: '☂️',
         options: {
-          state: extensionMenuId
+          state: extensionMenuId,
+          repository: extensionRepository,
         },
         scriptName: scriptName,
         translationsKeys: extensionTranslationsKeys,

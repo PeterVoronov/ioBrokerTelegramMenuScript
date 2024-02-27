@@ -23,6 +23,13 @@ function autoTelegramMenuExtensionPetFeeder() {
     extensionsTimeout = 500,
     extensionId = 'petFeederTuya',
     extensionType = 'attributes',
+    extensionRepository = {
+      path: '/PeterVoronov/ioBrokerTelegramMenuScript/',
+      branch: 'v0.9.5-dev',
+      baseFolder: `extensions/${extensionId}`,
+      scriptName: 'ATM Extension Pet Feeder Tuya.js',
+      localesFolder: `extensions/${extensionId}/locales`,
+    },
     extensionTranslationsKeys = [
       [extensionId],
       'schedule',
@@ -72,6 +79,7 @@ function autoTelegramMenuExtensionPetFeeder() {
         icon: extensionIcon,
         options: {
           attributes: extensionAttributes,
+          repository: extensionRepository,
         },
         scriptName: scriptName,
         translationsKeys: extensionTranslationsKeys,

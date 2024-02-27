@@ -3100,7 +3100,7 @@ const translationsCommonFunctionsAttributesPrefix = `${idFunctions}.common`,
   translationsType = 'telegramMenuTranslation',
   cachedTranslationsToUpload = 'translationToUpload',
   translationsPrimaryStateId = 'primaryState',
-  translationsExtensionsPrefix = 'extensions',
+  translationsExtensionsPrefix = idExtensions,
   translationsSubPrefix = 'translations',
   translationsCoreId = 'core',
   translationsTopItems = [translationsCoreId, idFunctions, idDestinations, idSimpleReports],
@@ -4064,6 +4064,63 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
     : '';
 }
 
+
+/**
+ * This function generates a main submenu to manage the Translations.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, for which the description will be generated.
+ * @returns {object[]}  Newly generated submenu.
+ **/
+function translationsMenuGenerateMain(user, menuItemToProcess) {
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+  options = menuItemToProcess.options ||  {},
+    currentAccessLevel = menuItemToProcess.accessLevel,
+    isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
+  let subMenuIndex = 0,
+    subMenu = [];
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+      name: translationsItemMenuGet(user, 'TranslationMenuItems'),
+      icon: iconItemTranslation,
+      id: 'menu',
+      options: {...options, translationPart: 'menu'},
+      submenu: translationsMenuGenerateBasicItems,
+  });
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+    name: translationsItemMenuGet(user, 'TranslationCommandItems'),
+    icon: iconItemTranslation,
+    id: 'cmd',
+    options: {...options, translationPart: 'cmd'},
+    submenu: translationsMenuGenerateBasicItems,
+  });
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+    name: translationsItemMenuGet(user, 'TranslationTextItems'),
+    icon: iconItemTranslation,
+    id: 'text',
+    options: {...options, translationPart: 'text'},
+    submenu: translationsMenuGenerateBasicItems,
+  });
+  if (isCurrentAccessLevelAllowModify) {
+    const menuItem = objectDeepClone(menuItemToProcess);
+    if (typeof menuItem?.['options'] !== 'object') menuItem.options = {};
+    menuItem['options']['offset'] = subMenuIndex;
+    translationsMenuGenerateDownloadUpload(user, menuItem).forEach((subMenuItem) => {
+      subMenuIndex = subMenu.push(subMenuItem);
+    });
+  }
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+    name: translationsItemMenuGet(user, 'translation', idExtensions),
+    icon: iconItemTranslation,
+    id: idExtensions,
+    options: {...options, translationPart: idExtensions},
+    submenu: translationsMenuGenerateExtensionsManage,
+  });
+  return subMenu;
+}
+
 /**
  * This function generates a submenu to manage the Translation basic items (i.e. menu, command and text related).
  * The selector is an `Id` property of `menuItemToProcess` object.
@@ -4305,6 +4362,66 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
 }
 
 /**
+ * This function generates a submenu to manage the `translations` for the `extensions`.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]}  Newly generated submenu.
+ */
+function translationsMenuGenerateExtensionsManage(user, menuItemToProcess) {
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options || {};
+  let subMenuIndex = 0,
+    subMenu = [];
+  Object.keys(extensionsList)
+    .filter((extensionId) => (extensionsList[extensionId]?.['isAvailable'] === true))
+    .sort((a, b) => a.localeCompare(b))
+    .forEach((extensionId) => {
+      subMenuIndex = subMenu.push({
+        index: `${currentIndex}.${subMenuIndex}`,
+        name: `${extensionId}`,
+        icon: iconItemTranslation,
+        text: ` (${extensionId})`,
+        options: {...options, extensionId : extensionId},
+        submenu: translationsMenuGenerateExtensionsManageExtension,
+      });
+    });
+  return subMenu;
+}
+
+/**
+ * This function generates a submenu to manage the `translations` for the `extensions`.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object[]}  Newly generated submenu.
+ */
+function translationsMenuGenerateExtensionsManageExtension(user, menuItemToProcess) {
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options || {},
+    currentAccessLevel = menuItemToProcess.accessLevel,
+    isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
+  let subMenuIndex = 0,
+    subMenu = [];
+  subMenuIndex = subMenu.push({
+    index: `${currentIndex}.${subMenuIndex}`,
+    name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
+    id: options?.['extensionId'] || '',
+    group: 'itemsEdit',
+    options: {...options},
+    submenu: translationsMenuGenerateExtensionsTranslationsItems,
+  });
+  if (isCurrentAccessLevelAllowModify) {
+    const menuItem = objectDeepClone(menuItemToProcess);
+    if (typeof menuItem?.['options'] !== 'object') menuItem['options'] = {};
+    menuItem['options']['offset'] = subMenuIndex;
+    translationsMenuGenerateDownloadUpload(user, menuItem).forEach((subMenuItem) => {
+      subMenu.push(subMenuItem);
+    });
+  }
+  return subMenu;
+}
+
+
+/**
  * This function generates a submenu to manage the appropriate extension translations items .
  * @param {object} user - The user object.
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
@@ -4350,6 +4467,72 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
     });
   return subMenu;
 }
+
+function translationsMenuGenerateDownloadUpload(user, menuItemToProcess) {
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options || {},
+    offset = options?.['offset'] || 0,
+    currentAccessLevel = menuItemToProcess.accessLevel,
+    isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
+  let subMenuIndex = 0,
+    subMenu = [];
+  if (isCurrentAccessLevelAllowModify) {
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${offset + subMenuIndex}`,
+      name: translationsItemMenuGet(user, 'TranslationDownload'),
+      icon: iconItemDownload,
+      group: 'menuTranslationFile',
+      id: doDownload,
+      command: cmdItemDownload,
+      options: options,
+    });
+    subMenu.push({
+      index: `${currentIndex}.${offset + subMenuIndex}`,
+      name: translationsItemMenuGet(user, 'TranslationUpload'),
+      icon: iconItemUpload,
+      group: 'menuTranslationFile',
+      id: doUpload,
+      options: options,
+      submenu: translationsMenuGenerateUpload
+    });
+  }
+  return subMenu;
+}
+
+function translationsMenuGenerateUpload(user, menuItemToProcess) {
+  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options || {},
+    currentAccessLevel = menuItemToProcess.accessLevel,
+    isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
+  let subMenuIndex = 0,
+    subMenu = [];
+  if (isCurrentAccessLevelAllowModify) {
+    subMenuIndex = subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: translationsItemMenuGet(user, 'TranslationUploadDirectly'),
+      icon: iconItemUpload,
+      group: 'menuTranslationFile',
+      id: doUploadDirectly,
+      command: cmdItemUpload,
+      options: {...options, dataType: dataTypeTranslation, uploadMode: doUploadDirectly},
+      text: translationsUploadMenuItemDetails,
+      submenu: translationsMenuGenerateUploadTranslation,
+    });
+    subMenu.push({
+      index: `${currentIndex}.${subMenuIndex}`,
+      name: translationsItemMenuGet(user, 'TranslationUploadFromRepo'),
+      icon: iconItemUpload,
+      group: 'menuTranslationFile',
+      id: doUploadFromRepo,
+      command: cmdItemUpload,
+      options: {...options, dataType: dataTypeTranslation, uploadMode: doUploadFromRepo},
+      text: translationsUploadMenuItemDetails,
+      submenu: translationsMenuGenerateUploadTranslation,
+    });
+  }
+  return subMenu;
+}
+
 
 /**
  * This function generates several menu items to support download and
@@ -5742,7 +5925,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
                   id: itemIdCurrent,
                   submenu: translationsMenuGenerateExtensionsTranslationsItems,
                 },
-                ...translationsDownloadUploadMenuPartGenerate(user, itemIdCurrent),
+                // ...translationsDownloadUploadMenuPartGenerate(user, itemIdCurrent),
               ],
               `${currentIndex}.${subMenuIndex}`,
             ),
@@ -12546,27 +12729,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
           id: dataTypeTranslation,
           icon: iconItemTranslation,
           group: idTranslation,
-          submenu: [
-            {
-              name: translationsItemMenuGet(user, 'TranslationMenuItems'),
-              icon: iconItemTranslation,
-              id: 'menu',
-              submenu: translationsMenuGenerateBasicItems,
-            },
-            {
-              name: translationsItemMenuGet(user, 'TranslationCommandItems'),
-              icon: iconItemTranslation,
-              id: 'cmd',
-              submenu: translationsMenuGenerateBasicItems,
-            },
-            {
-              name: translationsItemMenuGet(user, 'TranslationTextItems'),
-              icon: iconItemTranslation,
-              id: 'text',
-              submenu: translationsMenuGenerateBasicItems,
-            },
-            ...translationsDownloadUploadMenuPartGenerate(user, translationsCoreId),
-          ],
+          submenu: translationsMenuGenerateMain,
         },
         {
           name: translationsItemMenuGet(user, 'UsersList'),
