@@ -25,6 +25,7 @@ function autoTelegramMenuExtensionPetFeeder() {
     extensionType = 'attributes',
     extensionTranslationsKeys = [
       [extensionId],
+      'schedule',
       'enabled',
       'time',
       'weekdays',
@@ -143,7 +144,7 @@ function autoTelegramMenuExtensionPetFeeder() {
     callback({success: true});
   });
 
-  onMessage(`${extensionId}#schedule`, ({user: _user, data, translations}, callback) => {
+  onMessage(`${extensionId}#schedule`, ({data, translations}, callback) => {
     const options = data.options || {},
       {
         device,
@@ -414,26 +415,51 @@ function autoTelegramMenuExtensionPetFeeder() {
     }
   });
 
-  onMessage(`${extensionId}#attributes`, ({data}, callback) => {
-    if (Array.isArray(data)) {
-      data.forEach((attribute) => {
-        const attributeId = attribute['extensionAttributeId'];
-        if (extensionAttributes?.[attributeId]?.['asAttribute'] === true) {
-          const options = attribute['options'] || {},
-            icons = options?.['icons'] || ['✅', '❌'],
-            iconOn = icons?.[0],
-            iconOff = icons?.[1];
-          switch (attributeId) {
-            case 'schedule': {
-              if (typeof attribute?.['options']?.['stateValue'] === 'string') {
-                const schedule = scheduleDecode(attribute?.['options']?.['stateValue']);
-                attribute['options']['stateValueText'] =
-                  schedule.map((item) => `${item.enabled ? iconOn : iconOff}${item.time}`).join(',');
+  onMessage(`${extensionId}#attributes`, ({data, translations}, callback) => {
+    if (typeof data === 'object' ) {
+      Object.keys(data).forEach((itemId) => {
+        const attribute = data[itemId],
+          itemExtensionId = attribute['extensionId'],
+          attributeId = attribute['extensionAttributeId']
+          ;
+        if (itemExtensionId === extensionId) {
+          attribute['valueText'] = [];
+          if (extensionAttributes?.[attributeId]?.['asAttribute'] === true) {
+            const icons = ['✅', '❌'],
+              iconOn = icons?.[0],
+              iconOff = icons?.[1];
+            switch (attributeId) {
+              case 'schedule': {
+                if (typeof attribute?.['value'] === 'string' && attribute?.['value'] !== 'undefined') {
+                  const schedule = scheduleDecode(attribute?.['value']);
+                  attribute['valueText'].push(
+                    {
+                      label: translations['schedule'] + ':',
+                      value: '',
+                    }
+                  );
+                  schedule.forEach((item) => {
+                    attribute['valueText'].push(
+                      {
+                        label: ` ${item.time}`,
+                        value: item.enabled ? iconOn : iconOff,
+                      },
+                      {
+                        label: `  ${translations['weekdays']}`,
+                        value: `${item.weekdays}`,
+                      },
+                      {
+                        label: `  ${translations['portion']}`,
+                        value: item.portion,
+                      },
+                    );
+                  });
+                }
+                break;
               }
-              break;
-            }
-            default: {
-              break;
+              default: {
+                break;
+              }
             }
           }
         }

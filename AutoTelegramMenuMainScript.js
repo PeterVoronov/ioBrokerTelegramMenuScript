@@ -4863,7 +4863,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
         (extensionsList[extensionId].type === type && extensionsList[extensionId].scriptName === scriptName)
       ) {
         if (typeof extensionsList[extensionId] === 'object')
-          logs(`Extension "${extensionId}" is already registered. Going to update it.`, _l);
+          log(`Extension "${extensionId}" is already registered. Going to update it.`);
         extensionsList[extensionId] = {
           isAvailable: true,
           type: type,
@@ -4875,7 +4875,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
         };
         if (typeof functionId === 'string') extensionsList[extensionId].functionId = functionId;
         extensionsSave();
-        logs(`Extension "${extensionId}" is registered: ${jsonStringify(extensionsList[extensionId])}.`, _l);
+        log(`Extension "${extensionId}" is registered: ${jsonStringify(extensionsList[extensionId])}.`);
       } else if (typeof extensionsList?.[extensionId] === 'object') {
         warns(
           `Extension "${extensionId}" is already registered with different type or script!` +
@@ -5406,11 +5406,16 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
         group: 'isEnabled',
         submenu: [],
       };
-      if (typeof currentEnumerationItem?.['isAvailable'] === 'boolean' && currentEnumerationItem.isAvailable !== true ||
-        enumerationType === dataTypeAssociatedExtensions && extensionsList?.[itemIdCurrent]?.['isAvailable'] !== true ||
-        enumerationsDeviceStatesTypes.includes(enumerationType) && currentEnumerationItem?.['isExternal'] === true &&
-        (primaryEnumItem?.['associatedExtensions']?.[currentEnumerationItem?.['extensionId']]?.['isEnabled'] !== true ||
-        extensionsList?.[currentEnumerationItem?.['extensionId']]?.['isAvailable'] !== true)) {
+      if (
+        (typeof currentEnumerationItem?.['isAvailable'] === 'boolean' && currentEnumerationItem.isAvailable !== true) ||
+        (enumerationType === dataTypeAssociatedExtensions &&
+          extensionsList?.[itemIdCurrent]?.['isAvailable'] !== true) ||
+        (enumerationsDeviceStatesTypes.includes(enumerationType) &&
+          currentEnumerationItem?.['isExternal'] === true &&
+          (primaryEnumItem?.['associatedExtensions']?.[currentEnumerationItem?.['extensionId']]?.['isEnabled'] !==
+            true ||
+            extensionsList?.[currentEnumerationItem?.['extensionId']]?.['isAvailable'] !== true))
+      ) {
         subMenuItem['command'] = cmdNoOperation;
       }
       subMenuIndex = subMenu.push(subMenuItem);
@@ -6326,7 +6331,6 @@ function enumerationsMenuGenerateListOfEnumerationItems(user, menuItemToProcess)
     Object.keys(associatedExtensions).forEach((extensionId) => {
       if (associatedExtensions[extensionId]?.['isEnabled'] && extensionsList[extensionId]?.['isAvailable']) {
         const attributes = extensionsList[extensionId]?.['options']?.['attributes'];
-        logs(`attributes: ${JSON.stringify(attributes)}`, _l);
         if (typeof attributes === 'object') {
           Object.keys(attributes).forEach((attributeId) => {
             const attribute = attributes[attributeId];
@@ -6672,7 +6676,6 @@ function enumerationsMenuGenerateDevice(user, menuItemToProcess) {
                   ? [currentFunction.iconOn, currentFunction.iconOff]
                   : [defaultIconOn, defaultIconOff],
             };
-            logs(`currentButton: ${jsonStringify(currentButton)}`, _l);
             let subMenuItem;
             if (currentButton?.['isExternal'] === true) {
               if (
@@ -7054,25 +7057,39 @@ function enumerationsStateValueDetails(user, stateIdOrObject, functionId, curren
 function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
   const currentAccessLevel = menuItemToProcess.accessLevel,
     options = menuItemToProcess.options,
-    {function: currentFunctionId, state: primaryStateId} = options,
+    {function: currentFunctionId, state: primaryStateId, externalAttributes} = options,
     isSkipAttributesWithNullValue = configOptions.getOption(cfgSkipAttributesWithNullValue, user),
     optionsForAttributes = {
       ...options,
       attributes: 'all',
       buttons: 'showOnly',
+      external: true,
       details: true,
     },
     deviceAttributesArray = [],
-    deviceAttributesToDraw = (user, _deviceAttribute, deviceAttributeId, stateObject, stateDetails, _options) => {
-      const isPrimaryState = deviceAttributeId === primaryStateId;
+    deviceAttributesToDraw = (user, attributeId, attributeFullId, stateObject, stateDetails, _options) => {
+      const isPrimaryState = attributeFullId === primaryStateId;
       if (stateObject) {
-        const attributeState = existsState(deviceAttributeId) ? getState(deviceAttributeId) : undefined,
+        const isExternal = stateDetails?.['isExternal'] === true,
+          attributeState = !isExternal && existsState(attributeFullId) ? getState(attributeFullId) : undefined,
           isCurrentStateNotEmpty = attributeState && isDefined(attributeState.val);
-        if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue) {
-          deviceAttributesArray.push({
-            label: translationsGetObjectName(user, stateObject, currentFunctionId),
-            value: enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
-          });
+        if (isPrimaryState || isCurrentStateNotEmpty || !isSkipAttributesWithNullValue || isExternal) {
+          if (
+            isExternal &&
+            typeof externalAttributes === 'object' &&
+            Array.isArray(externalAttributes?.[attributeId]?.['valueText']) &&
+            externalAttributes?.[attributeId]?.['valueText'].length > 0
+          ) {
+            const attributeTextValues = externalAttributes[attributeId]['valueText'];
+            attributeTextValues.forEach((attributeTextValue) => {
+              deviceAttributesArray.push(attributeTextValue);
+            });
+          } else {
+            deviceAttributesArray.push({
+              label: translationsGetObjectName(user, stateObject, currentFunctionId),
+              value: enumerationsStateValueDetails(user, stateObject, currentFunctionId, attributeState),
+            });
+          }
           if (attributeState) {
             if (stateDetails?.hasOwnProperty('stateAttributes')) {
               stateDetails.stateAttributes.forEach((stateAttributeId) => {
@@ -7116,6 +7133,60 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
     return `${menuMenuItemDetailsPrintFixedLengthLines(user, deviceAttributesArray)}`;
   } else {
     return '';
+  }
+}
+
+/**
+ * This function generates a string containing formatted details/properties of current device attributes.
+ * @param {object} user - The user object.
+ * @param {object} options - The options object for current menu item.
+ * @param {string} accessLevel - The level of access to the Device of current User.
+ * @returns {object|undefined} Details about "external" attributes, required evaluation.
+ */
+function enumerationsGetDeviceExternalAttributes(user, options, accessLevel) {
+  const {function: functionId} = options,
+    optionsForAttributes = {
+      ...options,
+      attributes: 'all',
+      buttons: 'showOnly',
+      external: true,
+      details: true,
+    },
+    functionObject = enumerationsList[dataTypeFunction].list[functionId] || {},
+    associatedExtensions = functionObject?.['associatedExtensions'] || {},
+    associatedExtensionsIds = Object.keys(associatedExtensions).filter(
+      (extensionId) => associatedExtensions[extensionId]?.['isEnabled'] && extensionsList[extensionId]?.['isAvailable'],
+    );
+  let attributesToEvaluate;
+  if (associatedExtensionsIds.length > 0) {
+    const deviceAttributesToEvaluate = (
+      _user,
+      attributeId,
+      attributeFullId,
+      _stateObject,
+      stateDetails,
+      _options,
+    ) => {
+      if (stateDetails?.['isExternal'] === true) {
+        const extensionId = stateDetails?.['extensionId'],
+          extensionAttributeId = stateDetails?.['extensionAttributeId'],
+          extensionDetails = extensionsList[extensionId] || {},
+          extensionAttributes = extensionDetails?.['options']?.['attributes'] || {};
+        if (
+          associatedExtensionsIds.includes(extensionId) &&
+          extensionAttributes?.[extensionAttributeId]?.['asAttribute'] === true
+        ) {
+          attributesToEvaluate || (attributesToEvaluate = {});
+          attributesToEvaluate[attributeId] = {
+            extensionId: extensionId,
+            extensionAttributeId: extensionAttributeId,
+            targetStateId: attributeFullId,
+          };
+        }
+      }
+    };
+    enumerationsProcessDeviceStatesList(user, accessLevel, optionsForAttributes, deviceAttributesToEvaluate);
+    return attributesToEvaluate;
   }
 }
 
@@ -13713,12 +13784,6 @@ function menuAssignInternalMenuItems(user, menuItemToProcess) {
           case 'weekdays': {
             const weekdaysInput = menuItemToProcess['options']?.['value'] || [],
               weekdays = weekdaysInput.map((day, index) => (day === 0 ? 0 : index + 1)).filter((day) => day > 0);
-            logs(
-              `menuAssignInternalMenuItems: weekdaysInput = ${jsonStringify(weekdaysInput)}, weekdays = ${jsonStringify(
-                weekdays,
-              )}`,
-              _l,
-            );
             delete optionsPrepared['value'];
             if (typeof optionsPrepared['valueOptions'] !== 'object') optionsPrepared['valueOptions'] = {};
             optionsPrepared['valueOptions']['convertBeforeApply'] = (weekdays) =>
@@ -13985,7 +14050,19 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
                 const deviceFunction = extraOptions.deviceFunction;
                 deviceMenuItem = deviceFunction(deviceMenuItem);
               }
-              if (deviceMenuItem) currentMenuItem.submenu.push(deviceMenuItem);
+              if (deviceMenuItem) {
+                const externalAttributes = enumerationsGetDeviceExternalAttributes(
+                  user,
+                  deviceMenuItem.options,
+                  currentAccessLevel,
+                );
+                if (typeof externalAttributes === 'object') {
+                  // @ts-ignore
+                  if (typeof deviceMenuItem['options'] !== 'object') deviceMenuItem['options'] = {};
+                  deviceMenuItem['options']['externalAttributes'] = externalAttributes;
+                }
+                currentMenuItem.submenu.push(deviceMenuItem);
+              }
             });
           if (
             ((isFunctionsFirst && primaryMenuItem.simplifyMenuWithOneDevice) ||
@@ -14334,7 +14411,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           {
             user,
             data: data,
-            extensionId: extensionId,
             translations: translationsGetForExtension(user, extensionId),
           },
           {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
@@ -14455,6 +14531,52 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           }
         }
         menuMenuDraw(user, targetMenuPos, messageOptions, subMenuItem, messageObject, currentIndent);
+      } else if (
+        typeof menuItemToProcess?.['options']?.['externalAttributes'] === 'object' &&
+        Object.keys(menuItemToProcess['options']['externalAttributes']).filter(
+          (attributeId) => menuItemToProcess['options']['externalAttributes']?.[attributeId]?.['value'] === undefined,
+        ).length > 0
+      ) {
+        const externalAttributes = menuItemToProcess['options']['externalAttributes'],
+          externalAttributeId = Object.keys(externalAttributes).find(
+            (attributeId) => externalAttributes?.[attributeId]?.['value'] === undefined,
+          ),
+          extensionId =
+            externalAttributeId !== undefined ? externalAttributes?.[externalAttributeId]?.['extensionId'] : '',
+          extensionMenuId = `${extensionId}#attributes`;
+        Object.keys(externalAttributes)
+          .filter((attributeId) => externalAttributes?.[attributeId]?.['extensionId'] === extensionId)
+          .forEach((attributeId) => {
+            const attribute = externalAttributes[attributeId];
+            if (attribute?.['value'] === undefined) {
+              const attributeState = getState(attribute['targetStateId']);
+              attribute['value'] = attributeState?.val;
+              if (attribute['value'] === undefined) {
+                attribute['value'] = 'undefined';
+              }
+            }
+          });
+        messageTo(
+          extensionMenuId,
+          {
+            user,
+            data: externalAttributes,
+            translations: translationsGetForExtension(user, extensionId),
+          },
+          {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
+          (result) => {
+            if (result?.error === undefined) {
+              if (typeof menuItemToProcess?.['options'] !== 'object') menuItemToProcess['options'] = {};
+              menuItemToProcess['options']['externalAttributes'] = objectDeepClone(result);
+              menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
+            } else {
+              warns(
+                `Can't update externalAttributes for ${menuItemToProcess.index}! No result. Error is ${result.error}`,
+              );
+              menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
+            }
+          },
+        );
       } else {
         cachedValueDelete(user, cachedMenuItemsAndRows);
         if (!Array.isArray(subMenu) || subMenuPos >= subMenu.length) {
@@ -15286,12 +15408,6 @@ async function commandsUserInputProcess(user, userInputValue) {
     const itemIdCurrent = menuPositionCurrent.join('.');
     const interimValues = cachedValueGet(user, cachedInterimValue);
     Object.keys(interimValues).forEach((interimValueId) => {
-      logs(
-        `itemIdCurrent = ${itemIdCurrent}, interimValueId = ${interimValueId}, = ${!itemIdCurrent.startsWith(
-          interimValueId,
-        )}`,
-        _l,
-      );
       if (!itemIdCurrent.startsWith(interimValueId)) delete interimValues[interimValueId];
     });
     cachedValueSet(user, cachedInterimValue, interimValues);
@@ -15990,7 +16106,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                               const items = trigger[item],
                                 index = commandOptions.index,
                                 subItem = commandOptions.subItem;
-                              logs(`trigger = ${jsonStringify(trigger)}`, _l);
                               if (Array.isArray(items) && typeof index === 'number' && subItem) {
                                 const length = items.length;
                                 if (index < length) {
@@ -16530,7 +16645,6 @@ async function commandsUserInputProcess(user, userInputValue) {
           {
             user,
             data: commandOptions.attribute,
-            extensionId: commandOptions.function,
             translations: translationsGetForExtension(user, commandOptions.function),
           },
           {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
@@ -16928,7 +17042,6 @@ async function commandsUserInputProcess(user, userInputValue) {
 
                         case triggersTargetsId:
                         case triggersConditionsId: {
-                          logs(`trigger = ${jsonStringify(trigger)}`, _l);
                           const items = Array.isArray(trigger[triggerAttributeId]) ? trigger[triggerAttributeId] : [],
                             length = items.length,
                             index = commandOptions.index,
@@ -16986,7 +17099,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                                   itemData.destination = commandOptions.destination;
                                   menuPositionCurrent = commandOptions.currentIndex.split('.');
                                   if (subMode === 'edit') menuPositionCurrent.splice(-1, 1);
-                                  logs(`menuPositionCurrent = ${jsonStringify(menuPositionCurrent)}`, _l);
                                 }
                                 if (triggerAttributeId !== triggersTargetsId || subItem !== 'operator') {
                                   itemData[subItem] = commandOptions.value;
