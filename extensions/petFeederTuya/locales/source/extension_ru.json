@@ -1,0 +1,20 @@
+{
+  "extensions": {
+    "petFeederTuya": {
+      "translations": {
+        "petFeederTuya": "Кормушки Tuya",
+        "schedule": "Расписание",
+        "enabled": "Включено",
+        "time": "Время",
+        "weekdays": "Дни недели",
+        "portion": "Порция",
+        "delete": "Удалить",
+        "add": "Добавить",
+        "save": "Сохранить",
+        "manualFeed": "Кормить вручную",
+        "manualFeedCurrent": "Кормить сейчас",
+        "manualFeedCustom": "Изменить и накормить"
+      }
+    }
+  }
+}

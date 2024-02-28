@@ -1,0 +1,25 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "ru",
+  "version": "1.0",
+  "translation": {
+    "extensions": {
+      "petFeederTuya": {
+        "translations": {
+          "add": "Добавить",
+          "delete": "Удалить",
+          "enabled": "Включено",
+          "manualFeed": "Кормить вручную",
+          "manualFeedCurrent": "Кормить сейчас",
+          "manualFeedCustom": "Изменить и накормить",
+          "petFeederTuya": "Кормушки Tuya",
+          "portion": "Порция",
+          "save": "Сохранить",
+          "schedule": "Расписание",
+          "time": "Время",
+          "weekdays": "Дни недели"
+        }
+      }
+    }
+  }
+}

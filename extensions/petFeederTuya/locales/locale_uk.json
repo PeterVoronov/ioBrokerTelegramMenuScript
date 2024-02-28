@@ -1,0 +1,25 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "uk",
+  "version": "1.0",
+  "translation": {
+    "extensions": {
+      "petFeederTuya": {
+        "translations": {
+          "add": "Додати",
+          "delete": "Видалити",
+          "enabled": "Увімкнено",
+          "manualFeed": "Ручне годування",
+          "manualFeedCurrent": "Годувати зараз",
+          "manualFeedCustom": "Змінити та годувати",
+          "petFeederTuya": "Годівниці Tuya",
+          "portion": "Порція",
+          "save": "Зберегти",
+          "schedule": "Розклад",
+          "time": "Час",
+          "weekdays": "Дні тижня"
+        }
+      }
+    }
+  }
+}

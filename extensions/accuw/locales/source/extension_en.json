@@ -2,6 +2,7 @@
   "extensions": {
     "accuw": {
       "translations": {
+        "accuw": "Weather forecast by AccuWeather",
         "WeatherForecast": "Weather forecast",
         "ForecastDetailed": "Detailed forecast",
         "ForecastHourly": "Hourly forecast",

@@ -1,0 +1,20 @@
+{
+  "extensions": {
+    "petFeederTuya": {
+      "translations": {
+        "petFeederTuya": "Pet Feeder Tuya",
+        "schedule": "Schedule",
+        "enabled": "Enabled",
+        "time": "Time",
+        "weekdays": "Weekdays",
+        "portion": "Portion",
+        "delete": "Delete",
+        "add": "Add",
+        "save": "Save",
+        "manualFeed": "Manual Feed",
+        "manualFeedCurrent": "Feed now",
+        "manualFeedCustom": "Change and Feed"
+      }
+    }
+  }
+}

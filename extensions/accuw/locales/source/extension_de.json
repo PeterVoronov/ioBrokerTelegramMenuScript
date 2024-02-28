@@ -2,6 +2,7 @@
   "extensions": {
     "accuw": {
       "translations": {
+        "accuw": "Wettervorhersage von AccuWeather",
         "WeatherForecast": "Wettervorhersage",
         "ForecastDetailed": "Detaillierte Vorhersage",
         "ForecastHourly": "Stündliche Vorhersage",

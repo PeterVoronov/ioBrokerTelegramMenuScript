@@ -20,6 +20,7 @@
           "Temperature": "Температура",
           "WeatherForecast": "Прогноз погоды",
           "Wind": "Ветер ",
+          "accuw": "Прогноз погоды от AccuWeather",
           "dewPoint": "точка росы",
           "from": "от",
           "ice": "лёд",

@@ -2,6 +2,7 @@
   "extensions": {
     "accuw": {
       "translations": {
+        "accuw": "Прогноз погоды от AccuWeather",
         "WeatherForecast": "Прогноз погоды",
         "ForecastDetailed": "Подробный прогноз",
         "ForecastHourly": "Почасовой прогноз",

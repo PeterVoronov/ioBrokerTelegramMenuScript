@@ -20,6 +20,7 @@
           "Temperature": "Temperature",
           "WeatherForecast": "Weather forecast",
           "Wind": "Wind",
+          "accuw": "Weather forecast by AccuWeather",
           "dewPoint": "dew point",
           "from": "from",
           "ice": "ice",
