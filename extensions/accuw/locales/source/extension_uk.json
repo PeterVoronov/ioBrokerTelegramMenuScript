@@ -1,0 +1,47 @@
+{
+  "extensions": {
+    "accuw": {
+      "translations": {
+        "WeatherForecast": "Прогноз погоди",
+        "ForecastDetailed": "Детальний прогноз",
+        "ForecastHourly": "Погодинний прогноз",
+        "ForecastTomorrow": "Завтра",
+        "ForecastLong": "Довгостроковий",
+        "Day": "День",
+        "Night": "Ніч",
+        "Wind": "Вітер",
+        "metersPerSecondShort": "м/с.",
+        "windGust": "пориви",
+        "windNorth": "Пн",
+        "windNorthEast": "ПнСх",
+        "windEast": "Сх",
+        "windSouthEast": "ПдСх",
+        "windSouth": "Пд",
+        "windSouthWest": "ПдЗх",
+        "windWest": "Зх",
+        "windNorthWest": "ПнЗх",
+        "Precipitations": "Опади",
+        "NoPrecipitation": "Без опадів",
+        "millimetersShort": "мм.",
+        "PossiblePrecipitationHours": "Можливі години опадів",
+        "thunderstormProbability": "ймовірність грози",
+        "total": "загалом",
+        "rain": "дощ",
+        "snow": "сніг",
+        "ice": "лід",
+        "mixed": "змішані",
+        "withProbability": "з ймовірністю",
+        "Temperature": "Температура",
+        "from": "від",
+        "to": "до",
+        "upTo": "максимум",
+        "RealFeel": "Відчувається як",
+        "inShade": "у тіні",
+        "RelativeHumidity": "Відносна вологість",
+        "dewPoint": "точка роси",
+        "pressure": "тиск",
+        "mmHg": "мм рт.ст."
+      }
+    }
+  }
+}
