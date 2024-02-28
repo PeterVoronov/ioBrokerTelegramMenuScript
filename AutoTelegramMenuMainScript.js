@@ -103,9 +103,13 @@ const cmdPrefix = 'cmd',
   telegramAdapter = `telegram.${telegramInstance}`,
   //*** Location of source of the script ***//
   scriptGitHubAPISite = 'https://api.github.com/',
-  scriptRepositoryPath = '/PeterVoronov/ioBrokerTelegramMenuScript/',
-  scriptBranch = 'v0.9.5-dev',
-  scriptCoreLocalesRemoteFolder = 'locales',
+  scriptRepository = {
+    url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
+    branch: 'v0.9.5-dev',
+    baseFolder: `/`,
+    scriptName: 'AutoTelegramMenuMainScript.js',
+    localesFolder: `/locales`,
+  },
   //*** Various prefixes for ioBroker states ***//
   prefixPrimary = `0_userdata.0.telegram_automenu.${telegramInstance}`,
   prefixConfigStates = `${prefixPrimary}.config`,
@@ -3193,11 +3197,11 @@ function translationsLoad() {
 /**
  * This functions downloads locales from the repo and returns the translations object into the `callback` function.
  * @param {string} languageId - The language Id, like 'en', 'de', 'uk', ..., or 'all', to download all of them.
- * @param {string} extensionId - The extension id, to download specific translations.
+ * @param {string} translationPartId - The translation part id, to download specific translations.
  * @param {function(object=, string|object=):void} callback - The callback function
  * in format `callback(translation, error)`.
  */
-function translationsLoadLocalesFromRepository(languageId, extensionId, callback) {
+function translationsLoadLocalesFromRepository(languageId, translationPartId, callback) {
   /**
    * This functions process the list of locales links iterative way, and returns the translations object into
    * the `callback` function.
@@ -3247,55 +3251,75 @@ function translationsLoadLocalesFromRepository(languageId, extensionId, callback
     }
   }
 
-  const githubAPI = axios.create({
-    baseURL: scriptGitHubAPISite,
-    timeout: 10000,
-  });
-  if (languageId && languageId !== doAll) {
-    languageId = translationsValidateLanguageId(languageId);
-  } else {
-    languageId = doAll;
-  }
-  if (languageId) {
-    const remoteFolder =
-      `/repos${scriptRepositoryPath}contents/` +
-      (extensionId && extensionId !== translationsCoreId
-        ? `${translationsExtensionsPrefix}/${extensionId.replace(prefixExtensionId, '').toLowerCase()}/`
-        : '') +
-      `${scriptCoreLocalesRemoteFolder}?ref=${scriptBranch}`;
-    githubAPI
-      .get(remoteFolder, {
-        headers: {
-          Accept: 'application/vnd.github+json',
-        },
-      })
-      .then((response) => {
-        if (response?.data && Array.isArray(response.data)) {
-          const localesFolder = response.data,
-            localesLinks = {};
-          localesFolder.forEach((localesItem) => {
-            if (localesItem?.name && localesItem?.download_url) {
-              const parsedLocaleLanguageId = translationsLocalesExtractLanguageIdRegExp.exec(localesItem.name);
-              if (parsedLocaleLanguageId?.length === 2 && parsedLocaleLanguageId[1]) {
-                const localeLanguageId = parsedLocaleLanguageId[1];
-                if (languageId === doAll || languageId === localeLanguageId) {
-                  localesLinks[localeLanguageId] = url.parse(localesItem.download_url);
+  const repository =
+    typeof translationPartId !== 'string' ||
+    translationPartId.length === 0 ||
+    translationsTopItems.includes(translationPartId)
+      ? scriptRepository
+      : extensionsList[translationPartId]?.['options']?.['repository'];
+  logs(`repository = '${jsonStringify(repository)}'`, _l);
+  if (repository?.['url'] && repository?.['branch'] && repository?.['localesFolder']) {
+    const repoURL = url.parse(repository.url);
+    if (repoURL?.['hostname'] === 'github.com') {
+      const githubAPI = axios.create({
+        baseURL: scriptGitHubAPISite,
+        timeout: 10000,
+      });
+      if (languageId && languageId !== doAll) {
+        languageId = translationsValidateLanguageId(languageId);
+      } else {
+        languageId = doAll;
+      }
+      if (languageId) {
+        const repoPath = repoURL.path
+            .split('/')
+            .filter((item) => item.length > 0)
+            .join('/'),
+          localesPath = repository.localesFolder
+            .split('/')
+            .filter((item) => item.length > 0)
+            .join('/'),
+          remoteFolder = `/repos/${repoPath}/contents/${localesPath}?ref=${repository.branch}`;
+        logs(`remoteFolder = '${remoteFolder}'`, _l);
+        githubAPI
+          .get(remoteFolder, {
+            headers: {
+              Accept: 'application/vnd.github+json',
+            },
+          })
+          .then((response) => {
+            if (response?.data && Array.isArray(response.data)) {
+              const localesFolder = response.data,
+                localesLinks = {};
+              localesFolder.forEach((localesItem) => {
+                if (localesItem?.name && localesItem?.download_url) {
+                  const parsedLocaleLanguageId = translationsLocalesExtractLanguageIdRegExp.exec(localesItem.name);
+                  if (parsedLocaleLanguageId?.length === 2 && parsedLocaleLanguageId[1]) {
+                    const localeLanguageId = parsedLocaleLanguageId[1];
+                    if (languageId === doAll || languageId === localeLanguageId) {
+                      localesLinks[localeLanguageId] = url.parse(localesItem.download_url);
+                    }
+                  }
                 }
+              });
+              if (Object.keys(localesLinks).length === 0) {
+                callback(undefined, `Language with id = ${languageId} is not presented in repo!`);
+              } else {
+                translationsDownloadFromRepo(null, Object.keys(localesLinks), localesLinks, undefined, callback);
               }
             }
+          })
+          .catch((error) => {
+            callback(undefined, `Can't get the locales list from repo! Error is '${error}'.`);
           });
-          if (Object.keys(localesLinks).length === 0) {
-            callback(undefined, `Language with id = ${languageId} is not presented in repo!`);
-          } else {
-            translationsDownloadFromRepo(null, Object.keys(localesLinks), localesLinks, undefined, callback);
-          }
-        }
-      })
-      .catch((error) => {
-        callback(undefined, `Can't get the locales list from repo! Error is '${error}'.`);
-      });
+      } else {
+        callback(undefined, 'Wrong language Id!');
+      }
+    } else {
+      callback(undefined, `Unsupported repository '${repository.url}'!`);
+    }
   } else {
-    callback(undefined, 'Wrong language Id!');
+    callback(undefined, `Repository is not defined for translation part or extension '${translationPartId}'!`);
   }
 }
 
@@ -3356,12 +3380,14 @@ function translationsCompareVersion(versionToCompare) {
  * translation for the current user language, for the specific part of
  * translation, and by specific mode of update.
  * @param {object} user - The user object.
- * @param {string} translationPart - The translation pars, currently is:
- * - 'core',
- * - 'functions',
- * - 'destinations',
- * - 'simpleReports',
- * - 'all' of them.
+ * @param {object} translationInfo - The translation info object, {translationPart, extensionId}.
+ * Translation part can have next values
+ *  - 'core',
+ *  - 'functions',
+ *  - 'destinations',
+ *  - 'simpleReports',
+ *  -  'extensions',
+ *  - 'all' of them.
  * @param {string} translationUpdateMode - The update mode:
  * - 'replace' - deletes old and replace by new,
  * - 'overwrite' - overwrite the existing items with new values,
@@ -3369,7 +3395,7 @@ function translationsCompareVersion(versionToCompare) {
  * - 'template' - add new items, not exists in current translation, and deletes old, not exists in the new.
  * @returns {string} - The result of the operation (empty string on success, otherwise - the error text).
  */
-function translationsProcessLanguageUpdate(user, translationPart, translationUpdateMode) {
+function translationsProcessLanguageUpdate(user, translationInfo, translationUpdateMode) {
   /**
    * This function update a translation part (or inherited object) by new values and in appropriate mode.
    * @param {object} translationCurrentPart - The translation part to update.
@@ -3464,41 +3490,35 @@ function translationsProcessLanguageUpdate(user, translationPart, translationUpd
       Math.abs(translationInputVersionCompare) < 10
     ) {
       const translationPossibleUpdateModes = translationInputVersionCompare ? ['overwrite'] : translationsUpdateModes,
+        {translationPart, extensionId} = translationInfo,
         translationCurrentParts = translationPart === doAll ? translationsTopItems : [translationPart],
         translationCurrentLanguage = configOptions.getOption(cfgMenuLanguage, user),
         translationCurrent = objectDeepClone(translationsGetCurrentForUser(user));
       if (translationPossibleUpdateModes.includes(translationUpdateMode)) {
         const translationInput = translationInputFull[idTranslation];
-        translationCurrentParts.forEach((translationPart) => {
-          if (translationPart.startsWith(prefixExtensionId)) {
-            const extensionId = translationPart.replace(prefixExtensionId, '').toLowerCase();
-            if (extensionId) {
-              if (!translationCurrent.hasOwnProperty(idFunctions)) translationCurrent[idFunctions] = {};
-              if (!translationCurrent[idFunctions].hasOwnProperty(idExternal))
-                translationCurrent[idFunctions][idExternal] = {};
-              if (!translationCurrent[idFunctions][idExternal].hasOwnProperty(translationPart))
-                translationCurrent[idFunctions][idExternal][translationPart] = {};
-              if (translationCurrent[idFunctions][idExternal][translationPart].hasOwnProperty(translationsSubPrefix)) {
-                translationCurrent[idFunctions][idExternal][translationPart][translationsSubPrefix] =
-                  translationsProcessUpdate(
-                    translationCurrent[idFunctions][idExternal][translationPart][translationsSubPrefix],
-                    translationInput[idFunctions][idExternal][extensionId][translationsSubPrefix],
+        translationCurrentParts.forEach((translationPartId) => {
+          if (translationInput.hasOwnProperty(translationPartId)) {
+            if (translationCurrent.hasOwnProperty(translationPartId)) {
+              if (translationPartId === idExternal && translationInput[idExternal]?.hasOwnProperty(extensionId)) {
+                if (translationCurrent[idExternal]?.hasOwnProperty(extensionId)) {
+                  translationCurrent[translationPartId][extensionId] = translationsProcessUpdate(
+                    translationCurrent[translationPartId][extensionId],
+                    translationInput[translationPartId][extensionId][translationsSubPrefix],
                     translationUpdateMode,
                   );
+                } else {
+                  translationCurrent[translationPartId][extensionId] =
+                    translationInput[translationPartId][extensionId][translationsSubPrefix];
+                }
               } else {
-                translationCurrent[idFunctions][idExternal][translationPart][translationsSubPrefix] =
-                  translationInput[idFunctions][idExternal][extensionId][translationsSubPrefix];
+                translationCurrent[translationPartId] = translationsProcessUpdate(
+                  translationCurrent[translationPartId],
+                  translationInput[translationPartId],
+                  translationUpdateMode,
+                );
               }
-            }
-          } else if (translationInput.hasOwnProperty(translationPart)) {
-            if (translationCurrent.hasOwnProperty(translationPart)) {
-              translationCurrent[translationPart] = translationsProcessUpdate(
-                translationCurrent[translationPart],
-                translationInput[translationPart],
-                translationUpdateMode,
-              );
             } else {
-              translationCurrent[translationPart] = translationInput[translationPart];
+              translationCurrent[translationPartId] = translationInput[translationPartId];
             }
           }
         });
@@ -3565,31 +3585,42 @@ function translationsPointOnItemOwner(user, translationId = '', pointOnItemItsel
  * current user translation.
  * @param {object} user - The user object.
  * @param {string} translationId - The translation Id.
+ * @param {string=} defaultTranslation - The default translation value.
+ * @param {boolean=} saveIfNotFound - The selector to save the translation if it is not found.
  * @returns {string} The translation value for the provided Id.
  */
-function translationsItemGet(user, translationId) {
+function translationsItemGet(user, translationId, defaultTranslation, saveIfNotFound = false) {
   const currentTranslation = translationsPointOnItemOwner(user, translationId),
     translationIdArray = translationId ? translationId.split('.') : [],
-    shortId = translationIdArray.pop();
+    shortId = translationIdArray.pop(),
+    isDefinedDefault = typeof defaultTranslation === 'string';
+  let result = isDefinedDefault ? defaultTranslation : 'No translation';
   if (translationId && shortId && currentTranslation) {
     if (!currentTranslation.hasOwnProperty(shortId)) {
-      warns(
-        `translationId '${translationId}' is not found. getFromTranslation is called from ${
-          arguments?.callee?.caller?.name ? arguments.callee.caller.name : '' // NOSONAR
-        }`,
-      );
-      currentTranslation[shortId] = translationId;
-      translationsSave(user);
+      try {
+        warns(
+          `translationId '${translationId}' is not found! getFromTranslation is called from ${
+            arguments?.callee?.caller?.name ? arguments.callee.caller.name : '' // NOSONAR
+          }`,
+        );
+      } catch (error) {
+        warns(`translationId '${translationId}' is not found!`);
+      }
+      if (saveIfNotFound) {
+        currentTranslation[shortId] = translationId;
+        translationsSave(user);
+      }
+      result = isDefinedDefault ? defaultTranslation : translationId;
     } else if (
       !translationId.startsWith(translationsCommonFunctionsAttributesPrefix) &&
       currentTranslation[shortId].startsWith(translationsCommonFunctionsAttributesPrefix)
     ) {
-      return translationsItemGet(user, currentTranslation[shortId]);
+      result = translationsItemGet(user, currentTranslation[shortId]);
+    } else {
+      result = currentTranslation[shortId];
     }
-    return currentTranslation[shortId];
-  } else {
-    return 'No translation';
   }
+  return result;
 }
 
 /**
@@ -3816,12 +3847,9 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
         currentEnumerationList = enumerationsList[enumerationType].list,
         currentEnum = currentEnumerationList[enumId],
         enumPrefix = `${currentEnumerations.id}.${currentEnum.enum}.${enumId.replace('.', '_')}`;
-      if (
-        currentEnum.isExternal &&
-        currentEnum.nameTranslationId &&
-        currentEnum.translationsKeys?.includes(currentEnum.nameTranslationId)
-      ) {
-        result = `${enumPrefix}.${translationsSubPrefix}.${currentEnum.nameTranslationId}`;
+      if (currentEnum.isExternal) {
+        const extensionId = extensionsGetIdByFunctionId(enumId);
+        if (typeof extensionId === 'string') result = `${idExtensions}.${extensionId}.${currentEnum.nameTranslationId}`;
       } else {
         if (typeof enumNameDeclinationKey !== 'string') enumNameDeclinationKey = enumerationsNamesMain;
         result = `${enumPrefix}.${enumerationsNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
@@ -3853,7 +3881,9 @@ function translationsGetEnumName(user, enumerationType, enumId, enumNameDeclinat
  * @returns {string} The related name in current language.
  */
 function translationsGetPartName(user, translationPartId) {
-  const translationPartPrefix = [translationsCoreId, doAll].includes(translationPartId) ? idTranslation : '';
+  const translationPartPrefix = [...translationsTopItems, doAll, idExtensions].includes(translationPartId)
+    ? idTranslation
+    : '';
   return translationsItemMenuGet(user, translationPartPrefix, translationPartId);
 }
 
@@ -3866,27 +3896,13 @@ function translationsGetPartName(user, translationPartId) {
 function translationsGetForExtension(user, extensionId) {
   let translations = {currentLanguage: configOptions.getOption(cfgMenuLanguage, user)};
   if (extensionId) {
-    let extensionFunctionId = extensionId;
-    if (extensionFunctionId.startsWith(prefixExtensionId)) {
-      extensionFunctionId = extensionFunctionId.replace(prefixExtensionId, ''); // NOSONAR
-    } else {
-      extensionId = `${prefixExtensionId}${stringCapitalize(extensionId)}`;
-    }
-    if (
-      enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId) &&
-      enumerationsList[dataTypeFunction].list[extensionId].isExternal
-    ) {
-      const currentExtension = enumerationsList[dataTypeFunction].list[extensionId];
-      if (currentExtension.hasOwnProperty('translationsKeys') && currentExtension.translationsKeys) {
-        const translationsKeyPrefix = `${idFunctions}.${idExternal}.${extensionId}.${translationsSubPrefix}`;
-        currentExtension.translationsKeys.forEach((translationKey) => {
-          const currentTranslation = translationsItemGet(user, `${translationsKeyPrefix}.${translationKey}`);
-          translations[translationKey] = currentTranslation !== 'No translation' ? currentTranslation : translationKey;
-        });
-      }
-    } else if (Array.isArray(extensionsList?.[extensionFunctionId]?.['translationsKeys'])) {
-      extensionsList[extensionFunctionId]['translationsKeys'].forEach((translationKey) => {
-        translations[translationKey] = translationKey;
+    if (Array.isArray(extensionsList?.[extensionId]?.['translationsKeys'])) {
+      extensionsList[extensionId]['translationsKeys'].forEach((translationKey) => {
+        translations[translationKey] = translationsItemGet(
+          user,
+          [idExtensions, extensionId, translationKey].join('.'),
+          translationKey,
+        );
       });
     }
   }
@@ -3935,7 +3951,7 @@ function translationsCheckAndCacheUploadedFile(
             translationFileIsOk = true;
             warns(
               `Translation '${translationFileName}' for language '${inputTranslation.language}' is uploaded!` +
-                'And can be processed!',
+                ' And can be processed!',
             );
           } else {
             warns(`Translation '${translationFileName}' is uploaded, but has wrong format and can't be processed!`);
@@ -3964,47 +3980,35 @@ function translationsCheckAndCacheUploadedFile(
  */
 function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
   const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+    options = menuItemToProcess.options || {},
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
   let subMenuIndex = 0,
     subMenu = [];
   if (isCurrentAccessLevelAllowModify && cachedValueExists(user, cachedTranslationsToUpload)) {
     const inputTranslation = cachedValueGet(user, cachedTranslationsToUpload),
-      {translationPart: currentPart} = menuItemToProcess.options,
+      {translationPart, extensionId} = options,
       currentLanguage = inputTranslation ? translationsValidateLanguageId(inputTranslation.language) : '',
-      currentUploadMode = menuItemToProcess.id,
       _currentVersion = inputTranslation ? inputTranslation.version : ''; // NOSONAR
     if (currentLanguage && inputTranslation.translation) {
-      const translationParts = currentPart ? [currentPart] : [...translationsTopItems, doAll];
-      translationParts.forEach((translationPart) => {
-        const isExtensionTranslation = translationPart.indexOf(prefixExtensionId) === 0,
-          extensionId = isExtensionTranslation ? translationPart.replace(prefixExtensionId, '').toLowerCase() : '',
-          isExtensionTranslationExists =
-            isExtensionTranslation &&
-            extensionId &&
-            inputTranslation.translation.hasOwnProperty(idFunctions) &&
-            inputTranslation.translation[idFunctions].hasOwnProperty(idExternal) &&
-            inputTranslation.translation[idFunctions][idExternal].hasOwnProperty(extensionId) &&
-            inputTranslation.translation[idFunctions][idExternal][extensionId].hasOwnProperty(translationsSubPrefix) &&
-            inputTranslation.translation[idFunctions][idExternal][extensionId][translationsSubPrefix];
+      const translationParts = translationPart ? [translationPart] : [...translationsTopItems, doAll];
+      translationParts.forEach((translationPartId) => {
         if (
-          inputTranslation.translation.hasOwnProperty(translationPart) ||
-          translationPart === doAll ||
-          isExtensionTranslationExists
+          (inputTranslation.translation.hasOwnProperty(translationPartId) &&
+            (translationPartId !== idExtensions ||
+              (translationPartId === idExtensions &&
+                inputTranslation.translation?.[idExtensions]?.hasOwnProperty(extensionId)))) ||
+          translationPartId === doAll
         ) {
-          const translationPartName = isExtensionTranslationExists
-              ? translationPart
-              : translationsGetPartName(user, translationPart),
+          const translationPartName = translationsGetPartName(user, translationPartId),
             subMenuItem = {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, 'ItemsProcess')} ${translationPartName}`,
               icon: iconItemApply,
               group: cmdItemsProcess,
               options: {
+                ...options,
                 [menuOptionHorizontalNavigation]: false,
-                dataType: dataTypeTranslation,
-                uploadMode: currentUploadMode,
-                translationPart,
               },
               text: translationsUploadMenuItemDetails,
               submenu: new Array(),
@@ -4018,10 +4022,8 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               text: translationsUploadMenuItemDetails,
               command: cmdItemsProcess,
               options: {
+                ...options,
                 [menuOptionHorizontalNavigation]: false,
-                dataType: dataTypeTranslation,
-                uploadMode: currentUploadMode,
-                translationPart,
                 updateMode: translationUpdateMode,
               },
               submenu: [],
@@ -4042,7 +4044,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
  * @returns {string} A formatted string.
  */
 function translationsUploadMenuItemDetails(user, menuItemToProcess) {
-  const {translationPart: currentPart} = menuItemToProcess.options,
+  const {translationPart, extensionId} = menuItemToProcess.options,
     currentItemDetailsList = [];
   if (cachedValueExists(user, cachedTranslationsToUpload)) {
     const inputTranslation = cachedValueGet(user, cachedTranslationsToUpload),
@@ -4053,17 +4055,23 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
       value: configOptions.getOption(cfgMenuLanguage, user),
     });
     currentItemDetailsList.push({label: translationsItemTextGet(user, 'languageInFile'), value: currentLanguage});
-    if (currentPart)
+    if (translationPart) {
       currentItemDetailsList.push({
         label: translationsItemTextGet(user, 'translationPart'),
-        value: currentPart.indexOf(prefixExtensionId) === 0 ? currentPart : translationsGetPartName(user, currentPart),
+        value: translationsGetPartName(user, translationPart),
       });
+      if (extensionId) {
+        currentItemDetailsList.push({
+          label: translationsItemTextGet(user, 'extension'),
+          value: extensionId,
+        });
+      }
+    }
   }
   return currentItemDetailsList.length
     ? `${menuMenuItemDetailsPrintFixedLengthLines(user, currentItemDetailsList)}`
     : '';
 }
-
 
 /**
  * This function generates a main submenu to manage the Translations.
@@ -4073,18 +4081,18 @@ function translationsUploadMenuItemDetails(user, menuItemToProcess) {
  **/
 function translationsMenuGenerateMain(user, menuItemToProcess) {
   const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
-  options = menuItemToProcess.options ||  {},
+    options = menuItemToProcess.options || {},
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0;
   let subMenuIndex = 0,
     subMenu = [];
   subMenuIndex = subMenu.push({
     index: `${currentIndex}.${subMenuIndex}`,
-      name: translationsItemMenuGet(user, 'TranslationMenuItems'),
-      icon: iconItemTranslation,
-      id: 'menu',
-      options: {...options, translationPart: 'menu'},
-      submenu: translationsMenuGenerateBasicItems,
+    name: translationsItemMenuGet(user, 'TranslationMenuItems'),
+    icon: iconItemTranslation,
+    id: 'menu',
+    options: {...options, translationPart: 'menu'},
+    submenu: translationsMenuGenerateBasicItems,
   });
   subMenuIndex = subMenu.push({
     index: `${currentIndex}.${subMenuIndex}`,
@@ -4373,7 +4381,7 @@ function translationsMenuGenerateExtensionsManage(user, menuItemToProcess) {
   let subMenuIndex = 0,
     subMenu = [];
   Object.keys(extensionsList)
-    .filter((extensionId) => (extensionsList[extensionId]?.['isAvailable'] === true))
+    .filter((extensionId) => extensionsList[extensionId]?.['isAvailable'] === true)
     .sort((a, b) => a.localeCompare(b))
     .forEach((extensionId) => {
       subMenuIndex = subMenu.push({
@@ -4381,7 +4389,7 @@ function translationsMenuGenerateExtensionsManage(user, menuItemToProcess) {
         name: `${extensionId}`,
         icon: iconItemTranslation,
         text: ` (${extensionId})`,
-        options: {...options, extensionId : extensionId},
+        options: {...options, extensionId: extensionId},
         submenu: translationsMenuGenerateExtensionsManageExtension,
       });
     });
@@ -4420,7 +4428,6 @@ function translationsMenuGenerateExtensionsManageExtension(user, menuItemToProce
   return subMenu;
 }
 
-
 /**
  * This function generates a submenu to manage the appropriate extension translations items .
  * @param {object} user - The user object.
@@ -4431,14 +4438,26 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
   const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     currentAccessLevel = menuItemToProcess.accessLevel,
     isCurrentAccessLevelAllowModify = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-    extensionId = menuItemToProcess.id,
-    translationType = `${idFunctions}.${idExternal}.${extensionId}.${translationsSubPrefix}`,
-    currentTranslationKeys = enumerationsList[dataTypeFunction].list.hasOwnProperty(extensionId)
-      ? enumerationsList[dataTypeFunction].list[extensionId].translationsKeys
-      : [];
+    options = menuItemToProcess.options || {},
+    {extensionId} = options,
+    translationType = `${idExternal}.${extensionId}`,
+    extensionInfo = extensionsList[extensionId] || {},
+    translationKeys = Array.isArray(extensionInfo?.['translationsKeys']) ? [...extensionInfo['translationsKeys']] : [];
   let subMenu = [];
-  if (currentTranslationKeys)
-    currentTranslationKeys.forEach((translationKey, translationKeyIndex) => {
+  if (translationKeys) {
+    const nameTranslationId = extensionsList[extensionId]?.['nameTranslationId'];
+    if (translationKeys.indexOf(extensionId) !== 0 &&
+      (typeof nameTranslationId !== 'string' || translationKeys.indexOf(nameTranslationId) !== 1)) {
+      if (translationKeys.indexOf(nameTranslationId) > 0) { // NOSONAR
+        translationKeys.splice(translationKeys.indexOf(nameTranslationId), 1);
+        translationKeys.unshift(nameTranslationId);
+      }
+      if (translationKeys.indexOf(extensionId) > 0) { // NOSONAR
+        translationKeys.splice(translationKeys.indexOf(extensionId), 1);
+        translationKeys.unshift(extensionId);
+      }
+    }
+    translationKeys.forEach((translationKey, translationKeyIndex) => {
       const subMenuItem = {
         index: `${currentIndex}.${translationKeyIndex}`,
         name: translationsItemGet(user, `${translationType}.${translationKey}`),
@@ -4465,6 +4484,7 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
       }
       subMenu.push(subMenuItem);
     });
+  }
   return subMenu;
 }
 
@@ -4493,7 +4513,7 @@ function translationsMenuGenerateDownloadUpload(user, menuItemToProcess) {
       group: 'menuTranslationFile',
       id: doUpload,
       options: options,
-      submenu: translationsMenuGenerateUpload
+      submenu: translationsMenuGenerateUpload,
     });
   }
   return subMenu;
@@ -4531,56 +4551,6 @@ function translationsMenuGenerateUpload(user, menuItemToProcess) {
     });
   }
   return subMenu;
-}
-
-
-/**
- * This function generates several menu items to support download and
- * upload translations functionality.
- * @param {object} user - The user object.
- * @param {string} translationPartId - The translation part ID.
- * @returns {object[]} array of menu items.
- */
-function translationsDownloadUploadMenuPartGenerate(user, translationPartId) {
-  translationPartId = translationPartId === translationsCoreId ? '' : translationPartId;
-  return [
-    {
-      name: translationsItemMenuGet(user, 'TranslationDownload'),
-      icon: iconItemDownload,
-      group: 'menuTranslationFile',
-      id: doDownload,
-      command: cmdItemDownload,
-      options: {translationPart: translationPartId},
-    },
-    {
-      name: translationsItemMenuGet(user, 'TranslationUpload'),
-      icon: iconItemUpload,
-      group: 'menuTranslationFile',
-      id: doUpload,
-      submenu: [
-        {
-          name: translationsItemMenuGet(user, 'TranslationUploadDirectly'),
-          icon: iconItemUpload,
-          group: 'menuTranslationFile',
-          id: doUploadDirectly,
-          command: cmdItemUpload,
-          options: {dataType: dataTypeTranslation, uploadMode: doUploadDirectly, translationPart: translationPartId},
-          text: translationsUploadMenuItemDetails,
-          submenu: translationsMenuGenerateUploadTranslation,
-        },
-        {
-          name: translationsItemMenuGet(user, 'TranslationUploadFromRepo'),
-          icon: iconItemUpload,
-          group: 'menuTranslationFile',
-          id: doUploadFromRepo,
-          command: cmdItemUpload,
-          options: {dataType: dataTypeTranslation, uploadMode: doUploadFromRepo, translationPart: translationPartId},
-          text: translationsUploadMenuItemDetails,
-          submenu: translationsMenuGenerateUploadTranslation,
-        },
-      ],
-    },
-  ];
 }
 
 //*** Translation - end ***//
@@ -4932,7 +4902,7 @@ function sentImagesDelete(user) {
 let extensionsList = {};
 const extensionTypeFunction = 'function',
   extensionTypeAttributes = 'attributes',
-  extensionsListState = `${prefixEnums}.${idExtensions}`;
+  extensionsListState = `${prefixPrimary}.${idExtensions}`;
 
 statesCommonAttributes[idExtensions] = {
   name: 'List of extensions for AutoTelegramMenu',
@@ -4943,13 +4913,21 @@ statesCommonAttributes[idExtensions] = {
 };
 
 /**
- * This function send a message to all Extensions with request to the to send a registration Message.
+ * This function loads all extensions and set them `isAvailable` state to `false`.
  */
 function extensionsInit() {
   extensionsLoad();
   Object.keys(extensionsList).forEach((extensionId) => {
     extensionsList[extensionId].isAvailable = false;
   });
+  onMessage(extensionsRegisterCommand, extensionsActionOnRegisterToAutoTelegramMenu);
+}
+
+
+/**
+ * This function send a message to all Extensions with request to the to send a registration Message.
+ */
+function extensionsRefresh() {
   const timeout = configOptions.getOption(cfgExternalMenuTimeout);
   messageTo(
     extensionsInitCommand,
@@ -5020,7 +4998,6 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
           functionsList[functionId].scriptName = scriptName;
           functionsList[functionId].state = extensionPseudoState;
           functionsList[functionId].nameTranslationId = nameTranslationId;
-          functionsList[functionId].translationsKeys = translationsKeys;
         } else {
           functionsList[functionId] = {
             ...enumerationsDefaultObjects[dataTypeExtension],
@@ -5170,7 +5147,6 @@ const enumerationsNamesMain = 'Main',
       state: 'state',
       icon: '👾',
       enum: idExternal,
-      translationsKeys: [],
       nameTranslationId: '',
       group: '',
     },
@@ -5345,9 +5321,8 @@ function enumerationsReorderItems(currentEnumerations) {
  * ioBroker `enums` or Auto Telegram Menu Extensions is available.
  * Result will be stored in the `enumerationItems[enumerationType].list`.
  * @param {string} enumerationType - The string defines the enumerationItem type.
- * @param {boolean=} withExtensions - The selector to init Extensions.
  */
-function enumerationsInit(enumerationType, withExtensions = false) {
+function enumerationsInit(enumerationType) {
   let currentEnumerationList = enumerationsList[enumerationType].list;
   let countItems = enumerationsReorderItems(currentEnumerationList);
   Object.keys(currentEnumerationList).forEach((currentItem) => {
@@ -5355,10 +5330,8 @@ function enumerationsInit(enumerationType, withExtensions = false) {
       enumerationsDefaultObjects[currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType],
       currentEnumerationList[currentItem],
     );
-    if (!currentEnumerationList[currentItem].isExternal || withExtensions)
-      currentEnumerationList[currentItem].isAvailable = false;
+    currentEnumerationList[currentItem].isAvailable = false;
   });
-  if (enumerationType === dataTypeFunction && withExtensions) extensionsInit();
   Object.keys(enumerationsList[enumerationType].enums).forEach((enumType) => {
     for (const currentEnum of getEnums(enumType)) {
       const currentItem = currentEnum.id.replace(`${prefixEnums}.${enumType}.`, '');
@@ -5909,28 +5882,6 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           groupItem.submenu = [];
         }
         subMenuIndex = subMenu.push(groupItem);
-        break;
-      }
-
-      case 'translationsKeys': {
-        if (isCurrentAccessLevelAllowModify) {
-          subMenuIndex = subMenu.push({
-            index: `${currentIndex}.${subMenuIndex}`,
-            name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
-            id: itemIdCurrent,
-            submenu: menuMenuReIndex(
-              [
-                {
-                  name: `${translationsItemMenuGet(user, 'extensionTranslations')}`,
-                  id: itemIdCurrent,
-                  submenu: translationsMenuGenerateExtensionsTranslationsItems,
-                },
-                // ...translationsDownloadUploadMenuPartGenerate(user, itemIdCurrent),
-              ],
-              `${currentIndex}.${subMenuIndex}`,
-            ),
-          });
-        }
         break;
       }
 
@@ -7342,14 +7293,7 @@ function enumerationsGetDeviceExternalAttributes(user, options, accessLevel) {
     );
   let attributesToEvaluate;
   if (associatedExtensionsIds.length > 0) {
-    const deviceAttributesToEvaluate = (
-      _user,
-      attributeId,
-      attributeFullId,
-      _stateObject,
-      stateDetails,
-      _options,
-    ) => {
+    const deviceAttributesToEvaluate = (_user, attributeId, attributeFullId, _stateObject, stateDetails, _options) => {
       if (stateDetails?.['isExternal'] === true) {
         const extensionId = stateDetails?.['extensionId'],
           extensionAttributeId = stateDetails?.['extensionAttributeId'],
@@ -14815,6 +14759,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             callbackData = commandOptionsCache.set(user, subIndexCurrent, subIndexCurrentShort, cmdExternalCommand, {
               function: subMenuItem.extensionId,
               item: subMenuItem.extensionCommandId,
+              extensionId: subMenuItem.extensionId,
               attribute: subMenuItem.externalCommandParams,
             });
           } else {
@@ -16795,12 +16740,13 @@ async function commandsUserInputProcess(user, userInputValue) {
         timer = setTimeout(() => {
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
           errs(
-            `Error! No response from external command ${commandOptions.item} for function ${commandOptions.dataType}`,
+            `Error! No response from external command ${commandOptions.item} for function ${commandOptions.dataType}` +
+              ` with params ${commandOptions.attribute} in extension ${commandOptions.extensionId}!`,
           );
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(
           `External command ${commandOptions.item} for function ${commandOptions.function}, ` +
-            `with params ${commandOptions.attribute}`,
+            `with params ${commandOptions.attribute} in extension ${commandOptions.extensionId}.`,
         );
         menuMenuDraw(user);
         messageTo(
@@ -16808,7 +16754,7 @@ async function commandsUserInputProcess(user, userInputValue) {
           {
             user,
             data: commandOptions.attribute,
-            translations: translationsGetForExtension(user, commandOptions.function),
+            translations: translationsGetForExtension(user, commandOptions.extensionId),
           },
           {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
           (result) => stateOrCommandProcessed(user, result),
@@ -17404,7 +17350,9 @@ async function commandsUserInputProcess(user, userInputValue) {
                 const currentLanguageId = configOptions.getOption(cfgMenuLanguage, user);
                 translationsLoadLocalesFromRepository(
                   currentLanguageId,
-                  commandOptions.translationPart,
+                  commandOptions.translationPart === idExtensions
+                    ? commandOptions.extensionId
+                    : commandOptions.translationPart,
                   (locales, error) => {
                     if (
                       locales &&
@@ -17906,7 +17854,10 @@ async function commandsUserInputProcess(user, userInputValue) {
             if (cachedValueExists(user, cachedTranslationsToUpload)) {
               const updateTranslationResult = translationsProcessLanguageUpdate(
                 user,
-                commandOptions.translationPart,
+                {
+                  translationPart: commandOptions.translationPart,
+                  extensionId: commandOptions.extensionId,
+                },
                 commandOptions.updateMode,
               );
               telegramMessageDisplayPopUp(user, updateTranslationResult || translationsItemTextGet(user, 'MsgSuccess'));
@@ -19543,6 +19494,18 @@ async function autoTelegramMenuInstanceInit() {
   configOptions.loadOptions(); // 1
   configOptions.subscribeOnOptions();
 
+
+  /** extensions Init */
+  extensionsInit();
+  /** enumerationItems Init */
+  Object.keys(enumerationsList).forEach((itemType) => {
+    enumerationsLoad(itemType);
+    enumerationsInit(itemType);
+    enumerationsSave(itemType);
+  });
+   /** extensions Refresh */
+  extensionsRefresh();
+
   rolesInMenu.refresh();
   rolesInMenu.assignRelated((roleId) => usersInMenu.getUsers(roleId)); // 2
   configOptions.subscribeOnOption(cfgMenuRoles, () => {
@@ -19569,16 +19532,6 @@ async function autoTelegramMenuInstanceInit() {
   if (Object.keys(translationsList).length === 0) {
     await translationsInitialLoadLocalesFromRepository();
   }
-
-  /** enumerationItems Init */
-  //External Scripts Init
-  onMessage(extensionsRegisterCommand, extensionsActionOnRegisterToAutoTelegramMenu); // 6
-
-  Object.keys(enumerationsList).forEach((itemType) => {
-    enumerationsLoad(itemType);
-    enumerationsInit(itemType, itemType === dataTypeFunction);
-    enumerationsSave(itemType);
-  });
 
   const telegramConnectedId = `system.adapter.${telegramAdapter}.connected`;
   /*** subscribe on Telegram ***/
@@ -19614,7 +19567,9 @@ async function autoTelegramMenuInstanceInit() {
   if (!configOptions.existsOptionState(cfgUpdateMessageTime)) {
     configOptions.functionScheduleMenuMessageRenew(configOptions.getOption(cfgUpdateMessageTime));
   }
-  menuMenuMessageRenew(menuRefreshTimeAllUsers, true, true);
+  setTimeout(() => {
+    menuMenuMessageRenew(menuRefreshTimeAllUsers, true, true);
+  }, configOptions.getOption(cfgExternalMenuTimeout));
 }
 
 autoTelegramMenuInstanceInit();

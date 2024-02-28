@@ -15,13 +15,14 @@ function autoTelegramMenuExtensionAccuWeather() {
     extensionType = 'function',
     extensionMenuId = 'menuAccuWeatherForecast',
     extensionRepository = {
-      path: '/PeterVoronov/ioBrokerTelegramMenuScript/',
-      branch: 'v0.9.5-dev',
-      baseFolder: `extensions/${extensionId}`,
+      url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
+      branch: 'PeterVoronov/issue4',
+      baseFolder: `/extensions/${extensionId}`,
       scriptName: 'ATM Extension AccuWeather.js',
-      localesFolder: `extensions/${extensionId}/locales`,
+      localesFolder: `/extensions/${extensionId}/locales`,
     },
     extensionTranslationsKeys = [
+      `${extensionId}`,
       'WeatherForecast',
       'ForecastDetailed',
       'ForecastHourly',
