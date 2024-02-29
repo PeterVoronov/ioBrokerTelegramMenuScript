@@ -3883,7 +3883,7 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
  */
 function translationsGetEnumName(user, enumerationType, enumId, enumNameDeclinationKey) {
   const translationId = translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinationKey);
-  if (translationId) return translationsItemGet(user, translationId);
+  if (translationId) return translationsItemGet(user, translationId, enumId);
   return '';
 }
 
@@ -5014,6 +5014,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
           functionsList[functionId]['state'] = extensionPseudoState;
           functionsList[functionId]['nameTranslationId'] = nameTranslationId;
           functionsList[functionId]['extensionId'] = extensionId;
+          log(`External function "${functionId}" from extension '${extensionId}' is updated`);
         } else {
           functionsList[functionId] = {
             ...enumerationsDefaultObjects[dataTypeExtension],
@@ -5029,8 +5030,8 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
             scriptName: scriptName,
             translationsKeys: translationsKeys,
           };
+          log(`External function "${functionId}" from extension '${extensionId}' is registered`);
         }
-        logs(`Function "${functionId}" is registered: ${jsonStringify(functionsList[functionId])}.`, _l);
         enumerationsSave(dataTypeFunction);
       }
     }
@@ -5118,6 +5119,7 @@ const enumerationsNamesMain = 'Main',
       isAvailable: true,
       isEnabled: false,
       isExternal: false,
+      order: 0,
       holder: '',
       state: 'state',
       availableState: '',
@@ -5327,8 +5329,9 @@ function enumerationsReorderItems(currentEnumerations) {
  * ioBroker `enums` or Auto Telegram Menu Extensions is available.
  * Result will be stored in the `enumerationItems[enumerationType].list`.
  * @param {string} enumerationType - The string defines the enumerationItem type.
+ * @param {boolean=} isFirstRun - The flag to define if it's the first run of the function.
  */
-function enumerationsInit(enumerationType) {
+function enumerationsInit(enumerationType, isFirstRun = false) {
   let currentEnumerationList = enumerationsList[enumerationType].list;
   let countItems = enumerationsReorderItems(currentEnumerationList);
   Object.keys(currentEnumerationList).forEach((currentItem) => {
@@ -5336,7 +5339,9 @@ function enumerationsInit(enumerationType) {
       enumerationsDefaultObjects[currentEnumerationList[currentItem].isExternal ? dataTypeExtension : enumerationType],
       currentEnumerationList[currentItem],
     );
-    currentEnumerationList[currentItem].isAvailable = false;
+    if (isFirstRun  === true) {
+      currentEnumerationList[currentItem].isAvailable = false;
+    }
   });
   Object.keys(enumerationsList[enumerationType].enums).forEach((enumType) => {
     for (const currentEnum of getEnums(enumType)) {
@@ -12913,7 +12918,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
       if (currentItem.isExternal) {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId));
         menuItem.submenu = currentItem.state;
-        menuItem.extensionId = currentItem['executionId'];
+        menuItem.extensionId = currentItem['extensionId'];
       } else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
         menuItem.submenu = menuMenuGenerateFirstLevelAfterRoot;
@@ -18494,6 +18499,7 @@ async function commandsUserInputProcess(user, userInputValue) {
               currentEnumerationsList[newItem].order = currentOrder;
               currentEnumerationsList[commandOptions.item].order = newOrder;
               menuPositionCurrent.splice(-1, 1, newOrder);
+              menuMenuItemsAndRowsClearCached(user);
             }
             if (commandOptions.dataType === dataTypeDeviceStatesAttributes) {
               const currentDeviceAttribute = enumerationsGetDeviceState(
@@ -19590,7 +19596,7 @@ async function autoTelegramMenuInstanceInit() {
   /** enumerationItems Init */
   Object.keys(enumerationsList).forEach((itemType) => {
     enumerationsLoad(itemType);
-    enumerationsInit(itemType);
+    enumerationsInit(itemType, true);
     enumerationsSave(itemType);
   });
   /** extensions Refresh */
