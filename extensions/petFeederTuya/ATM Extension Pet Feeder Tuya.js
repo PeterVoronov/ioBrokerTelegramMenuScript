@@ -239,6 +239,22 @@ function autoTelegramMenuExtensionPetFeeder() {
     );
   }
 
+  /** This function is used to compare is two schedules are equal.
+   * @param {object[]} schedule1 - The first schedule.
+   * @param {object[]} schedule2 - The second schedule.
+   * @returns {boolean} The result.
+   **/
+  function isSchedulesAreEqual(schedule1, schedule2) {
+    if (schedule1.length !== schedule2.length) return false;
+    return schedule1.every((item1) => {
+      const item2 = schedule2.find((item) => item['time'] === item1['time']);
+      if (item2 === undefined) return false;
+      return item1['portion'] === item2['portion'] &&
+        item1['enabled'] === item2['enabled'] &&
+        item1['weekdays'].every((day1, dayIndex) => day1 === item2['weekdays'][dayIndex]);
+    });
+  }
+
   /**
    * Register the reaction on the extension init message from "main" script.
    **/
@@ -262,11 +278,12 @@ function autoTelegramMenuExtensionPetFeeder() {
       } = options;
     if (typeof device === 'string' && typeof state === 'string' && typeof stateValue === 'string') {
       const valueInterim = valueOptions?.['externalValueInterim'],
-        schedule = valueInterim !== undefined ? valueInterim : scheduleDecode(stateValue),
+        scheduleOriginal = scheduleDecode(stateValue),
+        schedule = valueInterim !== undefined ? valueInterim : scheduleOriginal,
         iconOn = icons?.[0] || '✅',
         iconOff = icons?.[1] || '❌',
         messageToId = `${extensionId}#schedule`;
-      const isChanged = valueInterim !== undefined && stateValue !== scheduleEncode(valueInterim),
+      const isChanged = valueInterim !== undefined && !isSchedulesAreEqual(scheduleOriginal, schedule),
         menuItem= {...data};
       menuItem['options'] = options;
       menuItem['submenu'] =  new Array();

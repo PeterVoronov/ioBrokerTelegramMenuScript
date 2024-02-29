@@ -14025,8 +14025,10 @@ function menuExtensionsAssignInternalMenuItemsToMenuItem(user, menuItemToProcess
     subMenuItem = {...menuItemToProcess, options: undefined, submenu: undefined};
     subMenuItem['options'] = objectDeepClone(options);
     if (Array.isArray(menuItemToProcess['textValues'])) {
-      subMenuItem['text'] = menuMenuItemDetailsPrintFixedLengthLines(user,
-        menuExtensionsAssignTextAttributeToMenuItem(user, menuItemToProcess['textValues']));
+      subMenuItem['text'] = menuMenuItemDetailsPrintFixedLengthLines(
+        user,
+        menuExtensionsAssignTextAttributeToMenuItem(user, menuItemToProcess['textValues']),
+      );
     }
     if (Array.isArray(menuItemToProcess['submenu'])) {
       subMenuItem['submenu'] = menuItemToProcess['submenu'].map((subMenuItem) =>
@@ -15465,7 +15467,18 @@ async function commandsUserInputProcess(user, userInputValue) {
           if (checkNumberStateValue(stateId, possibleNumber, currentObject)) {
             setState(stateId, possibleNumber, setStateCallback);
           } else {
-            warns(`Unacceptable value '${possibleNumber}' for object conditions ${jsonStringify(currentObjectCommon)}`);
+            warns(`Unacceptable value '${possibleNumber}' for state conditions ${jsonStringify(currentObjectCommon)}`);
+            setStateCallback(translationsItemTextGet(user, 'MsgValueUnacceptable'));
+          }
+        } else if (currentStateType === 'string') {
+          if (typeof stateValue === 'string') {
+            setState(stateId, stateValue, setStateCallback);
+          } else {
+            warns(
+              `Unacceptable value type '${typeof stateValue}' for state conditions ${jsonStringify(
+                currentObjectCommon,
+              )}`,
+            );
             setStateCallback(translationsItemTextGet(user, 'MsgValueUnacceptable'));
           }
         } else {
