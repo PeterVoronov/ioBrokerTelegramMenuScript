@@ -1,0 +1,25 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "en",
+  "version": "1.0",
+  "translation": {
+    "extensions": {
+      "petFeederTuya": {
+        "translations": {
+          "add": "Add",
+          "delete": "Delete",
+          "enabled": "Enabled",
+          "manualFeed": "Manual Feed",
+          "manualFeedCurrent": "Feed now",
+          "manualFeedCustom": "Change and Feed",
+          "petFeederTuya": "Pet Feeder Tuya",
+          "portion": "Portion",
+          "save": "Save",
+          "schedule": "Schedule",
+          "time": "Time",
+          "weekdays": "Weekdays"
+        }
+      }
+    }
+  }
+}

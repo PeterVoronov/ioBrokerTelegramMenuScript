@@ -1,0 +1,20 @@
+{
+  "extensions": {
+    "petFeederTuya": {
+      "translations": {
+        "petFeederTuya": "Годівниці Tuya",
+        "schedule": "Розклад",
+        "enabled": "Увімкнено",
+        "time": "Час",
+        "weekdays": "Дні тижня",
+        "portion": "Порція",
+        "delete": "Видалити",
+        "add": "Додати",
+        "save": "Зберегти",
+        "manualFeed": "Ручне годування",
+        "manualFeedCurrent": "Годувати зараз",
+        "manualFeedCustom": "Змінити та годувати"
+      }
+    }
+  }
+}

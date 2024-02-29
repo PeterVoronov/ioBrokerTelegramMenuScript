@@ -1,0 +1,20 @@
+{
+  "extensions": {
+    "petFeederTuya": {
+      "translations": {
+        "petFeederTuya": "Tierfütterung Tuya",
+        "schedule": "Zeitplan",
+        "enabled": "Aktiviert",
+        "time": "Zeit",
+        "weekdays": "Wochentage",
+        "portion": "Portion",
+        "delete": "Löschen",
+        "add": "Hinzufügen",
+        "save": "Speichern",
+        "manualFeed": "Manuelle Papierzufuhr",
+        "manualFeedCurrent": "Feed jetzt",
+        "manualFeedCustom": "Ändern und Feed"
+      }
+    }
+  }
+}
