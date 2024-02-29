@@ -1242,12 +1242,12 @@ class ConfigOptions {
             itemTypeExtended = item.typeExtended,
             itemTypeEffective = typeof itemTypeExtended === 'string' ? itemTypeExtended : itemType,
             currentItemName = translationsItemCoreGet(user, cfgItem),
-              currentItem = {
-                index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
-                name: `${currentItemName}`,
-                icon: currentIcon,
-                text: `${currentItemName}`,
-              };
+            currentItem = {
+              index: `${currentIndex}.${subMenuIndex}.${itemOrder}`,
+              name: `${currentItemName}`,
+              icon: currentIcon,
+              text: `${currentItemName}`,
+            };
           if (isThisLevelAllowModify) currentItem.submenu = new Array();
           let subSubMenuIndex = 0;
           if (isCurrentAccessLevelFull) {
