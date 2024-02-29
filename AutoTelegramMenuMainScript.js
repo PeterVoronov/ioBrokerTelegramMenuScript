@@ -105,7 +105,7 @@ const cmdPrefix = 'cmd',
   scriptGitHubAPISite = 'https://api.github.com/',
   scriptRepository = {
     url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
-    branch: 'v0.9.5-dev',
+    branch: 'PeterVoronov/issue4',
     baseFolder: `/`,
     scriptName: 'AutoTelegramMenuMainScript.js',
     localesFolder: `/locales`,
@@ -3257,7 +3257,6 @@ function translationsLoadLocalesFromRepository(languageId, translationPartId, ca
     translationsTopItems.includes(translationPartId)
       ? scriptRepository
       : extensionsList[translationPartId]?.['options']?.['repository'];
-  logs(`repository = '${jsonStringify(repository)}'`, _l);
   if (repository?.['url'] && repository?.['branch'] && repository?.['localesFolder']) {
     const repoURL = url.parse(repository.url);
     if (repoURL?.['hostname'] === 'github.com') {
@@ -3280,7 +3279,6 @@ function translationsLoadLocalesFromRepository(languageId, translationPartId, ca
             .filter((item) => item.length > 0)
             .join('/'),
           remoteFolder = `/repos/${repoPath}/contents/${localesPath}?ref=${repository.branch}`;
-        logs(`remoteFolder = '${remoteFolder}'`, _l);
         githubAPI
           .get(remoteFolder, {
             headers: {
@@ -4000,16 +3998,18 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
                 inputTranslation.translation?.[idExtensions]?.hasOwnProperty(extensionId)))) ||
           translationPartId === doAll
         ) {
-          const translationPartName = translationsGetPartName(user, translationPartId),
+          const itemOptions = {
+              ...options,
+              translationPart: translationPartId,
+              [menuOptionHorizontalNavigation]: false,
+            },
+            translationPartName = translationsGetPartName(user, translationPartId),
             subMenuItem = {
               index: `${currentIndex}.${subMenuIndex}`,
               name: `${translationsItemMenuGet(user, 'ItemsProcess')} ${translationPartName}`,
               icon: iconItemApply,
               group: cmdItemsProcess,
-              options: {
-                ...options,
-                [menuOptionHorizontalNavigation]: false,
-              },
+              options: itemOptions,
               text: translationsUploadMenuItemDetails,
               submenu: new Array(),
             };
@@ -4022,8 +4022,7 @@ function translationsMenuGenerateUploadTranslation(user, menuItemToProcess) {
               text: translationsUploadMenuItemDetails,
               command: cmdItemsProcess,
               options: {
-                ...options,
-                [menuOptionHorizontalNavigation]: false,
+                ...itemOptions,
                 updateMode: translationUpdateMode,
               },
               submenu: [],
