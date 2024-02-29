@@ -105,7 +105,7 @@ const cmdPrefix = 'cmd',
   scriptGitHubAPISite = 'https://api.github.com/',
   scriptRepository = {
     url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
-    branch: 'PeterVoronov/issue4',
+    branch: 'v0.9.5-dev',
     baseFolder: `/`,
     scriptName: 'AutoTelegramMenuMainScript.js',
     localesFolder: `/locales`,
@@ -3824,6 +3824,22 @@ function translationsGetObjectName(user, object, functionId, destinationId, isCo
 }
 
 /**
+ * This function returns a translation Id for the extension's text items.
+ * @param {string} extensionId - The extension ID.
+ * @param {string} itemId - The item Id.
+ * @returns {string} The translation Id string.
+ **/
+function translationsGetExtensionsItemId(extensionId, itemId) {
+  let result = '';
+  if (typeof extensionId === 'string' && typeof itemId === 'string') {
+    if (extensionsList?.[extensionId]?.['translationsKeys']?.includes(itemId)) {
+      result = `${idExtensions}.${extensionId}.${itemId}`;
+    }
+  }
+  return result;
+}
+
+/**
  * This function generates an enums translation Id, based on its type and Id.
  * @param {object} user - The user object.
  * @param {string} enumerationType  - The string defines the enumerationItem type.
@@ -3845,9 +3861,8 @@ function translationsGetEnumId(user, enumerationType, enumId, enumNameDeclinatio
         currentEnumerationList = enumerationsList[enumerationType].list,
         currentEnum = currentEnumerationList[enumId],
         enumPrefix = `${currentEnumerations.id}.${currentEnum.enum}.${enumId.replace('.', '_')}`;
-      if (currentEnum.isExternal) {
-        const extensionId = extensionsGetIdByFunctionId(enumId);
-        if (typeof extensionId === 'string') result = `${idExtensions}.${extensionId}.${currentEnum.nameTranslationId}`;
+      if (currentEnum['isExternal'] === true && typeof currentEnum['extensionId'] === 'string') {
+        result = translationsGetExtensionsItemId(currentEnum['extensionId'], currentEnum.nameTranslationId);
       } else {
         if (typeof enumNameDeclinationKey !== 'string') enumNameDeclinationKey = enumerationsNamesMain;
         result = `${enumPrefix}.${enumerationsNamesTranslationIdPrefix}.${enumNameDeclinationKey}`;
@@ -4123,7 +4138,7 @@ function translationsMenuGenerateMain(user, menuItemToProcess) {
     icon: iconItemTranslation,
     id: idExtensions,
     options: {...options, translationPart: idExtensions},
-    submenu: translationsMenuGenerateExtensionsManage,
+    submenu: translationsMenuGenerateManageExtensions,
   });
   return subMenu;
 }
@@ -4374,7 +4389,7 @@ function translationsMenuGenerateFunctionDeviceItems(user, menuItemToProcess) {
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]}  Newly generated submenu.
  */
-function translationsMenuGenerateExtensionsManage(user, menuItemToProcess) {
+function translationsMenuGenerateManageExtensions(user, menuItemToProcess) {
   const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options || {};
   let subMenuIndex = 0,
@@ -4385,11 +4400,11 @@ function translationsMenuGenerateExtensionsManage(user, menuItemToProcess) {
     .forEach((extensionId) => {
       subMenuIndex = subMenu.push({
         index: `${currentIndex}.${subMenuIndex}`,
-        name: `${extensionId}`,
+        name: translationsItemGet(user, translationsGetExtensionsItemId(extensionId, extensionId), extensionId),
         icon: iconItemTranslation,
         text: ` (${extensionId})`,
         options: {...options, extensionId: extensionId},
-        submenu: translationsMenuGenerateExtensionsManageExtension,
+        submenu: translationsMenuGenerateManageExtension,
       });
     });
   return subMenu;
@@ -4401,7 +4416,7 @@ function translationsMenuGenerateExtensionsManage(user, menuItemToProcess) {
  * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
  * @returns {object[]}  Newly generated submenu.
  */
-function translationsMenuGenerateExtensionsManageExtension(user, menuItemToProcess) {
+function translationsMenuGenerateManageExtension(user, menuItemToProcess) {
   const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
     options = menuItemToProcess.options || {},
     currentAccessLevel = menuItemToProcess.accessLevel,
@@ -4445,13 +4460,15 @@ function translationsMenuGenerateExtensionsTranslationsItems(user, menuItemToPro
   let subMenu = [];
   if (translationKeys) {
     const nameTranslationId = extensionsList[extensionId]?.['nameTranslationId'];
-    if (translationKeys.indexOf(extensionId) !== 0 &&
-      (typeof nameTranslationId !== 'string' || translationKeys.indexOf(nameTranslationId) !== 1)) {
-      if (translationKeys.indexOf(nameTranslationId) > 0) { // NOSONAR
+    if (
+      translationKeys.indexOf(extensionId) !== 0 &&
+      (typeof nameTranslationId !== 'string' || translationKeys.indexOf(nameTranslationId) !== 1)
+    ) {
+      /* NOSONAR */ if (translationKeys.indexOf(nameTranslationId) > 0) {
         translationKeys.splice(translationKeys.indexOf(nameTranslationId), 1);
         translationKeys.unshift(nameTranslationId);
       }
-      if (translationKeys.indexOf(extensionId) > 0) { // NOSONAR
+      /* NOSONAR */ if (translationKeys.indexOf(extensionId) > 0) {
         translationKeys.splice(translationKeys.indexOf(extensionId), 1);
         translationKeys.unshift(extensionId);
       }
@@ -4922,7 +4939,6 @@ function extensionsInit() {
   onMessage(extensionsRegisterCommand, extensionsActionOnRegisterToAutoTelegramMenu);
 }
 
-
 /**
  * This function send a message to all Extensions with request to the to send a registration Message.
  */
@@ -4993,16 +5009,18 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
         functionId = `${prefixExtensionId}${stringCapitalize(id)}`;
         const functionsList = enumerationsList[dataTypeFunction].list;
         if (typeof functionsList?.[functionId] === 'object') {
-          functionsList[functionId].isAvailable = true;
-          functionsList[functionId].scriptName = scriptName;
-          functionsList[functionId].state = extensionPseudoState;
-          functionsList[functionId].nameTranslationId = nameTranslationId;
+          functionsList[functionId]['isAvailable'] = true;
+          functionsList[functionId]['scriptName'] = scriptName;
+          functionsList[functionId]['state'] = extensionPseudoState;
+          functionsList[functionId]['nameTranslationId'] = nameTranslationId;
+          functionsList[functionId]['extensionId'] = extensionId;
         } else {
           functionsList[functionId] = {
             ...enumerationsDefaultObjects[dataTypeExtension],
             isAvailable: true,
             isExternal: true,
             enum: idExternal,
+            extensionId: extensionId,
             nameTranslationId: nameTranslationId,
             order: Object.keys(functionsList).length,
             icon: icon,
@@ -5012,6 +5030,7 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
             translationsKeys: translationsKeys,
           };
         }
+        logs(`Function "${functionId}" is registered: ${jsonStringify(functionsList[functionId])}.`, _l);
         enumerationsSave(dataTypeFunction);
       }
     }
@@ -5045,18 +5064,6 @@ function extensionsActionOnRegisterToAutoTelegramMenu(extensionDetails, callback
     }
   }
   callback({success: true});
-}
-
-/**
- * This function is used to find an extensions Id by appropriate function Id.
- * @param {string} functionId - The function Id.
- * @returns {string|undefined} The Extension Id.
- **/
-function extensionsGetIdByFunctionId(functionId) {
-  return Object.keys(extensionsList).find(
-    (extensionId) =>
-      extensionsList[extensionId]['isAvailable'] && extensionsList[extensionId]['functionId'] === functionId,
-  );
 }
 
 const extensionsInitCommand = autoTelegramMenuExtensionsInitCommand
@@ -5111,7 +5118,6 @@ const enumerationsNamesMain = 'Main',
       isAvailable: true,
       isEnabled: false,
       isExternal: false,
-      order: 0,
       holder: '',
       state: 'state',
       availableState: '',
@@ -5142,6 +5148,7 @@ const enumerationsNamesMain = 'Main',
       isEnabled: false,
       isExternal: false,
       order: 0,
+      extensionId: '',
       holder: '',
       state: 'state',
       icon: '👾',
@@ -5802,29 +5809,34 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
 
       case 'name': {
         if (isCurrentAccessLevelAllowModify) {
-          if (enumerationItemAttrs.includes('nameTranslationId') && currentEnumerationItem['nameTranslationId']) {
-            subMenuIndex = subMenu.push(
-              menuMenuItemGenerateRenameItem(user, `${currentIndex}`, subMenuIndex, {
-                dataType: dataTypeTranslation,
-                translationId: translationsGetEnumId(user, enumerationType, itemIdCurrent, enumerationsNamesMain),
-              }),
-            );
-          } else {
-            subMenuIndex = subMenu.push(
-              menuMenuItemGenerateRenameItem(user, `${currentIndex}`, subMenuIndex, {
-                dataType: enumerationType,
-                item: itemIdCurrent,
-                attribute: 'names',
-                index: enumerationsNamesMain,
-              }),
-            );
-            subMenuIndex = subMenu.push({
-              index: `${currentIndex}.${subMenuIndex}`,
-              name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
-              command: cmdItemNameGet,
-              options: {dataType: enumerationType, item: itemIdCurrent},
-              submenu: [],
-            });
+          if (
+            !enumerationsDeviceStatesTypes.includes(enumerationType) ||
+            currentEnumerationItem['isExternal'] !== true
+          ) {
+            if (enumerationItemAttrs.includes('nameTranslationId') && currentEnumerationItem['nameTranslationId']) {
+              subMenuIndex = subMenu.push(
+                menuMenuItemGenerateRenameItem(user, `${currentIndex}`, subMenuIndex, {
+                  dataType: dataTypeTranslation,
+                  translationId: translationsGetEnumId(user, enumerationType, itemIdCurrent, enumerationsNamesMain),
+                }),
+              );
+            } else {
+              subMenuIndex = subMenu.push(
+                menuMenuItemGenerateRenameItem(user, `${currentIndex}`, subMenuIndex, {
+                  dataType: enumerationType,
+                  item: itemIdCurrent,
+                  attribute: 'names',
+                  index: enumerationsNamesMain,
+                }),
+              );
+              subMenuIndex = subMenu.push({
+                index: `${currentIndex}.${subMenuIndex}`,
+                name: `${translationsItemCoreGet(user, cmdItemNameGet)}`,
+                command: cmdItemNameGet,
+                options: {dataType: enumerationType, item: itemIdCurrent},
+                submenu: [],
+              });
+            }
           }
         }
         break;
@@ -6103,58 +6115,60 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
             subMenuIndex = subMenu.push(subMenuItem);
           });
         }
-
-        currentIds.forEach((currentId) => {
-          const currentTranslationShortId = currentId.split('.').join('_'),
-            currentTranslationId = `${translationType}.${currentTranslationShortId}`;
-          let currentValue = currentTranslation[currentTranslationShortId];
-          if (!isDefined(currentValue) || currentId === currentTranslationId) {
-            currentValue = `${currentTranslationId} ${iconItemNotFound}`;
-          } else if (currentValue.indexOf(translationsCommonFunctionsAttributesPrefix) === 0) {
-            currentValue = `${translationsItemGet(
-              user,
-              `${translationsCommonFunctionsAttributesPrefix}.${currentId}`,
-            )} ${iconItemCommon}`;
-          } else {
-            currentValue = `${translationsItemCoreGet(user, 'cmdItemRename')}: "${currentValue}"`;
-          }
-          if (currentId === translationsPrimaryStateId) currentValue += ` (${translationsItemMenuGet(user, 'state')})`;
-          let subSubMenuIndex = 0,
-            subMenuItem = {
-              index: `${currentIndex}.${subMenuIndex}`,
-              name: `${currentValue}`,
-              text: ` [${currentTranslationId}]`,
-              group: 'cmdItemRename',
-              icon: iconItemEdit,
-              submenu: new Array(),
-            };
-          const currentCommandOptions = {dataType: dataTypeTranslation, translationId: currentTranslationId};
-          subSubMenuIndex = subMenuItem.submenu.push(
-            menuMenuItemGenerateRenameItem(
-              user,
-              `${currentIndex}.${subMenuIndex}`,
-              subSubMenuIndex,
-              currentCommandOptions,
-            ),
-          );
-          subSubMenuIndex = subMenuItem.submenu.push({
-            index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-            name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
-            icon: iconItemCommon,
-            command: cmdUseCommonTranslation,
-            options: {dataType: dataTypeTranslation, translationId: currentTranslationId},
-            submenu: [],
+        if (currentEnumerationItem['isExternal'] !== true) {
+          currentIds.forEach((currentId) => {
+            const currentTranslationShortId = currentId.split('.').join('_'),
+              currentTranslationId = `${translationType}.${currentTranslationShortId}`;
+            let currentValue = currentTranslation[currentTranslationShortId];
+            if (!isDefined(currentValue) || currentId === currentTranslationId) {
+              currentValue = `${currentTranslationId} ${iconItemNotFound}`;
+            } else if (currentValue.indexOf(translationsCommonFunctionsAttributesPrefix) === 0) {
+              currentValue = `${translationsItemGet(
+                user,
+                `${translationsCommonFunctionsAttributesPrefix}.${currentId}`,
+              )} ${iconItemCommon}`;
+            } else {
+              currentValue = `${translationsItemCoreGet(user, 'cmdItemRename')}: "${currentValue}"`;
+            }
+            if (currentId === translationsPrimaryStateId)
+              currentValue += ` (${translationsItemMenuGet(user, 'state')})`;
+            let subSubMenuIndex = 0,
+              subMenuItem = {
+                index: `${currentIndex}.${subMenuIndex}`,
+                name: `${currentValue}`,
+                text: ` [${currentTranslationId}]`,
+                group: 'cmdItemRename',
+                icon: iconItemEdit,
+                submenu: new Array(),
+              };
+            const currentCommandOptions = {dataType: dataTypeTranslation, translationId: currentTranslationId};
+            subSubMenuIndex = subMenuItem.submenu.push(
+              menuMenuItemGenerateRenameItem(
+                user,
+                `${currentIndex}.${subMenuIndex}`,
+                subSubMenuIndex,
+                currentCommandOptions,
+              ),
+            );
+            subSubMenuIndex = subMenuItem.submenu.push({
+              index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+              name: `${translationsItemCoreGet(user, cmdUseCommonTranslation)}`,
+              icon: iconItemCommon,
+              command: cmdUseCommonTranslation,
+              options: {dataType: dataTypeTranslation, translationId: currentTranslationId},
+              submenu: [],
+            });
+            subMenuItem.submenu.push(
+              menuMenuItemGenerateDeleteItem(
+                user,
+                `${currentIndex}.${subMenuIndex}`,
+                subSubMenuIndex,
+                currentCommandOptions,
+              ),
+            );
+            subMenuIndex = subMenu.push(subMenuItem);
           });
-          subMenuItem.submenu.push(
-            menuMenuItemGenerateDeleteItem(
-              user,
-              `${currentIndex}.${subMenuIndex}`,
-              subSubMenuIndex,
-              currentCommandOptions,
-            ),
-          );
-          subMenuIndex = subMenu.push(subMenuItem);
-        });
+        }
         break;
       }
 
@@ -6378,13 +6392,24 @@ function enumerationsItemName(user, enumerationType, enumerationItemId, enumerat
     enumerationsRereadItemName(user, enumerationType, enumerationItemId);
   }
   let result = 'No translation';
-  if (enumerationItem.name || enumerationItem.isExternal) {
-    result = translationsItemGet(user, currentItemTranslationId);
+  if (enumerationItem.nameTranslationId && enumerationItem['isExternal'] !== true) {
+    result = translationsItemGet(user, enumerationItem.nameTranslationId);
+  } else if (enumerationItem.name || enumerationItem.isExternal === true) {
+    if (enumerationType === dataTypeFunction && typeof enumerationItem['extensionId'] === 'string') {
+      const extensionId = enumerationItem['extensionId'];
+      result = translationsItemGet(user, translationsGetExtensionsItemId(extensionId, extensionId), extensionId);
+    } else {
+      result = translationsItemGet(user, currentItemTranslationId);
+    }
   } else if (enumerationType === dataTypePrimaryEnums) {
     const enumerationObjectId = `${prefixEnums}.${enumerationItemId}`;
     result = `${stringCapitalize(translationsGetObjectName(user, enumerationObjectId))} [${enumerationItemId}]`;
-  } else if (enumerationItem.nameTranslationId) {
-    result = translationsItemGet(user, enumerationItem.nameTranslationId);
+  } else if (enumerationType === dataTypeAssociatedExtensions) {
+    result = translationsItemGet(
+      user,
+      translationsGetExtensionsItemId(enumerationItemId, enumerationItemId),
+      enumerationItemId,
+    );
   }
   if (
     [dataTypeFunction, dataTypeDestination].includes(enumerationType) &&
@@ -7214,9 +7239,9 @@ function enumerationsMenuItemDetailsDevice(user, menuItemToProcess) {
             externalAttributes?.[attributeId]?.['valueText'].length > 0
           ) {
             const attributeTextValues = externalAttributes[attributeId]['valueText'];
-            attributeTextValues.forEach((attributeTextValue) => {
-              deviceAttributesArray.push(attributeTextValue);
-            });
+            if (Array.isArray(attributeTextValues) && attributeTextValues.length > 0) {
+              deviceAttributesArray.push(...menuExtensionsAssignTextAttributeToMenuItem(user, attributeTextValues));
+            }
           } else {
             deviceAttributesArray.push({
               label: translationsGetObjectName(user, stateObject, currentFunctionId),
@@ -12888,7 +12913,7 @@ function menuMenuItemGenerateRootMenu(user, topRootMenuItemId) {
       if (currentItem.isExternal) {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId));
         menuItem.submenu = currentItem.state;
-        menuItem.extensionId = extensionsGetIdByFunctionId(itemId);
+        menuItem.extensionId = currentItem['executionId'];
       } else {
         menuItem.name = stringCapitalize(translationsGetEnumName(user, enumerationType, itemId, nameDeclinationKey));
         menuItem.submenu = menuMenuGenerateFirstLevelAfterRoot;
@@ -13848,7 +13873,53 @@ function menuMenuItemGenerateEditTime(user, upperItemIndex, itemIndex, itemName,
   return menuItem;
 }
 
-function menuAssignInternalMenuItems(user, menuItemToProcess) {
+/**
+ * This functions converts external menu item (from `extensions` with type `attributes`)
+ * text values to internal structure.
+ * @param {object} user - The user object.
+ * @param {object[]} textValues - The array of objects like {label: '...', value: ..., convert: '...'}
+ * @returns {object[]} The array of text values
+ */
+function menuExtensionsAssignTextAttributeToMenuItem(user, textValues) {
+  const textValuesArray = Array.isArray(textValues) ? objectDeepClone(textValues) : [];
+  textValuesArray.forEach((attributeTextValue) => {
+    if (typeof attributeTextValue?.['convert'] === 'string') {
+      switch (attributeTextValue['convert']) {
+        case 'weekdays': {
+          if (Array.isArray(attributeTextValue['value']) && attributeTextValue['value'].length === 7) {
+            const weekdays = attributeTextValue['value']
+              .map((day, index) => (day === 0 ? 0 : index + 1))
+              .filter((day) => day > 0);
+            attributeTextValue['value'] = triggerTimeRangeShortDescription(
+              user,
+              {[triggersTimeRangeDaysOfWeek]: weekdays},
+              true,
+            );
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    }
+    if (typeof attributeTextValue?.['value'] === 'boolean') {
+      attributeTextValue['value'] = attributeTextValue['value']
+        ? configOptions.getOption(cfgDefaultIconOn, user)
+        : configOptions.getOption(cfgDefaultIconOff, user);
+    }
+  });
+  return textValuesArray;
+}
+
+/**
+ * This functions converts external menu item  (from `extensions` with type `attributes`)
+ * to internal menu structure for menu item.
+ * @param {object} user - The user object.
+ * @param {object} menuItemToProcess - The menu item, which will hold newly generated submenu.
+ * @returns {object} The menu item object
+ */
+function menuExtensionsAssignInternalMenuItemsToMenuItem(user, menuItemToProcess) {
   const prepareInternalOptions = (options) => {
     const optionsNew = objectDeepClone(options);
     if (typeof optionsNew['valueOptions']?.['externalValueId'] === 'string') {
@@ -13861,13 +13932,13 @@ function menuAssignInternalMenuItems(user, menuItemToProcess) {
       return optionsNew;
     }
   };
-  const options = menuItemToProcess.options || {};
-  let subMenu;
-  if (menuItemToProcess.type === 'internalMenuItem') {
+  const options = menuItemToProcess['options'] || {};
+  let subMenuItem;
+  if (menuItemToProcess['type'] === 'internalMenuItem') {
     const optionsPrepared = prepareInternalOptions(options),
-      upperItemIndex = menuItemToProcess.index.split('.').slice(0, -1).join('.') || '',
-      itemIndex = menuItemToProcess.index.split('.').pop();
-    switch (menuItemToProcess.command) {
+      upperItemIndex = menuItemToProcess['index'].split('.').slice(0, -1).join('.') || '',
+      itemIndex = menuItemToProcess['index'].split('.').pop();
+    switch (menuItemToProcess['command']) {
       case 'editValue': {
         switch (menuItemToProcess['options']?.['valueOptions']?.['subType']) {
           case 'time': {
@@ -13877,12 +13948,12 @@ function menuAssignInternalMenuItems(user, menuItemToProcess) {
             } else if (optionsPrepared['valueOptions']?.['type'] === 'number') {
               optionsPrepared['timeMode'] = timeInternalModeInterval;
             }
-            subMenu = menuMenuItemGenerateEditTime(
+            subMenuItem = menuMenuItemGenerateEditTime(
               user,
               upperItemIndex,
               itemIndex,
-              menuItemToProcess.name,
-              menuItemToProcess.group,
+              menuItemToProcess['name'],
+              menuItemToProcess['group'],
               optionsPrepared,
             );
             break;
@@ -13895,25 +13966,24 @@ function menuAssignInternalMenuItems(user, menuItemToProcess) {
             optionsPrepared['valueOptions']['convertBeforeApply'] = (weekdays) =>
               new Array(7).fill(0).map((_, index) => (weekdays.includes(index + 1) ? 1 : 0));
             optionsPrepared['valueOptions']['valuesToValue'] = true;
-            weekdays.map((day) => day - 1);
-            subMenu = menuMenuItemGenerateEditWeekDays(
+            subMenuItem = menuMenuItemGenerateEditWeekDays(
               user,
               upperItemIndex,
               itemIndex,
-              menuItemToProcess.name,
-              menuItemToProcess.group,
+              menuItemToProcess['name'],
+              menuItemToProcess['group'],
               weekdays,
               optionsPrepared,
             );
             break;
           }
           default: {
-            subMenu = menuMenuItemGenerateEditItemBasedOnValueType(
+            subMenuItem = menuMenuItemGenerateEditItemBasedOnValueType(
               user,
               upperItemIndex,
               itemIndex,
-              menuItemToProcess.name,
-              menuItemToProcess.group,
+              menuItemToProcess['name'],
+              menuItemToProcess['group'],
               optionsPrepared,
             );
             break;
@@ -13922,44 +13992,51 @@ function menuAssignInternalMenuItems(user, menuItemToProcess) {
         break;
       }
       case 'deleteItem': {
-        subMenu = menuMenuItemGenerateDeleteItem(user, upperItemIndex, itemIndex, optionsPrepared);
+        subMenuItem = menuMenuItemGenerateDeleteItem(user, upperItemIndex, itemIndex, optionsPrepared);
         break;
       }
       case 'editStateValue': {
-        subMenu = menuMenuItemGenerateEditItemStateValue(
+        subMenuItem = menuMenuItemGenerateEditItemStateValue(
           user,
           upperItemIndex,
           itemIndex,
-          menuItemToProcess.name,
-          menuItemToProcess.group,
-          {...options, replaceCommand: cmdNoOperation},
+          menuItemToProcess['name'],
+          menuItemToProcess['group'],
+          {...options},
         );
         break;
       }
       case 'setStateValue': {
-        subMenu = {
-          index: menuItemToProcess.index,
-          name: `${menuItemToProcess.name} [${menuItemToProcess.options?.value}]`,
-          icon: menuItemToProcess.icon,
-          command: cmdNoOperation,
+        const valueCurrent = menuItemToProcess['options']?.valueText || menuItemToProcess['options']?.value;
+        subMenuItem = {
+          index: menuItemToProcess['index'],
+          name: `${menuItemToProcess['name']} [${valueCurrent || ''}]`,
+          icon: menuItemToProcess['icon'],
+          command: cmdSetState,
           options: options,
-          group: menuItemToProcess.group,
+          group: menuItemToProcess['group'],
           submenu: [],
         };
         break;
       }
     }
-    subMenu.extensionId = menuItemToProcess.extensionId;
+    subMenuItem['extensionId'] = menuItemToProcess['extensionId'];
   } else {
-    subMenu = {...menuItemToProcess, options: undefined, submenu: undefined};
-    subMenu.options = objectDeepClone(options);
-    if (Array.isArray(menuItemToProcess.submenu)) {
-      subMenu.submenu = menuItemToProcess.submenu.map((subMenuItem) => menuAssignInternalMenuItems(user, subMenuItem));
+    subMenuItem = {...menuItemToProcess, options: undefined, submenu: undefined};
+    subMenuItem['options'] = objectDeepClone(options);
+    if (Array.isArray(menuItemToProcess['textValues'])) {
+      subMenuItem['text'] = menuMenuItemDetailsPrintFixedLengthLines(user,
+        menuExtensionsAssignTextAttributeToMenuItem(user, menuItemToProcess['textValues']));
+    }
+    if (Array.isArray(menuItemToProcess['submenu'])) {
+      subMenuItem['submenu'] = menuItemToProcess['submenu'].map((subMenuItem) =>
+        menuExtensionsAssignInternalMenuItemsToMenuItem(user, subMenuItem),
+      );
     } else {
-      subMenu.submenu = menuItemToProcess.submenu;
+      subMenuItem['submenu'] = menuItemToProcess['submenu'];
     }
   }
-  return subMenu || {};
+  return subMenuItem || {};
 }
 
 /**
@@ -14537,7 +14614,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
                   );
                   cachedValueSet(user, cachedInterimValue, interimValues);
                 }
-                menuItemToProcess = menuAssignInternalMenuItems(user, menuItemToProcess);
+                menuItemToProcess = menuExtensionsAssignInternalMenuItemsToMenuItem(user, menuItemToProcess);
               }
               menuItemToProcess.options = {...menuItemToProcess.options, generatedBy: subMenu};
               menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
@@ -18995,8 +19072,10 @@ function telegramQueueProcess(user, messageId) {
          */
         currentPos = userMessagesQueue.length > 2 ? userMessagesQueue.length - 1 : 0,
         telegramObjects;
-      // will send a last message, to prevent spamming the telegram with flipping some states in ioBroker.
-      // In case of user input - we will not lost any message
+      /**
+       * will send a last message, to prevent spamming the telegram with flipping some states in ioBroker.
+       * In case of user input - we will not lost any message
+       **/
       do {
         telegramObjects = objectDeepClone(userMessagesQueue[currentPos]);
         logs(`DebugMessages: prepare telegramObjects = ${jsonStringify(telegramObjects, 1)}`, _l);
@@ -19493,7 +19572,6 @@ async function autoTelegramMenuInstanceInit() {
   configOptions.loadOptions(); // 1
   configOptions.subscribeOnOptions();
 
-
   /** extensions Init */
   extensionsInit();
   /** enumerationItems Init */
@@ -19502,7 +19580,7 @@ async function autoTelegramMenuInstanceInit() {
     enumerationsInit(itemType);
     enumerationsSave(itemType);
   });
-   /** extensions Refresh */
+  /** extensions Refresh */
   extensionsRefresh();
 
   rolesInMenu.refresh();

@@ -16,7 +16,7 @@ function autoTelegramMenuExtensionAccuWeather() {
     extensionMenuId = 'menuAccuWeatherForecast',
     extensionRepository = {
       url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
-      branch: 'PeterVoronov/issue4',
+      branch: 'v0.9.5-dev',
       baseFolder: `/extensions/${extensionId}`,
       scriptName: 'ATM Extension AccuWeather.js',
       localesFolder: `/extensions/${extensionId}/locales`,
