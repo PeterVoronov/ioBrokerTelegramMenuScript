@@ -61,6 +61,9 @@ function autoTelegramMenuExtensionZigBee() {
       ],
     },
     _stateSuffixPairingMode = '.info.pairingMode',
+    adapterPrefix = 'zigbee',
+    adapterCommandPairingStart = 'letsPairing',
+    adapterResponsePairingStarted = 'Start pairing!',
     stateSuffixInfoConnection = '.info.connection',
     stateSuffixPairingMessage = '.info.pairingMessage',
     stateSuffixPairingCountdown = '.info.pairingCountdown',
@@ -125,8 +128,8 @@ function autoTelegramMenuExtensionZigBee() {
       if (typeof index !== 'number') {
         index = 0;
         while (
-          existsState(`${extensionId}.${index}.info.connection`) === true &&
-          getState(`${extensionId}.${index}${stateSuffixInfoConnection}`).val === true
+          existsState(`${adapterPrefix}.${index}.info.connection`) === true &&
+          getState(`${adapterPrefix}.${index}${stateSuffixInfoConnection}`).val === true
         ) {
           data.submenu.push({
             name: `${translations['ZigBee']}.${index}`,
@@ -166,21 +169,22 @@ function autoTelegramMenuExtensionZigBee() {
   onMessage(`zigbeeManageLetsPair`, ({user, data, translations}, callback) => {
     if (typeof data === 'object' && data?.['extensionId'] === extensionId) {
       const index = data.index,
-        statePairingCountdown = `${extensionId}.${index}${stateSuffixPairingCountdown}`,
-        statePairingMessage = `${extensionId}.${index}${stateSuffixPairingMessage}`,
-        stateInfoConnection = `${extensionId}.${index}${stateSuffixInfoConnection}`;
+        adapterId = `${adapterPrefix}.${index}`,
+        statePairingCountdown = `${adapterId}${stateSuffixPairingCountdown}`,
+        statePairingMessage = `${adapterId}${stateSuffixPairingMessage}`,
+        stateInfoConnection = `${adapterId}${stateSuffixInfoConnection}`;
       if (
         typeof index === 'number' &&
         existsState(stateInfoConnection) === true &&
         getState(stateInfoConnection).val === true
       ) {
         if (getState(statePairingCountdown).val === 0) {
-          sendTo('zigbee.0', 'letsPairing', {}, (result, ..._other) => {
-            if (result === 'Start pairing!') {
+          sendTo(adapterId, adapterCommandPairingStart, {}, (result, ..._other) => {
+            if (result === adapterResponsePairingStarted) {
               unsubscribe(statePairingMessage);
               unsubscribe(statePairingCountdown);
               on({id: statePairingCountdown, change: 'ne'}, (object) => {
-                if (object.state.val === 0 && object.oldState.val === 1) {
+                if (object.state.val === 0 && object.oldState.val > 0) {
                   sendAlertToTelegram(user, extensionId, `${translations['PairingFinished']}`);
                   console.log(`Pairing finished!`);
                   unsubscribe(statePairingMessage);
