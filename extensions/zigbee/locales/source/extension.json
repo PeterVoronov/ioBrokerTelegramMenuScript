@@ -5,7 +5,7 @@
         "zigbee": "ZigBee",
         "ZigBee": "ZigBee adapter",
         "PairDevices": "Pair devices",
-        "PairingCantBeStarted": "",
+        "PairingCantBeStarted": "Pairing can not be started",
         "PairingStarted": "Pairing started",
         "PairingFinished": "Pairing finished",
         "PairingIsAlreadyStarted": "Pairing is already started",
