@@ -2,15 +2,15 @@
   "extensions": {
     "zigbee": {
       "translations": {
-        "zigbee": "",
-        "ZigBee": "",
-        "PairDevices": "",
-        "PairingCantBeStarted": "",
-        "PairingStarted": "",
-        "PairingFinished": "",
-        "PairingIsAlreadyStarted": "",
-        "WrongCommandOptions": "",
-        "DeviceIsNotConnected": ""
+        "zigbee": "ZigBee",
+        "ZigBee": "Зигбі адаптер",
+        "PairDevices": "Розпочати спаровування",
+        "PairingCantBeStarted": "Неможливо запустити спаровування",
+        "PairingStarted": "Спаровування розпочалося",
+        "PairingFinished": "Спаровування завершено",
+        "PairingIsAlreadyStarted": "Спаровування вже запущено",
+        "WrongCommandOptions": "Невірні параметри команди",
+        "DeviceIsNotConnected": "Пристрій не під'єднано"
       }
     }
   }

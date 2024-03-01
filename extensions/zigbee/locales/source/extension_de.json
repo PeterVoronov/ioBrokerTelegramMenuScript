@@ -2,15 +2,15 @@
   "extensions": {
     "zigbee": {
       "translations": {
-        "zigbee": "",
-        "ZigBee": "",
-        "PairDevices": "",
-        "PairingCantBeStarted": "",
-        "PairingStarted": "",
-        "PairingFinished": "",
-        "PairingIsAlreadyStarted": "",
-        "WrongCommandOptions": "",
-        "DeviceIsNotConnected": ""
+        "zigbee": "ZigBee",
+        "ZigBee": "ZigBee-Adapter",
+        "PairDevices": "Geräte verbinden",
+        "PairingCantBeStarted": "Paarung kann nicht gestartet werden",
+        "PairingStarted": "Paarung gestartet",
+        "PairingFinished": "Paarung abgeschlossen",
+        "PairingIsAlreadyStarted": "Paarung ist bereits gestartet",
+        "WrongCommandOptions": "Falsche Kommandooptionen",
+        "DeviceIsNotConnected": "Gerät nicht verbunden"
       }
     }
   }
