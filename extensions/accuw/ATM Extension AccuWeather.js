@@ -1,8 +1,28 @@
+/**
+ * Script Name: ATM Extension AccuWeather
+ * Version: 1.0
+ * Created Date: 2022-12-15
+ * Last Updated: 2024-03-01
+ * Author: Peter Voronov
+ * Type: Extension for Auto Telegram Menu script.
+ * Extension type: function
+ * Description: This script is an extension for Auto Telegram Menu script. It allows to get weather forecast from
+ * AccuWeather as appropriate submenu of the "main" script.
+ * Prerequisites:
+ * - Auto Telegram Menu script should be installed.
+ * - ioBroker AccuWeather adapter should be installed and configured.
+ * If all this is done and extensions is enabled and configured under appropriate menu of "main" script, then you can
+ * use this extension to get weather forecast from AccuWeather.
+ **/
+
 /* global autoTelegramMenuExtensionsInitCommand, autoTelegramMenuExtensionsRegisterCommand */
 /* global autoTelegramMenuExtensionsGetCachedStateCommand, autoTelegramMenuExtensionsSetCachedStateCommand */
 /* global  autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
 /* global autoTelegramMenuExtensionsSendAlertToTelegram */
 
+/**
+ * This function is used to hide equal names of sub functions from other scripts.
+ */
 function autoTelegramMenuExtensionAccuWeather() {
   const extensionsInit = autoTelegramMenuExtensionsInitCommand
       ? `${autoTelegramMenuExtensionsInitCommand}`
@@ -21,47 +41,58 @@ function autoTelegramMenuExtensionAccuWeather() {
       scriptName: 'ATM Extension AccuWeather.js',
       localesFolder: `/extensions/${extensionId}/locales`,
     },
-    extensionTranslationsKeys = [
-      `${extensionId}`,
-      'WeatherForecast',
-      'ForecastDetailed',
-      'ForecastHourly',
-      'ForecastTomorrow',
-      'ForecastLong',
-      'Day',
-      'Night',
-      'Wind',
-      'metersPerSecondShort',
-      'windGust',
-      'windNorth',
-      'windNorthEast',
-      'windEast',
-      'windSouthEast',
-      'windSouth',
-      'windSouthWest',
-      'windWest',
-      'windNorthWest',
-      'Precipitations',
-      'NoPrecipitation',
-      'millimetersShort',
-      'PossiblePrecipitationHours',
-      'thunderstormProbability',
-      'total',
-      'rain',
-      'snow',
-      'ice',
-      'withProbability',
-      'Temperature',
-      'from',
-      'to',
-      'upTo',
-      'RealFeel',
-      'inShade',
-      'RelativeHumidity',
-      'dewPoint',
-      'pressure',
-      'mmHg',
-    ];
+    extensionInfo = {
+      id: extensionId,
+      type: extensionType,
+      nameTranslationId: 'WeatherForecast',
+      icon: '☂️',
+      options: {
+        state: extensionMenuId,
+        repository: extensionRepository,
+      },
+      scriptName: scriptName,
+      translationsKeys: [
+        `${extensionId}`,
+        'WeatherForecast',
+        'ForecastDetailed',
+        'ForecastHourly',
+        'ForecastTomorrow',
+        'ForecastLong',
+        'Day',
+        'Night',
+        'Wind',
+        'metersPerSecondShort',
+        'windGust',
+        'windNorth',
+        'windNorthEast',
+        'windEast',
+        'windSouthEast',
+        'windSouth',
+        'windSouthWest',
+        'windWest',
+        'windNorthWest',
+        'Precipitations',
+        'NoPrecipitation',
+        'millimetersShort',
+        'PossiblePrecipitationHours',
+        'thunderstormProbability',
+        'total',
+        'rain',
+        'snow',
+        'ice',
+        'withProbability',
+        'Temperature',
+        'from',
+        'to',
+        'upTo',
+        'RealFeel',
+        'inShade',
+        'RelativeHumidity',
+        'dewPoint',
+        'pressure',
+        'mmHg',
+      ],
+    };
 
   const _autoTelegramMenuExtensionsGetCachedState = autoTelegramMenuExtensionsGetCachedStateCommand
       ? `${autoTelegramMenuExtensionsGetCachedStateCommand}`
@@ -70,21 +101,15 @@ function autoTelegramMenuExtensionAccuWeather() {
       ? `${autoTelegramMenuExtensionsSetCachedStateCommand}`
       : 'autoTelegramMenuExtensionsSetCachedState';
 
+  /**
+   * This function is used to send to "main" Auto Telegram Menu script all information about the extension.
+   * @param {string=} messageId - message id to which the result will be sent
+   * @param {number=} timeout - timeout for the message.
+   **/
   function extensionInit(messageId, timeout) {
     messageTo(
       messageId === undefined ? extensionsRegister : messageId,
-      {
-        id: extensionId,
-        type: extensionType,
-        nameTranslationId: 'WeatherForecast',
-        icon: '☂️',
-        options: {
-          state: extensionMenuId,
-          repository: extensionRepository,
-        },
-        scriptName: scriptName,
-        translationsKeys: extensionTranslationsKeys,
-      },
+      extensionInfo,
       {timeout: timeout === undefined ? extensionsTimeout : timeout},
       (result) => {
         if (!result.success) {
@@ -94,11 +119,17 @@ function autoTelegramMenuExtensionAccuWeather() {
     );
   }
 
+  /**
+   * Register the reaction on the extension init message from "main" script.
+   **/
   onMessage(extensionsInit, ({messageId, timeout}, callback) => {
     extensionInit(messageId, timeout);
     callback({success: true});
   });
 
+  /**
+   * @const accuWeatherIcons - AccuWeather icons.
+   */
   const accuWeatherIcons = {
     1: {
       icon: '☀️',
@@ -222,14 +253,30 @@ function autoTelegramMenuExtensionAccuWeather() {
     },
   };
 
+  /**
+   * This function is used to convert speed from km/h to m/s.
+   * @param {number} inKmH - speed in km/h.
+   * @returns {number} The speed in m/s.
+   */
   function convertSpeed(inKmH) {
     return Math.round((inKmH * 10) / 3.6) / 10;
   }
 
+  /**
+   * This function is used to convert pressure from mb to mmHg.
+   * @param {number} inMB - pressure in mb.
+   * @returns {number} The pressure in mmHg.
+   */
   function convertPressure(inMB) {
     return Math.round(inMB * 7.500621) / 10;
   }
 
+  /**
+   * This function is used to convert wind direction from degrees to text.
+   * @param {number} degrees - wind direction in degrees.
+   * @param {object} translations - translations object.
+   * @returns {string} The wind direction in text.
+   **/
   function convertDirection(degrees, translations) {
     if (degrees >= 338 || degrees <= 22) {
       return `⇓(${translations['windNorth']})`;
@@ -250,6 +297,12 @@ function autoTelegramMenuExtensionAccuWeather() {
     }
   }
 
+  /**
+   * This function is used to get forecast date in text format.
+   * @param {Date} inputDate - date to convert.
+   * @param {string} languageId - language id.
+   * @returns {string} The forecast date in text format.
+   **/
   function getForecastDate(inputDate, languageId) {
     return inputDate.toLocaleDateString(languageId, {
       weekday: 'short',
@@ -259,6 +312,12 @@ function autoTelegramMenuExtensionAccuWeather() {
     });
   }
 
+  /**
+   * This function is used to get forecast time in text format.
+   * @param {Date} inputDate - date to convert.
+   * @param {string} languageId - language id.
+   * @returns {string} The forecast time in text format.
+   **/
   function getForecastTime(inputDate, languageId) {
     return inputDate.toLocaleTimeString(languageId, {
       hour: '2-digit',
@@ -266,6 +325,12 @@ function autoTelegramMenuExtensionAccuWeather() {
     });
   }
 
+  /**
+   * This function is used to get detailed forecast for the day.
+   * @param {number} day - day number.
+   * @param {object} translations - translations object.
+   * @returns {string} The detailed forecast for the day.
+   **/
   function getDetailedForecast(day, translations) {
     const currentDate = new Date(getState(`accuweather.0.Daily.Day${day}.Date`).val),
       amountPrecipitation = getState(`accuweather.0.Summary.TotalLiquidVolume_d${day}`).val,
@@ -336,6 +401,12 @@ function autoTelegramMenuExtensionAccuWeather() {
     return text;
   }
 
+  /**
+   * This function is used to get hourly forecast for the hour.
+   * @param {number} hour - hour number.
+   * @param {object} translations - translations object.
+   * @returns {string} The hourly forecast for the hour.
+   **/
   function getHourlyForecast(hour, translations) {
     const currentDate = new Date(getState(`accuweather.0.Hourly.h${hour}.DateTime`).val),
       degrees = getObject(`accuweather.0.Hourly.h${hour}.Temperature`).common.unit,
@@ -378,6 +449,11 @@ function autoTelegramMenuExtensionAccuWeather() {
     return text;
   }
 
+  /**
+   * This function is used to get possible precipitation hours.
+   * @param {object} translations - translations object.
+   * @returns {string} The possible precipitation hours.
+   **/
   function possiblePrecipitationHours(translations) {
     let precipitation = '';
     let previousPrecipitationHour;
@@ -409,6 +485,11 @@ function autoTelegramMenuExtensionAccuWeather() {
     return precipitation;
   }
 
+  /**
+   * This function is used to get today's forecast.
+   * @param {object} translations - translations object.
+   * @returns {string} The today's forecast.
+   **/
   function getTodaysForecast(translations) {
     const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val),
       hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val,
@@ -443,6 +524,9 @@ function autoTelegramMenuExtensionAccuWeather() {
     return text;
   }
 
+  /**
+   * Register the reaction on the menu draw request message from "main" script.
+   **/
   onMessage(extensionMenuId, ({user: _user, data, translations}, callback) => {
     if (typeof data === 'object' && data.hasOwnProperty('submenu')) {
       switch (data.id) {

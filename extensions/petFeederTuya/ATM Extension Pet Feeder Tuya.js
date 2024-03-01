@@ -2,7 +2,7 @@
  * Script Name: ATM Extension Pet Feeder Tuya
  * Version: 1.0
  * Created Date: 2024-02-19
- * Last Updated: 2024-02-29
+ * Last Updated: 2024-03-01
  * Author: Peter Voronov
  * Type: Extension for Auto Telegram Menu script.
  * Extension type: `attributes`.
@@ -32,16 +32,6 @@
 /* global  autoTelegramMenuExtensionsSendFile, autoTelegramMenuExtensionsSendImage */
 /* global autoTelegramMenuExtensionsSendAlertToTelegram */
 
-// @ts-ignore
-if(!Object.hasOwn(Function.prototype, 'toJSON')) {
-  Object.defineProperty(Function.prototype, 'toJSON', { // NOSONAR
-    // eslint-disable-next-line space-before-function-paren
-    value: function () {
-      return `function ${this.name}`;
-    },
-  });
-}
-
 /**
  * This function is used to hide equal names of sub functions from other scripts.
  */
@@ -54,7 +44,6 @@ function autoTelegramMenuExtensionPetFeeder() {
       : 'autoTelegramMenuExtensionsRegister',
     extensionsTimeout = 500,
     extensionId = 'petFeederTuya',
-    extensionType = 'attributes',
     extensionRepository = {
       url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
       branch: 'v0.9.5-dev',
@@ -62,21 +51,6 @@ function autoTelegramMenuExtensionPetFeeder() {
       scriptName: 'ATM Extension Pet Feeder Tuya.js',
       localesFolder: `/extensions/${extensionId}/locales`,
     },
-    extensionTranslationsKeys = [
-      `${extensionId}`,
-      'schedule',
-      'enabled',
-      'time',
-      'weekdays',
-      'portion',
-      'delete',
-      'add',
-      'save',
-      'manualFeed',
-      'manualFeedCurrent',
-      'manualFeedCustom',
-    ],
-    extensionIcon = '🐈',
     extensionAttributes = {
       'schedule': {
         asButton: true,
@@ -86,6 +60,30 @@ function autoTelegramMenuExtensionPetFeeder() {
         asButton: true,
         asAttribute: false,
       },
+    },
+    extensionInfo ={
+      id: extensionId,
+      type: 'attributes',
+      icon: '🐈',
+      options: {
+        attributes: extensionAttributes,
+        repository: extensionRepository,
+      },
+      scriptName: scriptName,
+      translationsKeys: [
+        `${extensionId}`,
+        'schedule',
+        'enabled',
+        'time',
+        'weekdays',
+        'portion',
+        'delete',
+        'add',
+        'save',
+        'manualFeed',
+        'manualFeedCurrent',
+        'manualFeedCustom',
+      ],
     },
     scheduleTemplate = {
       enabled: false,
@@ -106,20 +104,10 @@ function autoTelegramMenuExtensionPetFeeder() {
    * @param {string=} messageId - message id to which the result will be sent
    * @param {number=} timeout - timeout for the message.
    */
-  function extensionPetFeederInit(messageId = extensionsRegister, timeout = extensionsTimeout) {
+  function extensionInit(messageId = extensionsRegister, timeout = extensionsTimeout) {
     messageTo(
       messageId,
-      {
-        id: extensionId,
-        type: extensionType,
-        icon: extensionIcon,
-        options: {
-          attributes: extensionAttributes,
-          repository: extensionRepository,
-        },
-        scriptName: scriptName,
-        translationsKeys: extensionTranslationsKeys,
-      },
+      extensionInfo,
       {timeout: timeout},
       (result) => {
         if (!result.success) {
@@ -259,7 +247,7 @@ function autoTelegramMenuExtensionPetFeeder() {
    * Register the reaction on the extension init message from "main" script.
    **/
   onMessage(extensionsInit, ({messageId, timeout}, callback) => {
-    extensionPetFeederInit(messageId, timeout);
+    extensionInit(messageId, timeout);
     callback({success: true});
   });
 
@@ -572,7 +560,7 @@ function autoTelegramMenuExtensionPetFeeder() {
     callback(data);
   });
 
-  extensionPetFeederInit();
+  extensionInit();
 }
 
 console.log(`Script is ${scriptName} on instance ${instance}`);

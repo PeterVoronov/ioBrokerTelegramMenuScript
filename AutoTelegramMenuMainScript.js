@@ -14840,10 +14840,9 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
             );
           } else if (subMenuItem.hasOwnProperty('extensionCommandId')) {
             callbackData = commandOptionsCache.set(user, subIndexCurrent, subIndexCurrentShort, cmdExternalCommand, {
-              function: subMenuItem.extensionId,
-              item: subMenuItem.extensionCommandId,
+              ...subMenuItem.options,
+              command: subMenuItem.extensionCommandId,
               extensionId: subMenuItem.extensionId,
-              attribute: subMenuItem.externalCommandParams,
             });
           } else {
             callbackData = CommandOptionsCache.prepareIndex(
@@ -16829,25 +16828,25 @@ async function commandsUserInputProcess(user, userInputValue) {
       }
 
       case cmdExternalCommand: {
-        logs(`otherCommands.external:\n- currentCommand = ${jsonStringify(commandOptions)}`);
+        logs(`otherCommands.external:\n- commandOptions = ${jsonStringify(commandOptions)}`, _l);
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgErrorNoResponse'));
           errs(
-            `Error! No response from external command ${commandOptions.item} for function ${commandOptions.dataType}` +
-              ` with params ${commandOptions.attribute} in extension ${commandOptions.extensionId}!`,
+            `Error! No response from external command ${commandOptions.command} for function ${commandOptions.function}`
+             + ` with params ${jsonStringify(commandOptions)} in extension ${commandOptions.extensionId}!`,
           );
         }, configOptions.getOption(cfgExternalMenuTimeout) + 10);
         logs(
-          `External command ${commandOptions.item} for function ${commandOptions.function}, ` +
-            `with params ${commandOptions.attribute} in extension ${commandOptions.extensionId}.`,
+          `External command ${commandOptions.command} for function ${commandOptions.function}, ` +
+            `with params ${jsonStringify(commandOptions)} in extension ${commandOptions.extensionId}.`,
         );
         menuMenuDraw(user);
         messageTo(
-          commandOptions.item,
+          commandOptions.command,
           {
             user,
-            data: commandOptions.attribute,
+            data: commandOptions,
             translations: translationsGetForExtension(user, commandOptions.extensionId),
           },
           {timeout: configOptions.getOption(cfgExternalMenuTimeout)},
