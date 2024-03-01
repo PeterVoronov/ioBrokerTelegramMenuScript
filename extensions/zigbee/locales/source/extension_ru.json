@@ -1,0 +1,17 @@
+{
+  "extensions": {
+    "zigbee": {
+      "translations": {
+        "zigbee": "",
+        "ZigBee": "",
+        "PairDevices": "",
+        "PairingCantBeStarted": "",
+        "PairingStarted": "",
+        "PairingFinished": "",
+        "PairingIsAlreadyStarted": "",
+        "WrongCommandOptions": "",
+        "DeviceIsNotConnected": ""
+      }
+    }
+  }
+}
