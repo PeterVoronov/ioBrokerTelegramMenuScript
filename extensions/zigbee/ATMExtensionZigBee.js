@@ -35,7 +35,7 @@ function autoTelegramMenuExtensionZigBee() {
       url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
       branch: 'v0.9.5-dev',
       baseFolder: `/extensions/${extensionId}`,
-      scriptName: 'ATM Extension ZigBee.js',
+      scriptName: 'ATMExtensionZigBee.js',
       localesFolder: `/extensions/${extensionId}/locales`,
     },
     extensionInfo = {

@@ -38,7 +38,7 @@ function autoTelegramMenuExtensionAccuWeather() {
       url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
       branch: 'v0.9.5-dev',
       baseFolder: `/extensions/${extensionId}`,
-      scriptName: 'ATM Extension AccuWeather.js',
+      scriptName: 'ATMExtensionAccuWeather.js',
       localesFolder: `/extensions/${extensionId}/locales`,
     },
     extensionInfo = {

@@ -48,7 +48,7 @@ function autoTelegramMenuExtensionPetFeeder() {
       url: 'https://github.com/PeterVoronov/ioBrokerTelegramMenuScript',
       branch: 'v0.9.5-dev',
       baseFolder: `/extensions/${extensionId}`,
-      scriptName: 'ATM Extension Pet Feeder Tuya.js',
+      scriptName: 'ATMExtensionPetFeederTuya.js',
       localesFolder: `/extensions/${extensionId}/locales`,
     },
     extensionAttributes = {
