@@ -1,0 +1,44 @@
+{
+  "type": "telegramMenuTranslation",
+  "language": "de",
+  "version": "1.0",
+  "translation": {
+    "extensions": {
+      "ioBrokerScheduler": {
+        "translations": {
+          "add": "extensions.ioBrokerScheduler.translations.add",
+          "associateWith": "extensions.ioBrokerScheduler.translations.associateWith",
+          "associated": "extensions.ioBrokerScheduler.translations.associated",
+          "associatedWith": "extensions.ioBrokerScheduler.translations.associatedWith",
+          "attribute": "extensions.ioBrokerScheduler.translations.attribute",
+          "browse": "extensions.ioBrokerScheduler.translations.browse",
+          "create": "extensions.ioBrokerScheduler.translations.create",
+          "delete": "extensions.ioBrokerScheduler.translations.delete",
+          "dissociate": "extensions.ioBrokerScheduler.translations.dissociate",
+          "enabled": "extensions.ioBrokerScheduler.translations.enabled",
+          "folder": "extensions.ioBrokerScheduler.translations.folder",
+          "high": "extensions.ioBrokerScheduler.translations.high",
+          "high-weekends": "extensions.ioBrokerScheduler.translations.high-weekends",
+          "humidity": "extensions.ioBrokerScheduler.translations.humidity",
+          "interval": "extensions.ioBrokerScheduler.translations.interval",
+          "intervalEnd": "extensions.ioBrokerScheduler.translations.intervalEnd",
+          "intervalSetTo": "extensions.ioBrokerScheduler.translations.intervalSetTo",
+          "intervalStart": "extensions.ioBrokerScheduler.translations.intervalStart",
+          "intervals": "extensions.ioBrokerScheduler.translations.intervals",
+          "ioBrokerScheduler": "extensions.ioBrokerScheduler.translations.ioBrokerScheduler",
+          "normal": "extensions.ioBrokerScheduler.translations.normal",
+          "onoff": "extensions.ioBrokerScheduler.translations.onoff",
+          "priority": "extensions.ioBrokerScheduler.translations.priority",
+          "save": "extensions.ioBrokerScheduler.translations.save",
+          "schedule": "extensions.ioBrokerScheduler.translations.schedule",
+          "schedules": "extensions.ioBrokerScheduler.translations.schedules",
+          "temperature": "extensions.ioBrokerScheduler.translations.temperature",
+          "time": "extensions.ioBrokerScheduler.translations.time",
+          "type": "extensions.ioBrokerScheduler.translations.type",
+          "value": "extensions.ioBrokerScheduler.translations.value",
+          "weekdays": "extensions.ioBrokerScheduler.translations.weekdays"
+        }
+      }
+    }
+  }
+}
