@@ -1,0 +1,39 @@
+{
+  "extensions": {
+    "ioBrokerScheduler": {
+      "translations": {
+        "ioBrokerScheduler": "Scheduler",
+        "schedules": "Schedules",
+        "schedule": "Schedule",
+        "onoff": "On/Off",
+        "temperature": "Temperature",
+        "humidity": "Humidity",
+        "enabled": "Enabled",
+        "time": "Time",
+        "weekdays": "Weekdays",
+        "browse": "Browse",
+        "delete": "Delete",
+        "add": "Add",
+        "save": "Save",
+        "priority": "Priority",
+        "interval": "Interval",
+        "normal": "normal",
+        "high": "high",
+        "high-weekends": "high (weekends)",
+        "intervalStart": "Start",
+        "intervalEnd": "End",
+        "intervalSetTo": "Set to",
+        "intervals": "Intervals",
+        "create": "Create",
+        "folder": "Folder",
+        "type": "Type",
+        "attribute": "Attribute",
+        "value": "Value",
+        "associated": "Associated",
+        "associateWith": "Associate with",
+        "associatedWith": "Associated with",
+        "dissociate": "Dissociate"
+      }
+    }
+  }
+}
