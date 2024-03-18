@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v3
       - id: crowdin-refresh
         name: Refresh extensions translations
-        uses: crowdin/github-action@1.5.1
+        uses: crowdin/github-action@v1
         with:
           upload_sources: false
           upload_translations: true
@@ -30,16 +30,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-      - id: transform
-        name: Transform and commit changes
-        uses: PetroSVoronov/action-prepare-locales@v2.0.2
-        with:
-          source_translations_pattern: 'extensions/*/locales/source/extension_(??).json'
-          transformed_translations_relative_path_and_pattern: '../locale_$language$.json'
-          git_user_name: github-actions
-          git_user_email: github-actions@github.com
-      - id: push
-        name: Push changes
-        if: steps.transform.outputs.is_commit_available == 'true'
-        run: |
-          git push
