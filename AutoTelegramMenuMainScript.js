@@ -1217,6 +1217,188 @@ class ConfigOptions {
         } else {
           return itemName;
         }
+      },
+      menuSubMenuLanguage = (user, menuItemToProcess) => {
+        let subMenu = new Array(),
+          subMenuIndex = 0;
+        const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+          {scope: optionScope, value: currentLanguage, item: cfgItem} = menuItemToProcess.options;
+        Object.keys(translationsList)
+          .sort() // NOSONAR
+          .forEach((languageId) => {
+            const subMenuItem = {
+              index: `${currentIndex}.${subMenuIndex}`,
+              name: `${languageId}`,
+              icon: currentLanguage === languageId ? configOptions.getOption(cfgDefaultIconOn) : '',
+              command: currentLanguage === languageId ? cmdNoOperation : '',
+              submenu: new Array(),
+            };
+            if (currentLanguage !== languageId) {
+              let subSubMenuIndex = 0;
+              const currentCommandOptions = {
+                dataType: dataTypeConfig,
+                item: cfgItem,
+                scope: optionScope,
+                value: languageId,
+              };
+              subSubMenuIndex = subMenuItem.submenu.push({
+                index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
+                name: `${translationsItemCoreGet(user, 'cmdItemSelect')}`,
+                icon: '',
+                command: cmdItemPress,
+                options: currentCommandOptions,
+                submenu: [],
+              });
+              subMenuItem.submenu.push(
+                menuMenuItemGenerateDeleteItem(
+                  user,
+                  `${currentIndex}.${subMenuIndex}`,
+                  subSubMenuIndex,
+                  currentCommandOptions,
+                ),
+              );
+            }
+            subMenuIndex = subMenu.push(subMenuItem);
+          });
+        if (optionScope === configOptionScopeGlobal) {
+          subMenuIndex = subMenu.push({
+            index: `${currentIndex}.${subMenuIndex}`,
+            name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
+            icon: iconItemPlus,
+            options: {item: cfgItem, scope: optionScope},
+            group: 'addNew',
+            submenu: (user, menuItemToProcess) => {
+              let subMenu = [],
+                subMenuIndex = 0;
+              const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+                {item: cfgItem, scope: optionScope} = menuItemToProcess.options;
+              if (cachedValueExists(user, cachedConfigNewLanguageId)) {
+                const newLanguageId = translationsValidateLanguageId(cachedValueGet(user, cachedConfigNewLanguageId));
+                if (newLanguageId?.length) {
+                  subMenu.push({
+                    index: `${currentIndex}.${subMenuIndex}`,
+                    name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${newLanguageId}'`,
+                    icon: iconItemApply,
+                    group: cmdItemsProcess,
+                    command: cmdItemsProcess,
+                    options: {
+                      dataType: dataTypeConfig,
+                      item: cfgItem,
+                      scope: optionScope,
+                      value: newLanguageId,
+                    },
+                    submenu: [],
+                  });
+                  cachedValueDelete(user, cachedConfigNewLanguageId);
+                } else {
+                  subMenu.push(
+                    menuMenuItemGenerateEditItem(
+                      user,
+                      currentIndex,
+                      subMenuIndex,
+                      `${translationsItemCoreGet(user, 'cmdFixId')} = '${cachedValueGet(
+                        user,
+                        cachedConfigNewLanguageId,
+                      )}'`,
+                      '',
+                      {dataType: dataTypeConfig, item: cfgItem, scope: optionScope},
+                    ),
+                  );
+                }
+              } else {
+                subMenu.push(
+                  menuMenuItemGenerateEditItem(
+                    user,
+                    currentIndex,
+                    subMenuIndex,
+                    translationsItemCoreGet(user, 'cmdSetId'),
+                    '',
+                    {dataType: dataTypeConfig, item: cfgItem, scope: optionScope},
+                  ),
+                );
+              }
+              return subMenu;
+            },
+          });
+        }
+        return subMenu;
+      },
+      menuSubMenuGraphsIntervals = (user, menuItemToProcess) => {
+        let subMenu = new Array(),
+          subMenuIndex = 0;
+        const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
+          currentAccessLevel = menuItemToProcess.accessLevel,
+          isCurrentAccessLevelAllowModify =
+            MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
+          isCurrentAccessLevelFull = MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
+          {item: cfgItem, scope: optionScope} = menuItemToProcess.options,
+          isThisLevelAllowModify =
+            optionScope === configOptionScopeGlobal ? isCurrentAccessLevelFull : isCurrentAccessLevelAllowModify,
+          currentIntervals = this.getOption(cfgItem, optionScope === configOptionScopeUser ? user : undefined);
+        const currentIntervalsMaxIndex = currentIntervals.length - 1;
+        currentIntervals.forEach(({id: graphsIntervalId, minutes: graphsIntervalMinutes}, graphsIntervalIndex) => {
+          const subMenuItem = {
+            index: `${currentIndex}.${subMenuIndex}`,
+            name: `[${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}]`,
+            text: `${graphsIntervalMinutes}`,
+            submenu: new Array(),
+          };
+          if (isThisLevelAllowModify) {
+            let subSubMenuIndex = 0;
+            const currentCommandOptions = {
+              dataType: dataTypeConfig,
+              item: cfgItem,
+              scope: optionScope,
+              index: graphsIntervalIndex,
+            };
+            [subMenuItem.submenu, subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(
+              user,
+              subMenuItem.submenu,
+              `${currentIndex}.${subMenuIndex}`,
+              subSubMenuIndex,
+              graphsIntervalIndex,
+              currentIntervalsMaxIndex,
+              currentCommandOptions,
+            );
+            subSubMenuIndex = subMenuItem.submenu.push(
+              menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {
+                dataType: dataTypeTranslation,
+                translationId: translationsItemGenerateTextId('TimeRange', graphsIntervalId),
+              }),
+            );
+            subMenuItem.submenu.push(
+              menuMenuItemGenerateDeleteItem(
+                user,
+                `${currentIndex}.${subMenuIndex}`,
+                subSubMenuIndex,
+                currentCommandOptions,
+              ),
+            );
+          }
+          subMenuIndex = subMenu.push(subMenuItem);
+        });
+        if (isThisLevelAllowModify) {
+          subMenuIndex = subMenu.push(
+            menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {
+              dataType: dataTypeConfig,
+              item: cfgItem,
+              scope: optionScope,
+              index: subMenuIndex,
+            }),
+          );
+          if (optionScope === configOptionScopeUser) {
+            subMenuIndex = subMenu.push(
+              menuMenuItemGenerateResetItem(user, currentIndex, subMenuIndex, {
+                dataType: dataTypeConfig,
+                item: cfgItem,
+              }),
+            );
+          }
+        }
+        return subMenu;
+      },
+      menuSubMenuArray = (user, menuItemToProcess) => {
+        return this.menuGenerateForArray(user, menuItemToProcess);
       };
     let subMenu = [],
       subMenuIndex = 0;
@@ -1284,215 +1466,22 @@ class ConfigOptions {
             switch (cfgItem) {
               case cfgMenuLanguage:
                 subMenuItem.options = {scope: optionScope, value: currentOptionValue};
-                subMenuItem.submenu = (user, menuItemToProcess) => {
-                  let subMenu = new Array(),
-                    subMenuIndex = 0;
-                  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
-                    {scope: optionScope, value: currentLanguage} = menuItemToProcess.options;
-                  Object.keys(translationsList)
-                    .sort() // NOSONAR
-                    .forEach((languageId) => {
-                      const subMenuItem = {
-                        index: `${currentIndex}.${subMenuIndex}`,
-                        name: `${languageId}`,
-                        icon: currentLanguage === languageId ? configOptions.getOption(cfgDefaultIconOn) : '',
-                        command: currentLanguage === languageId ? cmdNoOperation : '',
-                        submenu: new Array(),
-                      };
-                      if (currentLanguage !== languageId) {
-                        let subSubMenuIndex = 0;
-                        const currentCommandOptions = {
-                          dataType: dataTypeConfig,
-                          item: cfgItem,
-                          scope: optionScope,
-                          value: languageId,
-                        };
-                        subSubMenuIndex = subMenuItem.submenu.push({
-                          index: `${currentIndex}.${subMenuIndex}.${subSubMenuIndex}`,
-                          name: `${translationsItemCoreGet(user, 'cmdItemSelect')}`,
-                          icon: '',
-                          command: cmdItemPress,
-                          options: currentCommandOptions,
-                          submenu: [],
-                        });
-                        subMenuItem.submenu.push(
-                          menuMenuItemGenerateDeleteItem(
-                            user,
-                            `${currentIndex}.${subMenuIndex}`,
-                            subSubMenuIndex,
-                            currentCommandOptions,
-                          ),
-                        );
-                      }
-                      subMenuIndex = subMenu.push(subMenuItem);
-                    });
-                  if (optionScope === configOptionScopeGlobal) {
-                    subMenuIndex = subMenu.push({
-                      index: `${currentIndex}.${subMenuIndex}`,
-                      name: `${translationsItemCoreGet(user, cmdItemAdd)}`,
-                      icon: iconItemPlus,
-                      options: {item: cfgItem, scope: optionScope},
-                      group: 'addNew',
-                      submenu: (user, menuItemToProcess) => {
-                        let subMenu = [],
-                          subMenuIndex = 0;
-                        const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
-                          {item: cfgItem, scope: optionScope} = menuItemToProcess.options;
-                        if (cachedValueExists(user, cachedConfigNewLanguageId)) {
-                          const newLanguageId = translationsValidateLanguageId(
-                            cachedValueGet(user, cachedConfigNewLanguageId),
-                          );
-                          if (newLanguageId?.length) {
-                            subMenu.push({
-                              index: `${currentIndex}.${subMenuIndex}`,
-                              name: `${translationsItemCoreGet(user, 'cmdCreateWithId')} = '${newLanguageId}'`,
-                              icon: iconItemApply,
-                              group: cmdItemsProcess,
-                              command: cmdItemsProcess,
-                              options: {
-                                dataType: dataTypeConfig,
-                                item: cfgItem,
-                                scope: optionScope,
-                                value: newLanguageId,
-                              },
-                              submenu: [],
-                            });
-                            cachedValueDelete(user, cachedConfigNewLanguageId);
-                          } else {
-                            subMenu.push(
-                              menuMenuItemGenerateEditItem(
-                                user,
-                                currentIndex,
-                                subMenuIndex,
-                                `${translationsItemCoreGet(user, 'cmdFixId')} = '${cachedValueGet(
-                                  user,
-                                  cachedConfigNewLanguageId,
-                                )}'`,
-                                '',
-                                {dataType: dataTypeConfig, item: cfgItem, scope: optionScope},
-                              ),
-                            );
-                          }
-                        } else {
-                          subMenu.push(
-                            menuMenuItemGenerateEditItem(
-                              user,
-                              currentIndex,
-                              subMenuIndex,
-                              translationsItemCoreGet(user, 'cmdSetId'),
-                              '',
-                              {dataType: dataTypeConfig, item: cfgItem, scope: optionScope},
-                            ),
-                          );
-                        }
-                        return subMenu;
-                      },
-                    });
-                  }
-                  return subMenu;
-                };
+                subMenuItem.submenu = menuSubMenuLanguage;
                 break;
 
               case cfgGraphsIntervals:
                 subMenuItem.options = {item: cfgItem, scope: optionScope, [menuOptionHorizontalNavigation]: true};
-                subMenuItem.submenu = (user, menuItemToProcess) => {
-                  let subMenu = new Array(),
-                    subMenuIndex = 0;
-                  const currentIndex = typeof menuItemToProcess.index === 'string' ? menuItemToProcess.index : '',
-                    currentAccessLevel = menuItemToProcess.accessLevel,
-                    isCurrentAccessLevelAllowModify =
-                      MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelReadOnly) < 0,
-                    isCurrentAccessLevelFull =
-                      MenuRoles.compareAccessLevels(currentAccessLevel, rolesAccessLevelFull) <= 0,
-                    {item: cfgItem, scope: optionScope} = menuItemToProcess.options,
-                    isThisLevelAllowModify =
-                      optionScope === configOptionScopeGlobal
-                        ? isCurrentAccessLevelFull
-                        : isCurrentAccessLevelAllowModify,
-                    currentIntervals = this.getOption(
-                      cfgItem,
-                      optionScope === configOptionScopeUser ? user : undefined,
-                    );
-                  const currentIntervalsMaxIndex = currentIntervals.length - 1;
-                  currentIntervals.forEach(
-                    ({id: graphsIntervalId, minutes: graphsIntervalMinutes}, graphsIntervalIndex) => {
-                      const subMenuItem = {
-                        index: `${currentIndex}.${subMenuIndex}`,
-                        name: `[${translationsItemTextGet(user, 'TimeRange', graphsIntervalId)}]`,
-                        text: `${graphsIntervalMinutes}`,
-                        submenu: new Array(),
-                      };
-                      if (isThisLevelAllowModify) {
-                        let subSubMenuIndex = 0;
-                        const currentCommandOptions = {
-                          dataType: dataTypeConfig,
-                          item: cfgItem,
-                          scope: optionScope,
-                          index: graphsIntervalIndex,
-                        };
-                        [subMenuItem.submenu, subSubMenuIndex] = menuMenuPartGenerateMoveItemUpAndDown(
-                          user,
-                          subMenuItem.submenu,
-                          `${currentIndex}.${subMenuIndex}`,
-                          subSubMenuIndex,
-                          graphsIntervalIndex,
-                          currentIntervalsMaxIndex,
-                          currentCommandOptions,
-                        );
-                        subSubMenuIndex = subMenuItem.submenu.push(
-                          menuMenuItemGenerateRenameItem(user, `${currentIndex}.${subMenuIndex}`, subSubMenuIndex, {
-                            dataType: dataTypeTranslation,
-                            translationId: translationsItemGenerateTextId('TimeRange', graphsIntervalId),
-                          }),
-                        );
-                        subMenuItem.submenu.push(
-                          menuMenuItemGenerateDeleteItem(
-                            user,
-                            `${currentIndex}.${subMenuIndex}`,
-                            subSubMenuIndex,
-                            currentCommandOptions,
-                          ),
-                        );
-                      }
-                      subMenuIndex = subMenu.push(subMenuItem);
-                    },
-                  );
-                  if (isThisLevelAllowModify) {
-                    subMenuIndex = subMenu.push(
-                      menuMenuItemGenerateAddItem(user, currentIndex, subMenuIndex, {
-                        dataType: dataTypeConfig,
-                        item: cfgItem,
-                        scope: optionScope,
-                        index: subMenuIndex,
-                      }),
-                    );
-                    if (optionScope === configOptionScopeUser) {
-                      subMenuIndex = subMenu.push(
-                        menuMenuItemGenerateResetItem(user, currentIndex, subMenuIndex, {
-                          dataType: dataTypeConfig,
-                          item: cfgItem,
-                        }),
-                      );
-                    }
-                  }
-                  return subMenu;
-                };
+                subMenuItem.submenu = menuSubMenuGraphsIntervals;
                 break;
 
               default: {
                 subMenuItem.options = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope};
                 switch (itemType) {
                   case 'array': {
-                    if (isThisLevelAllowModify) {
-                      subMenuItem.submenu = (user, menuItemToProcess) => {
-                        return this.menuGenerateForArray(user, menuItemToProcess);
-                      };
-                    } else {
+                    subMenuItem.submenu = menuSubMenuArray;
+                    if (isThisLevelAllowModify === false) {
                       currentItem.accessLevel = currentAccessLevel;
                       currentItem.options = {dataType: dataTypeConfig, item: cfgItem, scope: optionScope};
-                      currentItem.submenu = (user, menuItemToProcess) => {
-                        return this.menuGenerateForArray(user, menuItemToProcess);
-                      };
                     }
                     break;
                   }
@@ -7569,7 +7558,7 @@ function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, 
       function: functionId,
       destination: destinationId,
       device: devicePrefix,
-      statesToAdd
+      statesToAdd,
     } = options,
     destinationsList = enumerationsList[dataTypeDestination].list,
     currentDestination = destinationsList[destinationId],
@@ -7609,36 +7598,34 @@ function enumerationsProcessDeviceStatesList(user, currentAccessLevel, options, 
           return (
             deviceButtonsList[deviceButton].isEnabled &&
             !deviceStatesList.hasOwnProperty(deviceButton) &&
-            (
-              (buttonsFilter === 'show' &&
-                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
-                  0) ||
+            ((buttonsFilter === 'show' &&
+              MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
+                0) ||
               (buttonsFilter === 'showOnly' &&
                 MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
                   0 &&
-              MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].pressAccessLevel) >
-                0) ||
+                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].pressAccessLevel) >
+                  0) ||
               (buttonsFilter === 'press' &&
                 MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].pressAccessLevel) <=
                   0) ||
               buttonsFilter === 'all' ||
-              isSatesToAddExists && statesToAdd.includes(deviceButton) &&
-                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <= 0
-            )
+              (isSatesToAddExists &&
+                statesToAdd.includes(deviceButton) &&
+                MenuRoles.compareAccessLevels(currentAccessLevel, deviceButtonsList[deviceButton].showAccessLevel) <=
+                  0))
           );
         })
-        .forEach(
-          (deviceButtonId) => {
-            deviceStatesList[deviceButtonId] = {
-              ...deviceButtonsList[deviceButtonId],
-              order: deviceButtonsList[deviceButtonId].order + orderOffset,
-            };
-            if (isSatesToAddExists && statesToAdd.includes(deviceButtonId)) {
-              statesToAdd.splice(statesToAdd.indexOf(deviceButtonId), 1);
-              isSatesToAddExists = Array.isArray(statesToAdd) && statesToAdd.length > 0;
-            }
+        .forEach((deviceButtonId) => {
+          deviceStatesList[deviceButtonId] = {
+            ...deviceButtonsList[deviceButtonId],
+            order: deviceButtonsList[deviceButtonId].order + orderOffset,
+          };
+          if (isSatesToAddExists && statesToAdd.includes(deviceButtonId)) {
+            statesToAdd.splice(statesToAdd.indexOf(deviceButtonId), 1);
+            isSatesToAddExists = Array.isArray(statesToAdd) && statesToAdd.length > 0;
           }
-        );
+        });
     }
   }
   Object.keys(deviceStatesList)
@@ -8304,7 +8291,14 @@ function alertsActionOnSubscribedState(object) {
                     triggerValue: stateValue,
                     triggerId: id,
                   },
-                  pushAlertOrTriggerState = (usersListToPush, messageValuesToPush, targetsArray, triggerLogItem) => {
+                  pushAlertOrTriggerState = (
+                    usersListToPush,
+                    messageValuesToPush,
+                    targetsArray,
+                    triggerLogItem,
+                    extraIds,
+                  ) => {
+                    const {idStoredTimer, idStoredData} = extraIds;
                     if (thresholdsVariables.has(idStoredTimer)) thresholdsVariables.delete(idStoredTimer);
                     if (thresholdsVariables.has(idStoredData)) thresholdsVariables.delete(idStoredData);
                     targetsArray
@@ -8312,7 +8306,7 @@ function alertsActionOnSubscribedState(object) {
                       .forEach((target) => {
                         const targetValue = target.value,
                           targetState = target.state;
-                        if (Array.isArray(thresholdUsers) && thresholdUsers.length > 0) {
+                        if (Array.isArray(usersListToPush) && usersListToPush.length > 0) {
                           const targetFunctionId = target.function ? target.function : undefined,
                             targetFunction =
                               target.function && functionsList?.hasOwnProperty(targetFunctionId)
@@ -8528,7 +8522,11 @@ function alertsActionOnSubscribedState(object) {
                           thresholdsVariables.set(
                             idStoredTimer,
                             setTimeout(
-                              () => pushAlertOrTriggerState(thresholdUsers, messageValues, targets, triggerItemInfo),
+                              () =>
+                                pushAlertOrTriggerState(thresholdUsers, messageValues, targets, triggerItemInfo, {
+                                  idStoredTimer,
+                                  idStoredData,
+                                }),
                               onTimeInterval * 1000,
                             ),
                           );
@@ -8541,7 +8539,10 @@ function alertsActionOnSubscribedState(object) {
                       triggerItemInfo[triggersConditionsId] = conditionsCheck;
                     }
                     if (conditionsCheck.passed)
-                      pushAlertOrTriggerState(thresholdUsers, messageValues, targets, triggerItemInfo);
+                      pushAlertOrTriggerState(thresholdUsers, messageValues, targets, triggerItemInfo, {
+                        idStoredTimer,
+                        idStoredData,
+                      });
                   }
                 }
               }
@@ -13869,7 +13870,7 @@ const timeInternalUnitsSeconds = 's',
  */
 function timeInternalToString(value, template, maximum = -1) {
   let result = '';
-  if (typeof maximum !== 'number') maximum = -1;
+  if (typeof maximum !== 'number') maximum = -1; //NOSONAR
   if (typeof value === 'number' && template?.length) {
     const unitMaximal = template[0];
     template
@@ -14114,11 +14115,10 @@ function menuExtensionsAssignTextAttributeToMenuItem(user, textValues) {
     switch (convert) {
       case 'boolean': {
         const icons = attributeTextValue['options']?.['icons'] || {
-          'true': configOptions.getOption(cfgDefaultIconOn, user),
-          'false': configOptions.getOption(cfgDefaultIconOff, user),
+          true: configOptions.getOption(cfgDefaultIconOn, user),
+          false: configOptions.getOption(cfgDefaultIconOff, user),
         };
-        attributeTextValue['value'] = typeof value === 'boolean' ?
-        icons[`${value}`] : iconItemNotFound;
+        attributeTextValue['value'] = typeof value === 'boolean' ? icons[`${value}`] : iconItemNotFound;
         break;
       }
       case 'weekdays': {
@@ -15103,7 +15103,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
               } else {
                 warns(
                   `Can't update externalAttributesProperties for ${menuItemToProcess.index}! No result!` +
-                  ` Error is ${result.error}`,
+                    ` Error is ${result.error}`,
                 );
                 menuItemToProcess['options']['externalAttributesProperties']['extensions'][extensionId]['valueText'] =
                   {};
