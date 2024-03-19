@@ -17800,8 +17800,30 @@ async function commandsUserInputProcess(user, userInputValue) {
             warns(`Can't create temporary directory! Error: '${jsonStringify(err)}'.`);
           } else {
             const languageId = configOptions.getOption(cfgMenuLanguage),
-              tmpFileName = nodePath.join(tmpDirectory, `menuTranslation_${languageId}.json`),
-              currentTranslation = translationsGetCurrentForUser(user);
+              {translationPart, extensionId} = commandOptions;
+            let currentTranslation = translationsGetCurrentForUser(user),
+              fileNameSuffix = '';
+            if (typeof translationPart === 'string') {
+              fileNameSuffix = `_${translationPart}`;
+              if (typeof currentTranslation[translationPart] === 'object'){
+                currentTranslation = {[translationPart]: currentTranslation[translationPart]};
+                if (typeof extensionId === 'string') {
+                  fileNameSuffix += `_${extensionId}`;
+                  if (typeof currentTranslation[translationPart][extensionId] === 'object'){
+                    currentTranslation = {
+                      [translationPart]: {
+                        [extensionId] : currentTranslation[translationPart][extensionId]
+                      }
+                    };
+                  } else {
+                    currentTranslation[translationPart] = {};
+                  }
+                }
+              } else {
+                currentTranslation = {};
+              }
+            }
+            const tmpFileName = nodePath.join(tmpDirectory, `menuTranslation${fileNameSuffix}_${languageId}.json`);
             nodeFS.writeFile(
               tmpFileName,
               jsonStringify(
