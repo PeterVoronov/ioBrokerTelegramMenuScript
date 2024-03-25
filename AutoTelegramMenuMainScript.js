@@ -8070,7 +8070,6 @@ function alertsMessagePush(user, alertId, alertMessage, isAcknowledged = false) 
       timeDelta96,
     );
   if (isMenuOn && itemPos && !isUserMessageOldOrNotExists && !isAcknowledged) {
-    menuMenuItemsAndRowsClearCached(user);
     menuMenuDraw(user, undefined, {clearBefore: true});
   }
 }
@@ -8588,7 +8587,6 @@ function alertsMenuGenerateHistoryOfAlerts(user, menuItemToProcess) {
       if (!alertMessage.ack) {
         alertMessage.ack = true;
         alertsStoreMessagesToCache(user, alertMessages);
-        menuMenuItemsAndRowsClearCached(user);
         setTimeout(() => {
           menuMenuDraw(user);
         }, 10);
@@ -14361,12 +14359,14 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
       inverseMasks = isFunctionsFirst !== isFunctionsFirstGlobal,
       primaryMenuItem = primaryMenuItemsList[primaryLevelMenuItemId],
       secondaryMenuItemsList = enumerationsList[secondaryInputType].list,
+      deviceList = {},
+      indexAhead = menuItemToProcess.indexAhead,
+      indexAheadCurrent = indexAhead.split('.').shift();
+    let currentIcons = isFunctionsFirst ? {on: primaryMenuItem.iconOn, off: primaryMenuItem.iconOff} : {},
+      currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '',
       secondaryMenuItemsIndex = Object.keys(secondaryMenuItemsList)
         .filter((destId) => secondaryMenuItemsList[destId].isEnabled && secondaryMenuItemsList[destId].isAvailable)
-        .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order),
-      deviceList = {};
-    let currentIcons = isFunctionsFirst ? {on: primaryMenuItem.iconOn, off: primaryMenuItem.iconOff} : {},
-      currentIcon = isFunctionsFirst ? primaryMenuItem.icon : '';
+        .sort((a, b) => secondaryMenuItemsList[a].order - secondaryMenuItemsList[b].order);
     if (
       menuItemToProcess.hasOwnProperty('subordinates') &&
       Array.isArray(menuItemToProcess.subordinates) &&
@@ -14382,30 +14382,40 @@ function menuMenuGenerateFirstLevelAfterRoot(user, menuItemToProcess) {
      * ! And more strange - if I remove check of id in query, to filter it later in code -
      * ! it works additionally five times faster!
      */
+    if (indexAheadCurrent !== indexAhead && secondaryMenuItemsIndex.includes(indexAheadCurrent)) {
+      secondaryMenuItemsIndex = [indexAheadCurrent];
+    }
     $(`state(${primaryMenuItem.enum}=${primaryLevelMenuItemId})`).each((stateId) => {
       if (existsObject(stateId)) {
-        const currentObject = getObjectEnriched(stateId, '*');
-        let statesSectionsCount, functionState;
-        if (currentObject.hasOwnProperty('enumIds')) {
-          secondaryMenuItemsIndex.forEach((currentLevelMenuItemId) => {
-            const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId],
-              secondaryFullId = `${prefixEnums}.${currentLevelMenuItem.enum}.${currentLevelMenuItemId}`;
-            if (currentObject['enumIds'].includes(secondaryFullId)) {
-              if (isFunctionsFirst) {
-                functionState = primaryMenuItem.state;
-                statesSectionsCount = primaryMenuItem.statesSectionsCount;
-              } else {
-                functionState = currentLevelMenuItem.state;
-                statesSectionsCount = currentLevelMenuItem.statesSectionsCount;
+        let statesSectionsCount, functionState, shortStateId;
+        if (isFunctionsFirst === true) {
+          functionState = primaryMenuItem.state;
+          statesSectionsCount = primaryMenuItem.statesSectionsCount;
+          shortStateId = stateId.split('.').slice(-statesSectionsCount).join('.');
+        }
+        if (isFunctionsFirst === false || functionState === shortStateId) {
+          const currentObject = getObjectEnriched(stateId, '*');
+          if (currentObject.hasOwnProperty('enumIds')) {
+            secondaryMenuItemsIndex.forEach((currentLevelMenuItemId) => {
+              const currentLevelMenuItem = secondaryMenuItemsList[currentLevelMenuItemId],
+                secondaryFullId = `${prefixEnums}.${currentLevelMenuItem.enum}.${currentLevelMenuItemId}`;
+              if (currentObject['enumIds'].includes(secondaryFullId)) {
+                if (isFunctionsFirst === false) {
+                  functionState = currentLevelMenuItem.state;
+                  statesSectionsCount = currentLevelMenuItem.statesSectionsCount;
+                  shortStateId = stateId.split('.').slice(-statesSectionsCount).join('.');
+                }
+                if (functionState === shortStateId) {
+                  if (deviceList.hasOwnProperty(currentLevelMenuItemId) === false) {
+                    deviceList[currentLevelMenuItemId] = [];
+                  }
+                  if (deviceList[currentLevelMenuItemId].includes(stateId) === false) {
+                    deviceList[currentLevelMenuItemId].push(stateId);
+                  }
+                }
               }
-              const shortStateId = stateId.split('.').slice(-statesSectionsCount).join('.');
-              if (functionState === shortStateId) {
-                if (!deviceList.hasOwnProperty(currentLevelMenuItemId)) deviceList[currentLevelMenuItemId] = [];
-                if (!deviceList[currentLevelMenuItemId].includes(stateId))
-                  deviceList[currentLevelMenuItemId].push(stateId);
-              }
-            }
-          });
+            });
+          }
         }
       }
     });
@@ -14788,16 +14798,139 @@ const commandOptionsCache = new CommandOptionsCache(menuItemButtonPrefix);
 
 //***menu draw related functions - begin ***/
 
-const cachedMenuItemsAndRows = 'menuItemsAndRows',
-  cachedMenuButtonsOffset = 'buttonsOffset',
+const cachedMenuButtonsOffset = 'buttonsOffset',
   menuOptionHorizontalNavigation = 'horizontalNavigation';
 
+class MenuCache {
+  /** The internal cache to store the command and its options. **/
+  #data;
+  #indexes;
+
+  /**
+   * The constructor of the class.
+   **/
+  constructor() {
+    this.#data = new Map();
+    this.#indexes = new Map();
+  }
+
+  /**
+   * This method initializes the internal cache for the appropriate user.
+   **/
+  init(user) {
+    if (isDefined(user?.chatId)) {
+      this.#data.set(user.chatId, new Map());
+      this.#indexes.set(user.chatId, new Array());
+    }
+  }
+
+  /**
+   * This method sets into the internal cache the menu item and its message for the apropriate menu item.
+   * @param {object} user - The user object.
+   * @param {object} menuItem - The menu item object.
+   * @param {object} message - The message object.
+   * @param {string=} indent - The indent for the text part of the message.
+   * If the user is not defined, the method will do nothing.
+   * If the position is not defined, the method will do nothing.
+   **/
+  put(user, menuItem, message, indent = '') {
+    if (isDefined(user?.chatId)) {
+      if (!this.#data.has(user.chatId)) {
+        this.init(user);
+      }
+      if (typeof menuItem === 'object' && typeof menuItem['index']) {
+        const index = menuItem['index'],
+          position = index === '' ? [] : index.split('.'),
+          userData = this.#data.get(user.chatId),
+          indexes = this.#indexes.get(user.chatId);
+        if (indexes.includes(index) === false) {
+          const indexesFiltered = indexes
+            .filter((item) => index.startsWith(item))
+            .sort((a, b) => a.localeCompare(b))
+            .reverse();
+          if (indexesFiltered.length === 0) this.init(user);
+          indexes.push(index);
+        } else {
+          this.clearFrom(user, position);
+        }
+        userData.set(index, objectDeepClone({position, menuItem, message, indent}));
+        this.#data.set(user.chatId, userData);
+        this.#indexes.set(user.chatId, indexes);
+      }
+    }
+  }
+
+  /**
+   * This method gets the menu item and its message for the apropriate menu item.
+   * @param {object} user - The user object.
+   * @param {string[]} position - The position of the menu item in the menu tree.
+   * @returns {object} The object with the menu item and its message.
+   * If the user is not defined, the default object will be returned.
+   * If the position is not defined, the default object will be returned.
+   **/
+  get(user, position) {
+    let result = {position, indent: ''};
+    if (isDefined(user?.chatId)) {
+      if (this.#data.has(user.chatId)) {
+        const index = position.join('.'),
+          userData = this.#data.get(user.chatId),
+          indexes = this.#indexes.get(user.chatId);
+        if (indexes.includes(index)) {
+          result = userData.get(index);
+        } else {
+          const indexesFiltered = indexes
+            .filter((item) => index.startsWith(item))
+            .sort((a, b) => a.localeCompare(b))
+            .reverse();
+          if (indexesFiltered.length > 0) {
+            result = userData.get(indexesFiltered[0]);
+          } else {
+            this.init(user);
+          }
+        }
+      }
+    }
+    return objectDeepClone(result);
+  }
+
+  /**
+   * This method deletes all stored data related to the appropriate `user` outside the current hierarchy
+   * and below current level.
+   * @param {object} user - The user object.
+   * @param {string[]=} position - The position of the menu item in the menu tree.
+   * If the `user` is not defined, the method will do nothing.
+   * If the `position` is not defined, the method will do nothing.
+   **/
+  clearFrom(user, position) {
+    if (isDefined(user?.chatId)) {
+      if (Array.isArray(position) && this.#data.has(user.chatId)) {
+        const index = position.join('.'),
+          userData = this.#data.get(user.chatId),
+          indexes = this.#indexes.get(user.chatId);
+        indexes.forEach((item) => {
+          if (item.startsWith(index)) {
+            userData.delete(item);
+            indexes.splice(indexes.indexOf(item), 1);
+          }
+        });
+        this.#data.set(user.chatId, userData);
+        this.#indexes.set(user.chatId, indexes);
+      }
+    }
+  }
+}
+
+const menuCache = new MenuCache();
 /**
  * This function deletes the cached pre-drawn state of the user's menu items and rows.
  * @param {object} user - The user that is currently logged in.
+ * @param {string[]=} position - The position of the menu item in the menu tree
  */
-function menuMenuItemsAndRowsClearCached(user) {
-  cachedValueDelete(user, cachedMenuItemsAndRows);
+function menuCacheClearAt(user, position) {
+  if (Array.isArray(position) === false) {
+    position = cachedValueGet(user, cachedMenuItem);
+  }
+  menuCache.clearFrom(user, position);
 }
 
 /**
@@ -14846,20 +14979,21 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
    * End of Default
    */
   if (!messageObject) {
-    const [savedMenu, savedRows, savedTab] = cachedValueExists(user, cachedMenuItemsAndRows)
-        ? cachedValueGet(user, cachedMenuItemsAndRows)
-        : [null, null, 0],
-      savedPos = savedMenu?.index ? savedMenu.index.split('.') : null;
-    if (savedPos && targetMenuPos && targetMenuPos.join('.').startsWith(savedPos.join('.'))) {
-      targetMenuPos = targetMenuPos.slice(savedPos.length);
-      menuItemToProcess = savedMenu;
-      messageObject = {...savedRows};
+    const cached = Array.isArray(targetMenuPos) ? menuCache.get(user, targetMenuPos) : {};
+    if (
+      Array.isArray(targetMenuPos) &&
+      typeof cached['menuItem'] === 'object' &&
+      typeof cached['message'] === 'object'
+    ) {
+      menuItemToProcess = cached['menuItem'];
+      targetMenuPos = targetMenuPos.slice(cached['position'].length);
+      messageObject = cached['message'];
       if (['function', 'string'].includes(typeof menuItemToProcess?.options?.generatedBy)) {
         menuItemToProcess.submenu = menuItemToProcess.options.generatedBy;
         menuItemToProcess.options.generatedBy = undefined;
         messageObject.buttons = [];
       }
-      currentIndent = savedTab;
+      currentIndent = cached['indent'];
     } else {
       messageObject = {
         message: '',
@@ -14868,6 +15002,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
     }
   }
   const subMenu = menuItemToProcess.submenu;
+  menuItemToProcess['indexAhead'] = Array.isArray(targetMenuPos) ? targetMenuPos.join('.') : '';
   switch (typeof subMenu) {
     case 'string': {
       const extensionMenuId = subMenu,
@@ -14897,7 +15032,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
               menuItemToProcess = menuMenuReIndex(newMenuItem);
               if (typeof menuItemToProcess['goTo'] === 'string' && menuItemToProcess['goTo'].length > 0) {
                 interimValuesCleanUp(user, menuItemToProcess['goTo']);
-                menuMenuItemsAndRowsClearCached(user);
+                menuCacheClearAt(user, menuItemToProcess['goTo'].split('.'));
                 menuMenuDraw(user, menuItemToProcess['goTo'].split('.'));
               } else {
                 if (extensionsList?.[extensionId]?.type === extensionTypeAttributes) {
@@ -15115,7 +15250,6 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, messageObject, currentIndent);
         }
       } else {
-        cachedValueDelete(user, cachedMenuItemsAndRows);
         if (!Array.isArray(subMenu) || subMenuPos >= subMenu.length) {
           let savedPos = cachedValueGet(user, cachedMenuItem);
           if (targetMenuPos?.length) {
@@ -15130,9 +15264,7 @@ function menuMenuDraw(user, targetMenuPos, messageOptions, menuItemToProcess, me
           }
           cachedValueSet(user, cachedMenuItem, savedPos);
         }
-        if (subMenu?.length > 0) {
-          cachedValueSet(user, cachedMenuItemsAndRows, [menuItemToProcess, {...messageObject}, currentIndent]);
-        }
+        menuCache.put(user, menuItemToProcess, {...messageObject}, currentIndent);
         messageObject.message += messageCaption + menuMenuItemGetIcon(user, menuItemToProcess) + menuItemToProcess.name;
         messageObject.message = encodedStr(messageObject.message);
         if (menuItemToProcess.hasOwnProperty('text') && isDefined(menuItemToProcess.text)) {
@@ -15502,12 +15634,12 @@ function menuMenuClose(user) {
  */
 function menuMenuUpdateBySchedule() {
   const usersIds = usersInMenu.getUsers();
-  // NOSONAR // logs(`try to refresh menu for users ${usersIds}`, _l);
+  logs(`try to refresh menu for users ${usersIds}`);
   for (const userId of usersIds) {
     const user = telegramGenerateUserObjectFromId(userId);
     if (cachedValueGet(user, cachedMenuOn) === true) {
       const itemPos = cachedValueGet(user, cachedMenuItem);
-      // NOSONAR // logs(`for user = ${stringifySafe(userId)} menu on pos ${stringifySafe(itemPos)}`, _l);
+      logs(`for user = ${jsonStringify(userId)} menu on pos ${jsonStringify(itemPos)}`);
       if (!cachedValueGet(user, cachedIsWaitForInput) && Array.isArray(itemPos)) {
         logs(`make an menu update for = ${jsonStringify(user)}`);
         menuMenuDraw(user);
@@ -15771,7 +15903,6 @@ async function commandsUserInputProcess(user, userInputValue) {
     if (timer) clearTimeout(timer);
     cachedValueSet(user, cachedCurrentState, '');
     telegramMessageDisplayPopUp(user, result.error ? result.error : translationsItemTextGet(user, 'MsgSuccess'));
-    menuMenuItemsAndRowsClearCached(user);
     if (isFromGetInput) {
       menuMenuDraw(user, undefined, {
         clearBefore: user.userId !== user.chatId,
@@ -15942,7 +16073,7 @@ async function commandsUserInputProcess(user, userInputValue) {
         const interimValues = cachedValueGet(user, cachedInterimValue) || {};
         interimValues[interimItemId] = interimValue;
         cachedValueSet(user, cachedInterimValue, interimValues);
-        menuMenuItemsAndRowsClearCached(user);
+        menuCacheClearAt(user);
       }
     }
   }
@@ -16088,6 +16219,7 @@ async function commandsUserInputProcess(user, userInputValue) {
                     menuPositionCurrent.splice(-1, newPosition);
                   }
                 }
+                menuCacheClearAt(user, menuPositionCurrent.slice(0, -1));
                 break;
               }
 
@@ -16387,6 +16519,7 @@ async function commandsUserInputProcess(user, userInputValue) {
                           });
                           detailsOrThresholds = triggersSort(detailsOrThresholds);
                           menuPositionCurrent.push(thresholdsGetIndex(detailsOrThresholds, thresholdId));
+                          menuCacheClearAt(user);
                           backStepsForCacheDelete--;
                         }
                       }
@@ -16498,7 +16631,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                       menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
                       cachedAlertThresholdSet,
                     );
-                    menuMenuItemsAndRowsClearCached(user);
                   }
                 }
                 break;
@@ -16576,6 +16708,7 @@ async function commandsUserInputProcess(user, userInputValue) {
                         triggers.push(trigger);
                         triggers = triggersSort(triggers);
                         menuPositionCurrent.push(thresholdsGetIndex(triggers, trigger.id));
+                        menuCacheClearAt(user);
                       }
                       break;
                     }
@@ -16744,7 +16877,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                       menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
                       cachedTriggersDetails,
                     );
-                    menuMenuItemsAndRowsClearCached(user);
                   }
                 }
                 break;
@@ -17280,7 +17412,6 @@ async function commandsUserInputProcess(user, userInputValue) {
         alertMessagesNonAcknowledged.every(alertAcknowledge);
         if (alertMessagesNonAcknowledged.length) {
           alertsStoreMessagesToCache(user, alertMessages);
-          menuMenuItemsAndRowsClearCached(user);
         } else {
           menuPositionCurrent = undefined;
         }
@@ -17377,7 +17508,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                         .sort(currentSort);
                     }
                   }
-                  menuMenuItemsAndRowsClearCached(user);
                   enumerationsSave(enumerationsGetPrimaryDataType(enumerationType, enumerationExtraId));
                 }
               } else if (enumerationType === dataTypeAssociatedExtensions) {
@@ -17477,7 +17607,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                     triggersTimeRangeStartTimesUpdate(user, state);
                     alertsManage(user, state, commandOptions.function, commandOptions.destination, triggers, true);
                     cachedValueDelete(user, cachedTriggersDetails);
-                    menuMenuItemsAndRowsClearCached(user);
                     triggers = undefined;
                   }
                   break;
@@ -17747,7 +17876,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                   menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
                   cachedTriggersDetails,
                 );
-                menuMenuItemsAndRowsClearCached(user);
               }
             }
             break;
@@ -17790,7 +17918,7 @@ async function commandsUserInputProcess(user, userInputValue) {
             break;
           }
         }
-        menuMenuItemsAndRowsClearCached(user);
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -17805,15 +17933,15 @@ async function commandsUserInputProcess(user, userInputValue) {
               fileNameSuffix = '';
             if (typeof translationPart === 'string') {
               fileNameSuffix = `_${translationPart}`;
-              if (typeof currentTranslation[translationPart] === 'object'){
+              if (typeof currentTranslation[translationPart] === 'object') {
                 currentTranslation = {[translationPart]: currentTranslation[translationPart]};
                 if (typeof extensionId === 'string') {
                   fileNameSuffix += `_${extensionId}`;
-                  if (typeof currentTranslation[translationPart][extensionId] === 'object'){
+                  if (typeof currentTranslation[translationPart][extensionId] === 'object') {
                     currentTranslation = {
                       [translationPart]: {
-                        [extensionId] : currentTranslation[translationPart][extensionId]
-                      }
+                        [extensionId]: currentTranslation[translationPart][extensionId],
+                      },
                     };
                   } else {
                     currentTranslation[translationPart] = {};
@@ -18096,7 +18224,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                       menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
                       cachedTriggersDetails,
                     );
-                  menuMenuItemsAndRowsClearCached(user);
                 }
               } else {
                 const {state, function: functionId, destination: destinationId} = commandOptions;
@@ -18105,7 +18232,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                   triggersTimeRangeStartTimesUpdate(user, state);
                   cachedValueDelete(user, cachedTriggersDetails);
                   alertsManage(user, state, functionId, destinationId, undefined, true);
-                  menuMenuItemsAndRowsClearCached(user);
                   menuPositionCurrent.splice(-1, 1);
                 }
               }
@@ -18229,7 +18355,6 @@ async function commandsUserInputProcess(user, userInputValue) {
             ) {
               rolesInMenu.delRole(commandOptions.roleId);
               menuPositionCurrent.splice(-2, 2);
-              menuMenuItemsAndRowsClearCached(user);
               cachedValueDelete(user, cachedRolesRoleUnderEdit);
             }
             break;
@@ -18287,6 +18412,7 @@ async function commandsUserInputProcess(user, userInputValue) {
             break;
           }
         }
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -18337,7 +18463,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                 break;
             }
             cachedValueSet(user, cachedSimpleReportNewQuery, queryParams);
-            menuMenuItemsAndRowsClearCached(user);
             break;
           }
 
@@ -18355,7 +18480,6 @@ async function commandsUserInputProcess(user, userInputValue) {
               currentRule['mask'] = commandOptions.item;
             }
             cachedValueSet(user, cachedRolesNewRule, currentRule);
-            menuMenuItemsAndRowsClearCached(user);
             break;
           }
 
@@ -18363,6 +18487,8 @@ async function commandsUserInputProcess(user, userInputValue) {
             break;
           }
         }
+
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -18379,7 +18505,7 @@ async function commandsUserInputProcess(user, userInputValue) {
             if (
               enumerationsRefreshFunctionDeviceStates(user, commandOptions.dataTypeExtraId, commandOptions.dataType)
             ) {
-              menuMenuItemsAndRowsClearCached(user);
+              menuCacheClearAt(user, menuPositionCurrent);
             } else {
               telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgSuccess'));
             }
@@ -18620,7 +18746,7 @@ async function commandsUserInputProcess(user, userInputValue) {
                 }
                 cachedValueDelete(user, cachedRolesRoleUnderEdit);
               }
-              menuMenuItemsAndRowsClearCached(user);
+              menuCacheClearAt(user, menuPositionCurrent);
             }
             break;
           }
@@ -18769,8 +18895,8 @@ async function commandsUserInputProcess(user, userInputValue) {
                 menuPositionCurrent = undefined;
                 backupCreate(backupModeManual)
                   .then((_result) => {
-                    menuMenuItemsAndRowsClearCached(user);
                     const currentMenuPosition = cachedValueGet(user, cachedMenuItem);
+                    menuCacheClearAt(user, menuPositionCurrent);
                     currentMenuPosition.push(1);
                     telegramMessageDisplayPopUp(user, translationsItemTextGet(user, 'MsgSuccess'));
                     menuMenuDraw(user, currentMenuPosition);
@@ -18806,6 +18932,7 @@ async function commandsUserInputProcess(user, userInputValue) {
             break;
           }
         }
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -18814,7 +18941,6 @@ async function commandsUserInputProcess(user, userInputValue) {
           case dataTypeConfig: {
             if (configOptions.isUserConfigOption(commandOptions.item, user)) {
               configOptions.deleteUserOption(commandOptions.item, user);
-              menuMenuItemsAndRowsClearCached(user);
             }
             break;
           }
@@ -18834,7 +18960,6 @@ async function commandsUserInputProcess(user, userInputValue) {
               }
             }
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
-            menuMenuItemsAndRowsClearCached(user);
             break;
           }
 
@@ -18870,7 +18995,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                   menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
                   cachedAlertThresholdSet,
                 );
-                menuMenuItemsAndRowsClearCached(user);
               }
             }
             break;
@@ -18905,7 +19029,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                     menuPositionCurrent.slice(0, backStepsForCacheDelete).join('.'),
                     cachedTriggersDetails,
                   );
-                  menuMenuItemsAndRowsClearCached(user);
                 }
               }
             }
@@ -18916,6 +19039,7 @@ async function commandsUserInputProcess(user, userInputValue) {
             break;
           }
         }
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -18941,7 +19065,6 @@ async function commandsUserInputProcess(user, userInputValue) {
               currentEnumerationsList[newItem].order = currentOrder;
               currentEnumerationsList[commandOptions.item].order = newOrder;
               menuPositionCurrent.splice(-1, 1, newOrder);
-              menuMenuItemsAndRowsClearCached(user);
             }
             if (commandOptions.dataType === dataTypeDeviceStatesAttributes) {
               const currentDeviceAttribute = enumerationsGetDeviceState(
@@ -18953,7 +19076,6 @@ async function commandsUserInputProcess(user, userInputValue) {
               currentDeviceAttribute.stateAttributes = Object.keys(currentEnumerationsList)
                 .filter((currentAttribute) => currentEnumerationsList[currentAttribute].isEnabled)
                 .sort(currentSort);
-              menuMenuItemsAndRowsClearCached(user);
             }
             enumerationsSave(enumerationsGetPrimaryDataType(commandOptions.dataType, commandOptions.dataTypeExtraId));
             break;
@@ -18977,7 +19099,6 @@ async function commandsUserInputProcess(user, userInputValue) {
                   commandOptions.scope === configOptionScopeGlobal ? null : user,
                   currentOptionArray,
                 );
-                menuMenuItemsAndRowsClearCached(user);
                 break;
               }
 
@@ -18992,7 +19113,7 @@ async function commandsUserInputProcess(user, userInputValue) {
             break;
           }
         }
-
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -19013,7 +19134,7 @@ async function commandsUserInputProcess(user, userInputValue) {
           const newReportId = `${prefixEnums}.${commandOptions.enum}.${commandOptions.item}`;
           // @ts-ignore
           await setObjectAsync(newReportId, obj);
-          menuMenuItemsAndRowsClearCached(user);
+          menuCacheClearAt(user, menuPositionCurrent);
         } catch (error) {
           errs(`Object can not be created - setObject don't enabled. Error is ${jsonStringify(error)}`);
           menuPositionCurrent.splice(-1);
@@ -19059,7 +19180,6 @@ async function commandsUserInputProcess(user, userInputValue) {
             alertsGetStateAlertDetailsOrThresholds(user, commandOptions.state),
           );
         }
-        menuMenuItemsAndRowsClearCached(user);
         break;
       }
 
@@ -19080,20 +19200,20 @@ async function commandsUserInputProcess(user, userInputValue) {
             menuPositionCurrent.push(jumpToItem);
           }
         });
-        menuMenuItemsAndRowsClearCached(user);
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
       case cmdSetOffset: {
         menuPositionCurrent = commandOptions.index.split('.');
         cachedValueSet(user, cachedMenuButtonsOffset, [commandOptions.index, commandOptions.offset]);
-        menuMenuItemsAndRowsClearCached(user);
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
       case cmdDeleteAllSentImages: {
         sentImagesDelete(user);
-        menuMenuItemsAndRowsClearCached(user);
+        menuCacheClearAt(user, menuPositionCurrent);
         break;
       }
 
@@ -19168,7 +19288,7 @@ function telegramFileSend(user, fileFullPath, callback) {
       if (user.userId != user.chatId) {
         documentTelegramObject.chatId = user.chatId;
       }
-      menuMenuItemsAndRowsClearCached(user);
+      menuCacheClearAt(user);
       const clearCurrent = telegramMessageClearCurrent(user, false, true);
       telegramObjectPushToQueue(user, clearCurrent ? [clearCurrent, documentTelegramObject] : documentTelegramObject);
       if (callback) callback({success: true});
@@ -19197,7 +19317,7 @@ function telegramImageSend(user, imageFullPath, callback) {
       if (user.userId != user.chatId) {
         imageTelegramObject.chatId = user.chatId;
       }
-      menuMenuItemsAndRowsClearCached(user);
+      menuCacheClearAt(user);
       const clearCurrent = telegramMessageClearCurrent(user, false, true);
       telegramObjectPushToQueue(user, clearCurrent ? [clearCurrent, imageTelegramObject] : imageTelegramObject);
       if (callback) callback({success: true});
@@ -19992,7 +20112,7 @@ function telegramActionOnSendToUserRaw(obj) {
       if (!user.userId) {
         user = {...cachedValueGet(user, cachedUser), ...user};
       }
-      menuMenuItemsAndRowsClearCached(user);
+      menuCacheClearAt(user);
       cachedValueDelete(user, cachedMenuOn);
       menuMenuDraw(user);
     }
