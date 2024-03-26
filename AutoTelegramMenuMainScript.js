@@ -4660,15 +4660,15 @@ function cachedValueExists(user, valueId) {
  */
 function cachedValueGet(user, valueId, getLastChange = false) {
   const id = cachedGetValueId(user, valueId);
-  let result, stateLastChange;
+  let value, lastChange;
   if (id) {
     if (valueId.startsWith(prefixExternalStates)) valueId = prefixExternalStates;
-    if ((!cachedValuesMap.has(id) || getLastChange) && statesCommonAttributes.hasOwnProperty(valueId)) {
+    if (cachedValuesMap.has(id) === false && statesCommonAttributes.hasOwnProperty(valueId)) {
       if (existsState(id)) {
         const currentState = getState(id);
         if (typeof currentState === 'object') {
           let cachedVal = currentState.val;
-          stateLastChange = currentState.lc;
+          lastChange = currentState.lc;
           if (statesCommonAttributes[valueId].type === 'json' && cachedVal.length > 0) {
             try {
               cachedVal = jsonParse(cachedVal);
@@ -4676,15 +4676,19 @@ function cachedValueGet(user, valueId, getLastChange = false) {
               warns(`Parse error - ${jsonStringify(err)}`);
             }
           }
-          cachedValuesMap.set(id, cachedVal);
+          cachedValuesMap.set(id, {value: cachedVal, lastChange: lastChange});
         }
       }
     }
     if (cachedValuesMap.has(id)) {
-      result = objectDeepClone(cachedValuesMap.get(id));
+      const cachedValue = cachedValuesMap.get(id);
+      if (typeof cachedValue === 'object' && Array.isArray(cachedValue) === false) {
+        value = objectDeepClone(cachedValue?.['value']);
+        lastChange = cachedValue?.['lastChange'];
+      }
     }
   }
-  return getLastChange ? [result, stateLastChange] : result;
+  return getLastChange ? [value, lastChange] : value;
 }
 
 /**
@@ -4717,7 +4721,7 @@ function cachedValueSet(user, valueId, value) {
   if (id) {
     const currentValue = cachedValuesMap.has(id) ? cachedValuesMap.get(id) : undefined;
     if (!isDefined(currentValue) || jsonStringify(currentValue) !== jsonStringify(value)) {
-      cachedValuesMap.set(id, value);
+      cachedValuesMap.set(id, {value, lastChange: new Date().valueOf()});
       const common = {};
       if (valueId.startsWith(prefixExternalStates)) {
         common.name = `${statesCommonAttributes[prefixExternalStates].name} ${valueId}`;
@@ -8144,7 +8148,6 @@ function alertsProcessMessageTemplate(user, template, variables) {
  */
 function alertsActionOnSubscribedState(object) {
   const alerts = alertsGet(),
-    activeChatGroups = telegramGetGroupChats(true),
     stateId = object.id,
     isEmulatedForTriggers = object.isEmulatedForTriggers;
   if (
@@ -8173,7 +8176,7 @@ function alertsActionOnSubscribedState(object) {
         chatId = Number(chatId);
         const user = telegramGenerateUserObjectFromId(chatId),
           isTrigger = chatId === triggersInAlertsId;
-        if (chatId >= 0 || activeChatGroups.includes(chatId)) {
+        if (chatId >= 0 || telegramActiveChatGroups.includes(chatId)) {
           let currentState = cachedValueGet(user, cachedCurrentState);
           const stateValue = enumerationsEvaluateValueConversionCode(user, object.state.val, convertValueCode),
             stateValueOld = enumerationsEvaluateValueConversionCode(user, object.oldState.val, convertValueCode),
@@ -15701,7 +15704,7 @@ function menuMenuMessageRenew(idOfUser, forceNow = false, noDraw = false) {
   let userIds =
     idOfUser !== menuRefreshTimeAllUsers && usersInMenu.validId(idOfUser) ? [idOfUser] : usersInMenu.getUsers();
   if (idOfUser === menuRefreshTimeAllUsers) {
-    userIds = userIds.concat(telegramGetGroupChats(true));
+    userIds = userIds.concat(telegramActiveChatGroups);
   }
   userIds.forEach((userId) => {
     if (
@@ -16078,6 +16081,9 @@ async function commandsUserInputProcess(user, userInputValue) {
     }
   }
 
+  if (telegramMessageQueueIsProcessing.has(user.chatId)) {
+    telegramMessageQueueIsProcessing.delete(user.chatId);
+  }
   const isWaitForInput = cachedValueGet(user, cachedIsWaitForInput),
     userInput = isWaitForInput || userInputToProcess,
     menuMessageObject = {},
@@ -19265,7 +19271,8 @@ function telegramGetGroupChats(activeOnly) {
 
 //*** send messages to Telegram - begin ***//
 
-const cachedTelegramMessagesQueue = 'messagesQueue';
+const telegramMessageQueue = new Array(),
+  telegramMessageQueueIsProcessing = new Map();
 
 /**
  * This function prepare appropriate telegram message object with path to the file and push it to the queue.
@@ -19411,9 +19418,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
       let telegramObjects = new Array();
       if (
         clearBefore ||
-        ((!telegramObject.hasOwnProperty(telegramCommandEditMessage) ||
-          !isDefined(telegramObject[telegramCommandEditMessage])) &&
-          !isBotMessageOldOrNotExists)
+        (typeof telegramObject[telegramCommandEditMessage] !== 'object')
       ) {
         const clearCurrent = telegramMessageClearCurrent(user, false, true);
         if (clearCurrent) telegramObjects.push(clearCurrent);
@@ -19444,17 +19449,12 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
  * to push to the queue.
  */
 function telegramObjectPushToQueue(user, telegramObject) {
-  let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
-  if (!userMessagesQueue) {
-    userMessagesQueue = [];
-  }
-  const isReady = userMessagesQueue.length === 0;
+  const isReady = telegramMessageQueue.length === 0;
   if (Array.isArray(telegramObject) && telegramObject.length && Array.isArray(telegramObject[0])) {
-    telegramObject.forEach((telegramSubObject) => userMessagesQueue.push(telegramSubObject));
+    telegramObject.forEach((telegramSubObject) => telegramMessageQueue.push(telegramSubObject));
   } else {
-    userMessagesQueue.push(telegramObject);
+    telegramMessageQueue.push(telegramObject);
   }
-  cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
   if (isReady) {
     telegramQueueProcess(user);
   }
@@ -19474,7 +19474,6 @@ function telegramQueueProcess(user, messageId) {
    * @param {object} telegramObject - The Telegram message object, result of sending is processing.
    * @param {object[]} telegramObjects - The arrays of Telegram objects, which can contain one message, or two,
    * "linked" together.
-   * @param {number} currentLength - The current length of queue.
    * @param {boolean=} waitForLog - The selector to identify is needed to wait for log for error details.
    */
   function telegramSendToCallBack(
@@ -19482,19 +19481,17 @@ function telegramQueueProcess(user, messageId) {
     user,
     telegramObject,
     telegramObjects,
-    currentLength,
     sendToTS,
     waitForLog = false,
   ) {
-    let userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue),
-      isMessageCantBeDeletedOrEdited = false,
+    let isMessageCantBeDeletedOrEdited = false,
       telegramError;
     const currentTS = Date.now(),
       resultObject = telegramSendToAdapterResponse(result, telegramObject);
     if (!resultObject.success) {
       if (waitForLog) {
         setTimeout(() => {
-          telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, sendToTS, false);
+          telegramSendToCallBack(result, user, telegramObject, telegramObjects, sendToTS, false);
         }, telegramDelayToCatchLog);
         return; //to be sure not process message and queue if the log check is needed to be done before
       } else {
@@ -19542,6 +19539,9 @@ function telegramQueueProcess(user, messageId) {
             if (indexWainting >= 0) {
               telegramQueuesIsWaitingConnection.splice(indexWainting, 1);
             }
+            if (telegramMessageQueueIsProcessing.has(user.chatId)) {
+              telegramMessageQueueIsProcessing.delete(user.chatId);
+            }
             telegramQueueProcess(user);
           }, telegramDelayToSendReTry);
           return; //to be sure not clean queue and messages before the connection will be re-established
@@ -19557,11 +19557,12 @@ function telegramQueueProcess(user, messageId) {
             );
             if (
               !isCurrentMessageOldOrNotExists &&
+              currentMessageId > 0 &&
               currentMessageId != telegramObject[resultObject.error?.command].options.message_id
             ) {
               telegramObject[resultObject.error?.command].options.message_id = currentMessageId;
               sendTo(telegramAdapter, telegramObject, (result) => {
-                telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
+                telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
               });
             } else {
               isMessageCantBeDeletedOrEdited = true;
@@ -19585,7 +19586,7 @@ function telegramQueueProcess(user, messageId) {
             ) {
               telegramObject[messageCommand].options.message_id = currentMessageId;
               sendTo(telegramAdapter, telegramObject, (result) => {
-                telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
+                telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
               });
             } else {
               isMessageCantBeDeletedOrEdited = true;
@@ -19599,7 +19600,7 @@ function telegramQueueProcess(user, messageId) {
               delete telegramObject[telegramCommandEditMessage];
               telegramObjects = [telegramObject];
               sendTo(telegramAdapter, telegramObject, (result) => {
-                telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
+                telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
               });
             }
           }
@@ -19624,62 +19625,49 @@ function telegramQueueProcess(user, messageId) {
           cachedValueGet(user, cachedBotSendMessageId) ==
           telegramObject[telegramCommandDeleteMessage].options.message_id
         ) {
-          cachedValueDelete(user, cachedBotSendMessageId);
+          cachedValueSet(user, cachedBotSendMessageId, 0);
         }
       }
     }
     if (telegramObjects.length) {
       telegramObject = telegramObjects.shift();
       sendTo(telegramAdapter, telegramObject, (result) => {
-        telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentLength, currentTS, true);
+        telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
       });
-    } else if (userMessagesQueue) {
-      userMessagesQueue.splice(0, currentLength);
-      if (userMessagesQueue.length === 0) {
-        cachedValueDelete(user, cachedTelegramMessagesQueue);
-      } else {
-        cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
+    } else {
+      if (Array.isArray(telegramMessageQueue) &&  telegramMessageQueue.length > 0) {
+        telegramMessageQueue.shift();
       }
+      telegramMessageQueueIsProcessing.delete(user.chatId);
     }
   }
 
   if (
     telegramIsConnected &&
+    telegramMessageQueueIsProcessing.has(user.chatId) === false &&
     telegramQueuesIsWaitingConnection.find((queueUser) => queueUser.chatId === user.chatId) === undefined
   ) {
-    const userMessagesQueue = cachedValueGet(user, cachedTelegramMessagesQueue);
-    if (userMessagesQueue?.length) {
+    if (Array.isArray(telegramMessageQueue) &&  telegramMessageQueue.length) {
+      telegramMessageQueueIsProcessing.set(user.chatId, true);
       if (typeof messageId !== 'number') {
         const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
           user,
           cachedBotSendMessageId,
           timeDelta48,
         );
-        if (!isBotMessageOldOrNotExists) {
+        if (!isBotMessageOldOrNotExists && lastBotMessageId > 0) {
           messageId = lastBotMessageId;
         }
       }
-      let /**
-         * If messages in queue more then 2 - we will take last one, otherwise - first one.
-         */
-        currentPos = userMessagesQueue.length > 2 ? userMessagesQueue.length - 1 : 0,
-        telegramObjects;
       /**
-       * will send a last message, to prevent spamming the telegram with flipping some states in ioBroker.
-       * In case of user input - we will not lost any message
-       **/
+       * If messages in queue more then 2 - we will take last one, otherwise - first one.
+       */
+      if (telegramMessageQueue.length > 2) {
+        telegramMessageQueue.splice(0, telegramMessageQueue.length - 1);
+      }
+      let telegramObjects;
       do {
-        telegramObjects = objectDeepClone(userMessagesQueue[currentPos]);
-        if (!isDefined(telegramObjects)) {
-          if (currentPos < userMessagesQueue.length - 1) {
-            currentPos = userMessagesQueue.length - 1;
-          } else if (currentPos > 0) currentPos -= 1;
-          else {
-            cachedValueDelete(user, cachedTelegramMessagesQueue);
-            currentPos = -1;
-          }
-          telegramObjects = currentPos >= 0 ? objectDeepClone(userMessagesQueue[currentPos]) : undefined;
-        }
+        telegramObjects = objectDeepClone(telegramMessageQueue[0]);
         if (typeof telegramObjects === 'object' && !Array.isArray(telegramObjects)) telegramObjects = [telegramObjects];
         if (telegramObjects?.[0]?.[telegramCommandDeleteMessage]?.isBotMessage) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
@@ -19687,18 +19675,13 @@ function telegramQueueProcess(user, messageId) {
             warns(`No message for Delete! Going to skip command ${jsonStringify(telegramObjects[0])}.`);
             telegramObjects.shift();
           }
-          if (telegramObjects && telegramObjects.length === 0) {
-            userMessagesQueue.splice(currentPos, 1);
-            if (userMessagesQueue.length === 0) {
-              cachedValueDelete(user, cachedTelegramMessagesQueue);
-            } else {
-              cachedValueSet(user, cachedTelegramMessagesQueue, userMessagesQueue);
-            }
+          if (Array.isArray(telegramObjects) && telegramObjects.length === 0) {
+            telegramMessageQueue.shift();
             telegramObjects = undefined;
           }
         }
-      } while (!isDefined(telegramObjects) && userMessagesQueue.length > 1);
-      if (telegramObjects) {
+      } while (Array.isArray(telegramObjects) === false && telegramMessageQueue.length > 0);
+      if (Array.isArray(telegramObjects) === true) {
         if (messageId) {
           if (telegramObjects[0].hasOwnProperty(telegramCommandEditMessage)) {
             telegramObjects[0][telegramCommandEditMessage].options.message_id = messageId;
@@ -19707,12 +19690,16 @@ function telegramQueueProcess(user, messageId) {
         const telegramObject = telegramObjects.shift(),
           sentToTimeStamp = Date.now();
         sendTo(telegramAdapter, telegramObject, (result) => {
-          telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentPos + 1, sentToTimeStamp, true);
+          telegramSendToCallBack(result, user, telegramObject, telegramObjects, sentToTimeStamp, true);
         });
       }
     }
-  } else if (telegramQueuesIsWaitingConnection.find((queueUser) => queueUser.chatId === user.chatId) === undefined) {
-    telegramQueuesIsWaitingConnection.push(user);
+  } else if (telegramIsConnected &&
+    telegramMessageQueueIsProcessing.has(user.chatId) === true) {
+      setTimeout(() => {
+        warns(`Wait for unlock and send message for chat ${user['chatId']}.`);
+        telegramQueueProcess(user);
+      }, Math.round(telegramDelayToSendReTry/10));
   }
 }
 
@@ -19744,7 +19731,7 @@ function telegramMessageClearCurrent(
   } else if (!isBotMessageOldOrNotExists) {
     messageId = lastBotMessageId;
   }
-  if (messageId) {
+  if (typeof messageId === 'number') {
     const telegramObject = {
       [telegramCommandDeleteMessage]: {
         options: {
@@ -19801,7 +19788,7 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
 
 //*** Telegram interaction - begin ***//
 
-let telegramIsConnected = false;
+let telegramIsConnected = false, telegramActiveChatGroups = [];
 const telegramQueuesIsWaitingConnection = [],
   telegramLastErrors = new Map(),
   telegramErrorParseRegExp =
@@ -20016,13 +20003,17 @@ function telegramActionOnUserRequestRaw(obj) {
           if (isDefined(command)) {
             if (userRequest?.['data']) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
-              if (cachedValueExists(user, cachedTelegramMessagesQueue)) {
+              if (Array.isArray(telegramMessageQueue) &&  telegramMessageQueue.length > 0) {
                 warns(
                   `Some output is in cache:\n${jsonStringify(
-                    cachedValueGet(user, cachedTelegramMessagesQueue),
+                    telegramMessageQueue,
                   )}.\nGoing to delete it!`,
                 );
-                cachedValueDelete(user, cachedTelegramMessagesQueue);
+                telegramMessageQueue.splice(0, telegramMessageQueue.length);
+                if (telegramMessageQueueIsProcessing.has(user.chatId)) {
+                  telegramMessageQueueIsProcessing.delete(user.chatId);
+                }
+                menuCacheClearAt(user);
               }
               /** and as we received command - the menu is on now **/
               // NOSONAR // setCachedState(user, cachedMenuOn, true);
@@ -20062,7 +20053,7 @@ function telegramActionOnUserRequestRaw(obj) {
 }
 
 /**
- * This function is used to parse the Telegram message sent to uses, to more clear identification what and to whom
+ * This function is used to parse the Telegram message sent to users, to more clear identification what and to whom
  * it was sent. Especially it needed to clear separation message ID's between multiple users and group chats.
  * @param {object} obj - The `botSendRaw` state change object.
  */
@@ -20107,10 +20098,10 @@ function telegramActionOnSendToUserRaw(obj) {
               return false;
             }) >= 0,
         ) >= 0;
-      if (isBotMessage && messageId) cachedValueSet(user, cachedBotSendMessageId, messageId);
     } else if (botMessage.hasOwnProperty('text') && botMessage.text.includes(botMessageStamp)) {
       isBotMessage = true;
     }
+    if (isBotMessage && messageId) cachedValueSet(user, cachedBotSendMessageId, messageId);
     if (botMessage.hasOwnProperty('photo')) {
       sentImageStore(user, botMessage.message_id);
       isDocument = true;
@@ -20123,6 +20114,7 @@ function telegramActionOnSendToUserRaw(obj) {
         user = {...cachedValueGet({userId, chatId: userId}, cachedUser), ...user};
       }
       cachedValueSet(user, cachedMenuOn, true);
+      telegramMessageQueueIsProcessing.delete(user.chatId);
       telegramQueueProcess(user, messageId);
     } else if (isDocument) {
       if (!user.userId) {
@@ -20248,6 +20240,10 @@ async function autoTelegramMenuInstanceInit() {
       },
     );
   }
+  telegramActiveChatGroups = telegramGetGroupChats(true);
+  schedule({ minute: 30 }, () => {
+    telegramActiveChatGroups = telegramGetGroupChats(true);
+  });
   if (!configOptions.existsOptionState(cfgUpdateMessageTime)) {
     configOptions.functionScheduleMenuMessageRenew(configOptions.getOption(cfgUpdateMessageTime));
   }
