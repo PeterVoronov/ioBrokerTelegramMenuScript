@@ -6199,14 +6199,12 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
       }
     }
     if (
-      (enumerationType === dataTypePrimaryEnums &&
-        enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, itemIdCurrent) === 0) ||
-      (enumerationType !== dataTypePrimaryEnums &&
-        enumerationType !== dataTypeDeviceStatesAttributes &&
-        ((configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
-          enumerationsIsItemCanBeDeleted(enumerationType, itemIdCurrent, true)) ||
-          enumerationsIsItemCanBeDeleted(enumerationType, itemIdCurrent, false)))
-    )
+      (configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
+        typeof enumerationsIsItemCanBeDeleted(enumerationType, enumerationTypeExtraId, itemIdCurrent, true) !==
+          'undefined') ||
+      typeof enumerationsIsItemCanBeDeleted(enumerationType, enumerationTypeExtraId, itemIdCurrent, false) !==
+        'undefined'
+    ) {
       subMenuIndex = subMenu.push(
         menuMenuItemGenerateDeleteItem(user, `${currentIndex}`, subMenuIndex, {
           dataType: enumerationType,
@@ -6214,6 +6212,7 @@ function enumerationsMenuGenerateEnumerationItem(user, menuItemToProcess) {
           dataTypeExtraId: enumerationTypeExtraId,
         }),
       );
+    }
   }
   return subMenu;
 }
@@ -6237,7 +6236,7 @@ function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
 /**
  * This function make a check, is the current `enumerationItem` can be deleted.
  * If the `withEnum` is true - to extend the check on related enum.
- * The result is a enumId in case of `withEnum`, or 'Can be deleted' in case of
+ * The result is a `enumId` in case of `withEnum` = `true`, or 'enumCanBeDeleted' in case of
  * deletion is possible and empty string  - if not.
  * @param {string} enumerationType  - The string defines the enumerationItem type.
  * @param {string} enumerationItemId - The Id of the current enumerationItem, i.e. ioBroker enum Id.
@@ -6245,25 +6244,28 @@ function enumerationsGetActiveSubItemsCount(enumerationType, primaryEnumId) {
  * @returns {string} The string containing the appropriate enum Id in case of `withEnum`,
  * or 'Can be deleted' in case of deletion is possible and empty string  - if not.
  */
-function enumerationsIsItemCanBeDeleted(enumerationType, enumerationItemId, withEnum = false) {
-  if (enumerationDeviceSubTypes.includes(enumerationType)) {
+function enumerationsIsItemCanBeDeleted(enumerationType, enumerationTypeExtraId, enumerationItemId, withEnum = false) {
+  if (
+    enumerationDeviceSubTypes.includes(enumerationType) ||
+    (enumerationType === dataTypePrimaryEnums &&
+      enumerationsGetActiveSubItemsCount(enumerationTypeExtraId, enumerationItemId) === 0)
+  ) {
     return enumCanBeDeleted;
-  } else {
-    const currentEnumeration = enumerationsList[enumerationType],
-      currentEnumerationItemObject = currentEnumeration?.list?.hasOwnProperty(enumerationItemId)
-        ? currentEnumeration.list[enumerationItemId]
-        : {},
-      enumObjectId =
-        currentEnumeration &&
-        currentEnumerationItemObject.isAvailable &&
-        Object.keys(currentEnumeration.enums).includes(currentEnumerationItemObject.enum)
-          ? `${prefixEnums}.${currentEnumerationItemObject.enum}.${enumerationItemId}`
+  } else if (enumerationType !== dataTypeDeviceStatesAttributes) {
+    const enumeration = enumerationsList[enumerationType],
+      enumerationItem =
+        typeof enumeration?.['list']?.[enumerationItemId] === 'object'
+          ? enumeration['list'][enumerationItemId]
+          : undefined,
+      enumFullId =
+        enumerationItem?.['isAvailable'] === true && Object.keys(enumeration.enums).includes(enumerationItem?.['enum'])
+          ? `${prefixEnums}.${enumerationItem['enum']}.${enumerationItemId}`
           : '',
-      enumObject = enumObjectId && !currentEnumerationItemObject.isExternal ? getObject(enumObjectId) : null,
-      enumMembers = enumObject?.common?.members || [];
-    if (withEnum && enumObjectId && enumMembers?.length === 0) {
-      return enumObjectId;
-    } else if (!withEnum && !enumObjectId && currentEnumerationItemObject) {
+      enumObject = enumFullId && !enumerationItem?.['isExternal'] ? getObject(enumFullId) : undefined,
+      enumMembers = enumObject?.['common']?.['members'] || [];
+    if (withEnum === true && enumFullId.length > 0 && enumMembers?.length === 0) {
+      return enumFullId;
+    } else if (withEnum === false && enumFullId.length === 0 && enumerationItem) {
       return enumCanBeDeleted;
     }
   }
@@ -6372,8 +6374,10 @@ function enumerationsMenuItemDetailsEnumerationItem(user, menuItemToProcess) {
       label: `${translationsItemTextGet(user, 'canBeDeleted')}`,
       value: `${
         (configOptions.getOption(cfgAllowToDeleteEmptyEnums) &&
-          enumerationsIsItemCanBeDeleted(enumerationType, currentItem, true)) ||
-        enumerationsIsItemCanBeDeleted(enumerationType, currentItem, false)
+          typeof enumerationsIsItemCanBeDeleted(enumerationType, enumerationTypeExtraId, currentItem, true) !==
+            'undefined') ||
+        typeof enumerationsIsItemCanBeDeleted(enumerationType, enumerationTypeExtraId, currentItem, false) !==
+          'undefined'
           ? configOptions.getOption(cfgDefaultIconOn, user)
           : configOptions.getOption(cfgDefaultIconOff, user)
       }`,
@@ -18075,8 +18079,13 @@ async function commandsUserInputProcess(user, userInputValue) {
           case dataTypeDestination:
           case dataTypeFunction:
           case dataTypeReport: {
-            const enumObjectId = enumerationsIsItemCanBeDeleted(commandOptions.dataType, commandOptions.item, true);
-            if (enumObjectId) {
+            const enumObjectId = enumerationsIsItemCanBeDeleted(
+              commandOptions.dataType,
+              commandOptions.dataTypeExtraId,
+              commandOptions.item,
+              true,
+            );
+            if (typeof enumObjectId === 'string' && enumObjectId.includes('.')) {
               await deleteObjectAsync(enumObjectId);
             }
           }
@@ -19416,10 +19425,7 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
         }
       }
       let telegramObjects = new Array();
-      if (
-        clearBefore ||
-        (typeof telegramObject[telegramCommandEditMessage] !== 'object')
-      ) {
+      if (clearBefore || typeof telegramObject[telegramCommandEditMessage] !== 'object') {
         const clearCurrent = telegramMessageClearCurrent(user, false, true);
         if (clearCurrent) telegramObjects.push(clearCurrent);
       }
@@ -19476,14 +19482,7 @@ function telegramQueueProcess(user, messageId) {
    * "linked" together.
    * @param {boolean=} waitForLog - The selector to identify is needed to wait for log for error details.
    */
-  function telegramSendToCallBack(
-    result,
-    user,
-    telegramObject,
-    telegramObjects,
-    sendToTS,
-    waitForLog = false,
-  ) {
+  function telegramSendToCallBack(result, user, telegramObject, telegramObjects, sendToTS, waitForLog = false) {
     let isMessageCantBeDeletedOrEdited = false,
       telegramError;
     const currentTS = Date.now(),
@@ -19635,7 +19634,7 @@ function telegramQueueProcess(user, messageId) {
         telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
       });
     } else {
-      if (Array.isArray(telegramMessageQueue) &&  telegramMessageQueue.length > 0) {
+      if (Array.isArray(telegramMessageQueue) && telegramMessageQueue.length > 0) {
         telegramMessageQueue.shift();
       }
       telegramMessageQueueIsProcessing.delete(user.chatId);
@@ -19647,7 +19646,7 @@ function telegramQueueProcess(user, messageId) {
     telegramMessageQueueIsProcessing.has(user.chatId) === false &&
     telegramQueuesIsWaitingConnection.find((queueUser) => queueUser.chatId === user.chatId) === undefined
   ) {
-    if (Array.isArray(telegramMessageQueue) &&  telegramMessageQueue.length) {
+    if (Array.isArray(telegramMessageQueue) && telegramMessageQueue.length) {
       telegramMessageQueueIsProcessing.set(user.chatId, true);
       if (typeof messageId !== 'number') {
         const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
@@ -19694,12 +19693,11 @@ function telegramQueueProcess(user, messageId) {
         });
       }
     }
-  } else if (telegramIsConnected &&
-    telegramMessageQueueIsProcessing.has(user.chatId) === true) {
-      setTimeout(() => {
-        warns(`Wait for unlock and send message for chat ${user['chatId']}.`);
-        telegramQueueProcess(user);
-      }, Math.round(telegramDelayToSendReTry/10));
+  } else if (telegramIsConnected && telegramMessageQueueIsProcessing.has(user.chatId) === true) {
+    setTimeout(() => {
+      warns(`Wait for unlock and send message for chat ${user['chatId']}.`);
+      telegramQueueProcess(user);
+    }, Math.round(telegramDelayToSendReTry / 10));
   }
 }
 
@@ -19788,7 +19786,8 @@ function telegramMessageDisplayPopUp(user, text, showAlert = false) {
 
 //*** Telegram interaction - begin ***//
 
-let telegramIsConnected = false, telegramActiveChatGroups = [];
+let telegramIsConnected = false,
+  telegramActiveChatGroups = [];
 const telegramQueuesIsWaitingConnection = [],
   telegramLastErrors = new Map(),
   telegramErrorParseRegExp =
@@ -20003,12 +20002,8 @@ function telegramActionOnUserRequestRaw(obj) {
           if (isDefined(command)) {
             if (userRequest?.['data']) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
-              if (Array.isArray(telegramMessageQueue) &&  telegramMessageQueue.length > 0) {
-                warns(
-                  `Some output is in cache:\n${jsonStringify(
-                    telegramMessageQueue,
-                  )}.\nGoing to delete it!`,
-                );
+              if (Array.isArray(telegramMessageQueue) && telegramMessageQueue.length > 0) {
+                warns(`Some output is in cache:\n${jsonStringify(telegramMessageQueue)}.\nGoing to delete it!`);
                 telegramMessageQueue.splice(0, telegramMessageQueue.length);
                 if (telegramMessageQueueIsProcessing.has(user.chatId)) {
                   telegramMessageQueueIsProcessing.delete(user.chatId);
@@ -20241,7 +20236,7 @@ async function autoTelegramMenuInstanceInit() {
     );
   }
   telegramActiveChatGroups = telegramGetGroupChats(true);
-  schedule({ minute: 30 }, () => {
+  schedule({minute: 30}, () => {
     telegramActiveChatGroups = telegramGetGroupChats(true);
   });
   if (!configOptions.existsOptionState(cfgUpdateMessageTime)) {
