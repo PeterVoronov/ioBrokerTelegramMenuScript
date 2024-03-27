@@ -4887,8 +4887,6 @@ function sentImagesDelete(user) {
    */
   function sentImagesDeleteCallBack(result, user, telegramObject, sentImages) {
     const resultObject = telegramSendToAdapterResponse(result, telegramObject);
-    logs(`SendToTelegram: result (${typeToText(result)}) = ${jsonStringify(result, 1)}`, _l);
-    logs(`resultObject: ${jsonStringify(resultObject, 1)}`, _l);
     if (!resultObject.success) {
       warns(
         `Can't send message (${jsonStringify(telegramObject)}) to (${jsonStringify(user)})!\nResult = ${jsonStringify(
@@ -19280,7 +19278,7 @@ function telegramGetGroupChats(activeOnly) {
 
 //*** send messages to Telegram - begin ***//
 
-const telegramMessageQueue = new Array(),
+const telegramMessageQueue = new Map(),
   telegramMessageQueueIsProcessing = new Map();
 
 /**
@@ -19455,11 +19453,15 @@ function telegramMessageObjectPush(user, messageObject, messageOptions) {
  * to push to the queue.
  */
 function telegramObjectPushToQueue(user, telegramObject) {
-  const isReady = telegramMessageQueue.length === 0;
+  if (telegramMessageQueue.has(user?.['chatId']) === false) {
+    telegramMessageQueue.set(user?.['chatId'], new Array());
+  }
+  const queueOfUser = telegramMessageQueue.get(user?.['chatId']);
+  const isReady = queueOfUser.length === 0;
   if (Array.isArray(telegramObject) && telegramObject.length && Array.isArray(telegramObject[0])) {
-    telegramObject.forEach((telegramSubObject) => telegramMessageQueue.push(telegramSubObject));
+    telegramObject.forEach((telegramSubObject) => queueOfUser.push(telegramSubObject));
   } else {
-    telegramMessageQueue.push(telegramObject);
+    queueOfUser.push(telegramObject);
   }
   if (isReady) {
     telegramQueueProcess(user);
@@ -19545,15 +19547,15 @@ function telegramQueueProcess(user, messageId) {
           }, telegramDelayToSendReTry);
           return; //to be sure not clean queue and messages before the connection will be re-established
         } else {
+          const [currentMessageId, isCurrentMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
+            user,
+            cachedBotSendMessageId,
+            timeDelta48,
+          );
           if (
             resultObject.error?.level === telegramErrorLevelTelegram &&
             telegramObject?.hasOwnProperty(resultObject.error?.command)
           ) {
-            const [currentMessageId, isCurrentMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
-              user,
-              cachedBotSendMessageId,
-              timeDelta48,
-            );
             if (
               !isCurrentMessageOldOrNotExists &&
               currentMessageId > 0 &&
@@ -19563,6 +19565,7 @@ function telegramQueueProcess(user, messageId) {
               sendTo(telegramAdapter, telegramObject, (result) => {
                 telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
               });
+              return;
             } else {
               isMessageCantBeDeletedOrEdited = true;
             }
@@ -19572,13 +19575,8 @@ function telegramQueueProcess(user, messageId) {
               telegramObject.hasOwnProperty(telegramCommandEditMessage))
           ) {
             const messageCommand = telegramObject.hasOwnProperty(telegramCommandDeleteMessage)
-                ? telegramCommandDeleteMessage
-                : telegramCommandEditMessage,
-              [currentMessageId, isCurrentMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
-                user,
-                cachedBotSendMessageId,
-                timeDelta48,
-              );
+              ? telegramCommandDeleteMessage
+              : telegramCommandEditMessage;
             if (
               !isCurrentMessageOldOrNotExists &&
               currentMessageId != telegramObject[messageCommand].options.message_id
@@ -19587,6 +19585,7 @@ function telegramQueueProcess(user, messageId) {
               sendTo(telegramAdapter, telegramObject, (result) => {
                 telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
               });
+              return;
             } else {
               isMessageCantBeDeletedOrEdited = true;
             }
@@ -19601,6 +19600,7 @@ function telegramQueueProcess(user, messageId) {
               sendTo(telegramAdapter, telegramObject, (result) => {
                 telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
               });
+              return;
             }
           }
         }
@@ -19615,17 +19615,10 @@ function telegramQueueProcess(user, messageId) {
                 `Can't delete temporary file  '${telegramObject.text}' and directory! Error: '${jsonStringify(err)}'.`,
               );
           });
-      }
-      if (
-        telegramObject?.[telegramCommandDeleteMessage]?.isBotMessage &&
-        cachedValueExists(user, cachedBotSendMessageId)
-      ) {
-        if (
-          cachedValueGet(user, cachedBotSendMessageId) ==
-          telegramObject[telegramCommandDeleteMessage].options.message_id
-        ) {
-          cachedValueSet(user, cachedBotSendMessageId, 0);
-        }
+      } else if (typeof telegramObject?.[telegramCommandDeleteMessage]?.isBotMessage === 'number') {
+        cachedValueSet(user, cachedBotSendMessageId, 0);
+      } else {
+        cachedValueSet(user, cachedBotSendMessageId, resultObject.messageId);
       }
     }
     if (telegramObjects.length) {
@@ -19634,10 +19627,14 @@ function telegramQueueProcess(user, messageId) {
         telegramSendToCallBack(result, user, telegramObject, telegramObjects, currentTS, true);
       });
     } else {
-      if (Array.isArray(telegramMessageQueue) && telegramMessageQueue.length > 0) {
-        telegramMessageQueue.shift();
+      const queueOfUser = telegramMessageQueue.get(user?.['chatId']);
+      if (Array.isArray(queueOfUser) && queueOfUser.length > 0) {
+        queueOfUser.shift();
       }
       telegramMessageQueueIsProcessing.delete(user.chatId);
+      if (Array.isArray(queueOfUser) && queueOfUser.length > 0) {
+        telegramQueueProcess(user);
+      }
     }
   }
 
@@ -19646,7 +19643,8 @@ function telegramQueueProcess(user, messageId) {
     telegramMessageQueueIsProcessing.has(user.chatId) === false &&
     telegramQueuesIsWaitingConnection.find((queueUser) => queueUser.chatId === user.chatId) === undefined
   ) {
-    if (Array.isArray(telegramMessageQueue) && telegramMessageQueue.length) {
+    const queueOfUser = telegramMessageQueue.get(user?.['chatId']);
+    if (Array.isArray(queueOfUser) && queueOfUser.length) {
       telegramMessageQueueIsProcessing.set(user.chatId, true);
       if (typeof messageId !== 'number') {
         const [lastBotMessageId, isBotMessageOldOrNotExists] = cachedGetValueAndCheckItIfOld(
@@ -19661,12 +19659,12 @@ function telegramQueueProcess(user, messageId) {
       /**
        * If messages in queue more then 2 - we will take last one, otherwise - first one.
        */
-      if (telegramMessageQueue.length > 2) {
-        telegramMessageQueue.splice(0, telegramMessageQueue.length - 1);
+      if (queueOfUser.length > 2) {
+        queueOfUser.splice(0, queueOfUser.length - 1);
       }
       let telegramObjects;
       do {
-        telegramObjects = objectDeepClone(telegramMessageQueue[0]);
+        telegramObjects = objectDeepClone(queueOfUser[0]);
         if (typeof telegramObjects === 'object' && !Array.isArray(telegramObjects)) telegramObjects = [telegramObjects];
         if (telegramObjects?.[0]?.[telegramCommandDeleteMessage]?.isBotMessage) {
           telegramObjects[0][telegramCommandDeleteMessage].options.message_id = messageId;
@@ -19675,11 +19673,11 @@ function telegramQueueProcess(user, messageId) {
             telegramObjects.shift();
           }
           if (Array.isArray(telegramObjects) && telegramObjects.length === 0) {
-            telegramMessageQueue.shift();
+            queueOfUser.shift();
             telegramObjects = undefined;
           }
         }
-      } while (Array.isArray(telegramObjects) === false && telegramMessageQueue.length > 0);
+      } while (Array.isArray(telegramObjects) === false && queueOfUser.length > 0);
       if (Array.isArray(telegramObjects) === true) {
         if (messageId) {
           if (telegramObjects[0].hasOwnProperty(telegramCommandEditMessage)) {
@@ -19912,7 +19910,6 @@ function telegramGenerateUserObjectFromId(userId) {
  */
 function telegramActionOnLogError(logRecord) {
   if (logRecord?.from === telegramAdapter) {
-    logs(`errorlog : ${jsonStringify(logRecord, 1)}`, _l);
     try {
       const telegramErrorParsed = telegramErrorParseRegExp.exec(logRecord.message)?.groups;
       if (typeof telegramErrorParsed === 'object') {
@@ -19946,7 +19943,6 @@ function telegramActionOnLogError(logRecord) {
             currentErrors.shift();
           }
         }
-        logs(`telegramLastErrors : ${jsonStringify(telegramLastErrors, 1)}`, _l);
       }
     } catch (error) {
       warns(`Can't parse log record: ${jsonStringify(logRecord, 1)}! Error: ${jsonStringify(error, 1)}.`);
@@ -20002,11 +19998,12 @@ function telegramActionOnUserRequestRaw(obj) {
           if (isDefined(command)) {
             if (userRequest?.['data']) {
               /** if by some reason the menu is freezed - delete freezed queue ...**/
-              if (Array.isArray(telegramMessageQueue) && telegramMessageQueue.length > 0) {
-                warns(`Some output is in cache:\n${jsonStringify(telegramMessageQueue)}.\nGoing to delete it!`);
-                telegramMessageQueue.splice(0, telegramMessageQueue.length);
-                if (telegramMessageQueueIsProcessing.has(user.chatId)) {
-                  telegramMessageQueueIsProcessing.delete(user.chatId);
+              const queueOfUser = telegramMessageQueue.get(user['chatId']);
+              if (Array.isArray(queueOfUser) && queueOfUser.length > 0) {
+                warns(`Some output is in cache:\n${jsonStringify(queueOfUser)}.\nGoing to delete it!`);
+                queueOfUser.splice(0, queueOfUser.length);
+                if (telegramMessageQueueIsProcessing.has(user['chatId'])) {
+                  telegramMessageQueueIsProcessing.delete(user['chatId']);
                 }
                 menuCacheClearAt(user);
               }
@@ -20109,8 +20106,6 @@ function telegramActionOnSendToUserRaw(obj) {
         user = {...cachedValueGet({userId, chatId: userId}, cachedUser), ...user};
       }
       cachedValueSet(user, cachedMenuOn, true);
-      telegramMessageQueueIsProcessing.delete(user.chatId);
-      telegramQueueProcess(user, messageId);
     } else if (isDocument) {
       if (!user.userId) {
         user = {...cachedValueGet(user, cachedUser), ...user};
