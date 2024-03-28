@@ -19917,24 +19917,24 @@ function telegramActionOnLogError(logRecord) {
 function telegramActionOnUserRequestRaw(obj) {
   let userRequest = {};
   try {
-    userRequest = jsonParse(obj.state.val);
+    userRequest = jsonParse(obj?.state?.val);
   } catch (err) {
     warns(`userRequest: JSON parse error: ${jsonStringify(err)}`);
   }
-  if (userRequest?.from?.hasOwnProperty('id')) {
+  if (userRequest.from?.hasOwnProperty('id')) {
     const userId = userRequest.from.id,
       users = usersInMenu.getUsers();
     if (users.includes(userId)) {
       let messageId, chatId, command;
-      if (userRequest?.hasOwnProperty('message_id')) {
+      if (userRequest.hasOwnProperty('message_id')) {
         messageId = userRequest.message_id;
-      } else if (userRequest?.message?.hasOwnProperty('message_id')) {
+      } else if (userRequest.message?.hasOwnProperty('message_id')) {
         messageId = userRequest.message.message_id;
       }
       if (typeof messageId === 'number') {
-        if (userRequest?.chat?.hasOwnProperty('id')) {
+        if (userRequest.chat?.hasOwnProperty('id')) {
           chatId = userRequest.chat.id;
-        } else if (userRequest?.message?.chat?.hasOwnProperty('id')) {
+        } else if (userRequest.message?.chat?.hasOwnProperty('id')) {
           chatId = userRequest.message.chat.id;
         }
         if (typeof chatId === 'number') {
@@ -19946,11 +19946,11 @@ function telegramActionOnUserRequestRaw(obj) {
           let user = {};
           if (isDefined(command) || userRequest.hasOwnProperty('document')) {
             user = {
-              userId: userRequest?.from?.id,
+              userId: userId,
               chatId: chatId,
-              firstName: userRequest?.from?.first_name,
-              lastName: userRequest?.from?.last_name,
-              userName: userRequest?.from?.username,
+              firstName: userRequest.from?.first_name,
+              lastName: userRequest.from?.last_name,
+              userName: userRequest.from?.username,
             };
             if (user.userId == user.chatId) cachedValueSet(user, cachedUser, user);
           }
@@ -19981,8 +19981,8 @@ function telegramActionOnUserRequestRaw(obj) {
               if (currentCommand === cmdItemUpload) {
                 commandOptionsCache.set(user, commandIndex, commandIndex, cmdItemUpload, {
                   ...commandOptions,
-                  fileName: userRequest?.document?.file_name,
-                  fileSize: userRequest?.document?.file_size,
+                  fileName: userRequest.document?.file_name,
+                  fileSize: userRequest.document?.file_size,
                 });
                 on({id: telegramRequestPathFile, change: 'any'}, (obj) => {
                   unsubscribe(telegramRequestPathFile);
@@ -19995,9 +19995,9 @@ function telegramActionOnUserRequestRaw(obj) {
       }
     } else {
       warns(
-        `Access denied. User ${jsonStringify(userRequest?.from?.first_name)} ${jsonStringify(
-          userRequest?.from?.last_name,
-        )} (${jsonStringify(userRequest?.from?.username)}) with id = ${userId} not in the list!`,
+        `Access denied. User ${jsonStringify(userRequest.from?.first_name)} ${jsonStringify(
+          userRequest.from?.last_name,
+        )} (${jsonStringify(userRequest.from?.username)}) with id = ${userId} not in the list!`,
       );
     }
   }
@@ -20032,24 +20032,20 @@ function telegramActionOnSendToUserRaw(obj) {
     let isBotMessage = false,
       isDocument = false,
       userId = 0;
-    if (
-      botMessage.hasOwnProperty('reply_markup') &&
-      botMessage.reply_markup.hasOwnProperty('inline_keyboard') &&
-      Array.isArray(botMessage.reply_markup.inline_keyboard)
-    ) {
+    if (Array.isArray(botMessage?.reply_markup?.inline_keyboard)) {
       const inline_keyboard = botMessage.reply_markup.inline_keyboard;
       isBotMessage =
         inline_keyboard.findIndex(
           (keyboard) =>
             keyboard.findIndex((element) => {
-              if (element.hasOwnProperty('callback_data') && element.callback_data.indexOf(cmdClose) === 0) {
+              if (element.callback_data?.indexOf(cmdClose) === 0) {
                 userId = element.callback_data.split(itemsDelimiter).pop();
                 return true;
               }
               return false;
             }) >= 0,
         ) >= 0;
-    } else if (botMessage.hasOwnProperty('text') && botMessage.text.includes(botMessageStamp)) {
+    } else if (botMessage.text?.includes(botMessageStamp)) {
       isBotMessage = true;
     }
     if (isBotMessage && messageId) cachedValueSet(user, cachedBotSendMessageId, messageId);
