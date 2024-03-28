@@ -2,7 +2,7 @@
  * Script Name: ATM Extension AccuWeather
  * Version: 1.0
  * Created Date: 2022-12-15
- * Last Updated: 2024-03-04
+ * Last Updated: 2024-03-28
  * Author: Peter Voronov
  * Type: Extension for Auto Telegram Menu script.
  * Extension type: function
@@ -279,21 +279,21 @@ function autoTelegramMenuExtensionAccuWeather() {
    **/
   function convertDirection(degrees, translations) {
     if (degrees >= 338 || degrees <= 22) {
-      return `⇓(${translations['windNorth']})`;
+      return `⇓(${translations.windNorth})`;
     } else if (degrees > 22 && degrees < 67) {
-      return `⇙(${translations['windNorthEast']})`;
+      return `⇙(${translations.windNorthEast})`;
     } else if (degrees >= 68 && degrees <= 112) {
-      return `⇐(${translations['windEast']})`;
+      return `⇐(${translations.windEast})`;
     } else if (degrees >= 112 && degrees <= 157) {
-      return `⇖(${translations['windSouthEast']})`;
+      return `⇖(${translations.windSouthEast})`;
     } else if (degrees >= 158 && degrees <= 202) {
-      return `⇑(${translations['windSouth']})`;
+      return `⇑(${translations.windSouth})`;
     } else if (degrees > 202 && degrees < 247) {
-      return `⇗(${translations['windSouthWest']})`;
+      return `⇗(${translations.windSouthWest})`;
     } else if (degrees >= 247 && degrees <= 292) {
-      return `⇒(${translations['windWest']})`;
+      return `⇒(${translations.windWest})`;
     } else {
-      return `⇘(${translations['windNorthWest']})`;
+      return `⇘(${translations.windNorthWest})`;
     }
   }
 
@@ -336,29 +336,34 @@ function autoTelegramMenuExtensionAccuWeather() {
       amountPrecipitation = getState(`accuweather.0.Summary.TotalLiquidVolume_d${day}`).val,
       precipitation =
         amountPrecipitation > 0
-          ? `\r\n * ${translations['Precipitations']}: ${amountPrecipitation} ${translations['millimetersShort']} ${
-              translations['withProbability']
-            } ` + getState(`accuweather.0.Summary.PrecipitationProbability_d${day}`).val + '%'
-          : `. ${translations['NoPrecipitation']}`,
+          ? `\r\n * ${translations.Precipitations}: ${amountPrecipitation} ${translations.millimetersShort} ` +
+            `${translations.withProbability} ` +
+            getState(`accuweather.0.Summary.PrecipitationProbability_d${day}`).val +
+            '%'
+          : `. ${translations.NoPrecipitation}`,
       degrees = getObject(`accuweather.0.Current.Temperature`).common.unit,
-      languageId = translations['currentLanguage'] ? translations['currentLanguage'] : 'en';
+      languageId = translations.currentLanguage ? translations.currentLanguage : 'en';
     let text = ` ${getForecastDate(currentDate, languageId)} :`;
-    text += `\r\n * ` + getState(`accuweather.0.Summary.WeatherText_d${day}`).val + `${precipitation}${
-      day === 1 ? possiblePrecipitationHours(translations) : ''
-    }`;
-    text += `\r\n * ${translations['Temperature']}: ${translations['from']} ${
-      getState(`accuweather.0.Summary.TempMin_d${day}`).val
-    }${degrees} ${translations['to']} ` + getState(`accuweather.0.Summary.TempMax_d${day}`).val + `${degrees}`;
-    text += `\r\n * ${translations['RealFeel']}: ${translations['from']} ${
+    text +=
+      `\r\n * ` +
+      getState(`accuweather.0.Summary.WeatherText_d${day}`).val +
+      `${precipitation}${day === 1 ? possiblePrecipitationHours(translations) : ''}`;
+    text +=
+      `\r\n * ${translations.Temperature}: ${translations.from} ${
+        getState(`accuweather.0.Summary.TempMin_d${day}`).val
+      }${degrees} ${translations.to} ` +
+      getState(`accuweather.0.Summary.TempMax_d${day}`).val +
+      `${degrees}`;
+    text += `\r\n * ${translations.RealFeel}: ${translations.from} ${
       getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val
-    }${degrees} ${translations['to']} ${
+    }${degrees} ${translations.to} ${
       getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val
     }${degrees}`;
     for (const dayNight of ['Day', 'Night']) {
       const hasDayNightPrecipitation = getState(`accuweather.0.Daily.Day${day}.${dayNight}.HasPrecipitation`).val;
-      let dayNightPrecipitation = `. ${translations['NoPrecipitation']}`;
+      let dayNightPrecipitation = `. ${translations.NoPrecipitation}`;
       if (hasDayNightPrecipitation) {
-        dayNightPrecipitation = `\r\n * ${translations['Precipitations']}:`;
+        dayNightPrecipitation = `\r\n * ${translations.Precipitations}:`;
         for (const precipitationType of ['Rain', 'Snow', 'Ice']) {
           const typeProbability = Number.parseInt(
             getState(`accuweather.0.Daily.Day${day}.${dayNight}.${precipitationType}Probability`).val,
@@ -368,8 +373,8 @@ function autoTelegramMenuExtensionAccuWeather() {
           );
           if (typeProbability > 0 && typeVolume > 0) {
             dayNightPrecipitation += `\r\n    * ${translations[precipitationType.toLowerCase()]} ${typeVolume} ${
-              translations['millimetersShort']
-            } ${translations['withProbability']} ${typeProbability}%.`;
+              translations.millimetersShort
+            } ${translations.withProbability} ${typeProbability}%.`;
           }
         }
         const totalLiquidVolume = Number.parseInt(
@@ -377,26 +382,26 @@ function autoTelegramMenuExtensionAccuWeather() {
         );
         if (totalLiquidVolume > 0)
           dayNightPrecipitation +=
-          `\r\n    * ${translations['total']} ${translations['upTo']
-        } ${totalLiquidVolume} ${translations['millimetersShort']}`;
+            `\r\n    * ${translations.total} ${translations.upTo} ${totalLiquidVolume} ` +
+            translations.millimetersShort;
         const thunderstormProbability = Number.parseInt(
           getState(`accuweather.0.Daily.Day${day}.${dayNight}.ThunderstormProbability`).val,
         );
         if (thunderstormProbability > 0)
-          dayNightPrecipitation += `\r\n    * ${translations['thunderstormProbability']} ${thunderstormProbability}%`;
+          dayNightPrecipitation += `\r\n    * ${translations.thunderstormProbability} ${thunderstormProbability}%`;
       }
 
       text += `\r\n${translations[dayNight]}:\r\n * ${
         getState(`accuweather.0.Daily.Day${day}.${dayNight}.LongPhrase`).val
       }${dayNightPrecipitation}`;
-      text += `\r\n * ${translations['Wind']} ${convertDirection(
+      text += `\r\n * ${translations.Wind} ${convertDirection(
         getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindDirection`).val,
         translations,
       )} ${convertSpeed(getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindSpeed`).val)} ${
-        translations['metersPerSecondShort']
-      }, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(
+        translations.metersPerSecondShort
+      }, ${translations.windGust} ${translations.upTo} ${convertSpeed(
         getState(`accuweather.0.Daily.Day${day}.${dayNight}.WindGust`).val,
-      )} ${translations['metersPerSecondShort']}`;
+      )} ${translations.metersPerSecondShort}`;
     }
     return text;
   }
@@ -410,14 +415,14 @@ function autoTelegramMenuExtensionAccuWeather() {
   function getHourlyForecast(hour, translations) {
     const currentDate = new Date(getState(`accuweather.0.Hourly.h${hour}.DateTime`).val),
       degrees = getObject(`accuweather.0.Hourly.h${hour}.Temperature`).common.unit,
-      languageId = translations['currentLanguage'] ? translations['currentLanguage'] : 'en';
+      languageId = translations.currentLanguage ? translations.currentLanguage : 'en';
     let text = ` ${getForecastDate(currentDate, languageId)} ${getForecastTime(currentDate, languageId)}`;
     const hasPrecipitation = getState(`accuweather.0.Hourly.h${hour}.HasPrecipitation`).val;
-    let precipitation = `. ${translations['NoPrecipitation']}`;
+    let precipitation = `. ${translations.NoPrecipitation}`;
     if (hasPrecipitation) {
-      precipitation = `\r\n * ${translations['Precipitations']} ${translations['upTo']} ${
+      precipitation = `\r\n * ${translations.Precipitations} ${translations.upTo} ${
         getState(`accuweather.0.Hourly.h${hour}.TotalLiquidVolume`).val
-      } ${translations['millimetersShort']} ${translations['withProbability']} ${
+      } ${translations.millimetersShort} ${translations.withProbability} ${
         getState(`accuweather.0.Hourly.h${hour}.PrecipitationProbability`).val
       }%: `;
       for (const precipitationType of ['Rain', 'Snow', 'Ice']) {
@@ -427,25 +432,25 @@ function autoTelegramMenuExtensionAccuWeather() {
         const typeVolume = Number.parseInt(getState(`accuweather.0.Hourly.h${hour}.${precipitationType}Volume`).val);
         if (typeProbability > 0 && typeVolume > 0) {
           precipitation += `\r\n    * ${translations[precipitationType.toLowerCase()]} ${typeVolume} ${
-            translations['millimetersShort']
-          } ${translations['withProbability']} ${typeProbability}%.`;
+            translations.millimetersShort
+          } ${translations.withProbability} ${typeProbability}%.`;
         }
       }
     }
-    text += `\r\n * ` + getState(`accuweather.0.Hourly.h${hour}.IconPhrase`).val+ `${precipitation}`;
-    text += `\r\n * ${translations['Temperature']}: ${
+    text += `\r\n * ` + getState(`accuweather.0.Hourly.h${hour}.IconPhrase`).val + `${precipitation}`;
+    text += `\r\n * ${translations.Temperature}: ${
       getState(`accuweather.0.Hourly.h${hour}.Temperature`).val
-    }${degrees}, ${translations['RealFeel']}: ${
+    }${degrees}, ${translations.RealFeel}: ${
       getState(`accuweather.0.Hourly.h${hour}.RealFeelTemperature`).val
     }${degrees}`;
-    text += `\r\n * ${translations['Wind']}: ${convertDirection(
+    text += `\r\n * ${translations.Wind}: ${convertDirection(
       getState(`accuweather.0.Hourly.h${hour}.WindDirection`).val,
       translations,
     )} ${convertSpeed(getState(`accuweather.0.Hourly.h${hour}.WindSpeed`).val)}  ${
-      translations['metersPerSecondShort']
-    }, ${translations['windGust']} ${translations['upTo']} ${convertSpeed(
+      translations.metersPerSecondShort
+    }, ${translations.windGust} ${translations.upTo} ${convertSpeed(
       getState(`accuweather.0.Hourly.h${hour}.WindGust`).val,
-    )} ${translations['metersPerSecondShort']}`;
+    )} ${translations.metersPerSecondShort}`;
     return text;
   }
 
@@ -457,7 +462,7 @@ function autoTelegramMenuExtensionAccuWeather() {
   function possiblePrecipitationHours(translations) {
     let precipitation = '';
     let previousPrecipitationHour;
-    let delim = `\r\n    * ${translations['PossiblePrecipitationHours']}: `;
+    let delim = `\r\n    * ${translations.PossiblePrecipitationHours}: `;
     let hasHourPrecipitation = false;
     for (let hour = 1; hour <= 24; hour++) {
       hasHourPrecipitation = getState(`accuweather.0.Hourly.h${hour < 24 ? hour : 0}.HasPrecipitation`).val;
@@ -493,33 +498,39 @@ function autoTelegramMenuExtensionAccuWeather() {
   function getTodaysForecast(translations) {
     const currentDate = new Date(getState(`accuweather.0.Current.LocalObservationDateTime`).val),
       hasPrecipitation = getState(`accuweather.0.Current.HasPrecipitation`).val,
-      languageId = translations['currentLanguage'] ? translations['currentLanguage'] : 'en';
+      languageId = translations.currentLanguage ? translations.currentLanguage : 'en';
     let precipitation = hasPrecipitation
-      ? `\r\n * ${translations['Precipitations']}: ` + getState(`accuweather.0.Current.PrecipitationType`).val
-      : translations['NoPrecipitation'];
+      ? `\r\n * ${translations.Precipitations}: ` + getState(`accuweather.0.Current.PrecipitationType`).val
+      : translations.NoPrecipitation;
     const degrees = getObject(`accuweather.0.Current.Temperature`).common.unit;
     let text = ` ${getForecastDate(currentDate, languageId)} на ${getForecastTime(currentDate, languageId)}:`;
-    text += `\r\n * ` + getState(`accuweather.0.Current.WeatherText`).val+
-      `. ${precipitation}${possiblePrecipitationHours(translations,)}`;
-    text += `\r\n * ${translations['Temperature']}: ` + getState(`accuweather.0.Current.Temperature`).val +
+    text +=
+      `\r\n * ` +
+      getState(`accuweather.0.Current.WeatherText`).val +
+      `. ${precipitation}${possiblePrecipitationHours(translations)}`;
+    text += `\r\n * ${translations.Temperature}: ` + getState(`accuweather.0.Current.Temperature`).val + `${degrees}`;
+    text += `\r\n * ${translations.RealFeel}: ${getState('accuweather.0.Current.RealFeelTemperature').val}${degrees}, ${
+      translations.inShade
+    }: ${getState('accuweather.0.Current.RealFeelTemperatureShade').val}${degrees}`;
+    text +=
+      `\r\n * ${translations.RelativeHumidity}: ` +
+      getState(`accuweather.0.Current.RelativeHumidity`).val +
+      `%, ${translations.dewPoint}: ` +
+      getState(`accuweather.0.Current.DewPoint`).val +
       `${degrees}`;
-    text += `\r\n * ${translations['RealFeel']}: ${
-      getState(`accuweather.0.Current.RealFeelTemperature`).val
-    }${degrees}, ${translations['inShade']}: ${
-      getState(`accuweather.0.Current.RealFeelTemperatureShade`).val
-    }${degrees}`;
-    text += `\r\n * ${translations['RelativeHumidity']}: ` + getState(`accuweather.0.Current.RelativeHumidity`).val +
-       `%, ${translations['dewPoint']}: ` + getState(`accuweather.0.Current.DewPoint`).val + `${degrees}`;
-    text += `\r\n * ` + getState(`accuweather.0.Current.PressureTendency`).val +
-      ` ${translations['pressure']}: ` + convertPressure(getState(`accuweather.0.Current.Pressure`).val) +
-      ` ${translations['mmHg']}`;
-    text += `\r\n * ${translations['Wind']}: ${convertDirection(
+    text +=
+      `\r\n * ` +
+      getState(`accuweather.0.Current.PressureTendency`).val +
+      ` ${translations.pressure}: ` +
+      convertPressure(getState(`accuweather.0.Current.Pressure`).val) +
+      ` ${translations.mmHg}`;
+    text += `\r\n * ${translations.Wind}: ${convertDirection(
       getState(`accuweather.0.Current.WindDirection`).val,
       translations,
-    )} ${convertSpeed(getState(`accuweather.0.Current.WindSpeed`).val)} ${translations['metersPerSecondShort']}, ${
-      translations['windGust']
-    } ${translations['upTo']} ${convertSpeed(getState(`accuweather.0.Current.WindGust`).val)} ${
-      translations['metersPerSecondShort']
+    )} ${convertSpeed(getState(`accuweather.0.Current.WindSpeed`).val)} ${translations.metersPerSecondShort}, ${
+      translations.windGust
+    } ${translations.upTo} ${convertSpeed(getState(`accuweather.0.Current.WindGust`).val)} ${
+      translations.metersPerSecondShort
     }`;
     return text;
   }
@@ -566,7 +577,9 @@ function autoTelegramMenuExtensionAccuWeather() {
             const currentDate = new Date(getState(`accuweather.0.Summary.DateTime_d${day}`).val);
             const currentDay = getState(`accuweather.0.Summary.DayOfWeek_d${day}`).val + ` ${currentDate.getDate()}`;
             data.submenu.push({
-              name: getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val + ` ${degrees} .. ` +
+              name:
+                getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Minimum`).val +
+                ` ${degrees} .. ` +
                 getState(`accuweather.0.Daily.Day${day}.RealFeelTemperature.Maximum`).val +
                 ` ${degrees} (${currentDay})`,
               text: getDetailedForecast(day, translations),
@@ -584,14 +597,14 @@ function autoTelegramMenuExtensionAccuWeather() {
           data.submenu = [
             {
               id: 'ForecastDetailed',
-              name: translations['ForecastDetailed'],
+              name: translations.ForecastDetailed,
               extensionId: extensionId,
               icon: data.icon,
               submenu: extensionMenuId,
             },
             {
               id: 'ForecastHourly',
-              name: translations['ForecastHourly'],
+              name: translations.ForecastHourly,
               extensionId: extensionId,
               icon: accuWeatherIcons[getState(`accuweather.0.Hourly.h${currentHour}.WeatherIcon`).val].icon,
               submenu: extensionMenuId,
@@ -600,14 +613,14 @@ function autoTelegramMenuExtensionAccuWeather() {
               id: 'ForecastTomorrow',
               name: `${getState('accuweather.0.Daily.Day2.RealFeelTemperature.Minimum').val} ${degrees} .. ${
                 getState('accuweather.0.Daily.Day2.RealFeelTemperature.Maximum').val
-              } ${degrees} - ${translations['ForecastTomorrow']}`,
+              } ${degrees} - ${translations.ForecastTomorrow}`,
               extensionId: extensionId,
               icon: accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d2').val].icon,
               submenu: extensionMenuId,
             },
             {
               id: 'ForecastLong',
-              name: `- ${translations['ForecastLong']}`,
+              name: `- ${translations.ForecastLong}`,
               extensionId: extensionId,
               icon:
                 accuWeatherIcons[getState('accuweather.0.Summary.WeatherIcon_d3').val].icon +

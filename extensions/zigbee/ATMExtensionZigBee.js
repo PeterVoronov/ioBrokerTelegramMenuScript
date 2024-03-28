@@ -2,7 +2,7 @@
  * Script Name: ATM Extension ZigBee
  * Version: 1.0
  * Created Date: 2023-02-29
- * Last Updated: 2024-03-01
+ * Last Updated: 2024-03-28
  * Author: Peter Voronov
  * Type: Extension for Auto Telegram Menu script.
  * Extension type: function
@@ -76,16 +76,13 @@ function autoTelegramMenuExtensionZigBee() {
    * @param {string} message - The message to send.
    **/
   function sendAlertToTelegram(user, extensionId, message) {
-    console.log(`user = ${JSON.stringify(user)}`);
     messageTo(
       autoTelegramMenuExtensionsSendAlertToTelegram,
       {user: user, id: extensionId, alertMessage: message},
-      {timeout: 500},
+      {timeout: extensionsTimeout},
       (result, ..._other) => {
-        if (result.hasOwnProperty('success') && result.success) {
-          console.log(`Message sent successfully to telegram`);
-        } else {
-          console.log(`Message don't sent`);
+        if (result?.success !== true) {
+          console.warn(`Message not sent. Result = ${JSON.stringify(result)}, other = ${JSON.stringify(_other)}`);
         }
       },
     );
@@ -128,11 +125,11 @@ function autoTelegramMenuExtensionZigBee() {
       if (typeof index !== 'number') {
         index = 0;
         while (
-          existsState(`${adapterPrefix}.${index}.info.connection`) === true &&
+          existsState(`${adapterPrefix}.${index}${stateSuffixInfoConnection}`) === true &&
           getState(`${adapterPrefix}.${index}${stateSuffixInfoConnection}`).val === true
         ) {
           data.submenu.push({
-            name: `${translations['ZigBee']}.${index}`,
+            name: `${translations.ZigBee}.${index}`,
             icon: extensionInfo.icon,
             id: `${index}`,
             extensionId: extensionId,
@@ -147,7 +144,7 @@ function autoTelegramMenuExtensionZigBee() {
       } else {
         data.submenu = [
           {
-            name: translations['PairDevices'],
+            name: translations.PairDevices,
             icon: '🤝',
             extensionId: extensionId,
             extensionCommandId: 'zigbeeManageLetsPair',
@@ -167,7 +164,7 @@ function autoTelegramMenuExtensionZigBee() {
    * Register the reaction on the extension command to start pairing on appropriate ZigBee adapter.
    **/
   onMessage(`zigbeeManageLetsPair`, ({user, data, translations}, callback) => {
-    if (typeof data === 'object' && data?.['extensionId'] === extensionId) {
+    if (typeof data === 'object' && data?.extensionId === extensionId) {
       const index = data.index,
         adapterId = `${adapterPrefix}.${index}`,
         statePairingCountdown = `${adapterId}${stateSuffixPairingCountdown}`,
@@ -185,16 +182,16 @@ function autoTelegramMenuExtensionZigBee() {
               unsubscribe(statePairingCountdown);
               on({id: statePairingCountdown, change: 'ne'}, (object) => {
                 if (object.state.val === 0 && object.oldState.val > 0) {
-                  sendAlertToTelegram(user, extensionId, `${translations['PairingFinished']}`);
+                  sendAlertToTelegram(user, extensionId, `${translations.PairingFinished}`);
                   console.log(`Pairing finished!`);
                   unsubscribe(statePairingMessage);
                   unsubscribe(statePairingCountdown);
                 } else if (object.state.val > 0 && object.oldState.val === 0) {
-                  sendAlertToTelegram(user, extensionId, `${translations['PairingStarted']}`);
+                  sendAlertToTelegram(user, extensionId, `${translations.PairingStarted}`);
                   console.log(`Pairing started!`);
                 }
               });
-              on({id: stateSuffixPairingMessage, change: 'ne'}, (object) => {
+              on({id: statePairingMessage, change: 'ne'}, (object) => {
                 const logMessage = object.state.val;
                 if (logMessage && logMessage !== undefined) {
                   if (!zigbeePairingLogMessageRegExp.test(logMessage)) {
@@ -205,23 +202,22 @@ function autoTelegramMenuExtensionZigBee() {
               callback({success: true, data: data, error: ''});
             } else {
               console.warn(`Error to start pairing - ${JSON.stringify(result)}, ${JSON.stringify(_other)}!`);
-              callback({success: false, data: data, error: translations['PairingCantBeStarted']});
+              callback({success: false, data: data, error: translations.PairingCantBeStarted});
             }
           });
         } else {
           console.warn('Pairing is already started!');
-          callback({success: false, data: data, error: translations['PairingIsAlreadyStarted']});
+          callback({success: false, data: data, error: translations.PairingIsAlreadyStarted});
         }
       } else {
         console.warn('Device is not connected!');
-        callback({success: false, data: data, error: translations['DeviceIsNotConnected']});
+        callback({success: false, data: data, error: translations.DeviceIsNotConnected});
       }
     } else {
       console.warn('Wrong command options!');
-      callback({success: false, data: data, error: translations['WrongCommandOptions']});
+      callback({success: false, data: data, error: translations.WrongCommandOptions});
     }
   });
-
   extensionInit();
 }
 

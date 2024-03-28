@@ -2,7 +2,7 @@
  * Script Name: ATM Extension Pet Feeder Tuya
  * Version: 1.0
  * Created Date: 2024-02-19
- * Last Updated: 2024-03-15
+ * Last Updated: 2024-03-28
  * Author: Peter Voronov
  * Type: Extension for Auto Telegram Menu script.
  * Extension type: `attributes`.
@@ -66,7 +66,7 @@ function autoTelegramMenuExtensionPetFeeder() {
         icon: '🍖',
       },
     },
-    extensionInfo ={
+    extensionInfo = {
       id: extensionId,
       type: 'attributes',
       icon: '🐈',
@@ -111,16 +111,11 @@ function autoTelegramMenuExtensionPetFeeder() {
    * @param {number=} timeout - timeout for the message.
    */
   function extensionInit(messageId = extensionsRegister, timeout = extensionsTimeout) {
-    messageTo(
-      messageId,
-      extensionInfo,
-      {timeout: timeout},
-      (result) => {
-        if (!result.success) {
-          console.warn(`Error to register ${extensionId} - ${result.error}`);
-        }
-      },
-    );
+    messageTo(messageId, extensionInfo, {timeout: timeout}, (result) => {
+      if (!result.success) {
+        console.warn(`Error to register ${extensionId} - ${result.error}`);
+      }
+    });
   }
 
   /**
@@ -172,16 +167,16 @@ function autoTelegramMenuExtensionPetFeeder() {
   function scheduleEncode(schedule) {
     const scheduleByteArray = [];
     schedule.forEach((scheduleItem) => {
-      const weekdays = new Array(7).fill(0).map((_, index) => (scheduleItem['weekdays'].includes(index + 1) ? 1 : 0));
+      const weekdays = new Array(7).fill(0).map((_, index) => (scheduleItem.weekdays.includes(index + 1) ? 1 : 0));
       let days = 0;
       weekdays.forEach((day, index) => {
         days |= day << (6 - index);
       });
       scheduleByteArray.push(
         days,
-        ...scheduleItem['time'].split(':').map((timeItem) => Number(timeItem)),
-        scheduleItem['portion'],
-        scheduleItem['enabled'] ? 1 : 0,
+        ...scheduleItem.time.split(':').map((timeItem) => Number(timeItem)),
+        scheduleItem.portion,
+        scheduleItem.enabled ? 1 : 0,
       );
     });
     // @ts-ignore
@@ -201,17 +196,17 @@ function autoTelegramMenuExtensionPetFeeder() {
     schedule.forEach((item) => {
       result.push(
         {
-          label: `${prefix}${item['time']}`,
-          value: item['enabled'],
+          label: `${prefix}${item.time}`,
+          value: item.enabled,
         },
         {
-          label: ` ${prefix}${translations['weekdays']}`,
-          value: item['weekdays'],
+          label: ` ${prefix}${translations.weekdays}`,
+          value: item.weekdays,
           convert: `weekdays`,
         },
         {
-          label: ` ${prefix}${translations['portion']}`,
-          value: item['portion'],
+          label: ` ${prefix}${translations.portion}`,
+          value: item.portion,
         },
       );
     });
@@ -225,12 +220,12 @@ function autoTelegramMenuExtensionPetFeeder() {
    **/
   function isItemCanBeEnabled(item) {
     return !(
-      item['time'] === undefined ||
-      item['time'] === '' ||
-      ! Array.isArray(item['weekdays']) ||
-      item['weekdays'].length === 0 ||
-      item['portion'] === undefined ||
-      item['portion'] === 0
+      item.time === undefined ||
+      item.time === '' ||
+      !Array.isArray(item.weekdays) ||
+      item.weekdays.length === 0 ||
+      item.portion === undefined ||
+      item.portion === 0
     );
   }
 
@@ -242,12 +237,14 @@ function autoTelegramMenuExtensionPetFeeder() {
   function isSchedulesAreEqual(schedule1, schedule2) {
     if (schedule1.length !== schedule2.length) return false;
     return schedule1.every((item1) => {
-      const item2 = schedule2.find((item) => item['time'] === item1['time']);
+      const item2 = schedule2.find((item) => item.time === item1.time);
       if (item2 === undefined) return false;
-      return item1['portion'] === item2['portion'] &&
-        item1['enabled'] === item2['enabled'] &&
-        item1['weekdays'].length === item2['weekdays'].length &&
-        item1['weekdays'].every((day1, dayIndex) => day1 === item2['weekdays'][dayIndex]);
+      return (
+        item1.portion === item2.portion &&
+        item1.enabled === item2.enabled &&
+        item1.weekdays.length === item2.weekdays.length &&
+        item1.weekdays.every((day1, dayIndex) => day1 === item2.weekdays[dayIndex])
+      );
     });
   }
 
@@ -263,57 +260,50 @@ function autoTelegramMenuExtensionPetFeeder() {
    * Register the reaction on the request to process the "schedule" `button` item/sub-items from the "main" script.
    **/
   onMessage(`${extensionId}#${idSchedule}`, ({data, translations}, callback) => {
-    const options = data['options'] || {},
-      {
-        device,
-        state,
-        stateValue,
-        index,
-        valueOptions,
-        icons,
-      } = options;
+    const options = data.options || {},
+      {device, state, stateValue, index, valueOptions, icons} = options;
     if (typeof device === 'string' && typeof state === 'string' && typeof stateValue === 'string') {
-      const valueInterim = valueOptions?.['externalValueInterim'],
+      const valueInterim = valueOptions?.externalValueInterim,
         scheduleOriginal = scheduleDecode(stateValue),
         schedule = valueInterim !== undefined ? valueInterim : scheduleOriginal,
         iconOn = icons?.[0] || '✅',
         iconOff = icons?.[1] || '❌',
         messageToId = `${extensionId}#schedule`;
       const isChanged = valueInterim !== undefined && !isSchedulesAreEqual(scheduleOriginal, schedule),
-        menuItem= {...data};
-      menuItem['options'] = options;
-      menuItem['submenu'] =  new Array();
+        menuItem = {...data};
+      menuItem.options = options;
+      menuItem.submenu = new Array();
       if (typeof index !== 'number') {
         const itemOptions = {
           ...options,
           valueOptions: {
-            ...options['valueOptions'],
+            ...options.valueOptions,
             externalValueType: 'array#object',
-            externalValueId: menuItem['index'],
+            externalValueId: menuItem.index,
             externalObjectTemplate: scheduleTemplate,
           },
         };
-        menuItem['options'] = {
+        menuItem.options = {
           ...options,
           valueOptions: {
-            ...options['valueOptions'],
+            ...options.valueOptions,
             externalValue: schedule,
             externalValueType: 'array#object',
-            externalValueId: menuItem['index'],
+            externalValueId: menuItem.index,
           },
         };
-        menuItem['id'] = idSchedule;
-        menuItem['textValues'] = [];
+        menuItem.id = idSchedule;
+        menuItem.textValues = [];
         schedule.forEach((item, index) => {
-          item['enabled'] = item['enabled'] && isItemCanBeEnabled(item);
+          item.enabled = item.enabled && isItemCanBeEnabled(item);
           const textValues = scheduleToTextValues([item], translations);
-          menuItem['textValues'].push(...textValues);
+          menuItem.textValues.push(...textValues);
           menuItem.submenu.push({
-            name: `${item['time']}`,
+            name: `${item.time}`,
             id: `${index}`,
             extensionId: extensionId,
             group: idSchedule,
-            icon: item['enabled'] ? iconOn : iconOff,
+            icon: item.enabled ? iconOn : iconOff,
             textValues: textValues,
             options: {
               ...itemOptions,
@@ -323,10 +313,10 @@ function autoTelegramMenuExtensionPetFeeder() {
           });
         });
         menuItem.submenu.push({
-          name: translations['add'],
+          name: translations.add,
           id: 'add',
           extensionId: extensionId,
-          icon: icons['add'],
+          icon: icons.add,
           group: 'add',
           type: 'internalMenuItem',
           command: 'editValue',
@@ -338,7 +328,7 @@ function autoTelegramMenuExtensionPetFeeder() {
             item: 'time',
             value: undefined,
             valueOptions: {
-              ...itemOptions['valueOptions'],
+              ...itemOptions.valueOptions,
               type: 'string',
               subType: 'time',
             },
@@ -347,20 +337,20 @@ function autoTelegramMenuExtensionPetFeeder() {
         });
         if (isChanged) {
           menuItem.submenu.push({
-            name: translations['save'],
+            name: translations.save,
             id: `schedule#save`,
             extensionId: extensionId,
-            icon: icons['save'],
+            icon: icons.save,
             group: 'save',
             type: 'internalMenuItem',
             command: 'setStateValue',
             options: {
               ...options,
               mode: 'save',
-              value: scheduleEncode([...valueInterim].sort((a, b) => a['time'].localeCompare(b['time']))),
+              value: scheduleEncode([...valueInterim].sort((a, b) => a.time.localeCompare(b.time))),
               valueText: [...valueInterim]
-                .sort((a, b) => a['time'].localeCompare(b['time']))
-                .map((item) => `${item['time']}(${item['portion']})${item['enabled'] ? iconOn : iconOff}`)
+                .sort((a, b) => a.time.localeCompare(b.time))
+                .map((item) => `${item.time}(${item.portion})${item.enabled ? iconOn : iconOff}`)
                 .join(','),
             },
             submenu: [],
@@ -372,11 +362,11 @@ function autoTelegramMenuExtensionPetFeeder() {
             ...options,
             index: index,
           };
-        item['enabled'] = item['enabled'] && isItemCanBeEnabled(item);
-        menuItem['submenu'] = [
+        item.enabled = item.enabled && isItemCanBeEnabled(item);
+        menuItem.submenu = [
           {
-            name: translations['enabled'],
-            icon: item['enabled'] ? iconOn : iconOff,
+            name: translations.enabled,
+            icon: item.enabled ? iconOn : iconOff,
             id: 'enabled',
             extensionId: extensionId,
             type: 'internalMenuItem',
@@ -385,16 +375,16 @@ function autoTelegramMenuExtensionPetFeeder() {
             options: {
               ...itemOptions,
               item: 'enabled',
-              value: item['enabled'] === undefined ? false : item['enabled'],
+              value: item.enabled === undefined ? false : item.enabled,
               valueOptions: {
-                ...itemOptions['valueOptions'],
+                ...itemOptions.valueOptions,
                 type: 'boolean',
               },
             },
             submenu: [],
           },
           {
-            name: translations['time'],
+            name: translations.time,
             id: 'time',
             extensionId: extensionId,
             icon: '',
@@ -404,10 +394,10 @@ function autoTelegramMenuExtensionPetFeeder() {
             options: {
               ...itemOptions,
               item: 'time',
-              value: item['time'] === undefined ? '00:00' : item['time'],
+              value: item.time === undefined ? '00:00' : item.time,
               timeTemplate: 'hm',
               valueOptions: {
-                ...itemOptions['valueOptions'],
+                ...itemOptions.valueOptions,
                 showValue: true,
                 type: 'string',
                 subType: 'time',
@@ -416,7 +406,7 @@ function autoTelegramMenuExtensionPetFeeder() {
             submenu: [],
           },
           {
-            name: translations['weekdays'],
+            name: translations.weekdays,
             id: 'weekdays',
             extensionId: extensionId,
             icon: '',
@@ -426,9 +416,9 @@ function autoTelegramMenuExtensionPetFeeder() {
             options: {
               ...itemOptions,
               item: 'weekdays',
-              value: item['weekdays'] === undefined ? [] : item['weekdays'],
+              value: item.weekdays === undefined ? [] : item.weekdays,
               valueOptions: {
-                ...itemOptions['valueOptions'],
+                ...itemOptions.valueOptions,
                 showValue: true,
                 type: 'array',
                 subType: 'weekdays',
@@ -437,7 +427,7 @@ function autoTelegramMenuExtensionPetFeeder() {
             submenu: [],
           },
           {
-            name: translations['portion'],
+            name: translations.portion,
             id: 'portion',
             extensionId: extensionId,
             icon: '',
@@ -447,9 +437,9 @@ function autoTelegramMenuExtensionPetFeeder() {
             options: {
               ...itemOptions,
               item: 'portion',
-              value: item['portion'] === undefined ? 1 : item['portion'],
+              value: item.portion === undefined ? 1 : item.portion,
               valueOptions: {
-                ...itemOptions['valueOptions'],
+                ...itemOptions.valueOptions,
                 type: 'number',
                 min: 1,
                 max: 40,
@@ -460,10 +450,10 @@ function autoTelegramMenuExtensionPetFeeder() {
             submenu: [],
           },
           {
-            name: translations['delete'],
+            name: translations.delete,
             id: 'delete',
             extensionId: extensionId,
-            icon: icons['delete'],
+            icon: icons.delete,
             group: 'delete',
             type: 'internalMenuItem',
             command: 'deleteItem',
@@ -472,7 +462,7 @@ function autoTelegramMenuExtensionPetFeeder() {
               mode: 'delete',
             },
             submenu: [],
-          }
+          },
         ];
       }
       callback({...menuItem});
@@ -483,19 +473,14 @@ function autoTelegramMenuExtensionPetFeeder() {
    * Register the reaction on the request to process the "manualFeed" `button` item/sub-items from "main" script.
    **/
   onMessage(`${extensionId}#${idManualFeed}`, ({user: _user, data, translations}, callback) => {
-    const options = data['options'] || {},
-    {
-      device,
-      state,
-      stateValue,
-      valueOptions,
-    } = options;
+    const options = data.options || {},
+      {device, state, stateValue, valueOptions} = options;
     if (typeof device === 'string' && typeof state === 'string' && typeof stateValue === 'number') {
       const menuItem = {...data};
-      menuItem['id'] = idManualFeed;
-      menuItem['submenu'] = [
+      menuItem.id = idManualFeed;
+      menuItem.submenu = [
         {
-          name: translations['manualFeedCurrent'],
+          name: translations.manualFeedCurrent,
           type: 'internalMenuItem',
           command: 'setStateValue',
           extensionId: extensionId,
@@ -510,7 +495,7 @@ function autoTelegramMenuExtensionPetFeeder() {
           submenu: [],
         },
         {
-          name: translations['manualFeedCustom'],
+          name: translations.manualFeedCustom,
           type: 'internalMenuItem',
           command: 'editStateValue',
           extensionId: extensionId,
@@ -533,31 +518,27 @@ function autoTelegramMenuExtensionPetFeeder() {
     }
   });
 
-
   /**
    * Register the reaction to the request to process all related `attributes` from the "main" script.
    **/
   onMessage(`${extensionId}#${idAttributes}`, ({data, translations}, callback) => {
-    if (typeof data === 'object' ) {
+    if (typeof data === 'object') {
       Object.keys(data).forEach((itemId) => {
         const attribute = data[itemId],
-          itemExtensionId = attribute['extensionId'],
-          attributeId = attribute['extensionAttributeId']
-          ;
+          itemExtensionId = attribute.extensionId,
+          attributeId = attribute.extensionAttributeId;
         if (itemExtensionId === extensionId) {
-          attribute['valueText'] = [];
-          if (extensionAttributes?.[attributeId]?.['asAttribute'] === true) {
+          attribute.valueText = [];
+          if (extensionAttributes?.[attributeId]?.asAttribute === true) {
             switch (attributeId) {
               case idSchedule: {
-                if (typeof attribute?.['value'] === 'string' && attribute?.['value'] !== 'undefined') {
-                  const schedule = scheduleDecode(attribute?.['value']);
-                  attribute['valueText'].push(
-                    {
-                      label: translations[idSchedule] + ':',
-                      value: '',
-                    }
-                  );
-                  attribute['valueText'].push(...scheduleToTextValues(schedule, translations, '  '));
+                if (typeof attribute?.value === 'string' && attribute?.value !== 'undefined') {
+                  const schedule = scheduleDecode(attribute?.value);
+                  attribute.valueText.push({
+                    label: translations[idSchedule] + ':',
+                    value: '',
+                  });
+                  attribute.valueText.push(...scheduleToTextValues(schedule, translations, '  '));
                 }
                 break;
               }

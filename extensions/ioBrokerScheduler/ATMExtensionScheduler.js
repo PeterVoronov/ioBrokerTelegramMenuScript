@@ -2,7 +2,7 @@
  * Script Name: ATM Extension Scheduler
  * Version: 1.0
  * Created Date: 2024-03-15
- * Last Updated: 2024-03-18
+ * Last Updated: 2024-03-28
  * Author: Peter Voronov
  * Type: Extension for Auto Telegram Menu script.
  * Extension type: `attributes`.
@@ -262,18 +262,18 @@ function autoTelegramMenuExtensionScheduler() {
         if (
           typeof adapter === 'object' &&
           // @ts-ignore
-          adapter['type'] === 'instance' &&
-          adapter['common']?.['name'] === adapterName
+          adapter.type === 'instance' &&
+          adapter.common?.name === adapterName
         ) {
-          if (Array.isArray(adapter['native']?.['profiles']) && adapter['native']['profiles'].length > 0) {
-            const profiles = adapter['native']['profiles'];
+          if (Array.isArray(adapter.native?.profiles) && adapter.native.profiles.length > 0) {
+            const profiles = adapter.native.profiles;
             profiles.forEach((profile) => {
               if (
                 typeof profile === 'object' &&
-                typeof profile['title'] === 'string' &&
-                typeof profile['data'] === 'object'
+                typeof profile.title === 'string' &&
+                typeof profile.data === 'object'
               ) {
-                profile['adapterId'] = adapterIndex;
+                profile.adapterId = adapterIndex;
                 this.#schedules.push(profile);
               } else {
                 log(`Invalid profile: ${JSON.stringify(profile, null, 2)}`);
@@ -292,12 +292,12 @@ function autoTelegramMenuExtensionScheduler() {
      * @param {function} callback - The callback function.
      **/
     save(schedule, callback) {
-      if (typeof schedule === 'object' && typeof schedule['adapterId'] === 'number') {
-        const adapterId = schedule['adapterId'],
+      if (typeof schedule === 'object' && typeof schedule.adapterId === 'number') {
+        const adapterId = schedule.adapterId,
           adapter = getObject(`${systemPrefix}.${adapterPrefix}.${adapterId}`);
-        if (typeof adapter === 'object' && adapter['type'] === 'instance') {
+        if (typeof adapter === 'object' && adapter.type === 'instance') {
           const profiles = new Array(),
-            scheduleIsExists = this.scheduleGetById(schedule['id']) !== undefined,
+            scheduleIsExists = this.scheduleGetById(schedule.id) !== undefined,
             saveToAdapter = () => {
               getObject(`${systemPrefix}.${adapterPrefix}.${adapterId}`, (error, object) => {
                 if (error || object === null || object === undefined) {
@@ -305,9 +305,9 @@ function autoTelegramMenuExtensionScheduler() {
                   callback();
                 } else {
                   // @ts-ignore
-                  if (typeof object['native'] !== 'object') object['native'] = {};
+                  if (typeof object.native !== 'object') object.native = {};
                   // @ts-ignore
-                  object['native']['profiles'] = profiles;
+                  object.native.profiles = profiles;
                   setObject(`${systemPrefix}.${adapterPrefix}.${adapterId}`, object, (error, result) => {
                     if (error) {
                       log(`Error to write the schedules: ${JSON.stringify(error)}`);
@@ -315,22 +315,22 @@ function autoTelegramMenuExtensionScheduler() {
                       log(`Schedules written successfully: ${JSON.stringify(result)}`);
                     }
                     callback();
-                });
+                  });
                 }
               });
             };
           if (Schedules.adapterIsAvailable(adapterId) === true) {
             this.#schedules
-              .filter((schedule) => schedule['adapterId'] === adapterId)
+              .filter((schedule) => schedule.adapterId === adapterId)
               .forEach((profile) => {
                 profiles.push({...profile, adapterId: undefined, enabled: undefined});
               });
             if (
-              schedule['type'] === 'profile' &&
-              (schedule['enabled'] !== this.scheduleIsEnabled(schedule, true) || !scheduleIsExists)
+              schedule.type === 'profile' &&
+              (schedule.enabled !== this.scheduleIsEnabled(schedule, true) || !scheduleIsExists)
             ) {
               const stateId = this.scheduleGetStateId(schedule),
-                enabled = schedule['enabled'] === true,
+                enabled = schedule.enabled === true,
                 setStateValue = () => {
                   setState(stateId, enabled, (error, result) => {
                     if (error) {
@@ -380,7 +380,7 @@ function autoTelegramMenuExtensionScheduler() {
                         write: true,
                         role: 'switch',
                         def: true,
-                        name: schedule['title'],
+                        name: schedule.title,
                       },
                       native: {},
                     },
@@ -396,7 +396,7 @@ function autoTelegramMenuExtensionScheduler() {
                   );
                 }
               } else {
-                log(`State id for the schedule ${schedule['id']} not found`);
+                log(`State id for the schedule ${schedule.id} not found`);
                 callback();
               }
             } else {
@@ -429,7 +429,7 @@ function autoTelegramMenuExtensionScheduler() {
     scheduleAdd(schedule) {
       if (Schedules.isScheduleFilledFully(schedule)) {
         const scheduleIndex = this.#schedules.findIndex(
-          (item) => item['id'] === schedule['id'] && item['adapterId'] === schedule['adapterId'],
+          (item) => item.id === schedule.id && item.adapterId === schedule.adapterId,
         );
         if (scheduleIndex >= 0) {
           this.#schedules[scheduleIndex] = schedule;
@@ -444,7 +444,7 @@ function autoTelegramMenuExtensionScheduler() {
      * @param {string} id - The schedule id.
      **/
     scheduleDelete(id) {
-      const scheduleIndex = this.#schedules.findIndex((item) => item['id'] === id);
+      const scheduleIndex = this.#schedules.findIndex((item) => item.id === id);
       if (scheduleIndex >= 0) {
         this.#schedules.splice(scheduleIndex, 1);
       }
@@ -453,8 +453,8 @@ function autoTelegramMenuExtensionScheduler() {
     scheduleIsCanBeDeleted(id) {
       const schedule = this.scheduleGetById(id);
       return (
-        (!Array.isArray(schedule['data']?.['members']) || schedule['data']['members'].length === 0) &&
-        this.#schedules.find((item) => item['parent'] === id) === undefined
+        (!Array.isArray(schedule.data?.members) || schedule.data.members.length === 0) &&
+        this.#schedules.find((item) => item.parent === id) === undefined
       );
     }
 
@@ -464,7 +464,7 @@ function autoTelegramMenuExtensionScheduler() {
      **/
     generateId() {
       let id = uuidv4();
-      while (this.#schedules.find((schedule) => schedule['id'] === id) !== undefined) {
+      while (this.#schedules.find((schedule) => schedule.id === id) !== undefined) {
         id = uuidv4();
       }
       return id;
@@ -506,7 +506,7 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {object[]} The array of schedules.
      **/
     getByAdapterAndParent(adapterId, parent = '') {
-      return this.#schedules.filter((schedule) => schedule['adapterId'] === adapterId && schedule['parent'] === parent);
+      return this.#schedules.filter((schedule) => schedule.adapterId === adapterId && schedule.parent === parent);
     }
 
     /**
@@ -516,12 +516,13 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {object[]} The array of schedules.
      **/
     getByAdapterAndDeviceId(adapterId, deviceId) {
-      return this.#schedules.filter((schedule) =>
-        schedule['adapterId'] === adapterId &&
-        schedule['type'] === 'profile' &&
-        Array.isArray(schedule['data']?.['members']) &&
-        schedule['data']['members'].length > 0 &&
-        schedule['data']['members'].every((member) => member.startsWith(deviceId) === true),
+      return this.#schedules.filter(
+        (schedule) =>
+          schedule.adapterId === adapterId &&
+          schedule.type === 'profile' &&
+          Array.isArray(schedule.data?.members) &&
+          schedule.data.members.length > 0 &&
+          schedule.data.members.every((member) => member.startsWith(deviceId) === true),
       );
     }
 
@@ -531,11 +532,12 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {object[]} The array of schedules.
      **/
     getByDeviceId(deviceId) {
-      return this.#schedules.filter((schedule) =>
-        schedule['type'] === 'profile' &&
-        Array.isArray(schedule['data']?.['members']) &&
-        schedule['data']['members'].length > 0 &&
-        schedule['data']['members'].every((member) => member.startsWith(deviceId) === true),
+      return this.#schedules.filter(
+        (schedule) =>
+          schedule.type === 'profile' &&
+          Array.isArray(schedule.data?.members) &&
+          schedule.data.members.length > 0 &&
+          schedule.data.members.every((member) => member.startsWith(deviceId) === true),
       );
     }
 
@@ -545,7 +547,7 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {object} The schedule item.
      **/
     scheduleGetById(id) {
-      return this.#schedules.find((schedule) => schedule['id'] === id);
+      return this.#schedules.find((schedule) => schedule.id === id);
     }
 
     /**
@@ -556,15 +558,13 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {string} The path for the schedule item.
      **/
     scheduleMakePath(schedule, isForState = false, delimiter = '.') {
-      let result = schedule['title'];
+      let result = schedule.title;
       if (isForState === true) {
         result = result.replace(Schedules.forbiddenCharsRegEx, '_');
       }
-      if (typeof schedule['parent'] === 'string' && schedule['parent'].length > 0) {
+      if (typeof schedule.parent === 'string' && schedule.parent.length > 0) {
         result = `${this.scheduleMakePath(
-          this.#schedules.find(
-            (item) => item['id'] === schedule['parent'] && item['adapterId'] === schedule['adapterId'],
-          ),
+          this.#schedules.find((item) => item.id === schedule.parent && item.adapterId === schedule.adapterId),
           isForState,
           delimiter,
         )}${delimiter}${result}`;
@@ -578,7 +578,7 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {number[]} The schedule weekdays.
      **/
     static scheduleWeekdaysDecode(schedule) {
-      const weekdays = Array.isArray(schedule['data']?.['dow']) ? [...schedule['data']['dow']] : [],
+      const weekdays = Array.isArray(schedule.data?.dow) ? [...schedule.data.dow] : [],
         sundayIndex = weekdays.findIndex((day) => day === 0);
       if (sundayIndex >= 0) {
         weekdays.splice(sundayIndex, 1);
@@ -610,8 +610,8 @@ function autoTelegramMenuExtensionScheduler() {
      **/
     static scheduleIntervalsDecode(schedule) {
       const intervals = [],
-        intervalsSource = schedule['data']?.['intervals'] || [],
-        intervalValue = schedule['data']?.['intervalDuration'] || 1,
+        intervalsSource = schedule.data?.intervals || [],
+        intervalValue = schedule.data?.intervalDuration || 1,
         intervalDelta = intervalValue * 60,
         intervalsCount = Math.round(24 / intervalValue);
       let intervalIndex = -1,
@@ -648,14 +648,14 @@ function autoTelegramMenuExtensionScheduler() {
       if (Array.isArray(intervals) && intervals.length > 0) {
         intervals.forEach((interval) => {
           const startInMinutes = Math.round(
-              (timeToMinutes(interval['start']) / intervalDurationInMinutes) * intervalDurationInMinutes,
+              (timeToMinutes(interval.start) / intervalDurationInMinutes) * intervalDurationInMinutes,
             ),
             endInMinutes = Math.round(
-              (timeToMinutes(interval['end']) / intervalDurationInMinutes) * intervalDurationInMinutes,
+              (timeToMinutes(interval.end) / intervalDurationInMinutes) * intervalDurationInMinutes,
             );
           let timeInMinutes = startInMinutes;
           while (timeInMinutes < endInMinutes) {
-            result.push(interval['value']);
+            result.push(interval.value);
             timeInMinutes += intervalDurationInMinutes;
           }
         });
@@ -672,8 +672,8 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {string} The state id.
      **/
     scheduleGetStateId(schedule) {
-      const stateFromProfile = schedule['data']?.['state'],
-        schedulesPrefix = `${adapterPrefix}.${schedule['adapterId']}`,
+      const stateFromProfile = schedule.data?.state,
+        schedulesPrefix = `${adapterPrefix}.${schedule.adapterId}`,
         scheduleStateId =
           typeof stateFromProfile === 'string'
             ? stateFromProfile
@@ -688,13 +688,13 @@ function autoTelegramMenuExtensionScheduler() {
      * @returns {boolean|undefined} The result.
      **/
     scheduleIsEnabled(schedule, stateOnly = false) {
-      if (typeof schedule['enabled'] === 'boolean' && stateOnly === false) {
-        return schedule['enabled'];
+      if (typeof schedule.enabled === 'boolean' && stateOnly === false) {
+        return schedule.enabled;
       } else {
         const scheduleStateId = this.scheduleGetStateId(schedule);
         if (typeof scheduleStateId === 'string' && existsState(scheduleStateId) === true) {
           const scheduleState = getState(scheduleStateId);
-          return typeof scheduleState === 'object' && scheduleState['val'] === true;
+          return typeof scheduleState === 'object' && scheduleState.val === true;
         }
       }
     }
@@ -707,8 +707,8 @@ function autoTelegramMenuExtensionScheduler() {
      **/
     scheduleValueToText(schedule, value) {
       let result = typeof value !== 'number' ? '❓' : value;
-      if (typeof schedule['data']?.['type'] === 'string' && typeof value === 'number') {
-        switch (schedule['data']?.['type']) {
+      if (typeof schedule.data?.type === 'string' && typeof value === 'number') {
+        switch (schedule.data?.type) {
           case 'onoff': {
             result = result === 1 ? intervalOn : intervalOff;
             break;
@@ -741,25 +741,25 @@ function autoTelegramMenuExtensionScheduler() {
     schedulesToTextValues(schedules, translations, prefix = '', firstItems = []) {
       const result = [...firstItems];
       schedules.forEach((schedule) => {
-        if (schedule['type'] === 'profile') {
+        if (schedule.type === 'profile') {
           result.push(
             {
               label: `${prefix}${this.scheduleMakePath(schedule, false, '/')}`,
               value: this.scheduleIsEnabled(schedule) === true,
               convert: 'boolean',
-              options: {icons: {'true': intervalOn, 'false': intervalOff}},
+              options: {icons: {true: intervalOn, false: intervalOff}},
             },
             {
               label: ` ${prefix}${getTranslation(translations, 'type')}`,
-              value: getTranslation(translations, schedule['data']?.['type']),
+              value: getTranslation(translations, schedule.data?.type),
             },
             {
               label: ` ${prefix}${getTranslation(translations, 'priority')}`,
-              value: getTranslation(translations, priorityTextValues.get(schedule['data']?.['prio']) || 'normal'),
+              value: getTranslation(translations, priorityTextValues.get(schedule.data?.prio) || 'normal'),
             },
             {
               label: ` ${prefix}${getTranslation(translations, 'interval')}`,
-              value: intervalDurations.get(schedule['data']?.['intervalDuration'] || 1),
+              value: intervalDurations.get(schedule.data?.intervalDuration || 1),
             },
             {
               label: ` ${prefix}${getTranslation(translations, 'weekdays')}`,
@@ -769,8 +769,8 @@ function autoTelegramMenuExtensionScheduler() {
           );
           Schedules.scheduleIntervalsDecode(schedule).forEach((interval) => {
             result.push({
-              label: ` ${prefix}${interval['start']}-${interval['end']}`,
-              value: this.scheduleValueToText(schedule, interval['value']),
+              label: ` ${prefix}${interval.start}-${interval.end}`,
+              value: this.scheduleValueToText(schedule, interval.value),
             });
           });
         } else {
@@ -793,9 +793,9 @@ function autoTelegramMenuExtensionScheduler() {
       const result = [];
       this.#schedules.forEach((schedule) => {
         if (
-          schedule['data']?.['type'] === parentStateType &&
-          Array.isArray(schedule['data']?.['members']) &&
-          schedule['data']['members'].includes(stateId)
+          schedule.data?.type === parentStateType &&
+          Array.isArray(schedule.data?.members) &&
+          schedule.data.members.includes(stateId)
         ) {
           result.push(schedule);
         }
@@ -812,51 +812,49 @@ function autoTelegramMenuExtensionScheduler() {
     static isSchedulesAreEqual(scheduleA, scheduleB, schedules) {
       if (typeof scheduleA !== 'object' || typeof scheduleB !== 'object') return false;
       return (
-        scheduleA['adapterId'] === scheduleB['adapterId'] &&
-        scheduleA['id'] === scheduleB['id'] &&
-        scheduleA['title'] === scheduleB['title'] &&
+        scheduleA.adapterId === scheduleB.adapterId &&
+        scheduleA.id === scheduleB.id &&
+        scheduleA.title === scheduleB.title &&
         schedules.scheduleIsEnabled(scheduleA) === schedules.scheduleIsEnabled(scheduleB) &&
-        scheduleA['type'] === scheduleB['type'] &&
-        scheduleA['parent'] === scheduleB['parent'] &&
-        scheduleA['data']?.['type'] === scheduleB['data']?.['type'] &&
-        scheduleA['data']?.['state'] === scheduleB['data']?.['state'] &&
-        scheduleA['data']?.['prio'] === scheduleB['data']?.['prio'] &&
-        scheduleA['data']?.['dow'].every((day1, dayIndex) => day1 === scheduleB['data']?.['dow'][dayIndex]) &&
-        scheduleA['data']?.['intervalDuration'] === scheduleB['data']?.['intervalDuration'] &&
-        scheduleA['data']?.['intervals'].length === scheduleB['data']?.['intervals'].length &&
-        scheduleA['data']?.['intervals'].every(
-          (interval1, intervalIndex) => interval1 === scheduleB['data']?.['intervals'][intervalIndex],
+        scheduleA.type === scheduleB.type &&
+        scheduleA.parent === scheduleB.parent &&
+        scheduleA.data?.type === scheduleB.data?.type &&
+        scheduleA.data?.state === scheduleB.data?.state &&
+        scheduleA.data?.prio === scheduleB.data?.prio &&
+        scheduleA.data?.dow.every((day1, dayIndex) => day1 === scheduleB.data?.dow[dayIndex]) &&
+        scheduleA.data?.intervalDuration === scheduleB.data?.intervalDuration &&
+        scheduleA.data?.intervals.length === scheduleB.data?.intervals.length &&
+        scheduleA.data?.intervals.every(
+          (interval1, intervalIndex) => interval1 === scheduleB.data?.intervals[intervalIndex],
         ) &&
-        scheduleA['data']?.['members'].length === scheduleB['data']?.['members'].length &&
-        scheduleA['data']?.['members'].every(
-          (member1, memberIndex) => member1 === scheduleB['data']?.['members'][memberIndex],
-        )
+        scheduleA.data?.members.length === scheduleB.data?.members.length &&
+        scheduleA.data?.members.every((member1, memberIndex) => member1 === scheduleB.data?.members[memberIndex])
       );
     }
 
     static isScheduleFilledFully(schedule) {
       return (
         typeof schedule === 'object' &&
-        typeof schedule['id'] === 'string' &&
-        schedule['id'].length > 0 &&
-        typeof schedule['title'] === 'string' &&
-        schedule['title'].length > 0 &&
-        typeof schedule['type'] === 'string' &&
-        schedule['type'].length > 0 &&
-        typeof schedule['parent'] === 'string' &&
-        typeof schedule['data'] === 'object' &&
-        typeof schedule['data']?.['type'] === 'string' &&
-        schedule['data']['type'].length > 0 &&
-        ((typeof schedule['data']?.['state'] === 'string' && schedule['data']['state'].length > 0) ||
-          typeof schedule['data']?.['state'] === 'boolean') &&
-        typeof schedule['data']?.['prio'] === 'number' &&
-        schedule['data']['prio'] >= 0 &&
-        Array.isArray(schedule['data']?.['dow']) &&
-        typeof schedule['data']?.['intervalDuration'] === 'number' &&
-        schedule['data']['intervalDuration'] > 0 &&
-        Array.isArray(schedule['data']?.['intervals']) &&
-        schedule['data']['intervals'].length > 0 &&
-        Array.isArray(schedule['data']?.['members'])
+        typeof schedule.id === 'string' &&
+        schedule.id.length > 0 &&
+        typeof schedule.title === 'string' &&
+        schedule.title.length > 0 &&
+        typeof schedule.type === 'string' &&
+        schedule.type.length > 0 &&
+        typeof schedule.parent === 'string' &&
+        typeof schedule.data === 'object' &&
+        typeof schedule.data?.type === 'string' &&
+        schedule.data.type.length > 0 &&
+        ((typeof schedule.data?.state === 'string' && schedule.data.state.length > 0) ||
+          typeof schedule.data?.state === 'boolean') &&
+        typeof schedule.data?.prio === 'number' &&
+        schedule.data.prio >= 0 &&
+        Array.isArray(schedule.data?.dow) &&
+        typeof schedule.data?.intervalDuration === 'number' &&
+        schedule.data.intervalDuration > 0 &&
+        Array.isArray(schedule.data?.intervals) &&
+        schedule.data.intervals.length > 0 &&
+        Array.isArray(schedule.data?.members)
       );
     }
   }
@@ -893,47 +891,47 @@ function autoTelegramMenuExtensionScheduler() {
    * Register the reaction on the request to process the "schedule" `button` item/sub-items from the "main" script.
    **/
   onMessage(`${extensionId}#${idSchedules}`, ({data, translations}, callback) => {
-    let options = data['options'] || {},
+    let options = data.options || {},
       {device, states, parentStateId, parent, item, subItem, index, subIndex, mode, valueOptions, icons} = options,
-      parentStateType = options['parentStateType'] || '',
+      parentStateType = options.parentStateType || '',
       saveSchedule;
-    const valueInterim = valueOptions?.['externalValueInterim'],
+    const valueInterim = valueOptions?.externalValueInterim,
       schedules = new Schedules(),
       iconOn = icons?.[0] || '✅',
       iconOff = icons?.[1] || '🚫',
       messageToId = `${extensionId}#${idSchedules}`,
       menuItem = {...data},
       modeBrowse = typeof mode !== 'string' || mode === 'browse';
-    menuItem['submenu'] = new Array();
+    menuItem.submenu = new Array();
     if (
       mode === 'save' &&
       Schedules.isScheduleFilledFully(valueInterim) &&
-      typeof valueInterim['adapterId'] === 'number'
+      typeof valueInterim.adapterId === 'number'
     ) {
       schedules.scheduleAdd(valueInterim);
       saveSchedule = {...valueInterim};
-      menuItem['goTo'] = menuItem['index'].split('.').slice(0, -2).join('.');
-      log(`goto = ${menuItem['goTo']}`);
-      menuItem['submenu'] = messageToId;
+      menuItem.goTo = menuItem.index.split('.').slice(0, -2).join('.');
+      log(`goto = ${menuItem.goTo}`);
+      menuItem.submenu = messageToId;
     }
     if (typeof device === 'string' && typeof states === 'object' && !Array.isArray(states)) {
-      menuItem['id'] = idSchedules;
-      menuItem['textValues'] = [];
+      menuItem.id = idSchedules;
+      menuItem.textValues = [];
       Object.keys(states).forEach((stateId) => {
         if (existsObject(stateId) === true) {
           const stateInfo = getObject(stateId),
-            stateInfoCommon = stateInfo?.['common'] || {},
-            stateRole = stateInfoCommon?.['role'] || '',
+            stateInfoCommon = stateInfo?.common || {},
+            stateRole = stateInfoCommon?.role || '',
             stateScheduleType = stateSchedulesFromRoles[stateRole] || '',
             parentStateParams = {};
-          if (typeof stateInfoCommon?.['step'] === 'number') {
-            parentStateParams['step'] = stateInfoCommon['step'];
+          if (typeof stateInfoCommon?.step === 'number') {
+            parentStateParams.step = stateInfoCommon.step;
           }
-          if (typeof stateInfoCommon?.['min'] === 'number') {
-            parentStateParams['min'] = stateInfoCommon['min'];
+          if (typeof stateInfoCommon?.min === 'number') {
+            parentStateParams.min = stateInfoCommon.min;
           }
-          if (typeof stateInfoCommon?.['max'] === 'number') {
-            parentStateParams['max'] = stateInfoCommon['max'];
+          if (typeof stateInfoCommon?.max === 'number') {
+            parentStateParams.max = stateInfoCommon.max;
           }
           if (stateScheduleType !== '') {
             const schedulesAssigned = schedules.schedulesGetByStateId(stateId, stateScheduleType),
@@ -941,7 +939,7 @@ function autoTelegramMenuExtensionScheduler() {
                 label: getTranslation(translations, 'attribute'),
                 value: states[stateId] || '',
               };
-            menuItem['submenu'].push({
+            menuItem.submenu.push({
               name: `${states[stateId]} [${schedules.getByDeviceId(stateId).length}]`,
               id: stateId.split('.').pop(),
               extensionId: extensionId,
@@ -964,7 +962,7 @@ function autoTelegramMenuExtensionScheduler() {
       const scheduleForText = [
         {
           label: getTranslation(translations, 'attribute'),
-          value: options['parentStateName'] || '',
+          value: options.parentStateName || '',
         },
       ];
       if (typeof mode !== 'string') {
@@ -972,9 +970,9 @@ function autoTelegramMenuExtensionScheduler() {
         if (schedulesToShow.length > 0) {
           let adapterId = -1;
           schedulesToShow.forEach((schedule) => {
-            if (adapterId !== schedule['adapterId']) {
-              adapterId = schedule['adapterId'];
-              menuItem['submenu'].push({
+            if (adapterId !== schedule.adapterId) {
+              adapterId = schedule.adapterId;
+              menuItem.submenu.push({
                 name:
                   `${getTranslation(translations, 'associated')}: ` +
                   `${getTranslation(translations, extensionId)}.${adapterId}` +
@@ -998,11 +996,11 @@ function autoTelegramMenuExtensionScheduler() {
             }
           });
         }
-        menuItem['submenu'].push({
+        menuItem.submenu.push({
           name: getTranslation(translations, 'browse'),
           id: 'browse',
           extensionId: extensionId,
-          icon: icons?.['add'] || '',
+          icon: icons?.add || '',
           textValues: scheduleForText,
           group: 'browse',
           options: {
@@ -1013,7 +1011,7 @@ function autoTelegramMenuExtensionScheduler() {
         });
       } else if (mode === 'browse') {
         schedules.getAdapters().forEach((adapterId) => {
-          menuItem['submenu'].push({
+          menuItem.submenu.push({
             name: `${getTranslation(translations, extensionId)}.${adapterId}`,
             id: `${adapterPrefix}${adapterId}`,
             extensionId: extensionId,
@@ -1032,7 +1030,7 @@ function autoTelegramMenuExtensionScheduler() {
       const scheduleForText = [
         {
           label: getTranslation(translations, 'attribute'),
-          value: options['parentStateName'] || '',
+          value: options.parentStateName || '',
         },
       ];
       let scheduleCurrent = schedules.scheduleGetById(item) || {};
@@ -1044,25 +1042,25 @@ function autoTelegramMenuExtensionScheduler() {
             value: '',
           });
           schedulesToShow = schedulesToShow.filter(
-            (schedule) => schedule['type'] === 'folder' || schedule['data']?.['type'] === parentStateType,
+            (schedule) => schedule.type === 'folder' || schedule.data?.type === parentStateType,
           );
         } else {
           schedulesToShow = schedules
             .schedulesGetByStateId(parentStateId, parentStateType)
-            .filter((schedule) => schedule['adapterId'] === index);
+            .filter((schedule) => schedule.adapterId === index);
         }
         if (mode === 'browse' && typeof valueInterim === 'object' && !valueInterim.hasOwnProperty('id')) {
           schedulesToShow.forEach((schedule, scheduleIndex) => {
-            if (valueInterim?.[schedule?.['id']] === false) {
+            if (valueInterim?.[schedule?.id] === false) {
               schedulesToShow.splice(scheduleIndex, 1);
               saveSchedule = {...schedule};
-              schedules.scheduleDelete(schedule['id']);
+              schedules.scheduleDelete(schedule.id);
             }
           });
         }
         schedulesToShow.forEach((schedule, scheduleIndex) => {
           const subMenuItem = {
-            name: mode === 'browse' ? schedule['title'] : schedules.scheduleMakePath(schedule, false, '/'),
+            name: mode === 'browse' ? schedule.title : schedules.scheduleMakePath(schedule, false, '/'),
             id: `${scheduleIndex}`,
             extensionId: extensionId,
             textValues: schedules.schedulesToTextValues([schedule], translations, '  ', scheduleForText),
@@ -1070,42 +1068,42 @@ function autoTelegramMenuExtensionScheduler() {
             options: {
               ...options,
               valueOptions: {
-                ...options?.['valueOptions'],
-                externalValueId: `${menuItem['index']}.${scheduleIndex}`,
+                ...options?.valueOptions,
+                externalValueId: `${menuItem.index}.${scheduleIndex}`,
               },
             },
             submenu: messageToId,
           };
-          if (schedule['type'] === 'profile') {
-            subMenuItem['icon'] = schedules.scheduleIsEnabled(schedule) === true ? iconOn : iconOff;
-            subMenuItem['options']['item'] = schedule['id'];
-            if (typeof subMenuItem['options']['valueOptions'] !== 'object') {
-              subMenuItem['options']['valueOptions'] = {};
+          if (schedule.type === 'profile') {
+            subMenuItem.icon = schedules.scheduleIsEnabled(schedule) === true ? iconOn : iconOff;
+            subMenuItem.options.item = schedule.id;
+            if (typeof subMenuItem.options.valueOptions !== 'object') {
+              subMenuItem.options.valueOptions = {};
             }
-            delete subMenuItem['options']['parent'];
+            delete subMenuItem.options.parent;
           } else {
-            subMenuItem['icon'] = iconFolder;
-            subMenuItem['options']['parent'] = schedule['id'];
+            subMenuItem.icon = iconFolder;
+            subMenuItem.options.parent = schedule.id;
           }
-          menuItem['submenu'].push(subMenuItem);
+          menuItem.submenu.push(subMenuItem);
         });
         if (mode === 'browse') {
-          menuItem['options'] = {
-            ...menuItem['options'],
+          menuItem.options = {
+            ...menuItem.options,
             valueOptions: {
-              ...menuItem['options']['valueOptions'],
-              externalValueId: menuItem['index'],
+              ...menuItem.options.valueOptions,
+              externalValueId: menuItem.index,
               externalValueType: 'object',
               externalValue: {},
             },
           };
           if (typeof parent === 'string' && parent.length > 0) {
             if (schedules.scheduleIsCanBeDeleted(parent)) {
-              menuItem['submenu'].push({
+              menuItem.submenu.push({
                 name: getTranslation(translations, 'delete'),
                 id: 'delete',
                 extensionId: extensionId,
-                icon: icons['delete'] || '',
+                icon: icons.delete || '',
                 group: 'delete',
                 type: 'internalMenuItem',
                 command: 'deleteItem',
@@ -1115,26 +1113,26 @@ function autoTelegramMenuExtensionScheduler() {
                   mode: 'delete',
                   subMode: 'boolean',
                   valueOptions: {
-                    ...options['valueOptions'],
-                    externalValueId: menuItem['index'].split('.').slice(0, -1).join('.'),
+                    ...options.valueOptions,
+                    externalValueId: menuItem.index.split('.').slice(0, -1).join('.'),
                   },
                 },
                 submenu: [],
               });
             }
           }
-          menuItem['submenu'].push({
+          menuItem.submenu.push({
             name: getTranslation(translations, 'create'),
             id: 'create',
             extensionId: extensionId,
-            icon: icons?.['create'] || '',
+            icon: icons?.create || '',
             group: 'create',
             options: {
               ...options,
               mode: 'create',
               valueOptions: {
-                ...options['valueOptions'],
-                externalValueId: `${menuItem['index']}.create`,
+                ...options.valueOptions,
+                externalValueId: `${menuItem.index}.create`,
               },
             },
             submenu: messageToId,
@@ -1142,14 +1140,14 @@ function autoTelegramMenuExtensionScheduler() {
         }
       } else if (
         (typeof item === 'string' || mode === 'create') &&
-        (typeof mode !== 'string' || (mode === 'browse' && scheduleCurrent['type'] === 'profile') || mode === 'create')
+        (typeof mode !== 'string' || (mode === 'browse' && scheduleCurrent.type === 'profile') || mode === 'create')
       ) {
         const scheduleOriginal = schedules.scheduleGetById(item);
         let schedule = scheduleOriginal;
         if (
-          menuItem['index'].startsWith(options['valueOptions']?.['externalValueId']) &&
+          menuItem.index.startsWith(options.valueOptions?.externalValueId) &&
           typeof valueInterim === 'object' &&
-          ((typeof item === 'string' && valueInterim['id'] === item) || typeof valueInterim['id'] === 'string')
+          ((typeof item === 'string' && valueInterim.id === item) || typeof valueInterim.id === 'string')
         ) {
           schedule = valueInterim;
         }
@@ -1158,17 +1156,17 @@ function autoTelegramMenuExtensionScheduler() {
             schedule = {
               ...scheduleTemplate,
               id: schedules.generateId(),
-              parent: options['parent'] || '',
+              parent: options.parent || '',
               adapterId: index,
             };
-            schedule['type'] = '';
-            item = schedule['id'];
-            options['item'] = item;
+            schedule.type = '';
+            item = schedule.id;
+            options.item = item;
           } else {
-            item = schedule['id'];
+            item = schedule.id;
           }
         }
-        if (typeof schedule === 'object' && typeof item === 'string' && schedule['id'] === item) {
+        if (typeof schedule === 'object' && typeof item === 'string' && schedule.id === item) {
           let priorityStates = [];
           priorityTextValues.forEach((value, key) => {
             priorityStates.push([key, getTranslation(translations, value)]);
@@ -1176,36 +1174,36 @@ function autoTelegramMenuExtensionScheduler() {
           options = {
             ...options,
             valueOptions: {
-              ...options?.['valueOptions'],
+              ...options?.valueOptions,
               externalValueType: 'object',
               externalValueParamsLevel: 'sub',
             },
           };
-          if (typeof schedule['edit'] === 'object') {
-            const scheduleEdit = schedule['edit'];
-            options['valueOptions']['externalValueSet'] = true;
+          if (typeof schedule.edit === 'object') {
+            const scheduleEdit = schedule.edit;
+            options.valueOptions.externalValueSet = true;
             Object.keys(scheduleEdit).forEach((key) => {
               switch (key) {
                 case 'enabled': {
-                  if (typeof scheduleEdit?.['enabled'] === 'boolean') {
-                    schedule['enabled'] = scheduleEdit['enabled'];
+                  if (typeof scheduleEdit?.enabled === 'boolean') {
+                    schedule.enabled = scheduleEdit.enabled;
                   }
                   break;
                 }
                 case 'title': {
-                  if (typeof scheduleEdit?.['title'] === 'string' && scheduleEdit['title'].length > 0) {
-                    schedule['title'] = scheduleEdit['title'];
+                  if (typeof scheduleEdit?.title === 'string' && scheduleEdit.title.length > 0) {
+                    schedule.title = scheduleEdit.title;
                   }
                   break;
                 }
                 case 'type': {
-                  if (typeof scheduleEdit?.['type'] === 'string' && scheduleEdit['type'].length > 0) {
-                    schedule['type'] = scheduleEdit['type'];
-                    if (schedule['type'] === 'profile') {
-                      schedule['data']['type'] = options['parentStateType'] || 'temperature';
-                      if (schedule['data']['type'] === 'onoff') {
-                        schedule['data']['intervals'].forEach((interval) => {
-                          interval['value'] = interval['value'] === 1;
+                  if (typeof scheduleEdit?.type === 'string' && scheduleEdit.type.length > 0) {
+                    schedule.type = scheduleEdit.type;
+                    if (schedule.type === 'profile') {
+                      schedule.data.type = options.parentStateType || 'temperature';
+                      if (schedule.data.type === 'onoff') {
+                        schedule.data.intervals.forEach((interval) => {
+                          interval.value = interval.value === 1;
                         });
                       }
                     }
@@ -1213,32 +1211,32 @@ function autoTelegramMenuExtensionScheduler() {
                   break;
                 }
                 case 'prio': {
-                  if (typeof scheduleEdit?.['prio'] === 'number') {
-                    schedule['data']['prio'] = scheduleEdit['prio'];
+                  if (typeof scheduleEdit?.prio === 'number') {
+                    schedule.data.prio = scheduleEdit.prio;
                   }
                   break;
                 }
                 case 'weekdays': {
                   if (Array.isArray(scheduleEdit[key])) {
-                    schedule['data']['dow'] = Schedules.scheduleWeekdaysEncode(scheduleEdit['weekdays']);
+                    schedule.data.dow = Schedules.scheduleWeekdaysEncode(scheduleEdit.weekdays);
                   }
                   break;
                 }
                 case 'intervalDuration': {
-                  if (typeof scheduleEdit?.['intervalDuration'] === 'number') {
+                  if (typeof scheduleEdit?.intervalDuration === 'number') {
                     const intervals = Schedules.scheduleIntervalsDecode(schedule);
-                    schedule['data']['intervalDuration'] = scheduleEdit['intervalDuration'];
-                    schedule['data']['intervals'] = Schedules.scheduleIntervalEncode(
+                    schedule.data.intervalDuration = scheduleEdit.intervalDuration;
+                    schedule.data.intervals = Schedules.scheduleIntervalEncode(
                       intervals,
-                      schedule['data']['intervalDuration'],
+                      schedule.data.intervalDuration,
                     );
                   }
                   break;
                 }
                 case 'intervals': {
-                  if (typeof scheduleEdit?.['intervals'] === 'object') {
+                  if (typeof scheduleEdit?.intervals === 'object') {
                     const intervals = Schedules.scheduleIntervalsDecode(schedule),
-                      intervalsEdit = scheduleEdit['intervals'];
+                      intervalsEdit = scheduleEdit.intervals;
                     Object.keys(intervalsEdit).forEach((intervalIndex) => {
                       const index = parseInt(intervalIndex, 10),
                         interval = intervals[index],
@@ -1250,7 +1248,7 @@ function autoTelegramMenuExtensionScheduler() {
                             if (startInMinutes >= Schedules.timeMaximalInMinutes) {
                               intervals.splice(index, 1);
                             } else {
-                              interval['start'] = intervalEdit[key];
+                              interval.start = intervalEdit[key];
                               if (startInMinutes === Schedules.timeMinimalInMinutes) {
                                 if (index > 0) {
                                   intervals.splice(0, index);
@@ -1260,7 +1258,7 @@ function autoTelegramMenuExtensionScheduler() {
                                   let itemsToDelete = 0,
                                     indexToEdit;
                                   for (indexToEdit = index - 1; indexToEdit >= 0; indexToEdit--) {
-                                    if (timeCompare(interval['start'], intervals[indexToEdit]['start']) <= 0) {
+                                    if (timeCompare(interval.start, intervals[indexToEdit].start) <= 0) {
                                       itemsToDelete++;
                                     } else {
                                       break;
@@ -1270,13 +1268,13 @@ function autoTelegramMenuExtensionScheduler() {
                                     intervals.splice(indexToEdit + 1, itemsToDelete);
                                   }
                                 }
-                                if (index === 0 || timeCompare(interval['start'], intervals[index - 1]['end']) > 0) {
+                                if (index === 0 || timeCompare(interval.start, intervals[index - 1].end) > 0) {
                                   intervals.splice(index, 0, {
-                                    start: index === 0 ? Schedules.timeMinimal : intervals[index - 1]['end'],
-                                    end: interval['start'],
+                                    start: index === 0 ? Schedules.timeMinimal : intervals[index - 1].end,
+                                    end: interval.start,
                                   });
                                 } else {
-                                  intervals[index - 1]['end'] = interval['start'];
+                                  intervals[index - 1].end = interval.start;
                                 }
                               }
                             }
@@ -1287,7 +1285,7 @@ function autoTelegramMenuExtensionScheduler() {
                             if (endInMinutes <= Schedules.timeMinimalInMinutes) {
                               intervals.splice(index, 1);
                             } else {
-                              interval['end'] = intervalEdit[key];
+                              interval.end = intervalEdit[key];
                               if (endInMinutes === Schedules.timeMaximalInMinutes) {
                                 if (index < intervals.length - 1) {
                                   intervals.splice(index + 1, intervals.length - index - 1);
@@ -1297,7 +1295,7 @@ function autoTelegramMenuExtensionScheduler() {
                                   let itemsToDelete = 0,
                                     indexToEdit;
                                   for (indexToEdit = index + 1; indexToEdit < intervals.length; indexToEdit++) {
-                                    if (timeCompare(interval['end'], intervals[indexToEdit]['end']) >= 0) {
+                                    if (timeCompare(interval.end, intervals[indexToEdit].end) >= 0) {
                                       itemsToDelete++;
                                     } else {
                                       break;
@@ -1309,27 +1307,27 @@ function autoTelegramMenuExtensionScheduler() {
                                 }
                                 if (
                                   index === intervals.length - 1 ||
-                                  timeCompare(interval['end'], intervals[index + 1]['start']) < 0
+                                  timeCompare(interval.end, intervals[index + 1].start) < 0
                                 ) {
                                   intervals.splice(index + 1, 0, {
-                                    start: interval['end'],
+                                    start: interval.end,
                                     end:
                                       index === intervals.length - 1
                                         ? Schedules.timeMaximal
-                                        : intervals[index + 1]['start'],
+                                        : intervals[index + 1].start,
                                   });
                                 } else {
-                                  intervals[index + 1]['start'] = interval['end'];
+                                  intervals[index + 1].start = interval.end;
                                 }
                               }
                             }
                             break;
                           }
                           case 'value': {
-                            if (stateTypeFromScheduleType[schedule['data']?.['type']] === 'boolean') {
-                              interval['value'] = intervalEdit[key] ? 1 : 0;
+                            if (stateTypeFromScheduleType[schedule.data?.type] === 'boolean') {
+                              interval.value = intervalEdit[key] ? 1 : 0;
                             } else {
-                              interval['value'] = intervalEdit[key];
+                              interval.value = intervalEdit[key];
                             }
                             break;
                           }
@@ -1338,44 +1336,44 @@ function autoTelegramMenuExtensionScheduler() {
                           }
                         }
                       });
-                      schedule['data']['intervals'] = Schedules.scheduleIntervalEncode(
+                      schedule.data.intervals = Schedules.scheduleIntervalEncode(
                         intervals,
-                        schedule['data']['intervalDuration'],
+                        schedule.data.intervalDuration,
                       );
                     });
                   }
                   break;
                 }
                 case 'associate': {
-                  if (typeof scheduleEdit?.['associate'] === 'string' && scheduleEdit['associate'].length > 0) {
-                    const memberToAdd = scheduleEdit['associate'];
-                    if (schedule['data']['members'].includes(memberToAdd) === false) {
-                      schedule['data']['members'].push(memberToAdd);
+                  if (typeof scheduleEdit?.associate === 'string' && scheduleEdit.associate.length > 0) {
+                    const memberToAdd = scheduleEdit.associate;
+                    if (schedule.data.members.includes(memberToAdd) === false) {
+                      schedule.data.members.push(memberToAdd);
                     }
                   }
                   break;
                 }
                 case 'dissociate': {
-                  if (typeof scheduleEdit?.['dissociate'] === 'string' && scheduleEdit['dissociate'].length > 0) {
-                    const memberToRemove = scheduleEdit['dissociate'];
-                    if (schedule['data']['members'].includes(memberToRemove) === true) {
-                      schedule['data']['members'].splice(schedule['data']['members'].indexOf(memberToRemove), 1);
+                  if (typeof scheduleEdit?.dissociate === 'string' && scheduleEdit.dissociate.length > 0) {
+                    const memberToRemove = scheduleEdit.dissociate;
+                    if (schedule.data.members.includes(memberToRemove) === true) {
+                      schedule.data.members.splice(schedule.data.members.indexOf(memberToRemove), 1);
                     }
                   }
                   break;
                 }
               }
             });
-            delete schedule['edit'];
+            delete schedule.edit;
           }
           const enabled = schedules.scheduleIsEnabled(schedule) === true;
-          options['valueOptions']['externalValue'] = {...schedule, enabled: enabled};
-          menuItem['textValues'] = schedules.schedulesToTextValues([schedule], translations, '  ', scheduleForText);
-          menuItem['options'] = options;
+          options.valueOptions.externalValue = {...schedule, enabled: enabled};
+          menuItem.textValues = schedules.schedulesToTextValues([schedule], translations, '  ', scheduleForText);
+          menuItem.options = options;
           if (typeof subItem !== 'string') {
-            menuItem['options']['valueOptions']['externalValueId'] = menuItem['index'];
-            if (typeof schedule['type'] !== 'string' || schedule['type'].length === 0) {
-              menuItem['submenu'].push({
+            menuItem.options.valueOptions.externalValueId = menuItem.index;
+            if (typeof schedule.type !== 'string' || schedule.type.length === 0) {
+              menuItem.submenu.push({
                 name: getTranslation(translations, 'type'),
                 id: 'type',
                 extensionId: extensionId,
@@ -1388,7 +1386,7 @@ function autoTelegramMenuExtensionScheduler() {
                   subItem: 'edit.type',
                   mode: 'edit',
                   valueOptions: {
-                    ...options['valueOptions'],
+                    ...options.valueOptions,
                     type: 'string',
                     states: [
                       ['profile', `${iconProfile}${getTranslation(translations, 'profile')}`],
@@ -1399,11 +1397,11 @@ function autoTelegramMenuExtensionScheduler() {
                 submenu: [],
               });
             } else if (
-              typeof schedule['title'] !== 'string' ||
-              schedule['title'].length === 0 ||
-              schedule['type'] === 'folder'
+              typeof schedule.title !== 'string' ||
+              schedule.title.length === 0 ||
+              schedule.type === 'folder'
             ) {
-              menuItem['submenu'].push({
+              menuItem.submenu.push({
                 name: getTranslation(translations, 'title'),
                 id: 'title',
                 extensionId: extensionId,
@@ -1415,17 +1413,17 @@ function autoTelegramMenuExtensionScheduler() {
                   ...options,
                   subItem: 'edit.title',
                   mode: 'edit',
-                  value: schedule['title'],
+                  value: schedule.title,
                   showValueInName: true,
                   valueOptions: {
-                    ...options['valueOptions'],
+                    ...options.valueOptions,
                     type: 'string',
                   },
                 },
                 submenu: [],
               });
             } else {
-              menuItem['submenu'].push(
+              menuItem.submenu.push(
                 {
                   name: getTranslation(translations, 'enabled'),
                   id: 'enabled',
@@ -1439,7 +1437,7 @@ function autoTelegramMenuExtensionScheduler() {
                     value: enabled,
                     mode: 'edit',
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       type: 'boolean',
                     },
                   },
@@ -1456,11 +1454,11 @@ function autoTelegramMenuExtensionScheduler() {
                   options: {
                     ...options,
                     subItem: 'edit.prio',
-                    value: schedule['data']?.['prio'],
+                    value: schedule.data?.prio,
                     mode: 'edit',
                     showValueInName: true,
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       type: 'number',
                       states: priorityStates,
                     },
@@ -1482,7 +1480,7 @@ function autoTelegramMenuExtensionScheduler() {
                     mode: 'edit',
                     showValueInName: true,
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       type: 'array',
                       subType: 'weekdays',
                     },
@@ -1499,16 +1497,16 @@ function autoTelegramMenuExtensionScheduler() {
                   options: {
                     ...options,
                     subItem: 'edit.intervalDuration',
-                    value: schedule['data']?.['intervalDuration'],
+                    value: schedule.data?.intervalDuration,
                     mode: 'edit',
                     showValueInName: true,
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       type: 'number',
                       states: [...intervalDurations],
-                      valueToDisplay: intervalDurations.has(schedule['data']?.['intervalDuration'])
-                        ? intervalDurations.get(schedule['data']?.['intervalDuration'])
-                        : schedule['data']?.['intervalDuration'],
+                      valueToDisplay: intervalDurations.has(schedule.data?.intervalDuration)
+                        ? intervalDurations.get(schedule.data?.intervalDuration)
+                        : schedule.data?.intervalDuration,
                     },
                   },
                   submenu: [],
@@ -1528,11 +1526,11 @@ function autoTelegramMenuExtensionScheduler() {
               );
               if (mode === 'browse') {
                 if (schedules.scheduleIsCanBeDeleted(item)) {
-                  menuItem['submenu'].push({
+                  menuItem.submenu.push({
                     name: getTranslation(translations, 'delete'),
                     id: 'delete',
                     extensionId: extensionId,
-                    icon: icons['delete'] || '',
+                    icon: icons.delete || '',
                     group: 'delete',
                     type: 'internalMenuItem',
                     command: 'deleteItem',
@@ -1541,8 +1539,8 @@ function autoTelegramMenuExtensionScheduler() {
                       mode: 'delete',
                       subMode: 'boolean',
                       valueOptions: {
-                        ...options['valueOptions'],
-                        externalValueId: menuItem['index'].split('.').slice(0, -1).join('.'),
+                        ...options.valueOptions,
+                        externalValueId: menuItem.index.split('.').slice(0, -1).join('.'),
                       },
                     },
                     submenu: [],
@@ -1550,14 +1548,14 @@ function autoTelegramMenuExtensionScheduler() {
                 }
               }
               if (
-                Array.isArray(schedule['data']?.['members']) === false ||
-                schedule['data']['members'].includes(parentStateId) === false
+                Array.isArray(schedule.data?.members) === false ||
+                schedule.data.members.includes(parentStateId) === false
               ) {
-                menuItem['submenu'].push({
-                  name: `${getTranslation(translations, 'associate')} [${options['parentStateName']}]`,
+                menuItem.submenu.push({
+                  name: `${getTranslation(translations, 'associate')} [${options.parentStateName}]`,
                   id: 'associate',
                   extensionId: extensionId,
-                  icon: icons?.['associate'] || '',
+                  icon: icons?.associate || '',
                   group: 'associate',
                   type: 'internalMenuItem',
                   command: 'editValue',
@@ -1566,7 +1564,7 @@ function autoTelegramMenuExtensionScheduler() {
                     mode: 'edit',
                     subItem: 'edit.associate',
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       type: 'string',
                       states: [
                         [parentStateId, getTranslation(translations, 'associate')],
@@ -1577,14 +1575,14 @@ function autoTelegramMenuExtensionScheduler() {
                   submenu: messageToId,
                 });
               } else if (
-                Array.isArray(schedule['data']?.['members']) === true &&
-                schedule['data']['members'].includes(parentStateId) === true
+                Array.isArray(schedule.data?.members) === true &&
+                schedule.data.members.includes(parentStateId) === true
               ) {
-                menuItem['submenu'].push({
-                  name: `${getTranslation(translations, 'dissociate')} [${options['parentStateName']}]`,
+                menuItem.submenu.push({
+                  name: `${getTranslation(translations, 'dissociate')} [${options.parentStateName}]`,
                   id: 'dissociate',
                   extensionId: extensionId,
-                  icon: icons?.['dissociate'] || '',
+                  icon: icons?.dissociate || '',
                   group: 'dissociate',
                   type: 'internalMenuItem',
                   command: 'editValue',
@@ -1593,7 +1591,7 @@ function autoTelegramMenuExtensionScheduler() {
                     mode: 'edit',
                     subItem: 'edit.dissociate',
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       type: 'string',
                       states: [
                         [parentStateId, getTranslation(translations, 'dissociate')],
@@ -1609,11 +1607,11 @@ function autoTelegramMenuExtensionScheduler() {
               Schedules.isScheduleFilledFully(schedule) &&
               Schedules.isSchedulesAreEqual(schedule, scheduleOriginal, schedules) !== true
             ) {
-              menuItem['submenu'].push({
+              menuItem.submenu.push({
                 name: getTranslation(translations, 'save'),
                 id: 'save',
                 extensionId: extensionId,
-                icon: icons?.['save'] || '',
+                icon: icons?.save || '',
                 group: 'save',
                 options: {
                   ...options,
@@ -1626,16 +1624,16 @@ function autoTelegramMenuExtensionScheduler() {
             const intervals = Schedules.scheduleIntervalsDecode(schedule);
             if (typeof subIndex !== 'number') {
               intervals.forEach((interval, intervalIndex) => {
-                const valueText = schedules.scheduleValueToText(schedule, interval['value']);
-                menuItem['submenu'].push({
-                  name: `${interval['start']}-${interval['end']}: ${valueText}`,
+                const valueText = schedules.scheduleValueToText(schedule, interval.value);
+                menuItem.submenu.push({
+                  name: `${interval.start}-${interval.end}: ${valueText}`,
                   id: `${intervalIndex}`,
                   extensionId: extensionId,
                   icon: iconInterval,
                   textValues: [
                     {
                       label: getTranslation(translations, 'value'),
-                      value: interval['value'],
+                      value: interval.value,
                     },
                   ],
                   group: 'interval',
@@ -1650,10 +1648,10 @@ function autoTelegramMenuExtensionScheduler() {
             } else {
               const interval = intervals[subIndex],
                 intervalsPrefix = `edit.intervals.${subIndex}`,
-                valueType = stateTypeFromScheduleType[schedule['data']?.['type']] || 'number',
-                valueCurrent = valueType === 'boolean' ? interval['value'] === 1 : interval['value'],
-                timeStep = intervalDurations.get(schedule['data']?.['intervalDuration'] || 1);
-              menuItem['submenu'].push(
+                valueType = stateTypeFromScheduleType[schedule.data?.type] || 'number',
+                valueCurrent = valueType === 'boolean' ? interval.value === 1 : interval.value,
+                timeStep = intervalDurations.get(schedule.data?.intervalDuration || 1);
+              menuItem.submenu.push(
                 {
                   name: getTranslation(translations, 'intervalStart'),
                   id: 'intervalStart',
@@ -1662,7 +1660,7 @@ function autoTelegramMenuExtensionScheduler() {
                   textValues: [
                     {
                       label: getTranslation(translations, 'value'),
-                      value: interval['value'],
+                      value: interval.value,
                     },
                   ],
                   group: 'intervalTime',
@@ -1672,12 +1670,12 @@ function autoTelegramMenuExtensionScheduler() {
                     ...options,
                     mode: 'edit',
                     subSubItem: `${intervalsPrefix}.start`,
-                    value: interval['start'] === undefined ? '00:00' : interval['start'],
+                    value: interval.start === undefined ? '00:00' : interval.start,
                     showValueInName: true,
                     timeTemplate: 'hm',
                     timeStep: timeStep,
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       externalValueParamsLevel: 'subSub',
                       externalStepBack: 1,
                       type: 'string',
@@ -1693,7 +1691,7 @@ function autoTelegramMenuExtensionScheduler() {
                   textValues: [
                     {
                       label: getTranslation(translations, 'value'),
-                      value: interval['value'],
+                      value: interval.value,
                     },
                   ],
                   group: 'intervalTime',
@@ -1703,13 +1701,13 @@ function autoTelegramMenuExtensionScheduler() {
                     ...options,
                     mode: 'edit',
                     subSubItem: `${intervalsPrefix}.end`,
-                    value: interval['end'] === undefined ? '24:00' : interval['end'],
+                    value: interval.end === undefined ? '24:00' : interval.end,
                     showValueInName: true,
                     timeTemplate: 'hm',
                     timeStep: timeStep,
                     timeMax: '24:00',
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       externalValueParamsLevel: 'subSub',
                       externalStepBack: 1,
                       type: 'string',
@@ -1725,7 +1723,7 @@ function autoTelegramMenuExtensionScheduler() {
                   textValues: [
                     {
                       label: getTranslation(translations, 'value'),
-                      value: interval['value'],
+                      value: interval.value,
                     },
                   ],
                   group: 'intervalValue',
@@ -1739,11 +1737,11 @@ function autoTelegramMenuExtensionScheduler() {
                     value: ['boolean', 'number'].includes(typeof valueCurrent) ? valueCurrent : undefined,
                     subSubItem: `${intervalsPrefix}.value`,
                     valueOptions: {
-                      ...options['valueOptions'],
+                      ...options.valueOptions,
                       externalValueParamsLevel: 'subSub',
                       externalStepBack: 1,
                       type: valueType,
-                      ...(options['parentStateParams'] || {}),
+                      ...(options.parentStateParams || {}),
                     },
                   },
                 },
@@ -1753,7 +1751,7 @@ function autoTelegramMenuExtensionScheduler() {
         }
       }
     }
-    if (typeof saveSchedule === 'object' && typeof saveSchedule['id'] === 'string' && saveSchedule['id'].length > 0) {
+    if (typeof saveSchedule === 'object' && typeof saveSchedule.id === 'string' && saveSchedule.id.length > 0) {
       schedules.save(saveSchedule, () => callback({...menuItem}));
     } else {
       callback({...menuItem});
@@ -1765,31 +1763,31 @@ function autoTelegramMenuExtensionScheduler() {
    **/
   onMessage(`${extensionId}#${idProperties}`, ({data, translations}, callback) => {
     if (typeof data === 'object') {
-      const deviceId = data['deviceId'],
-        extensions = data['extensions'];
+      const deviceId = data.deviceId,
+        extensions = data.extensions;
       if (typeof deviceId === 'string' && deviceId.length > 0 && typeof extensions === 'object') {
         Object.keys(extensions).forEach((extensionItemId) => {
           const extensionData = extensions[extensionItemId];
-          if (extensionItemId === extensionId && typeof extensionData['valueText'] !== 'object') {
+          if (extensionItemId === extensionId && typeof extensionData.valueText !== 'object') {
             const textValuesPrefix = [
               {
                 label: getTranslation(translations, `${idSchedules}`) + ':',
               },
             ];
-            extensionData['valueText'] = {};
-            if (Array.isArray(extensionData['attributes']) && extensionData['attributes'].length > 0) {
-              extensionData['attributes'].forEach((attributeId) => {
+            extensionData.valueText = {};
+            if (Array.isArray(extensionData.attributes) && extensionData.attributes.length > 0) {
+              extensionData.attributes.forEach((attributeId) => {
                 if (attributeId === idSchedules) {
                   const schedules = new Schedules(),
                     schedulesAssociated = schedules.getByDeviceId(deviceId) || [];
                   schedulesAssociated.forEach((schedule) => {
                     if (schedules.scheduleIsEnabled(schedule) === true) {
-                      schedule['data']?.[`members`].forEach((member) => {
+                      schedule.data?.[`members`].forEach((member) => {
                         if (member.startsWith(deviceId)) {
-                          if (Array.isArray(extensionData['valueText'][member]) !== true) {
-                            extensionData['valueText'][member] = textValuesPrefix;
+                          if (Array.isArray(extensionData.valueText[member]) !== true) {
+                            extensionData.valueText[member] = textValuesPrefix;
                           }
-                          extensionData['valueText'][member].push(
+                          extensionData.valueText[member].push(
                             ...schedules.schedulesToTextValues([schedule], translations, '  '),
                           );
                         }
